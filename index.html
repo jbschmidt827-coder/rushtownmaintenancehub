@@ -111,6 +111,7 @@ body { font-family: 'IBM Plex Sans', sans-serif; background: var(--dark); min-he
 .t-water { background: #e1f0ff; color: #004085; }
 .t-feed { background: #fff8e1; color: #856404; }
 .t-manure { background: #fff0e1; color: #7a3800; }
+.t-egg { background: #fff9e1; color: #7a5c00; }
 .t-loc { background: var(--green-pale); color: var(--green-mid); }
 .pm-body p { font-size: 12px; color: var(--muted); }
 .pm-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 108px; }
@@ -235,6 +236,36 @@ textarea { resize: vertical; min-height: 85px; }
 .fab:active { transform: scale(0.97); }
 .fab .fab-icon { font-size: 20px; }
 @media(max-width:500px){ .fab { padding: 14px 18px; font-size: 16px; bottom: 16px; right: 16px; } }
+
+/* Parts */
+.part-card { background: var(--cream); border-radius: 10px; padding: 15px 17px; display: grid; grid-template-columns: 1fr auto; gap: 13px; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.13); border-left: 5px solid var(--green-bright); margin-bottom: 8px; }
+.part-card.low { border-left-color: var(--red); }
+.part-card.warn { border-left-color: var(--amber); }
+.part-name { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
+.part-meta { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+.part-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 100px; }
+.part-qty { font-family: 'Bebas Neue', sans-serif; font-size: 32px; line-height: 1; color: var(--green-mid); }
+.part-card.low .part-qty { color: var(--red); }
+.part-card.warn .part-qty { color: #b07a00; }
+.part-unit { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); text-align: right; }
+.part-btns { display: flex; gap: 5px; }
+.part-btn { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; transition: all 0.2s; }
+.part-btn.use { background: #fde8e6; color: var(--red); }
+.part-btn.use:hover { background: var(--red); color: #fff; }
+.part-btn.add { background: var(--green-pale); color: var(--green-mid); }
+.part-btn.add:hover { background: var(--green-bright); color: #fff; }
+/* Labor */
+.labor-tech-card { background: var(--cream); border-radius: 10px; padding: 16px 18px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.13); }
+.labor-tech-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.labor-tech-name { font-size: 15px; font-weight: 600; color: var(--ink); }
+.labor-tech-farm { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.labor-total { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--green-mid); line-height: 1; }
+.labor-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.labor-bar-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); width: 80px; flex-shrink: 0; }
+.labor-bar { height: 10px; background: var(--border); border-radius: 5px; flex: 1; overflow: hidden; }
+.labor-bar-fill { height: 100%; background: var(--green-bright); border-radius: 5px; transition: width 0.4s; }
+.labor-bar-hrs { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); width: 40px; text-align: right; flex-shrink: 0; }
+.farm-section-hdr { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: #fff; letter-spacing: 2px; margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--green-mid); }
 </style>
 </head>
 <body>
@@ -261,7 +292,10 @@ textarea { resize: vertical; min-height: 85px; }
       <button class="nav-tab" id="tab-wo" onclick="go('wo')">🔧 Work Orders</button>
       <button class="nav-tab" id="tab-pm" onclick="go('pm')">📋 PM Schedule</button>
       <button class="nav-tab" id="tab-sw" onclick="go('sw')">✅ Daily Rounds</button>
+      <button class="nav-tab" id="tab-parts" onclick="go('parts')">🔩 Parts</button>
+      <button class="nav-tab" id="tab-labor" onclick="go('labor')">⏱ Labor</button>
       <button class="nav-tab" id="tab-log" onclick="go('log')">📁 Log</button>
+      <button class="nav-tab" id="tab-report" onclick="go('report')">📧 Weekly Report</button>
     </nav>
   </div>
 </header>
@@ -456,6 +490,7 @@ textarea { resize: vertical; min-height: 85px; }
     <button class="pill" onclick="pmStat('monthly',this)">Monthly</button>
     <button class="pill" onclick="pmStat('quarterly',this)">Quarterly</button>
     <button class="pill" onclick="pmStat('annual',this)">Annual</button>
+    <button class="pill" onclick="pmStat('Egg Conveyor',this)">🥚 Egg Conveyor</button>
   </div>
   <div id="pm-container"></div>
 </div>
@@ -526,6 +561,42 @@ textarea { resize: vertical; min-height: 85px; }
 
 </div>
 
+
+<!-- PARTS & INVENTORY -->
+<div class="panel" id="panel-parts">
+  <div class="section-title">Parts & Inventory</div>
+  <div class="section-sub">Track stock levels — red means reorder now</div>
+  <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+    <button class="btn-new" onclick="showAddPart()" style="padding:11px 20px;font-size:12px;">➕ Add New Part</button>
+    <button class="btn-new" onclick="showReceiveStock()" style="padding:11px 20px;font-size:12px;background:var(--green-mid);">📦 Receive Stock</button>
+  </div>
+  <div class="stats-grid g4" id="parts-stats"></div>
+  <div class="pill-bar">
+    <button class="pill active" onclick="partsFilter('all',this)">All Parts</button>
+    <button class="pill" onclick="partsFilter('low',this)">🔴 Low Stock</button>
+    <button class="pill" onclick="partsFilter('ok',this)">✅ OK</button>
+    <button class="pill" onclick="partsFilter('Ventilation',this)">💨 Ventilation</button>
+    <button class="pill" onclick="partsFilter('Water',this)">💧 Water</button>
+    <button class="pill" onclick="partsFilter('Feed',this)">🌾 Feed</button>
+    <button class="pill" onclick="partsFilter('Electrical',this)">⚡ Electrical</button>
+    <button class="pill" onclick="partsFilter('General',this)">🔧 General</button>
+    <button class="pill" onclick="partsFilter('Egg Conveyor',this)">🥚 Egg Conveyor</button>
+  </div>
+  <div id="parts-list"></div>
+</div>
+
+<!-- LABOR DASHBOARD -->
+<div class="panel" id="panel-labor">
+  <div class="section-title">Labor Hours</div>
+  <div class="section-sub">Weekly breakdown by tech and farm — pulled from Daily Rounds timers</div>
+  <div class="pill-bar" id="labor-week-bar">
+    <button class="loc-pill active" onclick="laborWeek('this',this)">This Week</button>
+    <button class="loc-pill" onclick="laborWeek('last',this)">Last Week</button>
+    <button class="loc-pill" onclick="laborWeek('month',this)">This Month</button>
+  </div>
+  <div class="stats-grid g4" id="labor-stats"></div>
+  <div id="labor-farm-breakdown"></div>
+</div>
 <!-- LOG -->
 <div class="panel" id="panel-log">
   <div class="section-title">Activity Log</div>
@@ -538,6 +609,24 @@ textarea { resize: vertical; min-height: 85px; }
   <div id="log-container"></div>
 </div>
 
+
+<!-- WEEKLY REPORT -->
+<div class="panel" id="panel-report">
+  <div class="section-title">Weekly Report</div>
+  <div class="section-sub">Auto-generated summary — copy and send every Monday morning</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+    <div class="fg" style="flex:1;min-width:180px;">
+      <label style="color:var(--green-light)">Report Week</label>
+      <select id="report-week" onchange="buildReport()" style="background:var(--green-dark);color:#fff;border-color:var(--green-mid);">
+        <option value="last">Last Week (Mon–Sun)</option>
+        <option value="this">This Week (so far)</option>
+      </select>
+    </div>
+    <button onclick="copyReport()" style="padding:10px 20px;background:var(--green-bright);color:#fff;border:none;border-radius:7px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;cursor:pointer;margin-top:18px;">📋 Copy Report</button>
+    <button onclick="emailReport()" style="padding:10px 20px;background:var(--green-mid);color:#fff;border:none;border-radius:7px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;cursor:pointer;margin-top:18px;">📧 Open in Email</button>
+  </div>
+  <div id="report-output" style="background:var(--cream);border-radius:12px;padding:24px;font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.8;color:var(--ink);white-space:pre-wrap;box-shadow:0 4px 20px rgba(0,0,0,0.2);"></div>
+</div>
 
 <!-- Floating Submit WO Button -->
 <button class="fab" onclick="go('wo-submit')" id="fab-wo">
@@ -612,8 +701,8 @@ const FREQ = {
   quarterly: {label:'Quarterly', icon:'🟠', days:90},
   annual:    {label:'Annual',    icon:'🔴', days:365},
 };
-const SYS_TAG  = {Ventilation:'t-vent', Water:'t-water', Feed:'t-feed', Manure:'t-manure'};
-const SYS_ICON = {Ventilation:'💨', Water:'💧', Feed:'🌾', Manure:'♻️'};
+const SYS_TAG  = {Ventilation:'t-vent', Water:'t-water', Feed:'t-feed', Manure:'t-manure', 'Egg Conveyor':'t-egg'};
+const SYS_ICON = {Ventilation:'💨', Water:'💧', Feed:'🌾', Manure:'♻️', 'Egg Conveyor':'🥚'};
 
 const PM_DEFS = [
   {id:'v1',sys:'Ventilation',task:'Walk-through: verify all fans running, check for noise/vibration, confirm temp matches setpoint',freq:'daily',hrs:0.5},
@@ -663,6 +752,21 @@ const PM_DEFS = [
   {id:'m6',sys:'Manure',task:'Full litter assessment — depth, moisture, pathogen load — log results',freq:'quarterly',hrs:1.0},
   {id:'m7',sys:'Manure',task:'Full cleanout between flocks — remove, haul, and document litter',freq:'annual',hrs:8.0},
   {id:'m8',sys:'Manure',task:'Inspect and clean pit ventilation / drainage — repair any damage',freq:'annual',hrs:3.0},
+  // EGG CONVEYOR
+  {id:'e1',sys:'Egg Conveyor',task:'Run egg belts — monitor for jams, broken eggs, and tracking issues on all lines',freq:'daily',hrs:0.5},
+  {id:'e2',sys:'Egg Conveyor',task:'Check drip oiler fluid level and flow rate — verify lubrication reaching chain',freq:'daily',hrs:0.25},
+  {id:'e3',sys:'Egg Conveyor',task:'Inspect chain tension on all conveyor lines — adjust if slack or too tight',freq:'weekly',hrs:1.0},
+  {id:'e4',sys:'Egg Conveyor',task:'Clean egg belts and rollers — remove broken egg residue, feathers, and debris',freq:'weekly',hrs:2.0},
+  {id:'e5',sys:'Egg Conveyor',task:'Inspect belt links for broken or missing links (part 29286) — replace as needed',freq:'weekly',hrs:0.5},
+  {id:'e6',sys:'Egg Conveyor',task:'Check proximity sensors on all lines — verify proper detection and no false triggers',freq:'weekly',hrs:0.5},
+  {id:'e7',sys:'Egg Conveyor',task:'Inspect return guides and egg belt tracking — adjust belt alignment per house',freq:'monthly',hrs:1.0},
+  {id:'e8',sys:'Egg Conveyor',task:'Lubricate conveyor chain with food-grade lubricant (LBG78-035) — apply per line',freq:'monthly',hrs:1.5},
+  {id:'e9',sys:'Egg Conveyor',task:'Inspect motors and gearboxes — check amp draw, heat, oil level, and mounting bolts',freq:'monthly',hrs:1.0},
+  {id:'e10',sys:'Egg Conveyor',task:'Inspect deflection wheels, drive shaft, and main drive sprocket for wear',freq:'quarterly',hrs:2.0},
+  {id:'e11',sys:'Egg Conveyor',task:'Full chain inspection — measure elongation, replace closing rods and security elements as needed',freq:'quarterly',hrs:3.0},
+  {id:'e12',sys:'Egg Conveyor',task:'Service gearboxes — check oil, inspect seals, verify output shaft play (S-87.3)',freq:'quarterly',hrs:2.0},
+  {id:'e13',sys:'Egg Conveyor',task:'Full conveyor teardown and deep clean between flocks — belts, frames, rollers, oilers',freq:'annual',hrs:8.0},
+  {id:'e14',sys:'Egg Conveyor',task:'Replace drip oiler wicks and service oiler assembly (F103B) — all lines',freq:'annual',hrs:2.0},
 ];
 
 const ALL_PM = [];
@@ -692,32 +796,48 @@ function setSyncDot(state) {
 }
 
 // ── FIREBASE LOAD ──
+function showApp() {
+  document.getElementById('loading-screen').classList.add('hidden');
+  renderDash();
+}
+
 async function initApp() {
-  setMsg('Loading work orders...');
+  setMsg('Connecting to database...');
+
+  // Hard timeout — always show app after 8 seconds no matter what
+  const fallbackTimer = setTimeout(() => {
+    setMsg('Connected (offline mode)');
+    setSyncDot('live');
+    showApp();
+  }, 8000);
+
   try {
     // Load work orders
+    setMsg('Loading work orders...');
     const woSnap = await getDocs(query(collection(db,'workOrders'), orderBy('ts','desc')));
     workOrders = [];
     woSnap.forEach(d => workOrders.push({...d.data(), _fbId: d.id}));
-
     if (workOrders.length > 0) {
       woCounter = Math.max(...workOrders.map(w => parseInt(w.id.replace('WO-','')))) + 1;
     }
 
     setMsg('Loading PM completions...');
-    // Load PM completions
     const pmSnap = await getDocs(collection(db,'pmCompletions'));
     pmComps = {};
     pmSnap.forEach(d => { pmComps[d.id] = d.data(); });
 
     setMsg('Loading daily rounds...');
     await loadSWRounds();
+
+    setMsg('Loading parts inventory...');
+    await loadParts();
+
     setMsg('Loading activity log...');
-    // Load log
     const logSnap = await getDocs(query(collection(db,'activityLog'), orderBy('ts','desc')));
     actLog = [];
     logSnap.forEach(d => actLog.push(d.data()));
 
+    clearTimeout(fallbackTimer);
     setMsg('Connected!');
     setSyncDot('live');
 
@@ -743,14 +863,14 @@ async function initApp() {
       if (document.getElementById('panel-log').classList.contains('active')) renderLog();
     });
 
-    setTimeout(() => {
-      document.getElementById('loading-screen').classList.add('hidden');
-      renderDash();
-    }, 600);
+    setTimeout(() => { showApp(); }, 600);
 
   } catch(err) {
-    setMsg('Connection error: ' + err.message);
+    clearTimeout(fallbackTimer);
+    setMsg('Error: ' + err.message + ' — retrying...');
     console.error(err);
+    // Still show the app after error so it's not permanently stuck
+    setTimeout(() => { showApp(); }, 2000);
   }
 }
 
@@ -772,8 +892,8 @@ window.go = function(tab) {
   }
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  const pm = {dash:'panel-dash', wo:'panel-wo', pm:'panel-pm', sw:'panel-sw', log:'panel-log'};
-  const tm = {dash:'tab-dash',   wo:'tab-wo',   pm:'tab-pm',   sw:'tab-sw',   log:'tab-log'};
+  const pm = {dash:'panel-dash', wo:'panel-wo', pm:'panel-pm', sw:'panel-sw', parts:'panel-parts', labor:'panel-labor', log:'panel-log', report:'panel-report'};
+  const tm = {dash:'tab-dash',   wo:'tab-wo',   pm:'tab-pm',   sw:'tab-sw',   parts:'tab-parts', labor:'tab-labor', log:'tab-log', report:'tab-report'};
   document.getElementById(pm[tab]).classList.add('active');
   document.getElementById(tm[tab]).classList.add('active');
   if (tab === 'wo') {
@@ -783,8 +903,11 @@ window.go = function(tab) {
   }
   if (tab === 'dash') renderDash();
   if (tab === 'pm')   renderPM();
-  if (tab === 'sw')   renderSW();
-  if (tab === 'log')  renderLog();
+  if (tab === 'sw')     renderSW();
+  if (tab === 'parts')  renderParts();
+  if (tab === 'labor')  renderLabor();
+  if (tab === 'log')    renderLog();
+  if (tab === 'report') buildReport();
 }
 
 // ── DATE UTILS ──
@@ -855,6 +978,23 @@ function renderDash() {
     : '<div class="empty"><div class="ei">✅</div><p>No urgent open work orders</p></div>';
 
   const overdue = ALL_PM.filter(t=>pmStatus(t.id)==='overdue').slice(0,6);
+  // Low parts alert on dashboard
+  const lowParts = Object.values(partsData).filter(p=>p.qty <= p.minQty);
+  const lowPartsHtml = lowParts.length
+    ? lowParts.map(p=>`<div class="log-card" style="border-left-color:var(--red)"><div class="log-body"><h4>🔩 ${p.name}</h4><p>Only ${p.qty} ${p.unit} left — minimum is ${p.minQty}</p></div><div class="log-meta" style="color:var(--red);font-weight:700">REORDER</div></div>`).join('')
+    : '<div class="empty"><div class="ei">✅</div><p>All parts stocked</p></div>';
+
+  // Add low parts section to dash if not already there
+  let lpSection = document.getElementById('dash-low-parts');
+  if (!lpSection) {
+    const dpSection = document.getElementById('dash-overdue-pm').parentElement || document.getElementById('panel-dash');
+    const newDiv = document.createElement('div');
+    newDiv.innerHTML = '<div class="recent-hdr">🔩 Low Stock Parts</div><div class="card-list" id="dash-low-parts"></div>';
+    document.getElementById('panel-dash').appendChild(newDiv);
+  }
+  const lp = document.getElementById('dash-low-parts');
+  if (lp) lp.innerHTML = lowPartsHtml;
+
   document.getElementById('dash-overdue-pm').innerHTML = overdue.length
     ? overdue.map(t=>pmCardHtml(t)).join('')
     : '<div class="empty"><div class="ei">✅</div><p>No overdue PM tasks</p></div>';
@@ -1032,6 +1172,7 @@ function renderPM() {
   let filtered=[...tasks];
   if (pmStatFilter==='overdue') filtered=tasks.filter(t=>pmStatus(t.id)==='overdue');
   else if (pmStatFilter==='soon') filtered=tasks.filter(t=>pmStatus(t.id)==='due-soon');
+  else if (pmStatFilter==='Egg Conveyor') filtered=tasks.filter(t=>t.sys==='Egg Conveyor');
   else if (['daily','weekly','monthly','quarterly','annual'].includes(pmStatFilter))
     filtered=tasks.filter(t=>t.freq===pmStatFilter);
 
@@ -1046,7 +1187,7 @@ function renderPM() {
   }
 
   let html='';
-  for (const sys of ['Ventilation','Water','Feed','Manure']) {
+  for (const sys of ['Ventilation','Water','Feed','Manure','Egg Conveyor']) {
     const st=filtered.filter(t=>t.sys===sys);
     if (!st.length) continue;
     html+=`<div class="sys-hdr">${SYS_ICON[sys]} ${sys}</div><div class="card-list">`;
@@ -1501,6 +1642,572 @@ window.swTechChanged = function() {
   }
   loadChecklist();
 }
+
+
+// ══════════════════════════════════════════
+// PARTS & INVENTORY
+// ══════════════════════════════════════════
+
+const DEFAULT_PARTS = [
+  // ── EGG CONVEYOR — T750 (Farmer Boy AG, Acct 0118559, Paul High 717-866-1171) ──
+  {id:'p1',  name:'Intermediate Power Transmission Repair Kit T750', partNo:'14HB10000A', category:'Egg Conveyor', qty:9,  minQty:1, unit:'kit',   location:'Hegins', vendor:'Farmer Boy AG', unitPrice:1530.00},
+  {id:'p2',  name:'Intermediate Consumables Repair Kit',              partNo:'14HA00000A', category:'Egg Conveyor', qty:9,  minQty:1, unit:'kit',   location:'Hegins', vendor:'Farmer Boy AG', unitPrice:389.00},
+  {id:'p3',  name:'20MM Axle T750',                                   partNo:'1885150402', category:'Egg Conveyor', qty:1,  minQty:1, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:83.00},
+  {id:'p4',  name:'Deflection Wheel Smooth 94.7MM',                   partNo:'1855152200', category:'Egg Conveyor', qty:2,  minQty:2, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:32.00},
+  {id:'p5',  name:'Curved Sliding Shoe',                              partNo:'1855200700', category:'Egg Conveyor', qty:1,  minQty:2, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:8.50},
+  {id:'p6',  name:'Conveyor Chain T750 Standard',                     partNo:'4891',       category:'Egg Conveyor', qty:42, minQty:5, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:1100.00},
+  {id:'p7',  name:'Closing Rod T750 Standard',                        partNo:'4894',       category:'Egg Conveyor', qty:45, minQty:10,unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:20.00},
+  {id:'p8',  name:'Security Element',                                  partNo:'1855400402', category:'Egg Conveyor', qty:90, minQty:20,unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:0.38},
+  {id:'p9',  name:'Screw Spindle Main Drive',                         partNo:'1855002200', category:'Egg Conveyor', qty:2,  minQty:1, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:18.00},
+  {id:'p10', name:'Pressure Spring',                                   partNo:'3202639',    category:'Egg Conveyor', qty:4,  minQty:2, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:6.80},
+  {id:'p11', name:'Pressure Piece',                                    partNo:'1855150700', category:'Egg Conveyor', qty:2,  minQty:1, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:18.00},
+  {id:'p12', name:'Deflection Wheel Grooved 94.7MM',                  partNo:'1855152100', category:'Egg Conveyor', qty:4,  minQty:2, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:50.00},
+  {id:'p13', name:'Drive Shaft T750',                                  partNo:'1885160101', category:'Egg Conveyor', qty:1,  minQty:1, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:176.00},
+  {id:'p14', name:'Main Drive Sprocket',                               partNo:'7050010200', category:'Egg Conveyor', qty:2,  minQty:1, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:248.00},
+  {id:'p15', name:'8 X 7 X 28 Parallel Key',                          partNo:'2743070',    category:'Egg Conveyor', qty:4,  minQty:4, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:1.50},
+  {id:'p16', name:'Discharge Wheel Complete T750',                     partNo:'1885001102', category:'Egg Conveyor', qty:1,  minQty:1, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:112.00},
+  {id:'p17', name:'Cleaning Brush Complete T750',                      partNo:'1885000500', category:'Egg Conveyor', qty:1,  minQty:1, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:128.00},
+  {id:'p18', name:'Curve Conveyor Accessory Pack',                     partNo:'AP100',      category:'Egg Conveyor', qty:9,  minQty:2, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:14.00},
+  {id:'p19', name:'Guide Unit T750',                                   partNo:'4888',       category:'Egg Conveyor', qty:1,  minQty:1, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:165.00},
+  {id:'p20', name:'Diverter Assembly T750 X 60-I',                    partNo:'18DA10000A', category:'Egg Conveyor', qty:5,  minQty:1, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:135.00},
+  {id:'p21', name:'Top/Tandem Drip Oiler T750 240V Gen2',             partNo:'F103B',      category:'Egg Conveyor', qty:2,  minQty:1, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:864.00},
+  {id:'p22', name:'Lubricant Food Grade 5 Gallon',                    partNo:'LBG78-035',  category:'Egg Conveyor', qty:1,  minQty:1, unit:'jug',   location:'Both Farms', vendor:'Farmer Boy AG', unitPrice:229.00},
+  {id:'p23', name:'Motor 1/3HP 1PH 115/208-230 60Hz (Marathon)',      partNo:'G513',       category:'Egg Conveyor', qty:9,  minQty:1, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:460.00},
+  {id:'p24', name:'Gearbox Stober 87.3:1',                            partNo:'S-87.3',     category:'Egg Conveyor', qty:9,  minQty:1, unit:'each',  location:'Hegins', vendor:'Farmer Boy AG', unitPrice:1358.00},
+  // Northeast Agri Systems — Danville
+  {id:'p25', name:'Shaft Idler Roller 64.89in VERSA PLUS',            partNo:'34315-12',   category:'Egg Conveyor', qty:7,  minQty:2, unit:'each',  location:'Danville', vendor:'Northeast Agri Systems', unitPrice:0},
+  {id:'p26', name:'Drinker Steadi-Flow Saddle Assy L Pin',            partNo:'56063-3',    category:'Water',        qty:30, minQty:10,unit:'each',  location:'Danville', vendor:'Northeast Agri Systems', unitPrice:0},
+  {id:'p27', name:'Regulator Cage Water NPT Outlet Volumatic',        partNo:'55476-5',    category:'Water',        qty:6,  minQty:2, unit:'each',  location:'Danville', vendor:'Northeast Agri Systems', unitPrice:0},
+  {id:'p28', name:'Motor Auger 1-1/2HP 1725RPM 115/208-230V',        partNo:'8782',       category:'Feed',         qty:1,  minQty:1, unit:'each',  location:'Danville', vendor:'Northeast Agri Systems', unitPrice:0},
+  {id:'p29', name:'Scraper Manure Belt SS 55.08"',                    partNo:'48368-2',    category:'Manure',       qty:6,  minQty:2, unit:'each',  location:'Danville', vendor:'Northeast Agri Systems', unitPrice:0},
+  {id:'p30', name:'Proximity Sensor',                                  partNo:'MSE-VK1-A0-2B', category:'Electrical', qty:6, minQty:2, unit:'each', location:'Danville', vendor:'Northeast Agri Systems', unitPrice:0},
+  {id:'p31', name:'Belt Link Red Ultra Lift Basket',                  partNo:'29286',      category:'Egg Conveyor', qty:1200,minQty:100,unit:'each', location:'Danville', vendor:'Northeast Agri Systems', unitPrice:0},
+  {id:'p32', name:'Egg Belt Return Guide',                            partNo:'55725RD',    category:'Egg Conveyor', qty:60, minQty:20,unit:'each',  location:'Danville', vendor:'Northeast Agri Systems', unitPrice:0},
+  {id:'p33', name:'Bulb AgriShift MLM Red 8W Tall Lens',             partNo:'MSE-1000000773', category:'Electrical', qty:48, minQty:12,unit:'each', location:'Danville', vendor:'Northeast Agri Systems', unitPrice:0},
+  {id:'p34', name:'Bearing IND Thrust 1.015x2x.640 1in Bore',        partNo:'36397',      category:'General',      qty:3,  minQty:2, unit:'each',  location:'Danville', vendor:'Northeast Agri Systems', unitPrice:0},
+  {id:'p35', name:'Shaft THD ACME 1-5x53.17 Machined',               partNo:'35945-3',    category:'General',      qty:2,  minQty:1, unit:'each',  location:'Danville', vendor:'Northeast Agri Systems', unitPrice:0},
+];
+
+let partsData = {};
+let partsFilter_val = 'all';
+let modalPartId = null;
+let modalPartAction = null;
+
+async function loadParts() {
+  try {
+    const snap = await getDocs(collection(db,'parts'));
+    partsData = {};
+    snap.forEach(d => { partsData[d.id] = d.data(); });
+    // Seed defaults if empty
+    if (Object.keys(partsData).length === 0) {
+      for (const p of DEFAULT_PARTS) {
+        await setDoc(doc(db,'parts',p.id), p);
+        partsData[p.id] = p;
+      }
+    }
+  } catch(e) { console.log('Parts load err:', e); }
+}
+
+window.partsFilter = function(v, btn) {
+  partsFilter_val = v;
+  document.querySelectorAll('#panel-parts .pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderParts();
+}
+
+function renderParts() {
+  loadParts().then(() => {
+    let parts = Object.values(partsData);
+    if (partsFilter_val === 'low') parts = parts.filter(p=>p.qty <= p.minQty);
+    else if (partsFilter_val === 'ok') parts = parts.filter(p=>p.qty > p.minQty);
+    else if (partsFilter_val !== 'all') parts = parts.filter(p=>p.category === partsFilter_val);
+
+    parts.sort((a,b) => {
+      const aLow = a.qty <= a.minQty; const bLow = b.qty <= b.minQty;
+      if (aLow && !bLow) return -1; if (!aLow && bLow) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    const all = Object.values(partsData);
+    const lowCount = all.filter(p=>p.qty <= p.minQty).length;
+    const warnCount = all.filter(p=>p.qty > p.minQty && p.qty <= p.minQty * 1.5).length;
+    const okCount = all.filter(p=>p.qty > p.minQty * 1.5).length;
+
+    document.getElementById('parts-stats').innerHTML =
+      sc('s-red', lowCount, '🔴 Low / Out') +
+      sc('s-amber', warnCount, '🟡 Running Low') +
+      sc('s-green', okCount, '✅ Well Stocked') +
+      sc('', all.length, 'Total Parts');
+
+    if (!parts.length) {
+      document.getElementById('parts-list').innerHTML = '<div class="empty"><div class="ei">📦</div><p>No parts match this filter.</p></div>';
+      return;
+    }
+
+    document.getElementById('parts-list').innerHTML = parts.map(p => {
+      const isLow = p.qty <= p.minQty;
+      const isWarn = p.qty > p.minQty && p.qty <= p.minQty * 1.5;
+      const cls = isLow ? 'low' : isWarn ? 'warn' : '';
+      return `<div class="part-card ${cls}">
+        <div>
+          <div class="part-name">${p.name}</div>
+          ${p.partNo ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--green-mid);margin-bottom:2px;">Part # ${p.partNo}${p.vendor ? ' · ' + p.vendor : ''}</div>` : ''}
+          <div class="part-meta">${p.category} · 📍 ${p.location} · Min: ${p.minQty} ${p.unit}${p.unitPrice ? ' · $' + p.unitPrice.toFixed(2) + '/'+p.unit : ''}</div>
+          ${isLow ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--red);margin-top:3px;font-weight:600;">⚠️ REORDER NOW</div>` : ''}
+        </div>
+        <div class="part-right">
+          <div class="part-qty">${p.qty}</div>
+          <div class="part-unit">${p.unit}</div>
+          <div class="part-btns">
+            <button class="part-btn use" onclick="adjustPart('${p.id}','use')">− Use</button>
+            <button class="part-btn add" onclick="adjustPart('${p.id}','receive')">+ Add</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  });
+}
+
+window.adjustPart = function(id, action) {
+  modalPartId = id;
+  modalPartAction = action;
+  const p = partsData[id];
+  const qty = action === 'use'
+    ? prompt(`How many "${p.name}" used? (Current: ${p.qty})`, '1')
+    : prompt(`How many "${p.name}" received? (Current: ${p.qty})`, '1');
+  if (qty === null) return;
+  const n = parseInt(qty);
+  if (isNaN(n) || n <= 0) return alert('Please enter a valid number.');
+  const newQty = action === 'use' ? Math.max(0, p.qty - n) : p.qty + n;
+  setSyncDot('saving');
+  setDoc(doc(db,'parts',id), {...p, qty: newQty}).then(() => {
+    partsData[id].qty = newQty;
+    addDoc(collection(db,'activityLog'), {
+      type:'parts', id,
+      desc:`Parts ${action === 'use' ? 'used' : 'received'}: ${n}x ${p.name} (now: ${newQty})`,
+      tech:'—', date:new Date().toLocaleDateString(), ts:Date.now()
+    });
+    setSyncDot('live');
+    renderParts();
+    // Update dashboard if low
+    renderDash();
+  });
+}
+
+window.showAddPart = function() {
+  const name = prompt('Part name:');
+  if (!name) return;
+  const cat = prompt('Category (Ventilation / Water / Feed / Electrical / General):') || 'General';
+  const qty = parseInt(prompt('Current quantity:', '0')) || 0;
+  const min = parseInt(prompt('Minimum stock level (reorder point):', '2')) || 2;
+  const unit = prompt('Unit (each / bag / tube / box):', 'each') || 'each';
+  const loc = prompt('Storage location:', 'Shop') || 'Shop';
+  const id = 'p' + Date.now();
+  const part = {id, name, category:cat, qty, minQty:min, unit, location:loc};
+  setSyncDot('saving');
+  setDoc(doc(db,'parts',id), part).then(() => {
+    partsData[id] = part;
+    setSyncDot('live');
+    renderParts();
+  });
+}
+
+window.showReceiveStock = function() {
+  alert('Use the "+ Add" button on any part to receive stock.');
+}
+
+// ══════════════════════════════════════════
+// LABOR HOURS DASHBOARD
+// ══════════════════════════════════════════
+
+let laborPeriod = 'this';
+
+const TECH_FARM_LABOR = {
+  Adam:'Hegins', Nathan:'Hegins', Carlos:'Hegins', Randy:'Hegins',
+  Josh:'Danville', Cain:'Danville', Celia:'Danville', Deb:'Danville',
+  Steve:'All Sites'
+};
+
+function getWeekRange(period) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const day = now.getDay();
+  if (period === 'this') {
+    const start = new Date(now); start.setDate(now.getDate() - day);
+    const end = new Date(start); end.setDate(start.getDate() + 6);
+    return {start, end};
+  } else if (period === 'last') {
+    const start = new Date(now); start.setDate(now.getDate() - day - 7);
+    const end = new Date(start); end.setDate(start.getDate() + 6);
+    return {start, end};
+  } else {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth()+1, 0);
+    return {start, end};
+  }
+}
+
+function dateInRange(dateStr, start, end) {
+  const d = new Date(dateStr); d.setHours(0,0,0,0);
+  return d >= start && d <= end;
+}
+
+window.laborWeek = function(period, btn) {
+  laborPeriod = period;
+  document.querySelectorAll('#labor-week-bar .loc-pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLabor();
+}
+
+function renderLabor() {
+  const {start, end} = getWeekRange(laborPeriod);
+  // Get rounds in range
+  const rounds = Object.values(swRounds).filter(r => r.date && dateInRange(r.date, start, end));
+
+  // Aggregate hours per tech
+  const techHours = {};
+  for (const round of rounds) {
+    if (!round.tasks) continue;
+    const hrs = Object.values(round.tasks).reduce((s,t)=>s+(t.actualHrs||0),0);
+    if (!techHours[round.tech]) techHours[round.tech] = {total:0, rounds:0};
+    techHours[round.tech].total += hrs;
+    techHours[round.tech].rounds++;
+  }
+
+  const allTechs = Object.keys(TECH_FARM_LABOR);
+  const totalHrs = Object.values(techHours).reduce((s,t)=>s+t.total,0);
+  const maxHrs = Math.max(...Object.values(techHours).map(t=>t.total), 1);
+  const activeTechs = Object.keys(techHours).length;
+
+  const rangeLabel = period === 'this' ? 'This Week' : period === 'last' ? 'Last Week' : 'This Month';
+
+  document.getElementById('labor-stats').innerHTML =
+    sc('s-blue', totalHrs.toFixed(1), 'Total Hours') +
+    sc('s-green', activeTechs, 'Active Techs') +
+    sc('', rounds.length, 'Rounds Logged') +
+    sc('s-amber', totalHrs > 0 ? (totalHrs/Math.max(activeTechs,1)).toFixed(1) : 0, 'Avg Hrs/Tech');
+
+  let html = '';
+  for (const farm of ['Hegins','Danville','All Sites']) {
+    const farmTechs = allTechs.filter(t => TECH_FARM_LABOR[t] === farm);
+    if (!farmTechs.length) continue;
+    html += `<div class="farm-section-hdr">📍 ${farm}</div>`;
+    for (const tech of farmTechs) {
+      const data = techHours[tech] || {total:0, rounds:0};
+      const pct = Math.round((data.total / maxHrs) * 100);
+      html += `<div class="labor-tech-card">
+        <div class="labor-tech-hdr">
+          <div>
+            <div class="labor-tech-name">👤 ${tech}</div>
+            <div class="labor-tech-farm">${farm} · ${data.rounds} round${data.rounds!==1?'s':''} logged</div>
+          </div>
+          <div class="labor-total">${data.total.toFixed(1)}<span style="font-size:14px;color:var(--muted);font-family:'IBM Plex Sans',sans-serif"> hrs</span></div>
+        </div>
+        <div class="labor-bar-row">
+          <div class="labor-bar-label">${rangeLabel}</div>
+          <div class="labor-bar"><div class="labor-bar-fill" style="width:${pct}%"></div></div>
+          <div class="labor-bar-hrs">${data.total.toFixed(1)}h</div>
+        </div>
+      </div>`;
+    }
+  }
+
+  if (!html) html = '<div class="empty"><div class="ei">⏱</div><p>No hours logged yet for this period.<br>Hours come from Daily Rounds timers.</p></div>';
+  document.getElementById('labor-farm-breakdown').innerHTML = html;
+}
+
+// ── WEEKLY REPORT ──
+function getReportWeekRange() {
+  const sel = document.getElementById('report-week')?.value || 'last';
+  const now = new Date(); now.setHours(0,0,0,0);
+  const day = now.getDay(); // 0=Sun
+  if (sel === 'last') {
+    // Last Mon–Sun
+    const mon = new Date(now); mon.setDate(now.getDate() - day - 6);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    return {start: mon, end: sun, label: `${fmtDateShort(mon)} – ${fmtDateShort(sun)}`};
+  } else {
+    // This week Mon–today
+    const mon = new Date(now); mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    return {start: mon, end: now, label: `${fmtDateShort(mon)} – ${fmtDateShort(now)} (so far)`};
+  }
+}
+
+function fmtDateShort(d) {
+  return d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+}
+
+function inRange(dateStr, start, end) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr); d.setHours(0,0,0,0);
+  return d >= start && d <= end;
+}
+
+function buildReport() {
+  const {start, end, label} = getReportWeekRange();
+
+  // Work orders submitted this week
+  const weekWOs = workOrders.filter(w => inRange(w.date, start, end));
+  const urgentWOs = weekWOs.filter(w => w.priority === 'urgent');
+  const completedWOs = workOrders.filter(w => w.status === 'completed');
+  const openWOs = workOrders.filter(w => w.status !== 'completed');
+
+  // PM completions this week
+  const weekPMs = actLog.filter(e => e.type === 'pm' && inRange(e.date, start, end));
+
+  // Overall PM health
+  const overdueCount = ALL_PM.filter(t => pmStatus(t.id) === 'overdue').length;
+  const dueSoonCount = ALL_PM.filter(t => pmStatus(t.id) === 'due-soon').length;
+
+  // Parts used this week (from log)
+  const partsUsed = actLog.filter(e => e.type === 'parts' && inRange(e.date, start, end));
+
+  // Labor hours this week
+  const roundsThisWeek = actLog.filter(e => e.type === 'rounds' && inRange(e.date, start, end));
+  const totalHrs = roundsThisWeek.reduce((sum, e) => sum + (e.hours || 0), 0);
+
+  // Build WO list strings
+  const woLines = weekWOs.length
+    ? weekWOs.map(w => `   • [${w.priority.toUpperCase()}] ${w.farm} · ${w.house} — ${w.problem} (${w.status.replace('-',' ')})`).join('\n')
+    : '   None submitted this week.';
+
+  const urgentLines = urgentWOs.length
+    ? urgentWOs.map(w => `   ⚠️ ${w.farm} · ${w.house} — ${w.problem} [${w.status}]`).join('\n')
+    : '   None this week.';
+
+  const pmLines = weekPMs.length
+    ? weekPMs.map(e => `   ✓ ${e.desc?.replace('PM completed: ','') || e.desc} — by ${e.tech}`).join('\n')
+    : '   No PM completions logged this week.';
+
+  const now = new Date();
+  const reportText =
+`RUSHTOWN POULTRY — WEEKLY MAINTENANCE REPORT
+Week of: ${label}
+Generated: ${now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 AT A GLANCE
+   Open Work Orders:      ${openWOs.length}
+   Completed This Week:   ${completedWOs.filter(w => inRange(w.date, start, end)).length}
+   New WOs This Week:     ${weekWOs.length}
+   Urgent Issues:         ${urgentWOs.length}
+   PM Tasks Overdue:      ${overdueCount}
+   PM Tasks Due Soon:     ${dueSoonCount}
+   PM Tasks Completed:    ${weekPMs.length}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔴 URGENT ISSUES THIS WEEK
+${urgentLines}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔧 ALL WORK ORDERS SUBMITTED THIS WEEK
+${woLines}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 PM TASKS COMPLETED THIS WEEK
+${pmLines}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 INVENTORY STATUS
+   Low Stock Parts:       ${Object.values(partsData||{}).filter(p=>p.qty<=p.minQty).length} items at or below minimum
+${Object.values(partsData||{}).filter(p=>p.qty<=p.minQty).map(p=>`   ⚠️ ${p.name} (${p.partNo}) — ${p.qty} ${p.unit} remaining`).join('\n') || '   All parts adequately stocked.'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏠 FARM STATUS SUMMARY
+   HEGINS (8 houses)
+   Open WOs: ${openWOs.filter(w=>w.farm==='Hegins').length}  |  Urgent: ${openWOs.filter(w=>w.farm==='Hegins'&&w.priority==='urgent').length}  |  PM Overdue: ${ALL_PM.filter(t=>t.farm==='Hegins'&&pmStatus(t.id)==='overdue').length}
+
+   DANVILLE (5 houses)
+   Open WOs: ${openWOs.filter(w=>w.farm==='Danville').length}  |  Urgent: ${openWOs.filter(w=>w.farm==='Danville'&&w.priority==='urgent').length}  |  PM Overdue: ${ALL_PM.filter(t=>t.farm==='Danville'&&pmStatus(t.id)==='overdue').length}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+— Rushtown Poultry Maintenance Hub`;
+
+  const el = document.getElementById('report-output');
+  if (el) el.textContent = reportText;
+  window._lastReport = reportText;
+}
+
+function copyReport() {
+  const txt = window._lastReport || document.getElementById('report-output')?.textContent;
+  if (!txt) return;
+  navigator.clipboard.writeText(txt).then(() => {
+    alert('✅ Report copied to clipboard!');
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('✅ Report copied!');
+  });
+}
+
+function emailReport() {
+  const txt = window._lastReport || document.getElementById('report-output')?.textContent;
+  if (!txt) return;
+  const {label} = getReportWeekRange();
+  const subject = encodeURIComponent(`Rushtown Poultry — Weekly Maintenance Report — ${label}`);
+  const body = encodeURIComponent(txt);
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
+// ══════════════════════════════════════════
+// WEEKLY REPORT
+// ══════════════════════════════════════════
+function getReportDateRange(period) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const day = now.getDay(); // 0=Sun
+  let start, end;
+  if (period === 'last') {
+    // Mon–Sun of last week
+    const daysToLastMon = day === 0 ? 6 : day + 6;
+    start = new Date(now); start.setDate(now.getDate() - daysToLastMon);
+    end = new Date(start); end.setDate(start.getDate() + 6);
+  } else {
+    // This week Mon to today
+    const daysToMon = day === 0 ? 6 : day - 1;
+    start = new Date(now); start.setDate(now.getDate() - daysToMon);
+    end = new Date(now);
+  }
+  return { start, end };
+}
+
+function inRange(dateStr, start, end) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr); d.setHours(0,0,0,0);
+  return d >= start && d <= end;
+}
+
+window.buildReport = function() {
+  const period = document.getElementById('report-week').value;
+  const { start, end } = getReportDateRange(period);
+  const fmt = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const weekLabel = `${fmt(start)} – ${fmt(end)}`;
+
+  // WOs this week
+  const weekWOs = (workOrders||[]).filter(w => inRange(w.date, start, end));
+  const urgentWOs = weekWOs.filter(w => w.priority === 'urgent');
+  const openWOs = (workOrders||[]).filter(w => w.status === 'open' || w.status === 'in-progress');
+
+  // PMs this week
+  const weekPMs = Object.entries(pmComps||{}).filter(([id, c]) => inRange(c.date, start, end));
+  const pmOverdue = ALL_PM.filter(t => pmStatus(t.id) === 'overdue');
+  const pmSoon = ALL_PM.filter(t => pmStatus(t.id) === 'due-soon');
+
+  // Parts low stock
+  const lowParts = Object.values(partsData||{}).filter(p => (p.qty||0) <= (p.minQty||0));
+
+  // Build report text
+  let r = '';
+  r += `RUSHTOWN POULTRY — WEEKLY MAINTENANCE REPORT\n`;
+  r += `Week of ${weekLabel}\n`;
+  r += `Generated: ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}\n`;
+  r += `${'═'.repeat(52)}\n\n`;
+
+  // Summary
+  r += `SUMMARY\n${'─'.repeat(30)}\n`;
+  r += `Work Orders Submitted This Week: ${weekWOs.length}\n`;
+  r += `  • Urgent: ${urgentWOs.length}   High: ${weekWOs.filter(w=>w.priority==='high').length}   Routine: ${weekWOs.filter(w=>w.priority==='routine').length}\n`;
+  r += `Currently Open WOs: ${openWOs.length}\n`;
+  r += `PM Tasks Completed This Week: ${weekPMs.length}\n`;
+  r += `PM Tasks Currently Overdue: ${pmOverdue.length}\n`;
+  r += `PM Tasks Due Soon: ${pmSoon.length}\n`;
+  r += `Parts at Low Stock: ${lowParts.length}\n\n`;
+
+  // Urgent WOs
+  if (urgentWOs.length > 0) {
+    r += `🔴 URGENT WORK ORDERS THIS WEEK\n${'─'.repeat(30)}\n`;
+    urgentWOs.forEach(w => {
+      r += `  [${w.id}] ${w.farm} · ${w.house}\n`;
+      r += `  Problem: ${w.problem}\n`;
+      r += `  Tech: ${w.tech} · Status: ${w.status.replace('-',' ').toUpperCase()}\n`;
+      r += `  "${w.desc}"\n\n`;
+    });
+  }
+
+  // All WOs this week
+  r += `🔧 ALL WORK ORDERS THIS WEEK (${weekWOs.length})\n${'─'.repeat(30)}\n`;
+  if (weekWOs.length === 0) {
+    r += `  No work orders submitted this week.\n`;
+  } else {
+    weekWOs.forEach(w => {
+      const pri = {urgent:'🔴',high:'🟡',routine:'🟢'}[w.priority] || '⚪';
+      r += `  ${pri} [${w.id}] ${w.farm} · ${w.house} — ${w.problem} (${w.tech}, ${w.status})\n`;
+    });
+  }
+  r += '\n';
+
+  // Open WOs
+  r += `📋 ALL OPEN WORK ORDERS (${openWOs.length})\n${'─'.repeat(30)}\n`;
+  if (openWOs.length === 0) {
+    r += `  No open work orders. ✅\n`;
+  } else {
+    openWOs.forEach(w => {
+      const pri = {urgent:'🔴',high:'🟡',routine:'🟢'}[w.priority] || '⚪';
+      r += `  ${pri} [${w.id}] ${w.farm} · ${w.house} — ${w.problem} (${w.status.replace('-',' ')})\n`;
+    });
+  }
+  r += '\n';
+
+  // PM completions this week
+  r += `✅ PM TASKS COMPLETED THIS WEEK (${weekPMs.length})\n${'─'.repeat(30)}\n`;
+  if (weekPMs.length === 0) {
+    r += `  No PM tasks logged this week.\n`;
+  } else {
+    weekPMs.forEach(([id, c]) => {
+      const t = ALL_PM.find(x => x.id === id);
+      if (t) r += `  ✓ ${t.farm} · ${t.sys} — ${t.task.substring(0,60)}... (${c.tech}, ${c.date})\n`;
+    });
+  }
+  r += '\n';
+
+  // Overdue PMs
+  if (pmOverdue.length > 0) {
+    r += `⚠️  OVERDUE PM TASKS (${pmOverdue.length})\n${'─'.repeat(30)}\n`;
+    // Group by farm
+    ['Hegins','Danville'].forEach(farm => {
+      const farmOv = pmOverdue.filter(t => t.farm === farm);
+      if (farmOv.length === 0) return;
+      r += `  📍 ${farm}:\n`;
+      farmOv.forEach(t => {
+        r += `    • ${t.sys} — ${t.task.substring(0,55)}... [${FREQ[t.freq].label}]\n`;
+      });
+    });
+    r += '\n';
+  }
+
+  // Low stock parts
+  if (lowParts.length > 0) {
+    r += `🔩 LOW STOCK PARTS (${lowParts.length})\n${'─'.repeat(30)}\n`;
+    lowParts.forEach(p => {
+      r += `  • ${p.name} [${p.partNo||'—'}] — Qty: ${p.qty} (min: ${p.minQty}) · ${p.location} · ${p.vendor||''}\n`;
+    });
+    r += '\n';
+  }
+
+  // Hegins / Danville breakdown
+  ['Hegins','Danville'].forEach(farm => {
+    const fWOs = weekWOs.filter(w => w.farm === farm);
+    const fPMs = weekPMs.filter(([id]) => id.startsWith(farm));
+    r += `📍 ${farm.toUpperCase()} — ${fWOs.length} WO(s) submitted, ${fPMs.length} PM(s) completed\n`;
+  });
+  r += '\n';
+
+  r += `${'═'.repeat(52)}\n`;
+  r += `Rushtown Poultry — Maintenance Hub | rushtownmaintenancehub.netlify.app\n`;
+
+  document.getElementById('report-output').textContent = r;
+};
+
+window.copyReport = function() {
+  const text = document.getElementById('report-output').textContent;
+  if (!text) { alert('Generate a report first.'); return; }
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = '📋 Copy Report', 2000);
+  });
+};
 
 // ── BOOT ──
 initApp();
