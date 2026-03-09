@@ -265,22 +265,19 @@ textarea { resize: vertical; min-height: 85px; }
         <div class="form-body">
           <div class="form-row">
             <div class="fg">
-              <label>Your Name <span class="req">*</span></label>
-              <select id="wo-tech">
-                <option value="">— Select Tech —</option>
-                <option>Adam</option><option>Nathan</option><option>Carlos</option><option>Randy</option>
-                <option>Josh</option><option>Cain</option><option>Celia</option><option>Deb</option>
-                <option>Steve</option>
+              <label>Farm Location <span class="req">*</span></label>
+              <select id="wo-farm" onchange="loadHouses()">
+                <option value="">— Select Farm —</option>
+                <option>Hegins</option><option>Danville</option>
               </select>
             </div>
             <div class="fg"><label>Date <span class="req">*</span></label><input type="date" id="wo-date"></div>
           </div>
           <div class="form-row">
             <div class="fg">
-              <label>Farm Location <span class="req">*</span></label>
-              <select id="wo-farm" onchange="loadHouses()">
-                <option value="">— Select Farm —</option>
-                <option>Hegins</option><option>Danville</option>
+              <label>Your Name <span class="req">*</span></label>
+              <select id="wo-tech">
+                <option value="">— Select Farm First —</option>
               </select>
             </div>
             <div class="fg">
@@ -886,7 +883,8 @@ function afterWOSubmit() {
   document.getElementById('fab-btn').style.display = '';
   document.getElementById('wo-form-card').style.display='';
   document.getElementById('wo-success').classList.remove('show');
-  ['wo-tech','wo-farm','wo-problem'].forEach(id=>document.getElementById(id).value='');
+  ['wo-farm','wo-problem'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('wo-tech').innerHTML='<option value="">— Select Farm First —</option>';
   document.getElementById('wo-down').value='no';
   document.getElementById('wo-house').innerHTML='<option value="">— Select Farm First —</option>';
   document.getElementById('wo-desc').value='';
