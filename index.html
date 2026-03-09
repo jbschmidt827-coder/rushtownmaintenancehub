@@ -671,6 +671,39 @@ textarea { resize: vertical; min-height: 85px; }
   </div>
 </div>
 
+<!-- Global function bridge - allows onclick handlers to call module functions -->
+<script>
+  // These will be populated by the module script
+  function go(tab) { if(window._go) window._go(tab); }
+  function cycleWO(id) { if(window._cycleWO) window._cycleWO(id); }
+  function woLoc(v,b) { if(window._woLoc) window._woLoc(v,b); }
+  function woStat(v,b) { if(window._woStat) window._woStat(v,b); }
+  function pmLoc(v,b) { if(window._pmLoc) window._pmLoc(v,b); }
+  function pmStat(v,b) { if(window._pmStat) window._pmStat(v,b); }
+  function partsFilter(v,b) { if(window._partsFilter) window._partsFilter(v,b); }
+  function laborView(v,b) { if(window._laborView) window._laborView(v,b); }
+  function logFilter(v,b) { if(window._logFilter) window._logFilter(v,b); }
+  function openPMModal(id) { if(window._openPMModal) window._openPMModal(id); }
+  function closePMModal() { if(window._closePMModal) window._closePMModal(); }
+  function submitPM() { if(window._submitPM) window._submitPM(); }
+  function submitWO() { if(window._submitWO) window._submitWO(); }
+  function afterWOSubmit() { if(window._afterWOSubmit) window._afterWOSubmit(); }
+  function loadHouses() { if(window._loadHouses) window._loadHouses(); }
+  function setPri(el) { if(window._setPri) window._setPri(el); }
+  function previewPhotos(i) { if(window._previewPhotos) window._previewPhotos(i); }
+  function swToggleView(v) { if(window._swToggleView) window._swToggleView(v); }
+  function swFarm(v,b) { if(window._swFarm) window._swFarm(v,b); }
+  function loadChecklist() { if(window._loadChecklist) window._loadChecklist(); }
+  function toggleTask(id) { if(window._toggleTask) window._toggleTask(id); }
+  function startTimer(id) { if(window._startTimer) window._startTimer(id); }
+  function stopTimer(id) { if(window._stopTimer) window._stopTimer(id); }
+  function addPart() { if(window._addPart) window._addPart(); }
+  function receiveStock() { if(window._receiveStock) window._receiveStock(); }
+  function copyReport() { if(window._copyReport) window._copyReport(); }
+  function buildReport() { if(window._buildReport) window._buildReport(); }
+  function reportRange(v,b) { if(window._reportRange) window._reportRange(v,b); }
+</script>
+
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -865,7 +898,7 @@ function refreshCurrentPanel() {
 // ── NAVIGATION ──
 window.go = function(tab) {
   if (tab === 'wo-submit') {
-    go('wo');
+    window.go('wo');
     document.getElementById('wo-dash-section').style.display = 'none';
     document.getElementById('wo-submit-section').style.display = 'block';
     return;
@@ -2190,6 +2223,35 @@ window.copyReport = function() {
 };
 
 // ── BOOT ──
+// Wire up global bridge functions
+window._go = window.go;
+window._cycleWO = window.cycleWO;
+window._woLoc = window.woLoc;
+window._woStat = window.woStat;
+window._pmLoc = window.pmLoc;
+window._pmStat = window.pmStat;
+window._partsFilter = window.partsFilter;
+window._laborView = window.laborView;
+window._logFilter = window.logFilter;
+window._openPMModal = window.openPMModal;
+window._closePMModal = window.closePMModal;
+window._submitPM = window.submitPM;
+window._submitWO = window.submitWO;
+window._afterWOSubmit = window.afterWOSubmit;
+window._loadHouses = window.loadHouses;
+window._setPri = window.setPri;
+window._previewPhotos = window.previewPhotos;
+window._swToggleView = window.swToggleView;
+window._swFarm = window.swFarm;
+window._loadChecklist = window.loadChecklist;
+window._toggleTask = window.toggleTask;
+window._startTimer = window.startTimer;
+window._stopTimer = window.stopTimer;
+window._addPart = window.addPart;
+window._receiveStock = window.receiveStock;
+window._copyReport = window.copyReport;
+window._buildReport = window.buildReport;
+window._reportRange = window.reportRange;
 initApp();
 </script>
 </body>
