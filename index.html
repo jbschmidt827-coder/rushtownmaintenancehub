@@ -798,7 +798,7 @@ function setSyncDot(state) {
 // ── FIREBASE LOAD ──
 function showApp() {
   document.getElementById('loading-screen').classList.add('hidden');
-  renderDash();
+  try { renderDash(); } catch(e) { console.error('renderDash error:', e); }
 }
 
 async function initApp() {
@@ -879,15 +879,15 @@ window.go = function(tab) {
   if (tab === 'wo') {
     document.getElementById('wo-dash-section').style.display = 'block';
     document.getElementById('wo-submit-section').style.display = 'none';
-    renderWO();
+    try { renderWO(); } catch(e) { console.error(e); }
   }
-  if (tab === 'dash') renderDash();
-  if (tab === 'pm')   renderPM();
-  if (tab === 'sw')     renderSW();
-  if (tab === 'parts')  renderParts();
-  if (tab === 'labor')  renderLabor();
-  if (tab === 'log')    renderLog();
-  if (tab === 'report') buildReport();
+  if (tab === 'dash') try { renderDash(); } catch(e) { console.error(e); }
+  if (tab === 'pm')   try { renderPM(); } catch(e) { console.error(e); }
+  if (tab === 'sw')   try { renderSW(); } catch(e) { console.error(e); }
+  if (tab === 'parts') try { renderParts(); } catch(e) { console.error(e); }
+  if (tab === 'labor') try { renderLabor(); } catch(e) { console.error(e); }
+  if (tab === 'log')   try { renderLog(); } catch(e) { console.error(e); }
+  if (tab === 'report') try { buildReport(); } catch(e) { console.error(e); }
 }
 
 // ── DATE UTILS ──
