@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rushtown Poultry — Maintenance</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Firebase Compat (no type=module needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<style>
+:root {
+  --dark: #0d1f16; --green-dark: #1a3a2a; --green-mid: #2d5a3d;
+  --green-bright: #4a9b6f; --green-light: #a8d5b5; --green-pale: #e8f5ec;
+  --amber: #f0a500; --red: #d94f3d; --blue: #3a86ff;
+  --cream: #f7f4ee; --ink: #1a1a1a; --muted: #6b7c70; --border: #c8dace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'IBM Plex Sans', sans-serif; background: var(--dark); min-height: 100vh; color: var(--ink); }
+
+.site-header { background: var(--green-dark); position: sticky; top: 0; z-index: 200; border-bottom: 3px solid var(--green-bright); }
+.header-inner { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; max-width: 1200px; margin: 0 auto; gap: 12px; flex-wrap: wrap; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon { font-size: 26px; }
+.logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 21px; color: #fff; letter-spacing: 2px; line-height: 1; }
+.logo-sub { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--green-light); letter-spacing: 3px; text-transform: uppercase; }
+.sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; margin-left: 6px; transition: background 0.3s; }
+.sync-dot.live { background: var(--green-bright); box-shadow: 0 0 6px var(--green-bright); }
+.sync-dot.saving { background: var(--amber); }
+.nav-tabs { display: flex; gap: 3px; flex-wrap: wrap; }
+.nav-tab { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; padding: 8px 13px; border-radius: 4px; border: none; cursor: pointer; transition: all 0.2s; background: transparent; color: var(--green-light); white-space: nowrap; }
+.nav-tab.active { background: var(--green-bright); color: #fff; }
+.nav-tab:hover:not(.active) { background: var(--green-mid); color: #fff; }
+@media(max-width:600px){ .nav-tab { padding: 7px 9px; font-size: 10px; } }
+
+.main { max-width: 1200px; margin: 0 auto; padding: 22px 16px 80px; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+.loading-screen { position: fixed; inset: 0; background: var(--dark); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+.loading-screen.hidden { display: none; }
+.loading-screen .li { font-size: 52px; }
+.loading-screen h2 { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: #fff; letter-spacing: 3px; }
+.loading-screen p { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--green-light); }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--green-mid); border-top-color: var(--green-bright); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.section-title { font-family: 'Bebas Neue', sans-serif; font-size: 30px; color: #fff; letter-spacing: 2px; margin-bottom: 4px; }
+.section-sub { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--green-light); margin-bottom: 20px; }
+
+.stats-grid { display: grid; gap: 12px; margin-bottom: 22px; }
+.g5 { grid-template-columns: repeat(5,1fr); }
+.g4 { grid-template-columns: repeat(4,1fr); }
+@media(max-width:700px){ .g5,.g4 { grid-template-columns: repeat(3,1fr); } }
+@media(max-width:420px){ .g5,.g4 { grid-template-columns: repeat(2,1fr); } }
+
+.stat-card { background: var(--cream); border-radius: 10px; padding: 16px 12px; text-align: center; border-top: 4px solid var(--border); }
+.stat-card.s-red { border-top-color: var(--red); }
+.stat-card.s-amber { border-top-color: var(--amber); }
+.stat-card.s-blue { border-top-color: var(--blue); }
+.stat-card.s-green { border-top-color: var(--green-bright); }
+.stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 40px; line-height: 1; color: var(--green-mid); }
+.stat-card.s-red .stat-num { color: var(--red); }
+.stat-card.s-amber .stat-num { color: #b07a00; }
+.stat-card.s-blue .stat-num { color: #0c5460; }
+.stat-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin-top: 3px; }
+
+.pill-bar { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+.pill { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 1px; padding: 7px 13px; border-radius: 50px; border: 2px solid rgba(255,255,255,0.18); background: transparent; color: rgba(255,255,255,0.55); cursor: pointer; transition: all 0.2s; }
+.pill.active, .pill:hover { background: var(--green-bright); border-color: var(--green-bright); color: #fff; }
+.loc-pill { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 1px; padding: 9px 18px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.15); background: transparent; color: rgba(255,255,255,0.45); cursor: pointer; transition: all 0.2s; }
+.loc-pill.active { background: #fff; border-color: #fff; color: var(--green-dark); }
+.loc-pill:hover:not(.active) { border-color: rgba(255,255,255,0.45); color: rgba(255,255,255,0.85); }
+
+.card-list { display: flex; flex-direction: column; gap: 9px; }
+.empty { text-align: center; padding: 50px 20px; color: rgba(255,255,255,0.3); }
+.empty .ei { font-size: 44px; margin-bottom: 10px; }
+.empty p { font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+
+.wo-card { background: var(--cream); border-radius: 10px; padding: 15px 17px; display: grid; grid-template-columns: 76px 1fr auto; gap: 13px; align-items: start; box-shadow: 0 2px 10px rgba(0,0,0,0.18); border-left: 5px solid var(--border); cursor: pointer; transition: transform 0.15s; }
+.wo-card:hover { transform: translateX(3px); }
+.wo-card.urgent { border-left-color: var(--red); }
+.wo-card.high { border-left-color: var(--amber); }
+.wo-card.routine { border-left-color: var(--green-bright); }
+.wo-id { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; color: var(--muted); }
+.wo-pri { font-family: 'IBM Plex Mono', monospace; font-size: 11px; margin-top: 4px; }
+.wo-body h4 { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.prob-tag { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 10px; background: var(--green-pale); color: var(--green-mid); border: 1px solid var(--border); padding: 2px 7px; border-radius: 4px; margin-bottom: 5px; }
+.wo-body p { font-size: 13px; color: var(--muted); line-height: 1.4; }
+.wo-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; min-width: 95px; }
+.badge { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 1px; padding: 4px 9px; border-radius: 50px; white-space: nowrap; }
+.badge.open { background: #fff3cd; color: #856404; }
+.badge.in-progress { background: #d1ecf1; color: #0c5460; }
+.badge.completed { background: var(--green-pale); color: var(--green-mid); }
+.badge.on-hold { background: #f8d7da; color: #721c24; }
+.wo-meta-txt { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); }
+@media(max-width:500px){ .wo-card { grid-template-columns: 1fr; } .wo-meta { align-items: flex-start; flex-direction: row; flex-wrap: wrap; } }
+
+.pm-card { background: var(--cream); border-radius: 10px; padding: 14px 17px; display: grid; grid-template-columns: 52px 1fr auto; gap: 13px; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.18); border-left: 5px solid var(--border); transition: transform 0.15s; }
+.pm-card:hover { transform: translateX(2px); }
+.pm-card.overdue { border-left-color: var(--red); }
+.pm-card.due-soon { border-left-color: var(--amber); }
+.pm-card.ok { border-left-color: var(--green-bright); }
+.pm-card.done-today { border-left-color: var(--blue); opacity: 0.75; }
+.pm-freq-icon { font-size: 22px; text-align: center; display: block; }
+.pm-freq-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 9px; text-align: center; color: var(--muted); letter-spacing: 1px; margin-top: 2px; }
+.pm-body h4 { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.pm-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 5px; }
+.pm-tag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border); }
+.t-vent { background: #e8f4ff; color: #0c5460; }
+.t-water { background: #e1f0ff; color: #004085; }
+.t-feed { background: #fff8e1; color: #856404; }
+.t-manure { background: #fff0e1; color: #7a3800; }
+.t-loc { background: var(--green-pale); color: var(--green-mid); }
+.pm-body p { font-size: 12px; color: var(--muted); }
+.pm-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 108px; }
+.due-badge { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; padding: 4px 9px; border-radius: 50px; white-space: nowrap; }
+.due-badge.overdue { background: #f8d7da; color: #721c24; }
+.due-badge.due-soon { background: #fff3cd; color: #856404; }
+.due-badge.ok { background: var(--green-pale); color: var(--green-mid); }
+.due-badge.done { background: #d1ecf1; color: #0c5460; }
+.btn-done { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; padding: 7px 13px; border-radius: 6px; border: none; cursor: pointer; background: var(--green-mid); color: #fff; transition: all 0.2s; white-space: nowrap; }
+.btn-done:hover { background: var(--green-bright); }
+.btn-done:disabled { background: #d1ecf1; color: #0c5460; cursor: default; }
+.sys-hdr { font-family: 'Bebas Neue', sans-serif; font-size: 17px; letter-spacing: 2px; color: #fff; padding: 14px 0 7px; border-bottom: 2px solid var(--green-mid); margin-bottom: 9px; margin-top: 18px; }
+@media(max-width:500px){ .pm-card { grid-template-columns: 1fr; } .pm-right { align-items: flex-start; flex-direction: row; flex-wrap: wrap; } }
+
+.form-wrap { max-width: 700px; margin: 0 auto; }
+.form-card { background: var(--cream); border-radius: 12px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.3); }
+.form-hdr { background: var(--green-mid); padding: 18px 22px; display: flex; align-items: center; gap: 12px; }
+.form-hdr h2 { font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: #fff; letter-spacing: 2px; }
+.form-hdr p { font-size: 12px; color: var(--green-light); font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
+.form-body { padding: 26px 22px; display: grid; gap: 16px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+@media(max-width:520px){ .form-row { grid-template-columns: 1fr; } }
+.fg { display: flex; flex-direction: column; gap: 5px; }
+.fg.full { grid-column: 1/-1; }
+label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--green-mid); }
+label .req { color: var(--red); margin-left: 2px; }
+input, select, textarea { font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; padding: 10px 13px; border: 2px solid var(--border); border-radius: 7px; background: #fff; color: var(--ink); transition: border-color 0.2s, box-shadow 0.2s; width: 100%; -webkit-appearance: none; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--green-bright); box-shadow: 0 0 0 3px rgba(74,155,111,0.15); }
+textarea { resize: vertical; min-height: 85px; }
+.pri-group { display: flex; gap: 9px; flex-wrap: wrap; }
+.pri-pill { padding: 9px 16px; border-radius: 50px; border: 2px solid var(--border); cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 1px; transition: all 0.2s; background: #fff; color: var(--muted); user-select: none; }
+.pri-pill.urgent.sel { background: #fde8e6; border-color: var(--red); color: var(--red); }
+.pri-pill.high.sel { background: #fff8e1; border-color: var(--amber); color: #b07a00; }
+.pri-pill.routine.sel { background: var(--green-pale); border-color: var(--green-bright); color: var(--green-mid); }
+.photo-drop { border: 2px dashed var(--border); border-radius: 8px; padding: 18px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fff; }
+.photo-drop:hover { border-color: var(--green-bright); background: var(--green-pale); }
+.photo-drop input { display: none; }
+#photo-preview { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 9px; }
+#photo-preview img { width: 66px; height: 66px; object-fit: cover; border-radius: 6px; border: 2px solid var(--border); }
+.btn-submit { width: 100%; padding: 15px; background: var(--green-mid); color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 21px; letter-spacing: 3px; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; margin-top: 4px; }
+.btn-submit:hover { background: var(--green-bright); transform: translateY(-2px); }
+.success-card { display: none; background: var(--cream); border-radius: 12px; padding: 44px 22px; text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,0.3); }
+.success-card.show { display: block; }
+.success-icon { font-size: 56px; margin-bottom: 14px; }
+.success-card h3 { font-family: 'Bebas Neue', sans-serif; font-size: 30px; color: var(--green-mid); letter-spacing: 2px; }
+.success-wo { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--muted); margin: 7px 0 22px; }
+.btn-new { padding: 11px 28px; background: var(--green-bright); color: #fff; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; border: none; border-radius: 7px; cursor: pointer; }
+
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 300; align-items: center; justify-content: center; padding: 16px; }
+.overlay.open { display: flex; }
+.modal { background: var(--cream); border-radius: 13px; padding: 26px 22px; width: 100%; max-width: 460px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto; }
+.modal h3 { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--green-mid); letter-spacing: 2px; margin-bottom: 3px; }
+.modal-sub { font-size: 12px; color: var(--muted); margin-bottom: 18px; font-family: 'IBM Plex Mono', monospace; line-height: 1.5; }
+.modal-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.modal-btns { display: flex; gap: 9px; margin-top: 18px; }
+.btn-confirm { flex: 1; padding: 13px; background: var(--green-mid); color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 19px; letter-spacing: 2px; border: none; border-radius: 7px; cursor: pointer; }
+.btn-confirm:hover { background: var(--green-bright); }
+.btn-cancel { padding: 13px 18px; background: transparent; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 12px; border: 2px solid var(--border); border-radius: 7px; cursor: pointer; }
+
+.log-card { background: var(--cream); border-radius: 9px; padding: 13px 16px; display: grid; grid-template-columns: 1fr auto; gap: 11px; align-items: start; box-shadow: 0 2px 8px rgba(0,0,0,0.13); border-left: 4px solid var(--green-bright); margin-bottom: 8px; }
+.log-card.wo-log { border-left-color: var(--amber); }
+.log-body h4 { font-size: 13px; font-weight: 600; color: var(--ink); }
+.log-body p { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.log-meta { text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); }
+
+.dash-farms { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+@media(max-width:600px){ .dash-farms { grid-template-columns: 1fr; } }
+.farm-card { background: var(--green-dark); border-radius: 11px; padding: 18px 16px; border: 1px solid var(--green-mid); }
+.farm-card h3 { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #fff; letter-spacing: 2px; margin-bottom: 12px; }
+.farm-stat-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.farm-stat { background: rgba(255,255,255,0.07); border-radius: 7px; padding: 10px 14px; text-align: center; flex: 1; min-width: 60px; }
+.farm-stat .n { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: #fff; line-height: 1; }
+.farm-stat .l { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--green-light); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+.farm-stat.red .n { color: var(--red); }
+.farm-stat.amber .n { color: var(--amber); }
+.recent-hdr { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: #fff; letter-spacing: 2px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid var(--green-mid); margin-top: 20px; }
+
+.fab { position: fixed; bottom: 24px; right: 24px; z-index: 250; background: var(--green-mid); color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 17px; letter-spacing: 2px; padding: 15px 22px; border-radius: 50px; border: none; cursor: pointer; box-shadow: 0 6px 24px rgba(0,0,0,0.35); transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+.fab:hover { background: var(--green-bright); transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+@media(max-width:500px){ .fab { bottom: 16px; right: 16px; font-size: 14px; padding: 13px 18px; } }
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loading-screen">
+  <div class="li">🐔</div>
+  <h2>Rushtown Poultry</h2>
+  <div class="spinner"></div>
+  <p id="loading-msg">Connecting to database...</p>
+</div>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="logo">
+      <span class="logo-icon">🐔</span>
+      <div>
+        <div class="logo-text">Rushtown Poultry <span class="sync-dot" id="sync-dot"></span></div>
+        <div class="logo-sub">Maintenance System</div>
+      </div>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" id="tab-dash" onclick="go('dash')">📊 Overview</button>
+      <button class="nav-tab" id="tab-wo" onclick="go('wo')">🔧 Work Orders</button>
+      <button class="nav-tab" id="tab-pm" onclick="go('pm')">📋 PM Schedule</button>
+      <button class="nav-tab" id="tab-log" onclick="go('log')">📁 Log</button>
+    </nav>
+  </div>
+</header>
+
+<main class="main">
+
+<div class="panel active" id="panel-dash">
+  <div class="section-title">Operations Overview</div>
+  <div class="section-sub" id="dash-date"></div>
+  <div class="stats-grid g4" id="dash-stats"></div>
+  <div class="dash-farms" id="dash-farms"></div>
+  <div class="recent-hdr">🔴 Open Urgent Work Orders</div>
+  <div class="card-list" id="dash-urgent"></div>
+  <div class="recent-hdr">⚠️ Overdue PM Tasks</div>
+  <div class="card-list" id="dash-overdue-pm"></div>
+</div>
+
+<div class="panel" id="panel-wo">
+  <div id="wo-dash-section">
+    <div class="section-title">Work Orders</div>
+    <div class="section-sub">Tap any card to cycle status · Open → In Progress → Completed → On Hold</div>
+    <div class="stats-grid g5" id="wo-stats"></div>
+    <div class="pill-bar" id="wo-loc-bar">
+      <button class="loc-pill active" onclick="woLoc('all',this)">All Locations</button>
+      <button class="loc-pill" onclick="woLoc('Hegins',this)">📍 Hegins</button>
+      <button class="loc-pill" onclick="woLoc('Danville',this)">📍 Danville</button>
+    </div>
+    <div class="pill-bar" id="wo-filter-bar">
+      <button class="pill active" onclick="woStat('all',this)">All</button>
+      <button class="pill" onclick="woStat('urgent',this)">🔴 Urgent</button>
+      <button class="pill" onclick="woStat('high',this)">🟡 High</button>
+      <button class="pill" onclick="woStat('open',this)">Open</button>
+      <button class="pill" onclick="woStat('in-progress',this)">In Progress</button>
+      <button class="pill" onclick="woStat('completed',this)">Completed</button>
+    </div>
+    <div class="card-list" id="wo-list"></div>
+  </div>
+  <div id="wo-submit-section" style="display:none;">
+    <div class="form-wrap">
+      <div class="form-card" id="wo-form-card">
+        <div class="form-hdr">
+          <span style="font-size:30px">🔧</span>
+          <div><h2>New Work Order</h2><p>Fill it out — your director will see it immediately</p></div>
+        </div>
+        <div class="form-body">
+          <div class="form-row">
+            <div class="fg">
+              <label>Your Name <span class="req">*</span></label>
+              <select id="wo-tech">
+                <option value="">— Select Tech —</option>
+                <option>Adam</option><option>Nathan</option><option>Carlos</option><option>Randy</option>
+                <option>Josh</option><option>Cain</option><option>Celia</option><option>Deb</option>
+                <option>Steve</option>
+              </select>
+            </div>
+            <div class="fg"><label>Date <span class="req">*</span></label><input type="date" id="wo-date"></div>
+          </div>
+          <div class="form-row">
+            <div class="fg">
+              <label>Farm Location <span class="req">*</span></label>
+              <select id="wo-farm" onchange="loadHouses()">
+                <option value="">— Select Farm —</option>
+                <option>Hegins</option><option>Danville</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>House / Area <span class="req">*</span></label>
+              <select id="wo-house"><option value="">— Select Farm First —</option></select>
+            </div>
+          </div>
+          <div class="fg full">
+            <label>Problem Type <span class="req">*</span></label>
+            <select id="wo-problem">
+              <option value="">— Select Problem Type —</option>
+              <optgroup label="💧 Water">
+                <option>Water — Low Pressure</option><option>Water — No Water</option>
+                <option>Water — Leak / Line Break</option><option>Water — Nipple Drinkers Clogged</option>
+                <option>Water — Pump Failure</option><option>Water — Filter Clogged</option><option>Water — Other</option>
+              </optgroup>
+              <optgroup label="💨 Ventilation">
+                <option>Ventilation — Fan Not Running</option><option>Ventilation — Fan Belt Broken</option>
+                <option>Ventilation — Unusual Noise / Vibration</option><option>Ventilation — Controller Issue</option>
+                <option>Ventilation — Inlet / Curtain Problem</option><option>Ventilation — Other</option>
+              </optgroup>
+              <optgroup label="🔥 Heating">
+                <option>Heating — Heater Not Igniting</option><option>Heating — Temperature Too Low</option>
+                <option>Heating — Temperature Too High</option><option>Heating — Propane Issue</option>
+                <option>Heating — Brooder Failure</option><option>Heating — Other</option>
+              </optgroup>
+              <optgroup label="🌾 Feed System">
+                <option>Feed — Auger Not Running</option><option>Feed — Motor Overheating</option>
+                <option>Feed — Hopper Empty / Jammed</option><option>Feed — Feed Pan Issue</option>
+                <option>Feed — Chain / Belt Broken</option><option>Feed — Other</option>
+              </optgroup>
+              <optgroup label="♻️ Manure / Litter">
+                <option>Manure — Wet Litter / Wet Spots</option><option>Manure — High Ammonia</option>
+                <option>Manure — Caking / Compaction</option><option>Manure — Cleanout Needed</option><option>Manure — Other</option>
+              </optgroup>
+              <optgroup label="⚡ Electrical">
+                <option>Electrical — Power Outage</option><option>Electrical — Breaker Tripped</option>
+                <option>Electrical — Alarm Failure</option><option>Electrical — Generator Issue</option>
+                <option>Electrical — Controller / Timer Fault</option><option>Electrical — Other</option>
+              </optgroup>
+              <optgroup label="🏗️ Structure / Other">
+                <option>Structure — Door / Curtain Damage</option><option>Structure — Roof / Wall Leak</option>
+                <option>Structure — Lighting</option><option>Vehicle / Equipment</option><option>Other — Not Listed</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="fg full">
+            <label>Description <span class="req">*</span></label>
+            <textarea id="wo-desc" placeholder="Describe what's wrong — what you heard, saw, or smelled. Be specific."></textarea>
+          </div>
+          <div class="fg full">
+            <label>Priority <span class="req">*</span></label>
+            <div class="pri-group">
+              <label class="pri-pill urgent" data-val="urgent" onclick="setPri(this)">🔴 Urgent — Fix Now</label>
+              <label class="pri-pill high" data-val="high" onclick="setPri(this)">🟡 High — Fix Today</label>
+              <label class="pri-pill routine" data-val="routine" onclick="setPri(this)">🟢 Routine — Schedule It</label>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="fg"><label>Parts Needed?</label><input type="text" id="wo-parts" placeholder="e.g. Fan belt 5/8, fuse 20A"></div>
+            <div class="fg">
+              <label>Equipment Down?</label>
+              <select id="wo-down">
+                <option value="no">No — Still Running</option>
+                <option value="partial">Partial — Degraded</option>
+                <option value="yes">Yes — Fully Down</option>
+              </select>
+            </div>
+          </div>
+          <div class="fg full">
+            <label>Photo (optional)</label>
+            <div class="photo-drop" onclick="document.getElementById('photo-input').click()">
+              <div style="font-size:26px;margin-bottom:5px">📷</div>
+              <p style="font-size:13px;color:var(--muted)">Tap to take a photo or upload from camera roll</p>
+              <input type="file" id="photo-input" accept="image/*" multiple capture="environment" onchange="previewPhotos(this)">
+            </div>
+            <div id="photo-preview"></div>
+          </div>
+          <div class="fg full"><label>Additional Notes</label><input type="text" id="wo-notes" placeholder="Anything else the director should know"></div>
+          <button class="btn-submit" onclick="submitWO()">SUBMIT WORK ORDER</button>
+        </div>
+      </div>
+      <div class="success-card" id="wo-success">
+        <div class="success-icon">✅</div>
+        <h3>Work Order Submitted!</h3>
+        <p class="success-wo" id="wo-success-num"></p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:22px">Saved to database. Visible to your director now.</p>
+        <button class="btn-new" onclick="afterWOSubmit()">Submit Another</button>
+        &nbsp;
+        <button class="btn-new" onclick="go('dash')" style="background:var(--green-mid)">View Dashboard</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="panel-pm">
+  <div class="section-title">PM Schedule</div>
+  <div class="section-sub">Tap "Mark Done" to log completion — next due date updates automatically</div>
+  <div class="stats-grid g4" id="pm-stats"></div>
+  <div class="pill-bar" id="pm-loc-bar">
+    <button class="loc-pill active" onclick="pmLoc('all',this)">All Farms</button>
+    <button class="loc-pill" onclick="pmLoc('Hegins',this)">📍 Hegins</button>
+    <button class="loc-pill" onclick="pmLoc('Danville',this)">📍 Danville</button>
+  </div>
+  <div class="pill-bar" id="pm-filter-bar">
+    <button class="pill active" onclick="pmStat('all',this)">All Tasks</button>
+    <button class="pill" onclick="pmStat('overdue',this)">🔴 Overdue</button>
+    <button class="pill" onclick="pmStat('soon',this)">🟡 Due Soon</button>
+    <button class="pill" onclick="pmStat('daily',this)">🟢 Daily</button>
+    <button class="pill" onclick="pmStat('weekly',this)">🔵 Weekly</button>
+    <button class="pill" onclick="pmStat('monthly',this)">Monthly</button>
+    <button class="pill" onclick="pmStat('quarterly',this)">Quarterly</button>
+    <button class="pill" onclick="pmStat('annual',this)">Annual</button>
+  </div>
+  <div id="pm-container"></div>
+</div>
+
+<div class="panel" id="panel-log">
+  <div class="section-title">Activity Log</div>
+  <div class="section-sub">Full history of work orders and PM completions — stored in Firebase</div>
+  <div class="pill-bar" id="log-filter-bar">
+    <button class="pill active" onclick="logFilter('all',this)">All Activity</button>
+    <button class="pill" onclick="logFilter('wo',this)">🔧 Work Orders</button>
+    <button class="pill" onclick="logFilter('pm',this)">📋 PM Tasks</button>
+  </div>
+  <div id="log-container"></div>
+</div>
+
+</main>
+
+<div class="overlay" id="pm-modal">
+  <div class="modal">
+    <h3>Mark Task Complete</h3>
+    <p class="modal-sub" id="modal-desc"></p>
+    <div class="modal-field">
+      <label>Completed By <span class="req">*</span></label>
+      <select id="modal-tech">
+        <option value="">— Select Tech —</option>
+        <option>Adam</option><option>Nathan</option><option>Carlos</option><option>Randy</option>
+        <option>Josh</option><option>Cain</option><option>Celia</option><option>Deb</option>
+        <option>Steve</option>
+      </select>
+    </div>
+    <div class="modal-field"><label>Date Completed</label><input type="date" id="modal-date"></div>
+    <div class="modal-field"><label>Parts Used (if any)</label><input type="text" id="modal-parts" placeholder="e.g. Fan belt 5/8, grease"></div>
+    <div class="modal-field"><label>Notes</label><textarea id="modal-notes" placeholder="Conditions found, adjustments made, follow-up needed..." style="min-height:60px"></textarea></div>
+    <div style="background:#fff8e1;border:1px solid var(--amber);border-radius:7px;padding:10px 12px;">
+      <label style="color:#856404">Generate Work Order? (if repair needed)</label>
+      <select id="modal-gen-wo" style="margin-top:6px;">
+        <option value="no">No — PM only</option>
+        <option value="yes">Yes — create a work order too</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closePMModal()">Cancel</button>
+      <button class="btn-confirm" onclick="confirmPM()">✓ MARK DONE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Floating Submit Button -->
+<button class="fab" id="fab-btn" onclick="go('wo-submit')">➕ NEW WORK ORDER</button>
+
+<script>
+// ═══════════════════════════════════════════
+// FIREBASE INIT (compat — no type=module)
+// ═══════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyBRPjACWaVeHXw4ztydZVB-_MTMwEWfWmY",
+  authDomain: "rushtown-poultry.firebaseapp.com",
+  projectId: "rushtown-poultry",
+  storageBucket: "rushtown-poultry.firebasestorage.app",
+  messagingSenderId: "1050651051862",
+  appId: "1:1050651051862:web:c83d671abaec7f4c8378f7"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ═══════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════
+const FARM_HOUSES = {
+  Hegins:   ['House 1','House 2','House 3','House 4','House 5','House 6','House 7','House 8'],
+  Danville: ['House 1','House 2','House 3','House 4','House 5']
+};
+const AREAS = ['Feed System','Watering System','Ventilation / Fans','Heating / Brooders','Electrical Panel','Well House / Pump','Catch / Load Out','Generator','Vehicle / Equipment','Shop / Office','Other'];
+const FREQ = {
+  daily:     {label:'Daily',     icon:'🟢', days:1},
+  weekly:    {label:'Weekly',    icon:'🔵', days:7},
+  monthly:   {label:'Monthly',   icon:'🟡', days:30},
+  quarterly: {label:'Quarterly', icon:'🟠', days:90},
+  annual:    {label:'Annual',    icon:'🔴', days:365},
+};
+const SYS_TAG  = {Ventilation:'t-vent', Water:'t-water', Feed:'t-feed', Manure:'t-manure'};
+const SYS_ICON = {Ventilation:'💨', Water:'💧', Feed:'🌾', Manure:'♻️'};
+
+const PM_DEFS = [
+  {id:'v1',sys:'Ventilation',task:'Walk-through: verify all fans running, check for noise/vibration, confirm temp matches setpoint',freq:'daily',hrs:0.5},
+  {id:'v2',sys:'Ventilation',task:'Check inlet / curtain position matches ventilation controller settings',freq:'daily',hrs:0.25},
+  {id:'v3',sys:'Ventilation',task:'Inspect fan belts for wear, cracking, or slippage — tighten or replace as needed',freq:'weekly',hrs:1.0},
+  {id:'v4',sys:'Ventilation',task:'Clean fan blades and shutters of dust/debris',freq:'weekly',hrs:1.5},
+  {id:'v5',sys:'Ventilation',task:'Lubricate fan motor bearings per manufacturer spec',freq:'weekly',hrs:0.5},
+  {id:'v6',sys:'Ventilation',task:'Test all tunnel fans at full speed — verify CFM output feels normal',freq:'monthly',hrs:1.0},
+  {id:'v7',sys:'Ventilation',task:'Inspect ventilation controller settings, backup power, and alarm function',freq:'monthly',hrs:0.5},
+  {id:'v8',sys:'Ventilation',task:'Check and clean all air inlets — remove buildup on baffles and seals',freq:'monthly',hrs:2.0},
+  {id:'v9',sys:'Ventilation',task:'Replace fan belts on all houses (preventive replacement)',freq:'quarterly',hrs:3.0},
+  {id:'v10',sys:'Ventilation',task:'Full motor inspection — check amp draw, heat, mounts, and wiring',freq:'quarterly',hrs:2.0},
+  {id:'v11',sys:'Ventilation',task:'Full fan teardown and deep clean — motors, shutters, guards, housings',freq:'annual',hrs:4.0},
+  {id:'v12',sys:'Ventilation',task:'Calibrate ventilation controller and all temp/humidity sensors',freq:'annual',hrs:2.0},
+  {id:'w1',sys:'Water',task:'Check water pressure at drinker lines — verify normal flow at nipples',freq:'daily',hrs:0.25},
+  {id:'w2',sys:'Water',task:'Walk drinker lines — look for leaks, clogged nipples, wet litter spots',freq:'daily',hrs:0.5},
+  {id:'w3',sys:'Water',task:'Flush and sanitize drinker lines — use approved flush protocol',freq:'weekly',hrs:1.0},
+  {id:'w4',sys:'Water',task:'Check pump pressure, run time, and fault lights at well house',freq:'weekly',hrs:0.5},
+  {id:'w5',sys:'Water',task:'Inspect regulator pressure settings — adjust if out of spec',freq:'weekly',hrs:0.5},
+  {id:'w6',sys:'Water',task:'Inspect and replace sediment pre-filters — check differential pressure',freq:'monthly',hrs:1.0},
+  {id:'w7',sys:'Water',task:'Inspect all water line connections, clamps, and fittings for slow leaks',freq:'monthly',hrs:1.5},
+  {id:'w8',sys:'Water',task:'Test water sample for pH and chlorine levels — log results',freq:'monthly',hrs:0.5},
+  {id:'w9',sys:'Water',task:'Full drinker line acid flush — remove biofilm and mineral scale',freq:'quarterly',hrs:2.0},
+  {id:'w10',sys:'Water',task:'Inspect pump motor, wiring, pressure tank, and check valve',freq:'quarterly',hrs:1.5},
+  {id:'w11',sys:'Water',task:'Replace drinker nipples and end caps — full line inspection',freq:'annual',hrs:4.0},
+  {id:'w12',sys:'Water',task:'Full pump service — impeller, seals, pressure switch, and tank bladder',freq:'annual',hrs:3.0},
+  {id:'f1',sys:'Feed',task:'Verify auger and feed lines running — check hopper levels and flow',freq:'daily',hrs:0.25},
+  {id:'f2',sys:'Feed',task:'Walk feed pans — confirm even distribution, no bridging in hoppers',freq:'daily',hrs:0.5},
+  {id:'f3',sys:'Feed',task:'Inspect auger flighting for wear — check for unusual noise under load',freq:'weekly',hrs:1.0},
+  {id:'f4',sys:'Feed',task:'Lubricate auger bearings and drive chain per manufacturer spec',freq:'weekly',hrs:0.75},
+  {id:'f5',sys:'Feed',task:'Check drive chain tension and sprocket alignment',freq:'weekly',hrs:0.5},
+  {id:'f6',sys:'Feed',task:'Inspect motor mounts, wiring, and overload protection — check amp draw',freq:'monthly',hrs:1.0},
+  {id:'f7',sys:'Feed',task:'Clean out feed pans and lines — remove stale/caked feed buildup',freq:'monthly',hrs:2.0},
+  {id:'f8',sys:'Feed',task:'Inspect all feed pan height settings — adjust for bird age/size',freq:'monthly',hrs:1.0},
+  {id:'f9',sys:'Feed',task:'Full auger inspection — flighting, tube, and motor coupling',freq:'quarterly',hrs:2.0},
+  {id:'f10',sys:'Feed',task:'Replace drive chain if worn — inspect sprockets for hooked teeth',freq:'quarterly',hrs:1.5},
+  {id:'f11',sys:'Feed',task:'Full system cleanout between flocks — disinfect hoppers and lines',freq:'annual',hrs:6.0},
+  {id:'f12',sys:'Feed',task:'Replace auger flighting and worn feed pans — document per house',freq:'annual',hrs:4.0},
+  {id:'m1',sys:'Manure',task:'Check litter condition — look for wet spots, caking, ammonia smell',freq:'daily',hrs:0.5},
+  {id:'m2',sys:'Manure',task:'Stir or till wet litter areas — improve drying and air quality',freq:'weekly',hrs:1.5},
+  {id:'m3',sys:'Manure',task:'Check ammonia levels with test strips or monitor — log readings',freq:'weekly',hrs:0.5},
+  {id:'m4',sys:'Manure',task:'Inspect pit / crawl space for moisture intrusion or structural issues',freq:'monthly',hrs:1.0},
+  {id:'m5',sys:'Manure',task:'Apply litter treatment / acidifier as needed per flock schedule',freq:'monthly',hrs:2.0},
+  {id:'m6',sys:'Manure',task:'Full litter assessment — depth, moisture, pathogen load — log results',freq:'quarterly',hrs:1.0},
+  {id:'m7',sys:'Manure',task:'Full cleanout between flocks — remove, haul, and document litter',freq:'annual',hrs:8.0},
+  {id:'m8',sys:'Manure',task:'Inspect and clean pit ventilation / drainage — repair any damage',freq:'annual',hrs:3.0},
+];
+
+const ALL_PM = [];
+for (const farm of ['Hegins','Danville']) {
+  for (const def of PM_DEFS) {
+    ALL_PM.push({id:`${farm}-${def.id}`, defId:def.id, farm, sys:def.sys, task:def.task, freq:def.freq, hrs:def.hrs});
+  }
+}
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let workOrders = [];
+let pmComps    = {};
+let actLog     = [];
+let selPri     = '';
+let woLocFilter = 'all', woStatFilter = 'all';
+let pmLocFilter = 'all', pmStatFilter = 'all';
+let logFilterVal = 'all';
+let modalPMId   = null;
+let woCounter   = 1;
+
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const todayStr = TODAY.toISOString().split('T')[0];
+
+function setSyncDot(state) {
+  const d = document.getElementById('sync-dot');
+  d.className = 'sync-dot ' + state;
+}
+
+function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
+
+// ═══════════════════════════════════════════
+// FIREBASE LOAD
+// ═══════════════════════════════════════════
+async function initApp() {
+  setMsg('Loading work orders...');
+  try {
+    const woSnap = await db.collection('workOrders').orderBy('ts','desc').get();
+    workOrders = [];
+    woSnap.forEach(d => workOrders.push({...d.data(), _fbId: d.id}));
+    if (workOrders.length > 0) {
+      woCounter = Math.max(...workOrders.map(w => parseInt(w.id.replace('WO-','')))) + 1;
+    }
+
+    setMsg('Loading PM completions...');
+    const pmSnap = await db.collection('pmCompletions').get();
+    pmComps = {};
+    pmSnap.forEach(d => { pmComps[d.id] = d.data(); });
+
+    setMsg('Loading activity log...');
+    const logSnap = await db.collection('activityLog').orderBy('ts','desc').get();
+    actLog = [];
+    logSnap.forEach(d => actLog.push(d.data()));
+
+    setMsg('Connected!');
+    setSyncDot('live');
+
+    // Real-time listeners
+    db.collection('workOrders').orderBy('ts','desc').onSnapshot(snap => {
+      workOrders = [];
+      snap.forEach(d => workOrders.push({...d.data(), _fbId: d.id}));
+      if (workOrders.length > 0) {
+        woCounter = Math.max(...workOrders.map(w => parseInt(w.id.replace('WO-','')))) + 1;
+      }
+      refreshCurrentPanel();
+    });
+
+    db.collection('pmCompletions').onSnapshot(snap => {
+      pmComps = {};
+      snap.forEach(d => { pmComps[d.id] = d.data(); });
+      refreshCurrentPanel();
+    });
+
+    db.collection('activityLog').orderBy('ts','desc').onSnapshot(snap => {
+      actLog = [];
+      snap.forEach(d => actLog.push(d.data()));
+      if (document.getElementById('panel-log').classList.contains('active')) renderLog();
+    });
+
+    setTimeout(() => {
+      document.getElementById('loading-screen').classList.add('hidden');
+      renderDash();
+    }, 600);
+
+  } catch(err) {
+    setMsg('Error: ' + err.message);
+    console.error(err);
+    // Show app anyway after error
+    setTimeout(() => {
+      document.getElementById('loading-screen').classList.add('hidden');
+      renderDash();
+    }, 2000);
+  }
+}
+
+function refreshCurrentPanel() {
+  if (document.getElementById('panel-dash').classList.contains('active')) renderDash();
+  else if (document.getElementById('panel-wo').classList.contains('active')) renderWO();
+  else if (document.getElementById('panel-pm').classList.contains('active')) renderPM();
+}
+
+// ═══════════════════════════════════════════
+// NAVIGATION — plain global function
+// ═══════════════════════════════════════════
+function go(tab) {
+  const fab = document.getElementById('fab-btn');
+  if (tab === 'wo-submit') {
+    go('wo');
+    document.getElementById('wo-dash-section').style.display = 'none';
+    document.getElementById('wo-submit-section').style.display = 'block';
+    fab.style.display = 'none';
+    return;
+  }
+  fab.style.display = '';
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  const pm = {dash:'panel-dash', wo:'panel-wo', pm:'panel-pm', log:'panel-log'};
+  const tm = {dash:'tab-dash',   wo:'tab-wo',   pm:'tab-pm',   log:'tab-log'};
+  document.getElementById(pm[tab]).classList.add('active');
+  document.getElementById(tm[tab]).classList.add('active');
+  if (tab === 'wo') {
+    document.getElementById('wo-dash-section').style.display = 'block';
+    document.getElementById('wo-submit-section').style.display = 'none';
+    renderWO();
+  }
+  if (tab === 'dash') renderDash();
+  if (tab === 'pm')   renderPM();
+  if (tab === 'log')  renderLog();
+}
+
+// ═══════════════════════════════════════════
+// DATE UTILS
+// ═══════════════════════════════════════════
+function daysAgo(str) {
+  if (!str) return 9999;
+  const d = new Date(str); d.setHours(0,0,0,0);
+  return Math.floor((TODAY - d) / 86400000);
+}
+function pmStatus(id) {
+  const t = ALL_PM.find(x => x.id === id);
+  const c = pmComps[id];
+  const days = FREQ[t.freq].days;
+  if (!c) return 'overdue';
+  const ago = daysAgo(c.date);
+  if (ago >= days) return 'overdue';
+  if (ago >= days * 0.75) return 'due-soon';
+  return 'ok';
+}
+function nextDueLabel(id) {
+  const t = ALL_PM.find(x => x.id === id);
+  const c = pmComps[id];
+  if (!c) return 'Never done';
+  const next = new Date(c.date); next.setDate(next.getDate() + FREQ[t.freq].days);
+  const diff = Math.floor((next - TODAY) / 86400000);
+  if (diff < 0) return Math.abs(diff) + 'd overdue';
+  if (diff === 0) return 'Due today';
+  if (diff === 1) return 'Due tomorrow';
+  return 'Due in ' + diff + 'd';
+}
+function fmtDate(str) {
+  if (!str) return '—';
+  return new Date(str).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+function doneToday(id) { return pmComps[id] && pmComps[id].date === todayStr; }
+function sc(cls, num, lbl) {
+  return `<div class="stat-card ${cls}"><div class="stat-num">${num}</div><div class="stat-label">${lbl}</div></div>`;
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
+function renderDash() {
+  document.getElementById('dash-date').textContent = TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const urgOpen = workOrders.filter(w=>w.priority==='urgent'&&w.status!=='completed').length;
+  const woOpen  = workOrders.filter(w=>w.status==='open').length;
+  const pmOv    = ALL_PM.filter(t=>pmStatus(t.id)==='overdue').length;
+  const pmSn    = ALL_PM.filter(t=>pmStatus(t.id)==='due-soon').length;
+  document.getElementById('dash-stats').innerHTML =
+    sc('s-red',urgOpen,'Urgent WOs') + sc('s-amber',woOpen,'Open WOs') +
+    sc('s-red',pmOv,'PM Overdue') + sc('s-amber',pmSn,'PM Due Soon');
+
+  document.getElementById('dash-farms').innerHTML = ['Hegins','Danville'].map(farm => {
+    const wos = workOrders.filter(w=>w.farm===farm);
+    const pts = ALL_PM.filter(t=>t.farm===farm);
+    const urg  = wos.filter(w=>w.priority==='urgent'&&w.status!=='completed').length;
+    const open = wos.filter(w=>w.status==='open'||w.status==='in-progress').length;
+    const pmO  = pts.filter(t=>pmStatus(t.id)==='overdue').length;
+    return `<div class="farm-card"><h3>📍 ${farm}</h3><div class="farm-stat-row">
+      <div class="farm-stat red"><div class="n">${urg}</div><div class="l">Urgent</div></div>
+      <div class="farm-stat amber"><div class="n">${open}</div><div class="l">Active WOs</div></div>
+      <div class="farm-stat red"><div class="n">${pmO}</div><div class="l">PM Overdue</div></div>
+      <div class="farm-stat"><div class="n">${wos.length}</div><div class="l">Total WOs</div></div>
+    </div></div>`;
+  }).join('');
+
+  const urgent = workOrders.filter(w=>w.priority==='urgent'&&w.status!=='completed');
+  document.getElementById('dash-urgent').innerHTML = urgent.length
+    ? urgent.map(wo=>woCardHtml(wo)).join('')
+    : '<div class="empty"><div class="ei">✅</div><p>No urgent open work orders</p></div>';
+
+  const overdue = ALL_PM.filter(t=>pmStatus(t.id)==='overdue').slice(0,6);
+  document.getElementById('dash-overdue-pm').innerHTML = overdue.length
+    ? overdue.map(t=>pmCardHtml(t)).join('')
+    : '<div class="empty"><div class="ei">✅</div><p>No overdue PM tasks</p></div>';
+}
+
+// ═══════════════════════════════════════════
+// WORK ORDERS
+// ═══════════════════════════════════════════
+function woLoc(v,btn) {
+  woLocFilter=v;
+  document.querySelectorAll('#wo-loc-bar .loc-pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderWO();
+}
+function woStat(v,btn) {
+  woStatFilter=v;
+  document.querySelectorAll('#wo-filter-bar .pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderWO();
+}
+
+function renderWO() {
+  let base = woLocFilter==='all' ? workOrders : workOrders.filter(w=>w.farm===woLocFilter);
+  document.getElementById('wo-stats').innerHTML =
+    sc('s-red',base.filter(w=>w.priority==='urgent'&&w.status!=='completed').length,'🔴 Urgent') +
+    sc('s-amber',base.filter(w=>w.priority==='high'&&w.status!=='completed').length,'🟡 High') +
+    sc('s-green',base.filter(w=>w.status==='open').length,'Open') +
+    sc('s-blue',base.filter(w=>w.status==='in-progress').length,'In Progress') +
+    sc('',base.length,'Total WOs');
+
+  let list = [...base];
+  if (woStatFilter==='urgent') list=list.filter(w=>w.priority==='urgent');
+  else if (woStatFilter==='high') list=list.filter(w=>w.priority==='high');
+  else if (woStatFilter==='open') list=list.filter(w=>w.status==='open');
+  else if (woStatFilter==='in-progress') list=list.filter(w=>w.status==='in-progress');
+  else if (woStatFilter==='completed') list=list.filter(w=>w.status==='completed');
+
+  document.getElementById('wo-list').innerHTML = list.length
+    ? list.map(wo=>woCardHtml(wo)).join('')
+    : '<div class="empty"><div class="ei">📋</div><p>No work orders match this filter.</p></div>';
+}
+
+function woCardHtml(wo) {
+  const pL={urgent:'🔴 Urgent',high:'🟡 High',routine:'🟢 Routine'};
+  const pC={urgent:'var(--red)',high:'#b07a00',routine:'var(--green-mid)'};
+  const dT={yes:' ⚠️ DOWN',partial:' ⚡ Degraded',no:''};
+  return `<div class="wo-card ${wo.priority}" onclick="cycleWO('${wo._fbId}')">
+    <div class="wo-id">${wo.id}<div class="wo-pri" style="color:${pC[wo.priority]}">${pL[wo.priority]}</div></div>
+    <div class="wo-body">
+      <h4>${wo.farm} · ${wo.house}${dT[wo.down]||''}</h4>
+      <span class="prob-tag">${wo.problem}</span>
+      <p>${wo.desc}</p>
+      ${wo.parts?`<p style="margin-top:5px;font-size:12px;color:var(--green-mid)">🔩 ${wo.parts}</p>`:''}
+    </div>
+    <div class="wo-meta">
+      <span class="badge ${wo.status}">${wo.status.replace('-',' ').replace(/\b\w/g,c=>c.toUpperCase())}</span>
+      <span class="wo-meta-txt">👤 ${wo.tech}</span>
+      <span class="wo-meta-txt">${wo.submitted}</span>
+    </div>
+  </div>`;
+}
+
+async function cycleWO(fbId) {
+  const wo = workOrders.find(w=>w._fbId===fbId);
+  if (!wo) return;
+  const cycle = ['open','in-progress','completed','on-hold'];
+  const newStatus = cycle[(cycle.indexOf(wo.status)+1) % cycle.length];
+  setSyncDot('saving');
+  await db.collection('workOrders').doc(fbId).update({status: newStatus});
+  setSyncDot('live');
+}
+
+const SITE_TECHS = {
+  Hegins:   ['Adam','Nathan','Carlos','Randy','Steve'],
+  Danville: ['Josh','Cain','Celia','Deb','Steve'],
+};
+
+function loadHouses() {
+  const farm = document.getElementById('wo-farm').value;
+
+  // Update house dropdown
+  const sel = document.getElementById('wo-house');
+  sel.innerHTML = '<option value="">— Select House / Area —</option>';
+  const hg = document.createElement('optgroup'); hg.label = 'Houses';
+  (FARM_HOUSES[farm]||[]).forEach(h=>{const o=document.createElement('option');o.value=h;o.textContent=h;hg.appendChild(o);});
+  const ag = document.createElement('optgroup'); ag.label = 'Common Areas';
+  AREAS.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;ag.appendChild(o);});
+  sel.appendChild(hg); sel.appendChild(ag);
+
+  // Update tech dropdown to show only this site's crew
+  const techSel = document.getElementById('wo-tech');
+  const currentTech = techSel.value;
+  techSel.innerHTML = '<option value="">— Select Tech —</option>';
+  const techs = farm ? SITE_TECHS[farm] : ['Adam','Nathan','Carlos','Randy','Josh','Cain','Celia','Deb','Steve'];
+  techs.forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    if (name === currentTech) o.selected = true;
+    techSel.appendChild(o);
+  });
+}
+
+function setPri(el) {
+  document.querySelectorAll('.pri-pill').forEach(p=>p.classList.remove('sel'));
+  el.classList.add('sel'); selPri=el.dataset.val;
+}
+
+function previewPhotos(input) {
+  const pv=document.getElementById('photo-preview'); pv.innerHTML='';
+  [...input.files].forEach(f=>{
+    const r=new FileReader();
+    r.onload=e=>{const img=document.createElement('img');img.src=e.target.result;pv.appendChild(img);};
+    r.readAsDataURL(f);
+  });
+}
+
+document.getElementById('wo-date').value = todayStr;
+
+async function submitWO() {
+  const tech=document.getElementById('wo-tech').value;
+  const farm=document.getElementById('wo-farm').value;
+  const house=document.getElementById('wo-house').value;
+  const problem=document.getElementById('wo-problem').value;
+  const desc=document.getElementById('wo-desc').value.trim();
+  if (!tech)    return alert('Please select your name.');
+  if (!farm)    return alert('Please select a farm location.');
+  if (!house)   return alert('Please select a house or area.');
+  if (!problem) return alert('Please select a problem type.');
+  if (!desc)    return alert('Please describe the problem.');
+  if (!selPri)  return alert('Please select a priority level.');
+
+  const wo = {
+    id: 'WO-' + String(woCounter).padStart(3,'0'),
+    date: document.getElementById('wo-date').value,
+    tech, farm, house, problem, desc,
+    priority: selPri,
+    parts: document.getElementById('wo-parts').value,
+    down: document.getElementById('wo-down').value,
+    status: 'open',
+    notes: document.getElementById('wo-notes').value,
+    submitted: new Date().toLocaleDateString(),
+    ts: Date.now()
+  };
+
+  setSyncDot('saving');
+  const ref = await db.collection('workOrders').add(wo);
+  wo._fbId = ref.id;
+
+  await db.collection('activityLog').add({
+    type:'wo', id:wo.id,
+    desc:`WO submitted: ${wo.farm} · ${wo.house} — ${wo.problem}`,
+    tech:wo.tech, date:wo.submitted, ts:Date.now()
+  });
+  setSyncDot('live');
+
+  document.getElementById('wo-form-card').style.display='none';
+  document.getElementById('wo-success').classList.add('show');
+  document.getElementById('wo-success-num').textContent = wo.id + ' · ' + wo.farm + ' · ' + wo.house;
+}
+
+function afterWOSubmit() {
+  document.getElementById('fab-btn').style.display = '';
+  document.getElementById('wo-form-card').style.display='';
+  document.getElementById('wo-success').classList.remove('show');
+  ['wo-tech','wo-farm','wo-problem'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('wo-down').value='no';
+  document.getElementById('wo-house').innerHTML='<option value="">— Select Farm First —</option>';
+  document.getElementById('wo-desc').value='';
+  document.getElementById('wo-parts').value='';
+  document.getElementById('wo-notes').value='';
+  document.getElementById('photo-preview').innerHTML='';
+  document.querySelectorAll('.pri-pill').forEach(p=>p.classList.remove('sel'));
+  selPri='';
+  document.getElementById('wo-date').value=todayStr;
+  window.scrollTo(0,0);
+}
+
+// ═══════════════════════════════════════════
+// PM SCHEDULE
+// ═══════════════════════════════════════════
+function pmLoc(v,btn) {
+  pmLocFilter=v;
+  document.querySelectorAll('#pm-loc-bar .loc-pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderPM();
+}
+function pmStat(v,btn) {
+  pmStatFilter=v;
+  document.querySelectorAll('#pm-filter-bar .pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderPM();
+}
+
+function renderPM() {
+  let tasks = pmLocFilter==='all' ? ALL_PM : ALL_PM.filter(t=>t.farm===pmLocFilter);
+  document.getElementById('pm-stats').innerHTML =
+    sc('s-red',tasks.filter(t=>pmStatus(t.id)==='overdue').length,'Overdue') +
+    sc('s-amber',tasks.filter(t=>pmStatus(t.id)==='due-soon').length,'Due Soon') +
+    sc('s-green',tasks.filter(t=>pmStatus(t.id)==='ok').length,'On Track') +
+    sc('s-blue',tasks.filter(t=>doneToday(t.id)).length,'Done Today');
+
+  let filtered=[...tasks];
+  if (pmStatFilter==='overdue') filtered=tasks.filter(t=>pmStatus(t.id)==='overdue');
+  else if (pmStatFilter==='soon') filtered=tasks.filter(t=>pmStatus(t.id)==='due-soon');
+  else if (['daily','weekly','monthly','quarterly','annual'].includes(pmStatFilter))
+    filtered=tasks.filter(t=>t.freq===pmStatFilter);
+
+  filtered.sort((a,b)=>{
+    const o=['overdue','due-soon','ok'];
+    return o.indexOf(pmStatus(a.id))-o.indexOf(pmStatus(b.id));
+  });
+
+  if (!filtered.length) {
+    document.getElementById('pm-container').innerHTML='<div class="empty"><div class="ei">✅</div><p>All tasks on track.</p></div>';
+    return;
+  }
+
+  let html='';
+  for (const sys of ['Ventilation','Water','Feed','Manure']) {
+    const st=filtered.filter(t=>t.sys===sys);
+    if (!st.length) continue;
+    html+=`<div class="sys-hdr">${SYS_ICON[sys]} ${sys}</div><div class="card-list">`;
+    html+=st.map(t=>pmCardHtml(t)).join('');
+    html+='</div>';
+  }
+  document.getElementById('pm-container').innerHTML=html;
+}
+
+function pmCardHtml(t) {
+  const status=pmStatus(t.id);
+  const done=doneToday(t.id);
+  const f=FREQ[t.freq];
+  const comp=pmComps[t.id];
+  const cardCls=done?'done-today':status;
+  const badgeCls=done?'done':status;
+  const badgeTxt=done?'✓ Done Today':nextDueLabel(t.id);
+  const btnAttr=done?'disabled':`onclick="openPMModal('${t.id}')"`;
+  return `<div class="pm-card ${cardCls}">
+    <div><span class="pm-freq-icon">${f.icon}</span><span class="pm-freq-lbl">${f.label}</span></div>
+    <div class="pm-body">
+      <div class="pm-tags">
+        <span class="pm-tag ${SYS_TAG[t.sys]}">${SYS_ICON[t.sys]} ${t.sys}</span>
+        <span class="pm-tag t-loc">📍 ${t.farm}</span>
+      </div>
+      <h4>${t.task}</h4>
+      <p>Est. ${t.hrs}h${comp?' · Last: '+fmtDate(comp.date)+' by '+comp.tech:' · Never completed'}</p>
+    </div>
+    <div class="pm-right">
+      <span class="due-badge ${badgeCls}">${badgeTxt}</span>
+      <button class="btn-done" ${btnAttr}>${done?'✓ Done':'Mark Done'}</button>
+    </div>
+  </div>`;
+}
+
+function openPMModal(id) {
+  modalPMId=id;
+  const t=ALL_PM.find(x=>x.id===id);
+  document.getElementById('modal-desc').textContent=`${t.farm} · ${SYS_ICON[t.sys]} ${t.sys} · ${FREQ[t.freq].label} — ${t.task}`;
+  document.getElementById('modal-date').value=todayStr;
+  document.getElementById('modal-tech').value='';
+  document.getElementById('modal-parts').value='';
+  document.getElementById('modal-notes').value='';
+  document.getElementById('modal-gen-wo').value='no';
+  document.getElementById('pm-modal').classList.add('open');
+}
+
+function closePMModal() {
+  document.getElementById('pm-modal').classList.remove('open');
+  modalPMId=null;
+}
+
+async function confirmPM() {
+  const tech=document.getElementById('modal-tech').value;
+  if (!tech) return alert('Please select who completed this task.');
+  const date=document.getElementById('modal-date').value;
+  const parts=document.getElementById('modal-parts').value;
+  const notes=document.getElementById('modal-notes').value;
+  const genWO=document.getElementById('modal-gen-wo').value;
+  const t=ALL_PM.find(x=>x.id===modalPMId);
+
+  setSyncDot('saving');
+
+  await db.collection('pmCompletions').doc(modalPMId).set({tech,date,parts,notes,ts:Date.now()});
+
+  await db.collection('activityLog').add({
+    type:'pm', id:modalPMId,
+    desc:`PM completed: ${t.farm} · ${SYS_ICON[t.sys]} ${t.sys} · ${FREQ[t.freq].label} — ${t.task}`,
+    tech, date:fmtDate(date), parts, notes, ts:Date.now()
+  });
+
+  if (genWO==='yes') {
+    const wo = {
+      id: 'WO-' + String(woCounter).padStart(3,'0'),
+      date, tech, farm:t.farm, house:'PM-Generated',
+      problem:`${SYS_ICON[t.sys]} ${t.sys} — PM Follow-up`,
+      desc:`Follow-up repair needed from PM: ${t.task}. Notes: ${notes}`,
+      priority:'high', parts, down:'no', status:'open',
+      notes:'Auto-generated from PM task',
+      submitted:new Date().toLocaleDateString(), ts:Date.now()
+    };
+    await db.collection('workOrders').add(wo);
+    await db.collection('activityLog').add({
+      type:'wo', id:wo.id,
+      desc:`WO auto-created from PM: ${t.farm} · ${t.sys}`,
+      tech, date:wo.submitted, ts:Date.now()
+    });
+  }
+
+  setSyncDot('live');
+  closePMModal();
+}
+
+document.getElementById('pm-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closePMModal();});
+
+// ═══════════════════════════════════════════
+// LOG
+// ═══════════════════════════════════════════
+function logFilter(v,btn) {
+  logFilterVal=v;
+  document.querySelectorAll('#log-filter-bar .pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderLog();
+}
+
+function renderLog() {
+  let entries=[...actLog];
+  if (logFilterVal==='wo') entries=entries.filter(e=>e.type==='wo');
+  if (logFilterVal==='pm') entries=entries.filter(e=>e.type==='pm');
+
+  if (!entries.length) {
+    document.getElementById('log-container').innerHTML='<div class="empty"><div class="ei">📁</div><p>No activity logged yet.</p></div>';
+    return;
+  }
+  document.getElementById('log-container').innerHTML=entries.map(e=>`
+    <div class="log-card ${e.type==='wo'?'wo-log':''}">
+      <div class="log-body">
+        <h4>${e.type==='wo'?'🔧':'📋'} ${e.desc}</h4>
+        ${e.parts?`<p>🔩 ${e.parts}</p>`:''}
+        ${e.notes?`<p style="font-style:italic">${e.notes}</p>`:''}
+      </div>
+      <div class="log-meta">
+        <div style="font-weight:600;color:var(--ink)">👤 ${e.tech}</div>
+        <div>${e.date}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════
+initApp();
+</script>
+</body>
+</html>
