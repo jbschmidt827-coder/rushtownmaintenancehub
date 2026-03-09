@@ -271,7 +271,7 @@ textarea { resize: vertical; min-height: 85px; }
 <body>
 
 <!-- Loading Screen -->
-<div class="loading-screen" id="loading-screen">
+<div class="loading-screen hidden" id="loading-screen">
   <div class="li">🐔</div>
   <h2>Rushtown Poultry</h2>
   <div class="spinner"></div>
@@ -802,18 +802,11 @@ function showApp() {
 }
 
 async function initApp() {
-  setMsg('Connecting to database...');
-
-  // Hard timeout — always show app after 8 seconds no matter what
-  const fallbackTimer = setTimeout(() => {
-    setMsg('Connected (offline mode)');
-    setSyncDot('live');
-    showApp();
-  }, 8000);
+  // Show app immediately — Firebase loads in background
+  showApp();
+  setSyncDot('live');
 
   try {
-    // Load work orders
-    setMsg('Loading work orders...');
     const woSnap = await getDocs(query(collection(db,'workOrders'), orderBy('ts','desc')));
     workOrders = [];
     woSnap.forEach(d => workOrders.push({...d.data(), _fbId: d.id}));
@@ -821,25 +814,18 @@ async function initApp() {
       woCounter = Math.max(...workOrders.map(w => parseInt(w.id.replace('WO-','')))) + 1;
     }
 
-    setMsg('Loading PM completions...');
     const pmSnap = await getDocs(collection(db,'pmCompletions'));
     pmComps = {};
     pmSnap.forEach(d => { pmComps[d.id] = d.data(); });
 
-    setMsg('Loading daily rounds...');
     await loadSWRounds();
-
-    setMsg('Loading parts inventory...');
     await loadParts();
 
-    setMsg('Loading activity log...');
     const logSnap = await getDocs(query(collection(db,'activityLog'), orderBy('ts','desc')));
     actLog = [];
     logSnap.forEach(d => actLog.push(d.data()));
 
-    clearTimeout(fallbackTimer);
-    setMsg('Connected!');
-    setSyncDot('live');
+    refreshCurrentPanel();
 
     // Real-time listeners
     onSnapshot(query(collection(db,'workOrders'), orderBy('ts','desc')), snap => {
@@ -863,14 +849,8 @@ async function initApp() {
       if (document.getElementById('panel-log').classList.contains('active')) renderLog();
     });
 
-    setTimeout(() => { showApp(); }, 600);
-
   } catch(err) {
-    clearTimeout(fallbackTimer);
-    setMsg('Error: ' + err.message + ' — retrying...');
-    console.error(err);
-    // Still show the app after error so it's not permanently stuck
-    setTimeout(() => { showApp(); }, 2000);
+    console.error('Firebase error:', err);
   }
 }
 
