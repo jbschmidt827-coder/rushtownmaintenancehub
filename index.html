@@ -189,6 +189,10 @@ textarea { resize: vertical; min-height: 85px; }
 .farm-stat.red .n { color: var(--red); }
 .farm-stat.amber .n { color: var(--amber); }
 .recent-hdr { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: #fff; letter-spacing: 2px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid var(--green-mid); margin-top: 20px; }
+
+.fab { position: fixed; bottom: 24px; right: 24px; z-index: 250; background: var(--green-mid); color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 17px; letter-spacing: 2px; padding: 15px 22px; border-radius: 50px; border: none; cursor: pointer; box-shadow: 0 6px 24px rgba(0,0,0,0.35); transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+.fab:hover { background: var(--green-bright); transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+@media(max-width:500px){ .fab { bottom: 16px; right: 16px; font-size: 14px; padding: 13px 18px; } }
 </style>
 </head>
 <body>
@@ -250,9 +254,6 @@ textarea { resize: vertical; min-height: 85px; }
       <button class="pill" onclick="woStat('completed',this)">Completed</button>
     </div>
     <div class="card-list" id="wo-list"></div>
-    <div style="margin-top:18px;text-align:center;">
-      <button class="btn-new" onclick="go('wo-submit')" style="padding:13px 30px;font-size:13px;">➕ Submit New Work Order</button>
-    </div>
   </div>
   <div id="wo-submit-section" style="display:none;">
     <div class="form-wrap">
@@ -440,6 +441,9 @@ textarea { resize: vertical; min-height: 85px; }
   </div>
 </div>
 
+<!-- Floating Submit Button -->
+<button class="fab" id="fab-btn" onclick="go('wo-submit')">➕ NEW WORK ORDER</button>
+
 <script>
 // ═══════════════════════════════════════════
 // FIREBASE INIT (compat — no type=module)
@@ -624,12 +628,15 @@ function refreshCurrentPanel() {
 // NAVIGATION — plain global function
 // ═══════════════════════════════════════════
 function go(tab) {
+  const fab = document.getElementById('fab-btn');
   if (tab === 'wo-submit') {
     go('wo');
     document.getElementById('wo-dash-section').style.display = 'none';
     document.getElementById('wo-submit-section').style.display = 'block';
+    fab.style.display = 'none';
     return;
   }
+  fab.style.display = '';
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   const pm = {dash:'panel-dash', wo:'panel-wo', pm:'panel-pm', log:'panel-log'};
@@ -787,8 +794,15 @@ async function cycleWO(fbId) {
   setSyncDot('live');
 }
 
+const SITE_TECHS = {
+  Hegins:   ['Adam','Nathan','Carlos','Randy','Steve'],
+  Danville: ['Josh','Cain','Celia','Deb','Steve'],
+};
+
 function loadHouses() {
   const farm = document.getElementById('wo-farm').value;
+
+  // Update house dropdown
   const sel = document.getElementById('wo-house');
   sel.innerHTML = '<option value="">— Select House / Area —</option>';
   const hg = document.createElement('optgroup'); hg.label = 'Houses';
@@ -796,6 +810,18 @@ function loadHouses() {
   const ag = document.createElement('optgroup'); ag.label = 'Common Areas';
   AREAS.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;ag.appendChild(o);});
   sel.appendChild(hg); sel.appendChild(ag);
+
+  // Update tech dropdown to show only this site's crew
+  const techSel = document.getElementById('wo-tech');
+  const currentTech = techSel.value;
+  techSel.innerHTML = '<option value="">— Select Tech —</option>';
+  const techs = farm ? SITE_TECHS[farm] : ['Adam','Nathan','Carlos','Randy','Josh','Cain','Celia','Deb','Steve'];
+  techs.forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    if (name === currentTech) o.selected = true;
+    techSel.appendChild(o);
+  });
 }
 
 function setPri(el) {
@@ -857,6 +883,7 @@ async function submitWO() {
 }
 
 function afterWOSubmit() {
+  document.getElementById('fab-btn').style.display = '';
   document.getElementById('wo-form-card').style.display='';
   document.getElementById('wo-success').classList.remove('show');
   ['wo-tech','wo-farm','wo-problem'].forEach(id=>document.getElementById(id).value='');
