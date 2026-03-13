@@ -123,6 +123,10 @@ body { font-family: 'IBM Plex Sans', sans-serif; background: var(--dark); min-he
 .t-water { background: #e1f0ff; color: #004085; }
 .t-feed { background: #fff8e1; color: #856404; }
 .t-manure { background: #fff0e1; color: #7a3800; }
+.t-egg { background: #f0fff0; color: #1a5c1a; }
+.t-building { background: #f5f0ff; color: #4a0080; }
+.t-lubing { background: #fff5e0; color: #7a4a00; }
+.t-lubing { background: #f0fff0; color: #1a5c1a; }
 .t-loc { background: var(--green-pale); color: var(--green-mid); }
 .pm-body p { font-size: 12px; color: var(--muted); }
 .pm-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 108px; }
@@ -328,6 +332,18 @@ textarea { resize: vertical; min-height: 85px; }
                 <option>Electrical — Alarm Failure</option><option>Electrical — Generator Issue</option>
                 <option>Electrical — Controller / Timer Fault</option><option>Electrical — Other</option>
               </optgroup>
+              <optgroup label="🥚 Egg Collection">
+                <option>Egg Collection — Belt Jam</option><option>Egg Collection — Belt Fraying / Damage</option>
+                <option>Egg Collection — Belt Tracking Off</option><option>Egg Collection — Chain Issue</option>
+                <option>Egg Collection — Niagara Belt Problem</option><option>Egg Collection — Motor / Gearbox</option>
+                <option>Egg Collection — Other</option>
+              </optgroup>
+              <optgroup label="🛢️ Lubing System">
+                <option>Lubing — Oiler Not Dripping</option><option>Lubing — Chain Not Oiled</option>
+                <option>Lubing — Oil Reservoir Empty</option><option>Lubing — Brush Worn / Dirty</option>
+                <option>Lubing — Chain Loose / Missing Rods</option><option>Lubing — Rod Counter Sprocket Wear</option>
+                <option>Lubing — Drive Roller Issue</option><option>Lubing — Other</option>
+              </optgroup>
               <optgroup label="🏗️ Structure / Other">
                 <option>Structure — Door / Curtain Damage</option><option>Structure — Roof / Wall Leak</option>
                 <option>Structure — Lighting</option><option>Vehicle / Equipment</option><option>Other — Not Listed</option>
@@ -495,8 +511,8 @@ const FREQ = {
   quarterly: {label:'Quarterly', icon:'🟠', days:90},
   annual:    {label:'Annual',    icon:'🔴', days:365},
 };
-const SYS_TAG  = {Manure:'t-manure','Egg Collectors':'t-feed',Feeders:'t-feed',Ventilation:'t-vent',Water:'t-water',Building:'t-vent',Alarms:'t-water'};
-const SYS_ICON = {Manure:'♻️','Egg Collectors':'🥚',Feeders:'🌾',Ventilation:'💨',Water:'💧',Building:'🏚️',Alarms:'🚨'};
+const SYS_TAG  = {Manure:'t-manure','Egg Collectors':'t-feed',Feeders:'t-feed',Ventilation:'t-vent',Water:'t-water',Building:'t-vent',Alarms:'t-water',Lubing:'t-lubing'};
+const SYS_ICON = {Manure:'♻️','Egg Collectors':'🥚',Feeders:'🌾',Ventilation:'💨',Water:'💧',Building:'🏚️',Alarms:'🚨',Lubing:'🛢️'};
 
 const PM_DEFS = [
   // ── MANURE SYSTEM ─────────────────────────────────────────
@@ -583,6 +599,16 @@ const PM_DEFS = [
   // ── ALARMS ────────────────────────────────────────────────
   {id:'al1',sys:'Alarms',task:'Check all thermostats and alarm functions',freq:'annual',hrs:1.0},
   {id:'al2',sys:'Alarms',task:'Check all sirens are working',freq:'annual',hrs:0.5},
+
+  // ── LUBING ───────────────────────────────────────────────
+  {id:'lb1',sys:'Lubing',task:'Check oiler drips for proper operation',freq:'daily',hrs:0.25},
+  {id:'lb2',sys:'Lubing',task:'Mark oil reservoirs to make sure oil is being used and traveling through line',freq:'daily',hrs:0.25},
+  {id:'lb3',sys:'Lubing',task:'Check tightness of chain at drive roller',freq:'daily',hrs:0.25},
+  {id:'lb4',sys:'Lubing',task:'Make sure chain is oiled',freq:'daily',hrs:0.25},
+  {id:'lb5',sys:'Lubing',task:'Clean lubing brushes at drive roller',freq:'daily',hrs:0.25},
+  {id:'lb6',sys:'Lubing',task:'Check chain for any missing rods and replace',freq:'daily',hrs:0.5},
+  {id:'lb7',sys:'Lubing',task:'Check rod counter sprockets for wear and adjustment',freq:'daily',hrs:0.25},
+  {id:'lb8',sys:'Lubing',task:'Fill oil reservoirs as needed',freq:'daily',hrs:0.25},
 ];
 
 const ALL_PM = [];
