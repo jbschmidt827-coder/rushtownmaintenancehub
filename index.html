@@ -471,54 +471,92 @@ const FREQ = {
   quarterly: {label:'Quarterly', icon:'🟠', days:90},
   annual:    {label:'Annual',    icon:'🔴', days:365},
 };
-const SYS_TAG  = {Ventilation:'t-vent', Water:'t-water', Feed:'t-feed', Manure:'t-manure'};
-const SYS_ICON = {Ventilation:'💨', Water:'💧', Feed:'🌾', Manure:'♻️'};
+const SYS_TAG  = {Manure:'t-manure','Egg Collectors':'t-feed',Feeders:'t-feed',Ventilation:'t-vent',Water:'t-water',Building:'t-vent',Alarms:'t-water'};
+const SYS_ICON = {Manure:'♻️','Egg Collectors':'🥚',Feeders:'🌾',Ventilation:'💨',Water:'💧',Building:'🏚️',Alarms:'🚨'};
 
 const PM_DEFS = [
-  {id:'v1',sys:'Ventilation',task:'Walk-through: verify all fans running, check for noise/vibration, confirm temp matches setpoint',freq:'daily',hrs:0.5},
-  {id:'v2',sys:'Ventilation',task:'Check inlet / curtain position matches ventilation controller settings',freq:'daily',hrs:0.25},
-  {id:'v3',sys:'Ventilation',task:'Inspect fan belts for wear, cracking, or slippage — tighten or replace as needed',freq:'weekly',hrs:1.0},
-  {id:'v4',sys:'Ventilation',task:'Clean fan blades and shutters of dust/debris',freq:'weekly',hrs:1.5},
-  {id:'v5',sys:'Ventilation',task:'Lubricate fan motor bearings per manufacturer spec',freq:'weekly',hrs:0.5},
-  {id:'v6',sys:'Ventilation',task:'Test all tunnel fans at full speed — verify CFM output feels normal',freq:'monthly',hrs:1.0},
-  {id:'v7',sys:'Ventilation',task:'Inspect ventilation controller settings, backup power, and alarm function',freq:'monthly',hrs:0.5},
-  {id:'v8',sys:'Ventilation',task:'Check and clean all air inlets — remove buildup on baffles and seals',freq:'monthly',hrs:2.0},
-  {id:'v9',sys:'Ventilation',task:'Replace fan belts on all houses (preventive replacement)',freq:'quarterly',hrs:3.0},
-  {id:'v10',sys:'Ventilation',task:'Full motor inspection — check amp draw, heat, mounts, and wiring',freq:'quarterly',hrs:2.0},
-  {id:'v11',sys:'Ventilation',task:'Full fan teardown and deep clean — motors, shutters, guards, housings',freq:'annual',hrs:4.0},
-  {id:'v12',sys:'Ventilation',task:'Calibrate ventilation controller and all temp/humidity sensors',freq:'annual',hrs:2.0},
-  {id:'w1',sys:'Water',task:'Check water pressure at drinker lines — verify normal flow at nipples',freq:'daily',hrs:0.25},
-  {id:'w2',sys:'Water',task:'Walk drinker lines — look for leaks, clogged nipples, wet litter spots',freq:'daily',hrs:0.5},
-  {id:'w3',sys:'Water',task:'Flush and sanitize drinker lines — use approved flush protocol',freq:'weekly',hrs:1.0},
-  {id:'w4',sys:'Water',task:'Check pump pressure, run time, and fault lights at well house',freq:'weekly',hrs:0.5},
-  {id:'w5',sys:'Water',task:'Inspect regulator pressure settings — adjust if out of spec',freq:'weekly',hrs:0.5},
-  {id:'w6',sys:'Water',task:'Inspect and replace sediment pre-filters — check differential pressure',freq:'monthly',hrs:1.0},
-  {id:'w7',sys:'Water',task:'Inspect all water line connections, clamps, and fittings for slow leaks',freq:'monthly',hrs:1.5},
-  {id:'w8',sys:'Water',task:'Test water sample for pH and chlorine levels — log results',freq:'monthly',hrs:0.5},
-  {id:'w9',sys:'Water',task:'Full drinker line acid flush — remove biofilm and mineral scale',freq:'quarterly',hrs:2.0},
-  {id:'w10',sys:'Water',task:'Inspect pump motor, wiring, pressure tank, and check valve',freq:'quarterly',hrs:1.5},
-  {id:'w11',sys:'Water',task:'Replace drinker nipples and end caps — full line inspection',freq:'annual',hrs:4.0},
-  {id:'w12',sys:'Water',task:'Full pump service — impeller, seals, pressure switch, and tank bladder',freq:'annual',hrs:3.0},
-  {id:'f1',sys:'Feed',task:'Verify auger and feed lines running — check hopper levels and flow',freq:'daily',hrs:0.25},
-  {id:'f2',sys:'Feed',task:'Walk feed pans — confirm even distribution, no bridging in hoppers',freq:'daily',hrs:0.5},
-  {id:'f3',sys:'Feed',task:'Inspect auger flighting for wear — check for unusual noise under load',freq:'weekly',hrs:1.0},
-  {id:'f4',sys:'Feed',task:'Lubricate auger bearings and drive chain per manufacturer spec',freq:'weekly',hrs:0.75},
-  {id:'f5',sys:'Feed',task:'Check drive chain tension and sprocket alignment',freq:'weekly',hrs:0.5},
-  {id:'f6',sys:'Feed',task:'Inspect motor mounts, wiring, and overload protection — check amp draw',freq:'monthly',hrs:1.0},
-  {id:'f7',sys:'Feed',task:'Clean out feed pans and lines — remove stale/caked feed buildup',freq:'monthly',hrs:2.0},
-  {id:'f8',sys:'Feed',task:'Inspect all feed pan height settings — adjust for bird age/size',freq:'monthly',hrs:1.0},
-  {id:'f9',sys:'Feed',task:'Full auger inspection — flighting, tube, and motor coupling',freq:'quarterly',hrs:2.0},
-  {id:'f10',sys:'Feed',task:'Replace drive chain if worn — inspect sprockets for hooked teeth',freq:'quarterly',hrs:1.5},
-  {id:'f11',sys:'Feed',task:'Full system cleanout between flocks — disinfect hoppers and lines',freq:'annual',hrs:6.0},
-  {id:'f12',sys:'Feed',task:'Replace auger flighting and worn feed pans — document per house',freq:'annual',hrs:4.0},
-  {id:'m1',sys:'Manure',task:'Check litter condition — look for wet spots, caking, ammonia smell',freq:'daily',hrs:0.5},
-  {id:'m2',sys:'Manure',task:'Stir or till wet litter areas — improve drying and air quality',freq:'weekly',hrs:1.5},
-  {id:'m3',sys:'Manure',task:'Check ammonia levels with test strips or monitor — log readings',freq:'weekly',hrs:0.5},
-  {id:'m4',sys:'Manure',task:'Inspect pit / crawl space for moisture intrusion or structural issues',freq:'monthly',hrs:1.0},
-  {id:'m5',sys:'Manure',task:'Apply litter treatment / acidifier as needed per flock schedule',freq:'monthly',hrs:2.0},
-  {id:'m6',sys:'Manure',task:'Full litter assessment — depth, moisture, pathogen load — log results',freq:'quarterly',hrs:1.0},
-  {id:'m7',sys:'Manure',task:'Full cleanout between flocks — remove, haul, and document litter',freq:'annual',hrs:8.0},
-  {id:'m8',sys:'Manure',task:'Inspect and clean pit ventilation / drainage — repair any damage',freq:'annual',hrs:3.0},
+  // ── MANURE SYSTEM ─────────────────────────────────────────
+  {id:'mn1',sys:'Manure',task:'Check manure drying fans are running',freq:'daily',hrs:0.25},
+  {id:'mn2',sys:'Manure',task:'Check manure belts — report any problems to supervisor',freq:'daily',hrs:0.25},
+  {id:'mn3',sys:'Manure',task:'Loosen plows and clean off manure after running',freq:'daily',hrs:0.5},
+  {id:'mn4',sys:'Manure',task:'Open all curtains after done running',freq:'daily',hrs:0.25},
+  {id:'mn5',sys:'Manure',task:'Clean trip switch on manure scrapers',freq:'daily',hrs:0.25},
+  {id:'mn6',sys:'Manure',task:'Clean manure in pit — must stay clean',freq:'weekly',hrs:1.0},
+  {id:'mn7',sys:'Manure',task:'Check auger rollers for buildup — clean if necessary',freq:'weekly',hrs:0.5},
+  {id:'mn8',sys:'Manure',task:'Check trip sensors on floor scrapers for proper operation',freq:'weekly',hrs:0.5},
+  {id:'mn9',sys:'Manure',task:'Clean screens on manure drying fans',freq:'weekly',hrs:0.5},
+  {id:'mn10',sys:'Manure',task:'Check tracking on pit belt',freq:'weekly',hrs:0.25},
+  {id:'mn11',sys:'Manure',task:'Check tracking on incline belt',freq:'weekly',hrs:0.25},
+  {id:'mn12',sys:'Manure',task:'Oil all chains on manure system',freq:'monthly',hrs:1.0},
+  {id:'mn13',sys:'Manure',task:'Check bearings on entire manure system — including pit and incline belt',freq:'monthly',hrs:1.0},
+  {id:'mn14',sys:'Manure',task:'Check chain tensioners',freq:'monthly',hrs:0.5},
+  {id:'mn15',sys:'Manure',task:'Check chain tension',freq:'monthly',hrs:0.5},
+  {id:'mn16',sys:'Manure',task:'Check and clean auger rollers and bushings',freq:'monthly',hrs:0.75},
+  {id:'mn17',sys:'Manure',task:'Oil all adjuster plates and bolts',freq:'monthly',hrs:0.5},
+  {id:'mn18',sys:'Manure',task:'Check plow gap for proper clearance — adjust if needed',freq:'monthly',hrs:0.5},
+  {id:'mn19',sys:'Manure',task:'Check pit belt condition',freq:'monthly',hrs:0.25},
+  {id:'mn20',sys:'Manure',task:'Check incline belt condition',freq:'monthly',hrs:0.25},
+  {id:'mn21',sys:'Manure',task:'Check V-belts on pit belt',freq:'monthly',hrs:0.25},
+  {id:'mn22',sys:'Manure',task:'Check V-belts on incline belt',freq:'monthly',hrs:0.25},
+  {id:'mn23',sys:'Manure',task:'Grease bearings on pit and incline belt',freq:'monthly',hrs:0.5},
+  {id:'mn24',sys:'Manure',task:'Blow out all motors and clean fan shrouds',freq:'monthly',hrs:1.0},
+  {id:'mn25',sys:'Manure',task:'Check oil in all gear boxes',freq:'monthly',hrs:0.5},
+  {id:'mn26',sys:'Manure',task:'Check cables on manure scrapers',freq:'monthly',hrs:0.5},
+  {id:'mn27',sys:'Manure',task:'Check pulleys on manure scrapers',freq:'monthly',hrs:0.5},
+  {id:'mn28',sys:'Manure',task:'Check and clean out holes in 2x6s on scraper system',freq:'monthly',hrs:0.5},
+  // ── EGG COLLECTORS ────────────────────────────────────────
+  {id:'ec1',sys:'Egg Collectors',task:'Check for egg jams',freq:'daily',hrs:0.25},
+  {id:'ec2',sys:'Egg Collectors',task:'Check white egg belts for fraying',freq:'daily',hrs:0.25},
+  {id:'ec3',sys:'Egg Collectors',task:'Check tracking on Niagara belts',freq:'daily',hrs:0.25},
+  {id:'ec4',sys:'Egg Collectors',task:'Check tension on egg belts',freq:'weekly',hrs:0.25},
+  {id:'ec5',sys:'Egg Collectors',task:'Oil all chains on egg collector system',freq:'monthly',hrs:0.75},
+  {id:'ec6',sys:'Egg Collectors',task:'Check bearings, shafts, and rollers on egg collector system',freq:'monthly',hrs:0.75},
+  {id:'ec7',sys:'Egg Collectors',task:'Check chain tension on egg collectors — tighten when needed',freq:'monthly',hrs:0.5},
+  {id:'ec8',sys:'Egg Collectors',task:'Check Niagara belt for missing fingers',freq:'monthly',hrs:0.25},
+  {id:'ec9',sys:'Egg Collectors',task:'Clean Niagara belt if dirty',freq:'monthly',hrs:0.5},
+  {id:'ec10',sys:'Egg Collectors',task:'Check all egg belts and fingers — replace as necessary',freq:'monthly',hrs:0.5},
+  {id:'ec11',sys:'Egg Collectors',task:'Check egg belt tracking',freq:'monthly',hrs:0.25},
+  {id:'ec12',sys:'Egg Collectors',task:'Check gearbox oil',freq:'monthly',hrs:0.25},
+  {id:'ec13',sys:'Egg Collectors',task:'Clean manure scraper cables',freq:'monthly',hrs:0.5},
+  // ── FEEDERS ───────────────────────────────────────────────
+  {id:'fd1',sys:'Feeders',task:'Check all feeders are working',freq:'daily',hrs:0.25},
+  {id:'fd2',sys:'Feeders',task:'Check high flow chain tension',freq:'weekly',hrs:0.25},
+  {id:'fd3',sys:'Feeders',task:'Check paddles on high flow chain for excessive wear',freq:'weekly',hrs:0.25},
+  {id:'fd4',sys:'Feeders',task:'Check V-belts on feed bins',freq:'monthly',hrs:0.25},
+  {id:'fd5',sys:'Feeders',task:'Check all sprockets on feeder chain for wear',freq:'monthly',hrs:0.5},
+  {id:'fd6',sys:'Feeders',task:'Check and fill all oil cups — replace any missing cups or guards',freq:'monthly',hrs:0.5},
+  {id:'fd7',sys:'Feeders',task:'Repair feeder chain as needed',freq:'monthly',hrs:1.0},
+  {id:'fd8',sys:'Feeders',task:'Check feeder corners for wear',freq:'monthly',hrs:0.25},
+  {id:'fd9',sys:'Feeders',task:'Check gearbox oil — add if needed',freq:'monthly',hrs:0.25},
+  {id:'fd10',sys:'Feeders',task:'Check wear shoes',freq:'monthly',hrs:0.25},
+  {id:'fd11',sys:'Feeders',task:'Oil high flow feed system chain',freq:'monthly',hrs:0.5},
+  // ── VENTILATION ───────────────────────────────────────────
+  {id:'vn1',sys:'Ventilation',task:'Check proper operation of inletting',freq:'daily',hrs:0.25},
+  {id:'vn2',sys:'Ventilation',task:'Check manure fans are running',freq:'daily',hrs:0.25},
+  {id:'vn3',sys:'Ventilation',task:'Check operation of stir fans',freq:'weekly',hrs:0.25},
+  {id:'vn4',sys:'Ventilation',task:'Check inlets are closing and opening evenly',freq:'weekly',hrs:0.25},
+  {id:'vn5',sys:'Ventilation',task:'Check operation of updraft fans',freq:'weekly',hrs:0.25},
+  {id:'vn6',sys:'Ventilation',task:'Check belt condition on all fans',freq:'monthly',hrs:0.5},
+  {id:'vn7',sys:'Ventilation',task:'Check all fans are operating',freq:'monthly',hrs:0.5},
+  {id:'vn8',sys:'Ventilation',task:'Check all rods and chains on inlet shutters',freq:'monthly',hrs:0.5},
+  {id:'vn9',sys:'Ventilation',task:'Check attic boards',freq:'monthly',hrs:0.25},
+  {id:'vn10',sys:'Ventilation',task:'Check equalizer — lube all parts',freq:'monthly',hrs:0.5},
+  {id:'vn11',sys:'Ventilation',task:'Oil equalizer chain and rails',freq:'monthly',hrs:0.5},
+  {id:'vn12',sys:'Ventilation',task:'Check cables on equalizer',freq:'monthly',hrs:0.25},
+  {id:'vn13',sys:'Ventilation',task:'Grease all bearings on pit fans',freq:'monthly',hrs:0.5},
+  {id:'vn14',sys:'Ventilation',task:'Check operation of pit fans',freq:'monthly',hrs:0.25},
+  {id:'vn15',sys:'Ventilation',task:'Replace belts on pit fans',freq:'annual',hrs:2.0},
+  // ── WATER ─────────────────────────────────────────────────
+  {id:'wt1',sys:'Water',task:'Check water readings for normal consumption',freq:'daily',hrs:0.25},
+  {id:'wt2',sys:'Water',task:'Check for water leaks',freq:'daily',hrs:0.25},
+  // ── BUILDING ──────────────────────────────────────────────
+  {id:'bd1',sys:'Building',task:'Check foundation for any holes — mark for repair',freq:'monthly',hrs:0.5},
+  {id:'bd2',sys:'Building',task:'Check structure for any damage — document where repairs are needed',freq:'monthly',hrs:0.5},
+  {id:'bd3',sys:'Building',task:'Check for any water leaks and repair',freq:'monthly',hrs:0.5},
+  {id:'bd4',sys:'Building',task:'Check walkway boards for any repairs needed',freq:'monthly',hrs:0.25},
+  // ── ALARMS ────────────────────────────────────────────────
+  {id:'al1',sys:'Alarms',task:'Check all thermostats and alarm functions',freq:'annual',hrs:1.0},
+  {id:'al2',sys:'Alarms',task:'Check all sirens are working',freq:'annual',hrs:0.5},
 ];
 
 const ALL_PM = [];
@@ -792,7 +830,7 @@ async function cycleWO(fbId) {
 }
 
 const SITE_TECHS = {
-  Hegins:   ['Adam','Nathan','Carlos','Randy','Steve'],
+  Hegins:   ['Nathan','Adam','Carlos','Randy','Steve'],
   Danville: ['Josh','Cain','Celia','Deb','Steve'],
 };
 
@@ -859,7 +897,7 @@ async function submitWO() {
     down: document.getElementById('wo-down').value,
     status: 'open',
     notes: document.getElementById('wo-notes').value,
-    submitted: new Date().toLocaleDateString(),
+    submitted: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
     ts: Date.now()
   };
 
@@ -1016,7 +1054,7 @@ async function confirmPM() {
       desc:`Follow-up repair needed from PM: ${t.task}. Notes: ${notes}`,
       priority:'high', parts, down:'no', status:'open',
       notes:'Auto-generated from PM task',
-      submitted:new Date().toLocaleDateString(), ts:Date.now()
+      submitted:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), ts:Date.now()
     };
     await db.collection('workOrders').add(wo);
     await db.collection('activityLog').add({
