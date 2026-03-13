@@ -81,6 +81,15 @@ body { font-family: 'IBM Plex Sans', sans-serif; background: var(--dark); min-he
 
 .wo-card { background: var(--cream); border-radius: 10px; padding: 15px 17px; display: grid; grid-template-columns: 76px 1fr auto; gap: 13px; align-items: start; box-shadow: 0 2px 10px rgba(0,0,0,0.18); border-left: 5px solid var(--border); cursor: pointer; transition: transform 0.15s; }
 .wo-card:hover { transform: translateX(3px); }
+.confirm-modal { position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:400;display:flex;align-items:center;justify-content:center;padding:20px; }
+.confirm-box { background:var(--cream);border-radius:14px;padding:24px 22px;max-width:340px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.4); }
+.confirm-box h4 { font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--green-mid);letter-spacing:2px;margin-bottom:6px; }
+.confirm-box p { font-size:13px;color:var(--ink);margin-bottom:18px;line-height:1.5; }
+.confirm-box .status-arrow { display:flex;align-items:center;gap:10px;margin-bottom:18px;font-family:'IBM Plex Mono',monospace;font-size:12px; }
+.confirm-btns { display:flex;gap:10px; }
+.confirm-btns button { flex:1;padding:11px;border:none;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;cursor:pointer; }
+.confirm-yes { background:var(--green-mid);color:#fff; }
+.confirm-no  { background:#e8e8e8;color:var(--ink); }
 .wo-card.urgent { border-left-color: var(--red); }
 .wo-card.high { border-left-color: var(--amber); }
 .wo-card.routine { border-left-color: var(--green-bright); }
@@ -238,7 +247,7 @@ textarea { resize: vertical; min-height: 85px; }
 <div class="panel" id="panel-wo">
   <div id="wo-dash-section">
     <div class="section-title">Work Orders</div>
-    <div class="section-sub">Tap any card to cycle status · Open → In Progress → Completed → On Hold</div>
+    <div class="section-sub">Tap any card to update status — confirmation required</div>
     <div class="stats-grid g5" id="wo-stats"></div>
     <div class="pill-bar" id="wo-loc-bar">
       <button class="loc-pill active" onclick="woLoc('all',this)">All Locations</button>
@@ -408,6 +417,23 @@ textarea { resize: vertical; min-height: 85px; }
 
 </main>
 
+<!-- WO Status Confirm Modal -->
+<div class="confirm-modal" id="wo-confirm" style="display:none;">
+  <div class="confirm-box">
+    <h4>Update Status?</h4>
+    <p id="confirm-wo-info" style="font-size:12px;color:var(--muted);margin-bottom:10px;font-family:'IBM Plex Mono',monospace;"></p>
+    <div class="status-arrow">
+      <span class="badge" id="confirm-from-badge"></span>
+      <span style="font-size:18px;">→</span>
+      <span class="badge" id="confirm-to-badge"></span>
+    </div>
+    <div class="confirm-btns">
+      <button class="confirm-no" onclick="closeWOConfirm()">✕ Cancel</button>
+      <button class="confirm-yes" onclick="confirmWOCycle()">✓ Confirm</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="pm-modal">
   <div class="modal">
     <h3>Mark Task Complete</h3>
@@ -416,9 +442,6 @@ textarea { resize: vertical; min-height: 85px; }
       <label>Completed By <span class="req">*</span></label>
       <select id="modal-tech">
         <option value="">— Select Tech —</option>
-        <option>Adam</option><option>Nathan</option><option>Carlos</option><option>Randy</option>
-        <option>Josh</option><option>Cain</option><option>Celia</option><option>Deb</option>
-        <option>Steve</option>
       </select>
     </div>
     <div class="modal-field"><label>Date Completed</label><input type="date" id="modal-date"></div>
@@ -478,8 +501,10 @@ const PM_DEFS = [
   // ── MANURE SYSTEM ─────────────────────────────────────────
   {id:'mn1',sys:'Manure',task:'Check manure drying fans are running',freq:'daily',hrs:0.25},
   {id:'mn2',sys:'Manure',task:'Check manure belts — report any problems to supervisor',freq:'daily',hrs:0.25},
-  {id:'mn3',sys:'Manure',task:'Loosen plows and clean off manure after running',freq:'daily',hrs:0.5},
-  {id:'mn4',sys:'Manure',task:'Open all curtains after done running',freq:'daily',hrs:0.25},
+  {id:'mnr_h',sys:'Manure',task:'Run manure belts — Houses 4, 5, 6, 7, 8 (2.25 hrs per house)',freq:'daily',hrs:11.25, farms:['Hegins']},
+  {id:'mnr_d',sys:'Manure',task:'Run manure belts — all 5 houses (2.25 hrs per house)',freq:'daily',hrs:11.25, farms:['Danville']},
+  {id:'mn3',sys:'Manure',task:'Loosen plows and clean off manure after running',freq:'daily',hrs:0.5, farms:['Hegins']},
+  {id:'mn4',sys:'Manure',task:'Open all curtains after done running',freq:'daily',hrs:0.25, farms:['Hegins']},
   {id:'mn5',sys:'Manure',task:'Clean trip switch on manure scrapers',freq:'daily',hrs:0.25},
   {id:'mn6',sys:'Manure',task:'Clean manure in pit — must stay clean',freq:'weekly',hrs:1.0},
   {id:'mn7',sys:'Manure',task:'Check auger rollers for buildup — clean if necessary',freq:'weekly',hrs:0.5},
@@ -562,6 +587,7 @@ const PM_DEFS = [
 const ALL_PM = [];
 for (const farm of ['Hegins','Danville']) {
   for (const def of PM_DEFS) {
+    if (def.farms && !def.farms.includes(farm)) continue;
     ALL_PM.push({id:`${farm}-${def.id}`, defId:def.id, farm, sys:def.sys, task:def.task, freq:def.freq, hrs:def.hrs});
   }
 }
@@ -819,13 +845,38 @@ function woCardHtml(wo) {
   </div>`;
 }
 
-async function cycleWO(fbId) {
+let pendingCycleFbId = null;
+
+function cycleWO(fbId) {
   const wo = workOrders.find(w=>w._fbId===fbId);
   if (!wo) return;
   const cycle = ['open','in-progress','completed','on-hold'];
   const newStatus = cycle[(cycle.indexOf(wo.status)+1) % cycle.length];
+  pendingCycleFbId = fbId;
+
+  const fmtS = s => s.replace('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
+  document.getElementById('confirm-wo-info').textContent = `${wo.id} · ${wo.farm} · ${wo.house}`;
+  document.getElementById('confirm-from-badge').textContent = fmtS(wo.status);
+  document.getElementById('confirm-from-badge').className = `badge ${wo.status}`;
+  document.getElementById('confirm-to-badge').textContent = fmtS(newStatus);
+  document.getElementById('confirm-to-badge').className = `badge ${newStatus}`;
+  document.getElementById('wo-confirm').style.display = 'flex';
+}
+
+function closeWOConfirm() {
+  document.getElementById('wo-confirm').style.display = 'none';
+  pendingCycleFbId = null;
+}
+
+async function confirmWOCycle() {
+  if (!pendingCycleFbId) return;
+  const wo = workOrders.find(w=>w._fbId===pendingCycleFbId);
+  if (!wo) return;
+  const cycle = ['open','in-progress','completed','on-hold'];
+  const newStatus = cycle[(cycle.indexOf(wo.status)+1) % cycle.length];
+  closeWOConfirm();
   setSyncDot('saving');
-  await db.collection('workOrders').doc(fbId).update({status: newStatus});
+  await db.collection('workOrders').doc(wo._fbId).update({status: newStatus});
   setSyncDot('live');
 }
 
@@ -1015,10 +1066,17 @@ function openPMModal(id) {
   const t=ALL_PM.find(x=>x.id===id);
   document.getElementById('modal-desc').textContent=`${t.farm} · ${SYS_ICON[t.sys]} ${t.sys} · ${FREQ[t.freq].label} — ${t.task}`;
   document.getElementById('modal-date').value=todayStr;
-  document.getElementById('modal-tech').value='';
   document.getElementById('modal-parts').value='';
   document.getElementById('modal-notes').value='';
   document.getElementById('modal-gen-wo').value='no';
+
+  // Filter techs by farm
+  const techSel = document.getElementById('modal-tech');
+  techSel.innerHTML = '<option value="">— Select Tech —</option>';
+  (SITE_TECHS[t.farm]||[]).forEach(name=>{
+    const o=document.createElement('option'); o.value=name; o.textContent=name; techSel.appendChild(o);
+  });
+
   document.getElementById('pm-modal').classList.add('open');
 }
 
