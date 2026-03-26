@@ -6628,16 +6628,36 @@ async function submitBarnWalk() {
   BARN_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
   if (mortCount) _todayMortTotal += mortCount;
 
-  if (flags.length > 0) {
+  // Map each flag to a problem category and priority
+  const flagProblemMap = {
+    'Mortality found':            {problem:'Manure System',      priority:'high'},
+    'Mortality not removed':      {problem:'Manure System',      priority:'urgent'},
+    'Manure dryers off':          {problem:'Manure System',      priority:'high'},
+    'Manure belts not running':   {problem:'Manure System',      priority:'high'},
+    'Poor feathering':            {problem:'Building / Structure',priority:'normal'},
+    'House doors open':           {problem:'Building / Structure',priority:'high'},
+    'Loose birds':                {problem:'Building / Structure',priority:'high'},
+    'Poor air quality':           {problem:'Ventilation / Fans', priority:'urgent'},
+    'Feeders empty':              {problem:'Feed System',        priority:'urgent'},
+    'Water pressure out of range':{problem:'Watering System',    priority:'urgent'},
+    'Egg belts dirty':            {problem:'Egg Collection',     priority:'normal'},
+    'Rodents present':            {problem:'Building / Structure',priority:'high'},
+  };
+  const submitted = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const woDate    = new Date().toISOString().slice(0,10);
+  for (const flag of flags) {
     try {
+      const mapKey = Object.keys(flagProblemMap).find(k => flag.startsWith(k)) || flag;
+      const {problem, priority} = flagProblemMap[mapKey] || {problem:'Other',priority:'high'};
       const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
-      woCounter = (woCounter||900) + 1;
+      woCounter = (woCounter || 900) + 1;
       await db.collection('workOrders').add({
-        id: woId, farm: _bwFarm, house: String(_bwHouse), system: 'Production',
-        desc: 'Daily Check Flag — ' + flags.join('; '), priority: 'high', status: 'open',
-        tech: employee, notes: 'Auto-created from daily check by ' + employee,
-        submitted: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-        ts: Date.now(), date: new Date().toISOString().slice(0,10)
+        id: woId, farm: _bwFarm, house: String(_bwHouse),
+        problem, priority, status: 'open',
+        desc: flag,
+        tech: employee,
+        notes: 'Auto-created from employee daily check — ' + _bwFarm + ' Barn ' + _bwHouse,
+        submitted, date: woDate, ts: Date.now()
       });
     } catch(e) { console.error(e); }
   }
