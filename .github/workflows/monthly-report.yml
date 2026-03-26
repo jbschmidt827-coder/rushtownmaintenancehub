@@ -1,0 +1,26 @@
+name: Monthly Report
+
+on:
+  schedule:
+    - cron: '0 11 1 * *'   # 6:00 AM EST on the 1st of each month
+  workflow_dispatch:
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r reports/requirements.txt
+
+      - name: Run monthly report
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+        run: python reports/generate_report.py --type monthly

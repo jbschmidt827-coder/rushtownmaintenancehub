@@ -1,0 +1,26 @@
+name: Daily Report
+
+on:
+  schedule:
+    - cron: '0 11 * * *'   # 6:00 AM EST (UTC-5)
+  workflow_dispatch:        # allow manual run
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r reports/requirements.txt
+
+      - name: Run daily report
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+        run: python reports/generate_report.py --type daily
