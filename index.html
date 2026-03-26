@@ -899,15 +899,11 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <button class="bw-yn-btn" id="bw-mort-no"  onclick="bwSet('mort','no')">✅ NO</button>
       </div>
     </div>
-    <div style="margin-bottom:12px;">
-      <div class="bw-row-label">Foot Pan status</div>
-      <div class="bw-3-row">
-        <button class="bw-yn-btn" id="bw-footpan-ok"      onclick="bwSet('footpan','ok')">✅ OK</button>
-        <button class="bw-yn-btn" id="bw-footpan-clean"   onclick="bwSet('footpan','clean')">⚠️ Needs Cleaning</button>
-        <button class="bw-yn-btn" id="bw-footpan-replace" onclick="bwSet('footpan','replace')">❌ Needs Replacing</button>
-      </div>
+    <div id="bw-mort-count-row" style="display:none;">
+      <div class="bw-row-label">How many?</div>
+      <input type="number" id="bw-mort-count" class="bw-input" placeholder="Enter count" min="1">
     </div>
-    <div>
+    <div style="margin-top:12px;">
       <div class="bw-row-label">All mortality removed?</div>
       <div class="bw-yn-row">
         <button class="bw-yn-btn" id="bw-mortrem-yes" onclick="bwSet('mortrem','yes')">✅ YES</button>
@@ -948,6 +944,10 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <button class="bw-yn-btn" id="bw-loose-no"  onclick="bwSet('loose','no')">✅ NO</button>
       </div>
     </div>
+    <div id="bw-loose-count-row" style="display:none;margin-top:12px;">
+      <div class="bw-row-label">How many loose birds?</div>
+      <input type="number" id="bw-loose-count" class="bw-input" placeholder="Enter count" min="1">
+    </div>
   </div>
 
   <!-- Air & Environment -->
@@ -960,19 +960,9 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <button class="bw-yn-btn" id="bw-air-poor" onclick="bwSet('air','poor')">❌ Poor</button>
       </div>
     </div>
-    <div style="margin-bottom:12px;">
-      <div class="bw-row-label">Ammonia Level (ppm)</div>
-      <input type="number" id="bw-ammonia" class="bw-input" placeholder="e.g. 25">
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div>
-        <div class="bw-row-label">House Temp (°F)</div>
-        <input type="number" id="bw-temp" class="bw-input" placeholder="e.g. 72">
-      </div>
-      <div>
-        <div class="bw-row-label">Static Pressure</div>
-        <input type="number" id="bw-static" class="bw-input" step="0.01" placeholder="e.g. 0.10">
-      </div>
+    <div>
+      <div class="bw-row-label">House Temp (°F)</div>
+      <input type="number" id="bw-temp" class="bw-input" placeholder="e.g. 72">
     </div>
   </div>
 
@@ -6474,9 +6464,11 @@ function openBarnWalk(farm, house) {
   _bwFarm = farm; _bwHouse = house; _bwData = {};
   document.getElementById('bw-title').textContent = farm + ' — Barn ' + house;
   document.getElementById('bw-subtitle').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-  ['bw-employee','bw-notes','bw-ammonia','bw-temp','bw-static','bw-water-psi'].forEach(id => {
+  ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  document.getElementById('bw-mort-count-row').style.display = 'none';
+  document.getElementById('bw-loose-count-row').style.display = 'none';
   document.querySelectorAll('#barn-walk-modal .bw-yn-btn').forEach(b => b.className = 'bw-yn-btn');
   document.getElementById('bw-submit-btn').disabled = true;
   document.getElementById('barn-walk-modal').style.display = 'block';
@@ -6509,6 +6501,8 @@ function bwSet(key, val) {
   document.querySelectorAll(`#barn-walk-modal .bw-yn-btn[id^="bw-${key}-"]`).forEach(b => b.className = 'bw-yn-btn');
   const sel = document.getElementById(`bw-${key}-${val}`);
   if (sel) sel.className = 'bw-yn-btn ' + (badge[key]?.[val] || 'bw-sel');
+  if (key === 'mort')  document.getElementById('bw-mort-count-row').style.display  = val==='yes' ? 'block' : 'none';
+  if (key === 'loose') document.getElementById('bw-loose-count-row').style.display = val==='yes' ? 'block' : 'none';
   checkBWReady();
 }
 
@@ -6519,21 +6513,19 @@ function checkBWReady() {
 }
 
 async function submitBarnWalk() {
-  const employee = document.getElementById('bw-employee').value.trim();
-  const notes    = document.getElementById('bw-notes').value.trim();
-  const waterPSI = Number(document.getElementById('bw-water-psi').value) || 0;
-  const temp     = document.getElementById('bw-temp').value ? Number(document.getElementById('bw-temp').value) : null;
-  const staticP  = document.getElementById('bw-static').value ? Number(document.getElementById('bw-static').value) : null;
-  const ammonia  = document.getElementById('bw-ammonia').value ? Number(document.getElementById('bw-ammonia').value) : null;
+  const employee   = document.getElementById('bw-employee').value.trim();
+  const notes      = document.getElementById('bw-notes').value.trim();
+  const waterPSI   = Number(document.getElementById('bw-water-psi').value) || 0;
+  const temp       = document.getElementById('bw-temp').value ? Number(document.getElementById('bw-temp').value) : null;
+  const mortCount  = document.getElementById('bw-mort-count').value ? Number(document.getElementById('bw-mort-count').value) : null;
+  const looseCount = document.getElementById('bw-loose-count').value ? Number(document.getElementById('bw-loose-count').value) : null;
 
   const flags = [];
-  if (_bwData.mort === 'yes')           flags.push('Mortality found');
-  if (_bwData.footpan === 'replace')    flags.push('Foot pan needs replacing');
-  if (_bwData.footpan === 'clean')      flags.push('Foot pan needs cleaning');
+  if (_bwData.mort === 'yes')           flags.push('Mortality found' + (mortCount ? ' (' + mortCount + ')' : ''));
   if (_bwData.mortrem === 'no')         flags.push('Mortality not removed');
   if (_bwData.dryers === 'off')         flags.push('Manure dryers off');
   if (_bwData.feather === 'poor')       flags.push('Poor feathering');
-  if (_bwData.loose === 'yes')          flags.push('Loose birds present');
+  if (_bwData.loose === 'yes')          flags.push('Loose birds' + (looseCount ? ' (' + looseCount + ')' : ''));
   if (_bwData.air === 'poor')           flags.push('Poor air quality');
   if (_bwData.feed === 'empty')         flags.push('Feeders empty');
   if (waterPSI < 10 || waterPSI > 60)  flags.push('Water pressure out of range (' + waterPSI + ' PSI)');
@@ -6543,11 +6535,11 @@ async function submitBarnWalk() {
 
   const record = {
     farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
-    waterPSI, temp, staticPressure: staticP, ammonia,
-    mort: _bwData.mort, footpan: _bwData.footpan, feather: _bwData.feather,
-    air: _bwData.air, feed: _bwData.feed, rodent: _bwData.rodent,
-    loose: _bwData.loose, dryers: _bwData.dryers, eggbelt: _bwData.eggbelt,
-    manure: _bwData.manure, stand: _bwData.stand, fly: _bwData.fly,
+    waterPSI, temp, mortCount, looseCount,
+    mort: _bwData.mort, feather: _bwData.feather, air: _bwData.air,
+    feed: _bwData.feed, rodent: _bwData.rodent, loose: _bwData.loose,
+    dryers: _bwData.dryers, eggbelt: _bwData.eggbelt, manure: _bwData.manure,
+    stand: _bwData.stand, fly: _bwData.fly, mortrem: _bwData.mortrem,
     date: new Date().toISOString().slice(0,10),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
     ts: Date.now()
