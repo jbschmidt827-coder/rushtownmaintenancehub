@@ -4885,6 +4885,7 @@ function enterApp(tab) {
   document.getElementById('landing-screen').style.display = 'none';
   document.getElementById('main-header').style.display = '';
   document.getElementById('main-content').style.display = '';
+  loadTodayStatus();
   if (tab) go(tab);
 }
 
@@ -4906,6 +4907,28 @@ function openProductionScreen() {
 var BARN_STATUS = {};
 var MORNING_STATUS = {};
 var _todayMortTotal = 0;
+
+async function loadTodayStatus() {
+  var today = new Date().toISOString().slice(0,10);
+  try {
+    var bSnap = await db.collection('barnWalks').where('date','==',today).get();
+    bSnap.forEach(function(d) {
+      var w = d.data();
+      var key = w.farm + '-' + w.house;
+      BARN_STATUS[key] = (w.flags && w.flags.length > 0) ? 'issue' : 'done';
+      if (w.mortCount) _todayMortTotal += Number(w.mortCount) || 0;
+    });
+  } catch(e) { console.warn('loadTodayStatus barnWalks:', e); }
+  try {
+    var mSnap = await db.collection('morningWalks').where('date','==',today).get();
+    mSnap.forEach(function(d) {
+      var w = d.data();
+      var key = w.farm + '-' + w.house;
+      MORNING_STATUS[key] = (w.flags && w.flags.length > 0) ? 'issue' : 'done';
+    });
+  } catch(e) { console.warn('loadTodayStatus morningWalks:', e); }
+  renderProdPanel();
+}
 var BARN_DATE = '';
 
 var FARMS = {
