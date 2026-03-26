@@ -1,6 +1,6 @@
 """
 Rushtown Poultry — Automated Report Generator
-Pulls from Firebase, generates Excel + PowerPoint, emails via SendGrid.
+Pulls from Firebase, generates Excel + PowerPoint, emails via Resend.
 Usage: python generate_report.py --type daily|weekly|monthly
 """
 
@@ -25,10 +25,7 @@ from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 
-import sendgrid
-from sendgrid.helpers.mail import (
-    Mail, Attachment, FileContent, FileName, FileType, Disposition
-)
+import resend
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 SEND_TO   = "jschmidt@rushtownpoultry.com"
@@ -475,8 +472,9 @@ def build_ppt(walks, m_walks, report_type: str, start_date: date, end_date: date
 
 
 # ── Email ──────────────────────────────────────────────────────────────────────
-def send_email(sg_key: str, report_type: str, period: str,
+def send_email(api_key: str, report_type: str, period: str,
                excel_bytes: bytes, ppt_bytes: bytes):
+    resend.api_key = api_key
     subject = f"Rushtown Poultry — {report_type.title()} Report ({period})"
     body = (f"<p>Good morning,</p>"
             f"<p>Please find attached the <strong>{report_type}</strong> production report "
@@ -487,28 +485,26 @@ def send_email(sg_key: str, report_type: str, period: str,
             f"</ul>"
             f"<p>This report was generated automatically by the Rushtown Poultry Operations Hub.</p>")
 
-    message = Mail(from_email=SEND_FROM, to_emails=SEND_TO,
-                   subject=subject, html_content=body)
-
     fname = period.replace(" ", "_").replace(",", "").replace("–", "to")
 
-    for data, name, mime in [
-        (excel_bytes, f"Rushtown_{report_type}_{fname}.xlsx",
-         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
-        (ppt_bytes,   f"Rushtown_{report_type}_{fname}.pptx",
-         "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
-    ]:
-        att = Attachment(
-            FileContent(base64.b64encode(data).decode()),
-            FileName(name),
-            FileType(mime),
-            Disposition("attachment"),
-        )
-        message.add_attachment(att)
-
-    sg = sendgrid.SendGridAPIClient(api_key=sg_key)
-    resp = sg.send(message)
-    print(f"Email sent: {resp.status_code}")
+    params = {
+        "from": "Rushtown Poultry <onboarding@resend.dev>",
+        "to": [SEND_TO],
+        "subject": subject,
+        "html": body,
+        "attachments": [
+            {
+                "filename": f"Rushtown_{report_type}_{fname}.xlsx",
+                "content": list(excel_bytes),
+            },
+            {
+                "filename": f"Rushtown_{report_type}_{fname}.pptx",
+                "content": list(ppt_bytes),
+            },
+        ],
+    }
+    resp = resend.Emails.send(params)
+    print(f"Email sent: {resp}")
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
@@ -517,9 +513,9 @@ def main():
     parser.add_argument("--type", choices=["daily", "weekly", "monthly"], required=True)
     args = parser.parse_args()
 
-    sg_key = os.environ.get("SENDGRID_API_KEY")
+    sg_key = os.environ.get("RESEND_API_KEY")
     if not sg_key:
-        sys.exit("Missing SENDGRID_API_KEY env var")
+        sys.exit("Missing RESEND_API_KEY env var")
 
     db = init_firebase()
     start_d, end_d = date_range(args.type)
