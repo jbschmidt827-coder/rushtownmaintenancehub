@@ -5066,6 +5066,8 @@ setInterval(function() {
   var today = new Date().toLocaleDateString('en-US');
   if (BARN_DATE && BARN_DATE !== today) {
     BARN_STATUS = {};
+    MORNING_STATUS = {};
+    _todayMortTotal = 0;
     BARN_DATE = today;
     renderBarnGrid();
   }
@@ -6578,9 +6580,11 @@ function bwSet(key, val) {
 }
 
 function checkBWReady() {
-  const emp = (document.getElementById('bw-employee')?.value || '').trim();
-  const psi = (document.getElementById('bw-water-psi')?.value || '').trim();
-  document.getElementById('bw-submit-btn').disabled = !(emp && psi);
+  const emp  = (document.getElementById('bw-employee')?.value || '').trim();
+  const psi  = (document.getElementById('bw-water-psi')?.value || '').trim();
+  const mort = _bwData.mort !== undefined;
+  const feed = _bwData.feed !== undefined;
+  document.getElementById('bw-submit-btn').disabled = !(emp && psi && mort && feed);
 }
 
 async function submitBarnWalk() {
@@ -6603,6 +6607,7 @@ async function submitBarnWalk() {
   if (_bwData.eggbelt === 'dirty')      flags.push('Egg belts dirty');
   if (_bwData.manure === 'stop')        flags.push('Manure belts not running');
   if (_bwData.rodent === 'yes')         flags.push('Rodents present');
+  if (_bwData.doors === 'open')         flags.push('House doors open');
 
   const record = {
     farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
@@ -6611,6 +6616,7 @@ async function submitBarnWalk() {
     feed: _bwData.feed, rodent: _bwData.rodent, loose: _bwData.loose,
     dryers: _bwData.dryers, eggbelt: _bwData.eggbelt, manure: _bwData.manure,
     stand: _bwData.stand, fly: _bwData.fly, mortrem: _bwData.mortrem,
+    doors: _bwData.doors,
     date: new Date().toISOString().slice(0,10),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
     ts: Date.now()
@@ -6629,7 +6635,8 @@ async function submitBarnWalk() {
       await db.collection('workOrders').add({
         id: woId, farm: _bwFarm, house: String(_bwHouse), system: 'Production',
         desc: 'Daily Check Flag — ' + flags.join('; '), priority: 'high', status: 'open',
-        tech: '', notes: 'Auto-created from daily check by ' + employee,
+        tech: employee, notes: 'Auto-created from daily check by ' + employee,
+        submitted: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
         ts: Date.now(), date: new Date().toISOString().slice(0,10)
       });
     } catch(e) { console.error(e); }
@@ -6715,7 +6722,8 @@ async function submitMorningWalk() {
       await db.collection('workOrders').add({
         id: woId, farm: _mwFarm, house: String(_mwHouse), system: 'Production',
         desc: 'Morning Walk Flag — ' + flags.join('; '), priority: 'high', status: 'open',
-        tech: '', notes: 'Auto-created from morning walk by ' + employee,
+        tech: employee, notes: 'Auto-created from morning walk by ' + employee,
+        submitted: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
         ts: Date.now(), date: new Date().toISOString().slice(0,10)
       });
     } catch(e) { console.error(e); }
