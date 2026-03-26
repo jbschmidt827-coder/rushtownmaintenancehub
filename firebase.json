@@ -1,0 +1,15 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "serve_local.ps1",
+      "**/*.ps1",
+      "**/*.exe",
+      "**/*.bat",
+      "**/*.sh"
+    ]
+  }
+}
