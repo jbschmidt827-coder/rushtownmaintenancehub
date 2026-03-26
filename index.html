@@ -2502,7 +2502,7 @@ function renderDash() {
         <div style="font-size:9px;color:#7a6a30;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Cases Packed</div>
       </div>
     </div>
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8a7040;">H: ${fmtNum(todayEggsHeg)} &nbsp;·&nbsp; D: ${fmtNum(todayEggsDan)}</div>`;
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8a7040;">${fmtNum(todayPacked)} cases packed today</div>`;
 
   // ── SHIPPING card ──
   const activeLoads = (typeof opsShipData!=='undefined'?opsShipData:[]).filter(r=>['in-process','staged','loaded'].includes(r.status)).length;
