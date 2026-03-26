@@ -822,23 +822,26 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <div id="prod-barn-grid" style="margin-top:4px;"></div>
 </div>
 
-<!-- ═══ BARN WALK MODAL ═══ -->
-<div id="barn-walk-modal" style="display:none;position:fixed;inset:0;background:#0d1f0d;z-index:600;overflow-y:auto;">
+<!-- ═══ BARN WALK MODAL (Employee Daily Check) ═══ -->
+<div id="barn-walk-modal" style="display:none;position:fixed;inset:0;background:#0a1a0a;z-index:600;overflow-y:auto;">
 <style>
 .bw-card{background:#1a3a1a;border:1px solid #2a5a2a;border-radius:14px;padding:18px 16px;margin-bottom:14px;}
 .bw-card-title{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#7ab07a;margin-bottom:12px;}
 .bw-input{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid #2a5a2a;background:#163016;color:#f0ead8;font-size:16px;font-family:'IBM Plex Sans',sans-serif;box-sizing:border-box;outline:none;}
 .bw-input:focus{border-color:#4caf50;}
 .bw-yn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.bw-yn-btn{padding:16px 10px;border-radius:10px;border:2px solid #2a5a2a;background:#163016;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;letter-spacing:.5px;}
+.bw-3-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.bw-yn-btn{padding:14px 8px;border-radius:10px;border:2px solid #2a5a2a;background:#163016;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;letter-spacing:.5px;}
 .bw-yn-btn.bw-yes-sel{background:#1a4a1a;border-color:#4caf50;color:#4caf50;}
 .bw-yn-btn.bw-no-sel{background:#3a1a1a;border-color:#e53e3e;color:#e53e3e;}
+.bw-yn-btn.bw-warn-sel{background:#3a2a00;border-color:#d69e2e;color:#d69e2e;}
+.bw-yn-btn.bw-sel{background:#1a2a3a;border-color:#4a90d9;color:#4a90d9;}
 .bw-submit{width:100%;padding:18px;background:#4caf50;color:#fff;border:none;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-top:6px;transition:background .15s;}
 .bw-submit:disabled{background:#2a5a2a;color:#5a8a5a;cursor:not-allowed;}
 .bw-submit:not(:disabled):hover{background:#43a047;}
+.bw-row-label{font-size:11px;color:#7ab07a;margin-bottom:6px;}
 </style>
 <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
-  <!-- Header -->
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #2a5a2a;">
     <div>
       <div id="bw-title" style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;letter-spacing:2px;text-transform:uppercase;"></div>
@@ -847,38 +850,242 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <button onclick="closeBarnWalk()" style="background:#3a1a1a;border:1px solid #5a2a2a;color:#f08080;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Exit</button>
   </div>
 
-  <!-- Check-in -->
+  <!-- Employee -->
   <div class="bw-card">
     <div class="bw-card-title">👤 Employee Check-In</div>
     <input type="text" id="bw-employee" class="bw-input" placeholder="Enter your name..." oninput="checkBWReady()">
   </div>
 
-  <!-- Water pressure -->
+  <!-- Mortality -->
   <div class="bw-card">
-    <div class="bw-card-title">💧 Water Pressure — Reading 10–60 PSI?</div>
-    <div class="bw-yn-row">
-      <button class="bw-yn-btn" id="bw-water-yes" onclick="bwSetYN('water',true)">✅ YES<br><span style="font-size:10px;opacity:.7;">In range</span></button>
-      <button class="bw-yn-btn" id="bw-water-no"  onclick="bwSetYN('water',false)">❌ NO<br><span style="font-size:10px;opacity:.7;">Out of range</span></button>
+    <div class="bw-card-title">💀 Mortality</div>
+    <div style="margin-bottom:12px;">
+      <div class="bw-row-label">Mortality found?</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="bw-mort-yes" onclick="bwSet('mort','yes')">❌ YES</button>
+        <button class="bw-yn-btn" id="bw-mort-no"  onclick="bwSet('mort','no')">✅ NO</button>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div class="bw-row-label">Foot Pan status</div>
+      <div class="bw-3-row">
+        <button class="bw-yn-btn" id="bw-footpan-ok"      onclick="bwSet('footpan','ok')">✅ OK</button>
+        <button class="bw-yn-btn" id="bw-footpan-clean"   onclick="bwSet('footpan','clean')">⚠️ Needs Cleaning</button>
+        <button class="bw-yn-btn" id="bw-footpan-replace" onclick="bwSet('footpan','replace')">❌ Needs Replacing</button>
+      </div>
+    </div>
+    <div>
+      <div class="bw-row-label">All mortality removed?</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="bw-mortrem-yes" onclick="bwSet('mortrem','yes')">✅ YES</button>
+        <button class="bw-yn-btn" id="bw-mortrem-no"  onclick="bwSet('mortrem','no')">❌ NO</button>
+      </div>
     </div>
   </div>
 
-  <!-- Egg collectors -->
+  <!-- Equipment -->
   <div class="bw-card">
-    <div class="bw-card-title">🥚 Egg Collector Meters — Moving?</div>
-    <div class="bw-yn-row">
-      <button class="bw-yn-btn" id="bw-coll-yes" onclick="bwSetYN('collectors',true)">✅ YES<br><span style="font-size:10px;opacity:.7;">Running</span></button>
-      <button class="bw-yn-btn" id="bw-coll-no"  onclick="bwSetYN('collectors',false)">❌ NO<br><span style="font-size:10px;opacity:.7;">Not running</span></button>
+    <div class="bw-card-title">⚙️ Equipment</div>
+    <div style="margin-bottom:12px;">
+      <div class="bw-row-label">Manure Dryers</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="bw-dryers-on"  onclick="bwSet('dryers','on')">🟢 ON</button>
+        <button class="bw-yn-btn" id="bw-dryers-off" onclick="bwSet('dryers','off')">🔴 OFF</button>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div class="bw-row-label">Feathering condition</div>
+      <div class="bw-3-row">
+        <button class="bw-yn-btn" id="bw-feather-good" onclick="bwSet('feather','good')">✅ Good</button>
+        <button class="bw-yn-btn" id="bw-feather-fair" onclick="bwSet('feather','fair')">⚠️ Fair</button>
+        <button class="bw-yn-btn" id="bw-feather-poor" onclick="bwSet('feather','poor')">❌ Poor</button>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div class="bw-row-label">House Doors</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="bw-doors-open"   onclick="bwSet('doors','open')">Open</button>
+        <button class="bw-yn-btn" id="bw-doors-closed" onclick="bwSet('doors','closed')">Closed</button>
+      </div>
+    </div>
+    <div>
+      <div class="bw-row-label">Loose Birds?</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="bw-loose-yes" onclick="bwSet('loose','yes')">❌ YES</button>
+        <button class="bw-yn-btn" id="bw-loose-no"  onclick="bwSet('loose','no')">✅ NO</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Air & Environment -->
+  <div class="bw-card">
+    <div class="bw-card-title">🌡️ Air & Environment</div>
+    <div style="margin-bottom:12px;">
+      <div class="bw-row-label">Air Quality</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="bw-air-good" onclick="bwSet('air','good')">✅ Good</button>
+        <button class="bw-yn-btn" id="bw-air-poor" onclick="bwSet('air','poor')">❌ Poor</button>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div class="bw-row-label">Ammonia Level (ppm)</div>
+      <input type="number" id="bw-ammonia" class="bw-input" placeholder="e.g. 25">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <div class="bw-row-label">House Temp (°F)</div>
+        <input type="number" id="bw-temp" class="bw-input" placeholder="e.g. 72">
+      </div>
+      <div>
+        <div class="bw-row-label">Static Pressure</div>
+        <input type="number" id="bw-static" class="bw-input" step="0.01" placeholder="e.g. 0.10">
+      </div>
+    </div>
+  </div>
+
+  <!-- Feeding & Water -->
+  <div class="bw-card">
+    <div class="bw-card-title">🍗 Feeding & Water</div>
+    <div style="margin-bottom:12px;">
+      <div class="bw-row-label">Feeders</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="bw-feed-full"  onclick="bwSet('feed','full')">✅ Full</button>
+        <button class="bw-yn-btn" id="bw-feed-empty" onclick="bwSet('feed','empty')">❌ Empty</button>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div class="bw-row-label">Feed Wastage?</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="bw-waste-yes" onclick="bwSet('waste','yes')">⚠️ YES</button>
+        <button class="bw-yn-btn" id="bw-waste-no"  onclick="bwSet('waste','no')">✅ NO</button>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div class="bw-row-label">Water Pressure (PSI) — Normal: 10–60</div>
+      <input type="number" id="bw-water-psi" class="bw-input" placeholder="Enter PSI reading" oninput="checkBWReady()">
+    </div>
+    <div>
+      <div class="bw-row-label">Standpipes</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="bw-stand-clean" onclick="bwSet('stand','clean')">✅ Clean</button>
+        <button class="bw-yn-btn" id="bw-stand-dirty" onclick="bwSet('stand','dirty')">❌ Dirty</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Belts -->
+  <div class="bw-card">
+    <div class="bw-card-title">🥚 Belts</div>
+    <div style="margin-bottom:12px;">
+      <div class="bw-row-label">Egg Belts</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="bw-eggbelt-clean" onclick="bwSet('eggbelt','clean')">✅ Clean</button>
+        <button class="bw-yn-btn" id="bw-eggbelt-dirty" onclick="bwSet('eggbelt','dirty')">❌ Dirty</button>
+      </div>
+    </div>
+    <div>
+      <div class="bw-row-label">Manure Belts</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="bw-manure-run"  onclick="bwSet('manure','run')">✅ Running</button>
+        <button class="bw-yn-btn" id="bw-manure-stop" onclick="bwSet('manure','stop')">❌ Not Running</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pest -->
+  <div class="bw-card">
+    <div class="bw-card-title">🐀 Pest Control</div>
+    <div style="margin-bottom:12px;">
+      <div class="bw-row-label">Rodents present?</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="bw-rodent-yes" onclick="bwSet('rodent','yes')">❌ YES</button>
+        <button class="bw-yn-btn" id="bw-rodent-no"  onclick="bwSet('rodent','no')">✅ NO</button>
+      </div>
+    </div>
+    <div>
+      <div class="bw-row-label">Fly presence?</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="bw-fly-yes" onclick="bwSet('fly','yes')">⚠️ YES</button>
+        <button class="bw-yn-btn" id="bw-fly-no"  onclick="bwSet('fly','no')">✅ NO</button>
+      </div>
     </div>
   </div>
 
   <!-- Notes -->
   <div class="bw-card">
-    <div class="bw-card-title">📝 Notes (optional)</div>
+    <div class="bw-card-title">📝 Notes / Corrective Actions</div>
     <textarea id="bw-notes" class="bw-input" rows="3" placeholder="Anything to flag for the manager..." style="resize:none;"></textarea>
   </div>
 
-  <!-- Submit -->
-  <button class="bw-submit" id="bw-submit-btn" onclick="submitBarnWalk()" disabled>✓ Submit Barn Walk</button>
+  <button class="bw-submit" id="bw-submit-btn" onclick="submitBarnWalk()" disabled>✓ Submit Daily Check</button>
+</div>
+</div>
+
+<!-- ═══ MORNING WALK MODAL ═══ -->
+<div id="morning-walk-modal" style="display:none;position:fixed;inset:0;background:#080d1a;z-index:600;overflow-y:auto;">
+<div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #1e3a6a;">
+    <div>
+      <div id="mw-title" style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;letter-spacing:2px;text-transform:uppercase;"></div>
+      <div style="font-size:11px;color:#6a90d9;font-family:'IBM Plex Mono',monospace;margin-top:3px;">☀️ Morning Walk</div>
+    </div>
+    <button onclick="closeMorningWalk()" style="background:#1a1a3a;border:1px solid #3a3a6a;color:#9090f0;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Exit</button>
+  </div>
+
+  <!-- Lead name -->
+  <div style="background:#0d1f3a;border:1px solid #1e3a6a;border-radius:14px;padding:18px 16px;margin-bottom:14px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6a90d9;margin-bottom:12px;">👤 Lead / WNO Name</div>
+    <input type="text" id="mw-employee" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter your name..." oninput="checkMWReady()">
+  </div>
+
+  <!-- Readings -->
+  <div style="background:#0d1f3a;border:1px solid #1e3a6a;border-radius:14px;padding:18px 16px;margin-bottom:14px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6a90d9;margin-bottom:12px;">📊 Readings</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">Water Pressure (PSI)</div>
+        <input type="number" id="mw-water" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="10–60 PSI" oninput="checkMWReady()">
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">House Temp (°F)</div>
+        <input type="number" id="mw-temp" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="e.g. 72" oninput="checkMWReady()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Systems -->
+  <div style="background:#0d1f3a;border:1px solid #1e3a6a;border-radius:14px;padding:18px 16px;margin-bottom:14px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6a90d9;margin-bottom:12px;">⚙️ Systems Check</div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">Feed — Feeders running?</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="mw-feed-yes" onclick="mwSet('feed','yes')" style="border-color:#1e3a6a;">✅ YES</button>
+        <button class="bw-yn-btn" id="mw-feed-no"  onclick="mwSet('feed','no')"  style="border-color:#1e3a6a;">❌ NO</button>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">Fans — All working?</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="mw-fans-yes" onclick="mwSet('fans','yes')" style="border-color:#1e3a6a;">✅ YES</button>
+        <button class="bw-yn-btn" id="mw-fans-no"  onclick="mwSet('fans','no')"  style="border-color:#1e3a6a;">❌ NO</button>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">Blowers — Working?</div>
+      <div class="bw-yn-row">
+        <button class="bw-yn-btn" id="mw-blowers-yes" onclick="mwSet('blowers','yes')" style="border-color:#1e3a6a;">✅ YES</button>
+        <button class="bw-yn-btn" id="mw-blowers-no"  onclick="mwSet('blowers','no')"  style="border-color:#1e3a6a;">❌ NO</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <div style="background:#0d1f3a;border:1px solid #1e3a6a;border-radius:14px;padding:18px 16px;margin-bottom:14px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6a90d9;margin-bottom:12px;">📝 Notes (optional)</div>
+    <textarea id="mw-notes" class="bw-input" rows="3" placeholder="Anything to flag..." style="resize:none;border-color:#1e3a6a;background:#091529;"></textarea>
+  </div>
+
+  <button class="bw-submit" id="mw-submit-btn" onclick="submitMorningWalk()" disabled style="background:#3a6aaa;">☀️ Submit Morning Walk</button>
 </div>
 </div>
 
@@ -4635,6 +4842,7 @@ function openProductionScreen() {
 // BARN STATUS TRACKING
 // ═══════════════════════════════════════════
 var BARN_STATUS = {};
+var MORNING_STATUS = {};
 var BARN_DATE = '';
 
 var FARMS = {
@@ -6080,19 +6288,22 @@ function renderProdPanel() {
   const farms = { Hegins: 8, Danville: 5 };
   const totalBarns = 13;
   const bs = typeof BARN_STATUS !== 'undefined' ? BARN_STATUS : {};
+  const ms = typeof MORNING_STATUS !== 'undefined' ? MORNING_STATUS : {};
 
-  // KPI bar
-  const done   = Object.values(bs).filter(s => s === 'done' || s === 'issue').length;
-  const issues = Object.values(bs).filter(s => s === 'issue').length;
-  const pct    = Math.round(done / totalBarns * 100);
+  const done    = Object.values(bs).filter(s => s === 'done' || s === 'issue').length;
+  const issues  = Object.values(bs).filter(s => s === 'issue').length;
+  const mDone   = Object.values(ms).filter(s => s === 'done' || s === 'issue').length;
+  const mIssues = Object.values(ms).filter(s => s === 'issue').length;
+  const pct     = Math.round(done / totalBarns * 100);
   const todayStr = new Date().toISOString().slice(0,10);
   const todayEggs = (typeof opsEggData !== 'undefined' ? opsEggData : [])
     .filter(r => r.date === todayStr).reduce((s,r) => s + (Number(r.eggs)||0), 0);
+
   const kpiBar = document.getElementById('prod-kpi-bar');
   if (kpiBar) kpiBar.innerHTML = `
     <div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px 12px;text-align:center;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:${pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e'};line-height:1;">${done}/${totalBarns}</div>
-      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Barns Walked</div>
+      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Daily Checks</div>
       <div style="background:#163016;border-radius:3px;height:4px;overflow:hidden;margin-top:8px;"><div style="height:100%;background:${pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e'};width:${pct}%;border-radius:3px;"></div></div>
     </div>
     <div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px 12px;text-align:center;">
@@ -6104,47 +6315,55 @@ function renderProdPanel() {
       <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Flagged</div>
     </div>`;
 
-  // Barn grids
+  function barnGrid(statusObj, clickFn, accentColor) {
+    let h = '';
+    Object.entries(farms).forEach(([farm, cnt]) => {
+      h += `<div style="margin-bottom:20px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:${accentColor};text-transform:uppercase;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #1a2a1a;">📍 ${farm}</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">`;
+      for (let i = 1; i <= cnt; i++) {
+        const key = farm + '-' + i;
+        const st  = statusObj[key] || 'pending';
+        const bc  = st==='done'?'#4caf50':st==='issue'?'#e53e3e':'#2a4a2a';
+        const bg  = st==='done'?'#1a3a1a':st==='issue'?'#2a1a1a':'#163016';
+        const nc  = st==='done'?'#f0ead8':st==='issue'?'#f0ead8':'#5a8a5a';
+        const ic  = st==='done'?`<div style="font-size:13px;color:#4caf50;margin-top:3px;">✓</div>`:
+                    st==='issue'?`<div style="font-size:13px;color:#e53e3e;margin-top:3px;">⚠</div>`:
+                    `<div style="font-size:13px;color:#3a6a3a;margin-top:3px;">—</div>`;
+        h += `<div style="background:${bg};border:1.5px solid ${bc};border-radius:10px;padding:12px 4px;text-align:center;cursor:pointer;" onclick="${clickFn}('${farm}',${i})">
+          <div style="font-size:9px;color:#5a8a5a;letter-spacing:1px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">Barn</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:${nc};line-height:1.1;">${i}</div>
+          ${ic}
+        </div>`;
+      }
+      h += `</div></div>`;
+    });
+    return h;
+  }
+
   const grid = document.getElementById('prod-barn-grid');
   if (!grid) return;
-  let html = '';
-  Object.entries(farms).forEach(([farm, cnt]) => {
-    html += `<div style="margin-bottom:22px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#7ab07a;text-transform:uppercase;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #1a3a1a;">📍 ${farm}</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">`;
-    for (let i = 1; i <= cnt; i++) {
-      const key = farm + '-' + i;
-      const status = bs[key] || 'pending';
-      const borderColor = status==='done' ? '#4caf50' : status==='issue' ? '#e53e3e' : '#2a4a2a';
-      const bg          = status==='done' ? '#1a3a1a' : status==='issue' ? '#2a1a1a' : '#163016';
-      const numColor    = status==='done' ? '#f0ead8' : status==='issue' ? '#f0ead8' : '#5a8a5a';
-      const icon        = status==='done' ? '<div style="font-size:13px;color:#4caf50;margin-top:3px;">✓</div>' :
-                          status==='issue'? '<div style="font-size:13px;color:#e53e3e;margin-top:3px;">⚠</div>' :
-                          '<div style="font-size:13px;color:#3a6a3a;margin-top:3px;">—</div>';
-      html += `<div style="background:${bg};border:1.5px solid ${borderColor};border-radius:10px;padding:12px 4px;text-align:center;cursor:pointer;transition:border-color .15s;" onclick="openBarnWalk('${farm}',${i})">
-        <div style="font-size:9px;color:#5a8a5a;letter-spacing:1px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">Barn</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:${numColor};line-height:1.1;">${i}</div>
-        ${icon}
-      </div>`;
-    }
-    html += `</div></div>`;
-  });
-  grid.innerHTML = html;
+  grid.innerHTML = `
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#4caf50;text-transform:uppercase;margin-bottom:12px;">🐓 Daily Employee Check — tap a barn to log</div>
+    ${barnGrid(bs, 'openBarnWalk', '#7ab07a')}
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid #1a2a3a;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#6a90d9;text-transform:uppercase;margin-bottom:4px;">☀️ Morning Walk — Lead / WNO</div>
+      <div style="font-size:11px;color:#3a5a8a;margin-bottom:12px;">${mDone}/${totalBarns} barns walked today${mIssues>0?' · '+mIssues+' flagged':''}</div>
+      ${barnGrid(ms, 'openMorningWalk', '#6a90d9')}
+    </div>`;
 }
 
-// ── Barn Walk ──
-var _bwFarm = '', _bwHouse = 0, _bwAnswers = {};
+// ── Employee Daily Barn Check ──
+var _bwFarm = '', _bwHouse = 0, _bwData = {};
 
 function openBarnWalk(farm, house) {
-  _bwFarm = farm; _bwHouse = house; _bwAnswers = {};
+  _bwFarm = farm; _bwHouse = house; _bwData = {};
   document.getElementById('bw-title').textContent = farm + ' — Barn ' + house;
   document.getElementById('bw-subtitle').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-  document.getElementById('bw-employee').value = '';
-  document.getElementById('bw-notes').value = '';
-  ['bw-water-yes','bw-water-no','bw-coll-yes','bw-coll-no'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.className = 'bw-yn-btn';
+  ['bw-employee','bw-notes','bw-ammonia','bw-temp','bw-static','bw-water-psi'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
   });
+  document.querySelectorAll('#barn-walk-modal .bw-yn-btn').forEach(b => b.className = 'bw-yn-btn');
   document.getElementById('bw-submit-btn').disabled = true;
   document.getElementById('barn-walk-modal').style.display = 'block';
   document.getElementById('barn-walk-modal').scrollTop = 0;
@@ -6154,36 +6373,67 @@ function closeBarnWalk() {
   document.getElementById('barn-walk-modal').style.display = 'none';
 }
 
-function bwSetYN(key, val) {
-  _bwAnswers[key] = val;
-  if (key === 'water') {
-    document.getElementById('bw-water-yes').className = 'bw-yn-btn' + (val ? ' bw-yes-sel' : '');
-    document.getElementById('bw-water-no').className  = 'bw-yn-btn' + (!val ? ' bw-no-sel' : '');
-  } else {
-    document.getElementById('bw-coll-yes').className = 'bw-yn-btn' + (val ? ' bw-yes-sel' : '');
-    document.getElementById('bw-coll-no').className  = 'bw-yn-btn' + (!val ? ' bw-no-sel' : '');
-  }
+function bwSet(key, val) {
+  _bwData[key] = val;
+  const badge = {
+    mort:    {yes:'bw-no-sel',  no:'bw-yes-sel'},
+    footpan: {ok:'bw-yes-sel',  clean:'bw-warn-sel', replace:'bw-no-sel'},
+    mortrem: {yes:'bw-yes-sel', no:'bw-no-sel'},
+    dryers:  {on:'bw-yes-sel',  off:'bw-warn-sel'},
+    feather: {good:'bw-yes-sel',fair:'bw-warn-sel',  poor:'bw-no-sel'},
+    doors:   {open:'bw-sel',    closed:'bw-sel'},
+    loose:   {yes:'bw-no-sel',  no:'bw-yes-sel'},
+    air:     {good:'bw-yes-sel',poor:'bw-no-sel'},
+    feed:    {full:'bw-yes-sel',empty:'bw-no-sel'},
+    waste:   {yes:'bw-warn-sel',no:'bw-yes-sel'},
+    stand:   {clean:'bw-yes-sel',dirty:'bw-no-sel'},
+    eggbelt: {clean:'bw-yes-sel',dirty:'bw-no-sel'},
+    manure:  {run:'bw-yes-sel', stop:'bw-no-sel'},
+    rodent:  {yes:'bw-no-sel',  no:'bw-yes-sel'},
+    fly:     {yes:'bw-warn-sel',no:'bw-yes-sel'},
+  };
+  document.querySelectorAll(`#barn-walk-modal .bw-yn-btn[id^="bw-${key}-"]`).forEach(b => b.className = 'bw-yn-btn');
+  const sel = document.getElementById(`bw-${key}-${val}`);
+  if (sel) sel.className = 'bw-yn-btn ' + (badge[key]?.[val] || 'bw-sel');
   checkBWReady();
 }
 
 function checkBWReady() {
-  const emp = document.getElementById('bw-employee').value.trim();
-  const ready = emp.length > 0 && _bwAnswers.water !== undefined && _bwAnswers.collectors !== undefined;
-  document.getElementById('bw-submit-btn').disabled = !ready;
+  const emp = (document.getElementById('bw-employee')?.value || '').trim();
+  const psi = (document.getElementById('bw-water-psi')?.value || '').trim();
+  document.getElementById('bw-submit-btn').disabled = !(emp && psi);
 }
 
 async function submitBarnWalk() {
-  const employee  = document.getElementById('bw-employee').value.trim();
-  const notes     = document.getElementById('bw-notes').value.trim();
-  const waterOk   = _bwAnswers.water;
-  const collOk    = _bwAnswers.collectors;
-  const flags     = [];
-  if (!waterOk) flags.push('Water pressure out of range');
-  if (!collOk)  flags.push('Egg collectors not moving');
+  const employee = document.getElementById('bw-employee').value.trim();
+  const notes    = document.getElementById('bw-notes').value.trim();
+  const waterPSI = Number(document.getElementById('bw-water-psi').value) || 0;
+  const temp     = document.getElementById('bw-temp').value ? Number(document.getElementById('bw-temp').value) : null;
+  const staticP  = document.getElementById('bw-static').value ? Number(document.getElementById('bw-static').value) : null;
+  const ammonia  = document.getElementById('bw-ammonia').value ? Number(document.getElementById('bw-ammonia').value) : null;
+
+  const flags = [];
+  if (_bwData.mort === 'yes')           flags.push('Mortality found');
+  if (_bwData.footpan === 'replace')    flags.push('Foot pan needs replacing');
+  if (_bwData.footpan === 'clean')      flags.push('Foot pan needs cleaning');
+  if (_bwData.mortrem === 'no')         flags.push('Mortality not removed');
+  if (_bwData.dryers === 'off')         flags.push('Manure dryers off');
+  if (_bwData.feather === 'poor')       flags.push('Poor feathering');
+  if (_bwData.loose === 'yes')          flags.push('Loose birds present');
+  if (_bwData.air === 'poor')           flags.push('Poor air quality');
+  if (_bwData.feed === 'empty')         flags.push('Feeders empty');
+  if (waterPSI < 10 || waterPSI > 60)  flags.push('Water pressure out of range (' + waterPSI + ' PSI)');
+  if (_bwData.eggbelt === 'dirty')      flags.push('Egg belts dirty');
+  if (_bwData.manure === 'stop')        flags.push('Manure belts not running');
+  if (_bwData.rodent === 'yes')         flags.push('Rodents present');
 
   const record = {
-    farm: _bwFarm, house: String(_bwHouse), employee,
-    waterOk, collectorsOk: collOk, notes, flags,
+    farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
+    waterPSI, temp, staticPressure: staticP, ammonia,
+    mort: _bwData.mort, footpan: _bwData.footpan, feather: _bwData.feather,
+    air: _bwData.air, feed: _bwData.feed, rodent: _bwData.rodent,
+    loose: _bwData.loose, dryers: _bwData.dryers, eggbelt: _bwData.eggbelt,
+    manure: _bwData.manure, stand: _bwData.stand, fly: _bwData.fly,
     date: new Date().toISOString().slice(0,10),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
     ts: Date.now()
@@ -6191,30 +6441,109 @@ async function submitBarnWalk() {
 
   try { await db.collection('barnWalks').add(record); } catch(e) { console.error(e); }
 
-  // Update local status
   const key = _bwFarm + '-' + _bwHouse;
   BARN_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
-  barnWalkStatus[key] = flags.length > 0 ? 'red' : 'green';
 
-  // Auto-create WO if anything flagged
   if (flags.length > 0) {
     try {
       const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
       woCounter = (woCounter||900) + 1;
-      const wo = { id:woId, farm:_bwFarm, house:String(_bwHouse), system:'Production',
-        desc:'Barn Walk Flag — ' + flags.join('; '), priority:'high', status:'open',
-        tech:'', notes:'Auto-created from barn walk by ' + employee, ts:Date.now(),
-        date:new Date().toISOString().slice(0,10) };
-      await db.collection('workOrders').add(wo);
+      await db.collection('workOrders').add({
+        id: woId, farm: _bwFarm, house: String(_bwHouse), system: 'Production',
+        desc: 'Daily Check Flag — ' + flags.join('; '), priority: 'high', status: 'open',
+        tech: '', notes: 'Auto-created from daily check by ' + employee,
+        ts: Date.now(), date: new Date().toISOString().slice(0,10)
+      });
     } catch(e) { console.error(e); }
   }
 
   closeBarnWalk();
   renderProdPanel();
   if (document.getElementById('panel-dash')?.classList.contains('active')) renderDash();
-  // Brief success flash
-  const btn = document.getElementById('bw-submit-btn');
-  if (btn) { btn.textContent = '✓ Walk Logged!'; btn.style.background='#2e7d32'; setTimeout(()=>{btn.textContent='✓ Submit Barn Walk';btn.style.background='';}, 2000); }
+}
+
+// ── Morning Walk (Lead / WNO) ──
+var _mwFarm = '', _mwHouse = 0, _mwData = {};
+
+function openMorningWalk(farm, house) {
+  _mwFarm = farm; _mwHouse = house; _mwData = {};
+  document.getElementById('mw-title').textContent = farm + ' — Barn ' + house;
+  ['mw-employee','mw-water','mw-temp','mw-notes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.querySelectorAll('#morning-walk-modal .bw-yn-btn').forEach(b => b.className = 'bw-yn-btn');
+  document.getElementById('mw-submit-btn').disabled = true;
+  document.getElementById('morning-walk-modal').style.display = 'block';
+  document.getElementById('morning-walk-modal').scrollTop = 0;
+}
+
+function closeMorningWalk() {
+  document.getElementById('morning-walk-modal').style.display = 'none';
+}
+
+function mwSet(key, val) {
+  _mwData[key] = val;
+  const badge = {
+    feed:    {yes:'bw-yes-sel', no:'bw-no-sel'},
+    fans:    {yes:'bw-yes-sel', no:'bw-no-sel'},
+    blowers: {yes:'bw-yes-sel', no:'bw-no-sel'},
+  };
+  document.querySelectorAll(`#morning-walk-modal .bw-yn-btn[id^="mw-${key}-"]`).forEach(b => b.className = 'bw-yn-btn');
+  const sel = document.getElementById(`mw-${key}-${val}`);
+  if (sel) sel.className = 'bw-yn-btn ' + (badge[key]?.[val] || 'bw-sel');
+  checkMWReady();
+}
+
+function checkMWReady() {
+  const emp   = (document.getElementById('mw-employee')?.value || '').trim();
+  const water = (document.getElementById('mw-water')?.value || '').trim();
+  const temp  = (document.getElementById('mw-temp')?.value || '').trim();
+  const ready = emp && water && temp &&
+    _mwData.feed !== undefined && _mwData.fans !== undefined && _mwData.blowers !== undefined;
+  document.getElementById('mw-submit-btn').disabled = !ready;
+}
+
+async function submitMorningWalk() {
+  const employee = document.getElementById('mw-employee').value.trim();
+  const notes    = document.getElementById('mw-notes').value.trim();
+  const waterPSI = Number(document.getElementById('mw-water').value) || 0;
+  const temp     = Number(document.getElementById('mw-temp').value) || 0;
+
+  const flags = [];
+  if (waterPSI < 10 || waterPSI > 60) flags.push('Water pressure out of range (' + waterPSI + ' PSI)');
+  if (_mwData.feed === 'no')           flags.push('Feeders not running');
+  if (_mwData.fans === 'no')           flags.push('Fan issue');
+  if (_mwData.blowers === 'no')        flags.push('Blower issue');
+
+  const record = {
+    farm: _mwFarm, house: String(_mwHouse), employee, notes, flags,
+    waterPSI, temp, feed: _mwData.feed, fans: _mwData.fans, blowers: _mwData.blowers,
+    date: new Date().toISOString().slice(0,10),
+    time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+    ts: Date.now()
+  };
+
+  try { await db.collection('morningWalks').add(record); } catch(e) { console.error(e); }
+
+  const key = _mwFarm + '-' + _mwHouse;
+  MORNING_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
+
+  if (flags.length > 0) {
+    try {
+      const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
+      woCounter = (woCounter||900) + 1;
+      await db.collection('workOrders').add({
+        id: woId, farm: _mwFarm, house: String(_mwHouse), system: 'Production',
+        desc: 'Morning Walk Flag — ' + flags.join('; '), priority: 'high', status: 'open',
+        tech: '', notes: 'Auto-created from morning walk by ' + employee,
+        ts: Date.now(), date: new Date().toISOString().slice(0,10)
+      });
+    } catch(e) { console.error(e); }
+  }
+
+  closeMorningWalk();
+  renderProdPanel();
+  if (document.getElementById('panel-dash')?.classList.contains('active')) renderDash();
 }
 
 // ── Sub-navigation ──
