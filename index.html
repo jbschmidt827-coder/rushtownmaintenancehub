@@ -830,6 +830,26 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div style="font-size:12px;color:#6a90d9;margin-top:4px;">Lead / WNO — water, temp, feed, fans, blowers</div>
       </div>
     </button>
+    <button onclick="openProdSummary()" style="width:100%;padding:24px 20px;background:#1a1a0a;border:2px solid #5a5a00;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">📋</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Today's Summary</div>
+        <div style="font-size:12px;color:#a0a05a;margin-top:4px;">All barn checks, mortality, flags & morning walks</div>
+      </div>
+    </button>
+  </div>
+</div>
+
+<!-- ═══ PROD SUMMARY SECTION ═══ -->
+<div id="prod-summary-section" style="display:none;position:fixed;inset:0;background:#0a0a0a;z-index:500;overflow-y:auto;">
+  <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #2a2a1a;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">📋 Today's Summary</div>
+      <button onclick="document.getElementById('prod-summary-section').style.display='none'" style="background:#2a2a00;border:1px solid #5a5a00;color:#d0d070;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Close</button>
+    </div>
+    <div id="prod-summary-content">
+      <div style="text-align:center;padding:40px;color:#5a5a3a;font-family:'IBM Plex Mono',monospace;">Loading...</div>
+    </div>
   </div>
 </div>
 
@@ -2398,13 +2418,12 @@ function renderDash() {
 
   // ── PRODUCTION card ──
   const allBarns = [...Array.from({length:8},(_,i)=>({farm:'Hegins',n:i+1})),...Array.from({length:5},(_,i)=>({farm:'Danville',n:i+1}))];
-  const todayWalks = barnWalkStatus || {};
-  const barnsDone = allBarns.filter(b=>todayWalks[b.farm+'-'+b.n]).length;
+  const bs = typeof BARN_STATUS !== 'undefined' ? BARN_STATUS : {};
+  const barnsDone = allBarns.filter(b=>bs[b.farm+'-'+b.n]==='done'||bs[b.farm+'-'+b.n]==='issue').length;
+  const flaggedBarns = allBarns.filter(b=>bs[b.farm+'-'+b.n]==='issue').length;
   const barnPct = Math.round(barnsDone/allBarns.length*100);
-  const flaggedBarns = allBarns.filter(b=>{const s=todayWalks[b.farm+'-'+b.n]; return s&&s.flagged;}).length;
+  const todayMortTotal = typeof _todayMortTotal !== 'undefined' ? _todayMortTotal : 0;
   const todayEggs = (typeof opsEggData!=='undefined'?opsEggData:[]).filter(r=>r.date===todayStr).reduce((s,r)=>s+(Number(r.eggs)||0),0);
-  const todayEggsHeg = (typeof opsEggData!=='undefined'?opsEggData:[]).filter(r=>r.date===todayStr&&r.farm==='Hegins').reduce((s,r)=>s+(Number(r.eggs)||0),0);
-  const todayEggsDan = (typeof opsEggData!=='undefined'?opsEggData:[]).filter(r=>r.date===todayStr&&r.farm==='Danville').reduce((s,r)=>s+(Number(r.eggs)||0),0);
   const barnColor = barnPct>=80?'#4caf50':barnPct>=50?'#d69e2e':'#e53e3e';
   const prodCard = document.getElementById('dash-prod-card');
   if (prodCard) prodCard.innerHTML = `
@@ -2415,11 +2434,11 @@ function renderDash() {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${barnColor};line-height:1.1;">${barnsDone}/${allBarns.length}</div>
-        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Barns Walked</div>
+        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Checks Done</div>
       </div>
       <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:#f0ead8;line-height:1.1;">${fmtNum(todayEggs)}</div>
-        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Eggs Today</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${todayMortTotal>0?'#e53e3e':'#f0ead8'};line-height:1.1;">${todayMortTotal}</div>
+        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Mortality Today</div>
       </div>
     </div>
     ${flaggedBarns>0?`<div style="font-size:10px;color:#e53e3e;font-family:'IBM Plex Mono',monospace;font-weight:700;margin-bottom:6px;">🚩 ${flaggedBarns} barn${flaggedBarns>1?'s':''} flagged</div>`:''}
@@ -4868,6 +4887,7 @@ function openProductionScreen() {
 // ═══════════════════════════════════════════
 var BARN_STATUS = {};
 var MORNING_STATUS = {};
+var _todayMortTotal = 0;
 var BARN_DATE = '';
 
 var FARMS = {
@@ -6551,6 +6571,7 @@ async function submitBarnWalk() {
 
   const key = _bwFarm + '-' + _bwHouse;
   BARN_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
+  if (mortCount) _todayMortTotal += mortCount;
 
   if (flags.length > 0) {
     try {
@@ -6655,6 +6676,74 @@ async function submitMorningWalk() {
   renderProdPanel();
   renderMWContent();
   if (document.getElementById('panel-dash')?.classList.contains('active')) renderDash();
+}
+
+// ── Today's Summary ──
+async function openProdSummary() {
+  document.getElementById('prod-summary-section').style.display = 'block';
+  document.getElementById('prod-summary-section').scrollTop = 0;
+  document.getElementById('prod-summary-content').innerHTML = '<div style="text-align:center;padding:40px;color:#5a5a3a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">Loading...</div>';
+  const today = new Date().toISOString().slice(0,10);
+  let walks = [], mWalks = [];
+  try {
+    const snap = await db.collection('barnWalks').where('date','==',today).get();
+    walks = snap.docs.map(d => d.data());
+  } catch(e) { console.error(e); }
+  try {
+    const snap = await db.collection('morningWalks').where('date','==',today).get();
+    mWalks = snap.docs.map(d => d.data());
+  } catch(e) { console.error(e); }
+  renderProdSummary(walks, mWalks);
+}
+
+function renderProdSummary(walks, mWalks) {
+  const dateStr = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  const farms = {Hegins:8, Danville:5};
+  const totalMort  = walks.reduce((s,w) => s + (Number(w.mortCount)||0), 0);
+  const totalLoose = walks.reduce((s,w) => s + (Number(w.looseCount)||0), 0);
+  const totalFlags = walks.filter(w => w.flags && w.flags.length > 0).length;
+
+  let html = `
+    <div style="font-size:11px;color:#5a5a3a;font-family:'IBM Plex Mono',monospace;margin-bottom:14px;">${dateStr}</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;">
+      <div style="background:#1a2a0a;border:1px solid #3a5a1a;border-radius:10px;padding:12px 6px;text-align:center;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#a0c060;">${walks.length}/13</div>
+        <div style="font-size:9px;color:#5a6a3a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">Checks</div>
+      </div>
+      <div style="background:${totalMort>0?'#2a0f0f':'#1a2a0a'};border:1px solid ${totalMort>0?'#5a2a2a':'#3a5a1a'};border-radius:10px;padding:12px 6px;text-align:center;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:${totalMort>0?'#e53e3e':'#a0c060'};">${totalMort}</div>
+        <div style="font-size:9px;color:#5a6a3a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">Mortality</div>
+      </div>
+      <div style="background:${totalFlags>0?'#2a0f0f':'#1a2a0a'};border:1px solid ${totalFlags>0?'#5a2a2a':'#3a5a1a'};border-radius:10px;padding:12px 6px;text-align:center;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:${totalFlags>0?'#e53e3e':'#a0c060'};">${totalFlags}</div>
+        <div style="font-size:9px;color:#5a6a3a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">Flagged</div>
+      </div>
+    </div>`;
+
+  Object.entries(farms).forEach(([farm, cnt]) => {
+    html += `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#7a9a5a;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #2a3a1a;">📍 ${farm}</div>`;
+    for (let i = 1; i <= cnt; i++) {
+      const w  = walks.find(x => x.farm===farm && x.house===String(i));
+      const mw = mWalks.find(x => x.farm===farm && x.house===String(i));
+      const flagged = w && w.flags && w.flags.length > 0;
+      html += `<div style="background:#121a0a;border:1px solid ${flagged?'#5a2a2a':w?'#2a4a1a':'#1a2a0a'};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;">Barn ${i}</div>
+          <div style="font-size:11px;color:${flagged?'#e53e3e':w?'#4caf50':'#3a4a2a'};">${flagged?'⚠ Flagged':w?'✓ Clear':'— Pending'}</div>
+        </div>
+        ${w ? `<div style="font-size:11px;color:#7a9a5a;margin-top:4px;">👤 ${w.employee} · ${w.time||''}</div>
+          ${w.mortCount?`<div style="font-size:11px;color:#e53e3e;margin-top:3px;">💀 Mortality: ${w.mortCount}</div>`:''}
+          ${w.looseCount?`<div style="font-size:11px;color:#d69e2e;margin-top:3px;">🐓 Loose birds: ${w.looseCount}</div>`:''}
+          ${flagged?`<div style="font-size:10px;color:#e07070;margin-top:5px;line-height:1.6;">${w.flags.map(f=>'• '+f).join('<br>')}</div>`:''}` : ''}
+        ${mw ? `<div style="font-size:10px;color:#6a90d9;margin-top:6px;padding-top:6px;border-top:1px solid #1a2a2a;">☀️ ${mw.employee} · ${mw.waterPSI} PSI · ${mw.temp}°F${mw.eeCount!=null?' · '+mw.eeCount+' EE':''}</div>` : ''}
+      </div>`;
+    }
+  });
+
+  if (!walks.length && !mWalks.length) {
+    html += `<div style="text-align:center;padding:30px;color:#3a4a2a;font-family:'IBM Plex Mono',monospace;font-size:12px;">No checks logged today yet.</div>`;
+  }
+  document.getElementById('prod-summary-content').innerHTML = html;
 }
 
 // ── Sub-navigation ──
