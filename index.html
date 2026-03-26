@@ -697,6 +697,9 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <button onclick="go('maint');goMaintSection('pm');openBulkPM()" style="padding:9px 16px;background:#d69e2e;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">📋 Fix Now →</button>
   </div>
 
+  <!-- Quick action -->
+  <button onclick="newWorkOrder()" style="width:100%;padding:14px;margin-bottom:16px;background:#1a3a6a;border:2px solid #3b82f6;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">🔧 New Work Order</button>
+
   <!-- Department summary cards -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
     <div id="dash-prod-card" onclick="go('prod')" style="cursor:pointer;background:#0f2a0f;border:1.5px solid #2a5a2a;border-radius:12px;padding:14px 12px;transition:border-color .15s;" onmouseover="this.style.borderColor='#4caf50'" onmouseout="this.style.borderColor='#2a5a2a'"></div>
@@ -6283,6 +6286,14 @@ let opsReconMode_ = 'today';
 // MAINTENANCE SUB-NAV
 // ═══════════════════════════════════════════
 window._maintSection = 'wo';
+function newWorkOrder() {
+  go('maint');
+  goMaintSection('wo');
+  document.getElementById('maint-wo').querySelector('#wo-dash-section').style.display = 'none';
+  document.getElementById('wo-submit-section').style.display = 'block';
+  document.getElementById('wo-date').value = todayStr;
+}
+
 function goMaintSection(section) {
   window._maintSection = section;
   document.querySelectorAll('.maint-section').forEach(s => s.style.display = 'none');
