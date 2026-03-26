@@ -1055,10 +1055,12 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <button onclick="closeMorningWalk()" style="background:#1a1a3a;border:1px solid #3a3a6a;color:#9090f0;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Exit</button>
   </div>
 
-  <!-- Lead name -->
+  <!-- Lead name + EE headcount -->
   <div style="background:#0d1f3a;border:1px solid #1e3a6a;border-radius:14px;padding:18px 16px;margin-bottom:14px;">
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6a90d9;margin-bottom:12px;">👤 Lead / WNO Name</div>
     <input type="text" id="mw-employee" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter your name..." oninput="checkMWReady()">
+    <div style="font-size:11px;color:#6a90d9;margin:14px 0 6px;">👥 Employees Present at This Barn</div>
+    <input type="number" id="mw-ee-count" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Headcount" min="0" oninput="checkMWReady()">
   </div>
 
   <!-- Readings -->
@@ -6575,7 +6577,7 @@ var _mwFarm = '', _mwHouse = 0, _mwData = {};
 function openMorningWalk(farm, house) {
   _mwFarm = farm; _mwHouse = house; _mwData = {};
   document.getElementById('mw-title').textContent = farm + ' — Barn ' + house;
-  ['mw-employee','mw-water','mw-temp','mw-notes'].forEach(id => {
+  ['mw-employee','mw-water','mw-temp','mw-notes','mw-ee-count'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.querySelectorAll('#morning-walk-modal .bw-yn-btn').forEach(b => b.className = 'bw-yn-btn');
@@ -6615,6 +6617,7 @@ async function submitMorningWalk() {
   const notes    = document.getElementById('mw-notes').value.trim();
   const waterPSI = Number(document.getElementById('mw-water').value) || 0;
   const temp     = Number(document.getElementById('mw-temp').value) || 0;
+  const eeCount  = document.getElementById('mw-ee-count').value !== '' ? Number(document.getElementById('mw-ee-count').value) : null;
 
   const flags = [];
   if (waterPSI < 10 || waterPSI > 60) flags.push('Water pressure out of range (' + waterPSI + ' PSI)');
@@ -6624,7 +6627,7 @@ async function submitMorningWalk() {
 
   const record = {
     farm: _mwFarm, house: String(_mwHouse), employee, notes, flags,
-    waterPSI, temp, feed: _mwData.feed, fans: _mwData.fans, blowers: _mwData.blowers,
+    waterPSI, temp, eeCount, feed: _mwData.feed, fans: _mwData.fans, blowers: _mwData.blowers,
     date: new Date().toISOString().slice(0,10),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
     ts: Date.now()
