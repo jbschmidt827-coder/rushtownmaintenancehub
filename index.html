@@ -1183,12 +1183,18 @@ body { min-height: 100dvh; overflow-x: hidden; }
               <div class="fg"><label>Your Name <span class="req">*</span></label><input type="text" id="wo-tech" placeholder="Your name"></div>
               <div class="fg"><label>House / Area</label><select id="wo-house"><option value="">— Select Farm First —</option></select></div>
             </div>
-            <div class="fg"><label>System / Area <span class="req">*</span></label>
-              <select id="wo-system">
-                <option value="">— Select System —</option>
+            <div class="fg"><label>Problem / System <span class="req">*</span></label>
+              <select id="wo-problem">
+                <option value="">— Select Problem —</option>
                 <option>Ventilation / Fans</option><option>Watering System</option><option>Feed System</option>
                 <option>Heating / Brooders</option><option>Manure System</option><option>Egg Collection</option>
                 <option>Electrical</option><option>Generator</option><option>Building / Structure</option><option>Other</option>
+              </select>
+            </div>
+            <div class="fg"><label>Equipment Down?</label>
+              <select id="wo-down">
+                <option value="no">No — still running</option>
+                <option value="yes">Yes — equipment down</option>
               </select>
             </div>
             <div class="fg"><label>Priority <span class="req">*</span></label>
@@ -1200,15 +1206,23 @@ body { min-height: 100dvh; overflow-x: hidden; }
               </div>
             </div>
             <div class="fg"><label>Description <span class="req">*</span></label><textarea id="wo-desc" rows="3" placeholder="Describe the issue in detail..."></textarea></div>
+            <div class="fg"><label>Additional Notes</label><textarea id="wo-notes" rows="2" placeholder="Any other details..."></textarea></div>
             <div class="form-row">
               <div class="fg"><label>Parts Needed</label><input type="text" id="wo-parts" placeholder="List any parts (optional)"></div>
               <div class="fg"><label>Est. Hours</label><input type="number" id="wo-hours" min="0.5" step="0.5" placeholder="e.g. 2"></div>
             </div>
+            <div class="fg" style="display:none;"><input type="file" id="photo-input" accept="image/*" multiple><div id="photo-preview"></div></div>
           </div>
           <div class="form-footer">
             <button class="btn-cancel" onclick="goMaintSection('wo')">✕ Cancel</button>
             <button class="btn-confirm" onclick="submitWO()">✓ SUBMIT WORK ORDER</button>
           </div>
+        </div>
+        <div id="wo-success" style="display:none;text-align:center;padding:40px 20px;">
+          <div style="font-size:48px;">✅</div>
+          <h2 style="color:#2e7d32;margin:10px 0;">Work Order Submitted!</h2>
+          <p id="wo-success-num" style="font-weight:700;font-size:15px;color:#555;margin-bottom:20px;"></p>
+          <button class="btn-confirm" onclick="afterWOSubmit()">Submit Another</button>
         </div>
       </div>
     </div>
@@ -2168,7 +2182,7 @@ for (const farm of ['Hegins','Danville']) {
 let workOrders = [];
 let pmComps    = {};
 let actLog     = [];
-let selPri     = '';
+let selPri     = 'normal';
 let woLocFilter = 'all', woStatFilter = 'all';
 let pmLocFilter = 'all', pmStatFilter = 'all';
 let logFilterVal = 'all';
@@ -2730,9 +2744,10 @@ function loadHouses() {
   });
 }
 
-function setPri(el) {
+function setPri(val, el) {
   document.querySelectorAll('.pri-pill').forEach(p=>p.classList.remove('sel'));
-  el.classList.add('sel'); selPri=el.dataset.val;
+  if (el) el.classList.add('sel');
+  selPri = val;
 }
 
 // Stores compressed base64 data URIs for photos selected on the WO form
@@ -2882,7 +2897,7 @@ async function submitWO() {
 
     // Only hide the form after everything succeeded
     document.getElementById('wo-form-card').style.display='none';
-    document.getElementById('wo-success').classList.add('show');
+    document.getElementById('wo-success').style.display='block';
     document.getElementById('wo-success-num').textContent = wo.id + ' · ' + wo.farm + ' · ' + wo.house;
 
   } catch(err) {
@@ -2897,9 +2912,9 @@ async function submitWO() {
 function afterWOSubmit() {
   document.getElementById('fab-btn').style.display = '';
   document.getElementById('wo-form-card').style.display='';
-  document.getElementById('wo-success').classList.remove('show');
-  ['wo-farm','wo-problem'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('wo-tech').innerHTML='<option value="">— Select Farm First —</option>';
+  document.getElementById('wo-success').style.display='none';
+  ['wo-farm','wo-problem','wo-tech','wo-desc','wo-parts','wo-notes'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('wo-down').value='no';
   document.getElementById('wo-down').value='no';
   document.getElementById('wo-house').innerHTML='<option value="">— Select Farm First —</option>';
   document.getElementById('wo-desc').value='';
