@@ -814,12 +814,45 @@ body { min-height: 100dvh; overflow-x: hidden; }
 <!-- ═══ PRODUCTION PANEL ═══ -->
 <div class="panel" id="panel-prod">
   <div class="section-title">🏭 Production</div>
+  <div id="prod-kpi-bar" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;"></div>
+  <div style="display:grid;gap:14px;">
+    <button onclick="openECSection()" style="width:100%;padding:24px 20px;background:#1a3a1a;border:2px solid #4caf50;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">🐓</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Daily Employee Check</div>
+        <div style="font-size:12px;color:#7ab07a;margin-top:4px;">Log barn walk, equipment & conditions</div>
+      </div>
+    </button>
+    <button onclick="openMWSection()" style="width:100%;padding:24px 20px;background:#0d1f3a;border:2px solid #3a6aaa;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">☀️</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Morning Walk</div>
+        <div style="font-size:12px;color:#6a90d9;margin-top:4px;">Lead / WNO — water, temp, feed, fans, blowers</div>
+      </div>
+    </button>
+  </div>
+</div>
 
-  <!-- KPI bar -->
-  <div id="prod-kpi-bar" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;"></div>
+<!-- ═══ EC SECTION (Employee Daily Check) ═══ -->
+<div id="ec-section" style="display:none;position:fixed;inset:0;background:#0a1a0a;z-index:500;overflow-y:auto;">
+  <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #2a5a2a;">
+      <div id="ec-header" style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">🐓 Daily Employee Check</div>
+      <button id="ec-back-btn" onclick="ecBack()" style="background:#3a1a1a;border:1px solid #5a2a2a;color:#f08080;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">← Back</button>
+    </div>
+    <div id="ec-content"></div>
+  </div>
+</div>
 
-  <!-- Farm sections -->
-  <div id="prod-barn-grid" style="margin-top:4px;"></div>
+<!-- ═══ MW SECTION (Morning Walk) ═══ -->
+<div id="mw-section" style="display:none;position:fixed;inset:0;background:#080d1a;z-index:500;overflow-y:auto;">
+  <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #1e3a6a;">
+      <div id="mw-header" style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">☀️ Morning Walk</div>
+      <button id="mw-back-btn" onclick="mwBack()" style="background:#1a1a3a;border:1px solid #3a3a6a;color:#9090f0;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">← Back</button>
+    </div>
+    <div id="mw-content"></div>
+  </div>
 </div>
 
 <!-- ═══ BARN WALK MODAL (Employee Daily Check) ═══ -->
@@ -6285,16 +6318,12 @@ function goShipSection(section) {
 // PRODUCTION PANEL RENDER
 // ═══════════════════════════════════════════
 function renderProdPanel() {
-  const farms = { Hegins: 8, Danville: 5 };
-  const totalBarns = 13;
   const bs = typeof BARN_STATUS !== 'undefined' ? BARN_STATUS : {};
   const ms = typeof MORNING_STATUS !== 'undefined' ? MORNING_STATUS : {};
-
-  const done    = Object.values(bs).filter(s => s === 'done' || s === 'issue').length;
-  const issues  = Object.values(bs).filter(s => s === 'issue').length;
-  const mDone   = Object.values(ms).filter(s => s === 'done' || s === 'issue').length;
-  const mIssues = Object.values(ms).filter(s => s === 'issue').length;
-  const pct     = Math.round(done / totalBarns * 100);
+  const totalBarns = 13;
+  const done   = Object.values(bs).filter(s => s==='done'||s==='issue').length;
+  const issues = Object.values(bs).filter(s => s==='issue').length;
+  const pct    = Math.round(done / totalBarns * 100);
   const todayStr = new Date().toISOString().slice(0,10);
   const todayEggs = (typeof opsEggData !== 'undefined' ? opsEggData : [])
     .filter(r => r.date === todayStr).reduce((s,r) => s + (Number(r.eggs)||0), 0);
@@ -6303,7 +6332,7 @@ function renderProdPanel() {
   if (kpiBar) kpiBar.innerHTML = `
     <div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px 12px;text-align:center;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:${pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e'};line-height:1;">${done}/${totalBarns}</div>
-      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Daily Checks</div>
+      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Checks Done</div>
       <div style="background:#163016;border-radius:3px;height:4px;overflow:hidden;margin-top:8px;"><div style="height:100%;background:${pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e'};width:${pct}%;border-radius:3px;"></div></div>
     </div>
     <div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px 12px;text-align:center;">
@@ -6314,43 +6343,128 @@ function renderProdPanel() {
       <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:${issues>0?'#e53e3e':'#4caf50'};line-height:1;">${issues}</div>
       <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Flagged</div>
     </div>`;
+}
 
-  function barnGrid(statusObj, clickFn, accentColor) {
-    let h = '';
-    Object.entries(farms).forEach(([farm, cnt]) => {
-      h += `<div style="margin-bottom:20px;">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:${accentColor};text-transform:uppercase;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #1a2a1a;">📍 ${farm}</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">`;
-      for (let i = 1; i <= cnt; i++) {
-        const key = farm + '-' + i;
-        const st  = statusObj[key] || 'pending';
-        const bc  = st==='done'?'#4caf50':st==='issue'?'#e53e3e':'#2a4a2a';
-        const bg  = st==='done'?'#1a3a1a':st==='issue'?'#2a1a1a':'#163016';
-        const nc  = st==='done'?'#f0ead8':st==='issue'?'#f0ead8':'#5a8a5a';
-        const ic  = st==='done'?`<div style="font-size:13px;color:#4caf50;margin-top:3px;">✓</div>`:
-                    st==='issue'?`<div style="font-size:13px;color:#e53e3e;margin-top:3px;">⚠</div>`:
-                    `<div style="font-size:13px;color:#3a6a3a;margin-top:3px;">—</div>`;
-        h += `<div style="background:${bg};border:1.5px solid ${bc};border-radius:10px;padding:12px 4px;text-align:center;cursor:pointer;" onclick="${clickFn}('${farm}',${i})">
-          <div style="font-size:9px;color:#5a8a5a;letter-spacing:1px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">Barn</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:${nc};line-height:1.1;">${i}</div>
-          ${ic}
-        </div>`;
-      }
-      h += `</div></div>`;
-    });
-    return h;
+// ── EC Section (Employee Daily Check) ──
+var _ecFarm = null;
+
+function openECSection() {
+  _ecFarm = null;
+  document.getElementById('ec-section').style.display = 'block';
+  document.getElementById('ec-section').scrollTop = 0;
+  renderECContent();
+}
+
+function ecBack() {
+  if (_ecFarm) { _ecFarm = null; renderECContent(); }
+  else { document.getElementById('ec-section').style.display = 'none'; }
+}
+
+function renderECContent() {
+  const bs = typeof BARN_STATUS !== 'undefined' ? BARN_STATUS : {};
+  const hdr = document.getElementById('ec-header');
+  const btn = document.getElementById('ec-back-btn');
+  if (_ecFarm) {
+    if (hdr) hdr.textContent = '🐓 ' + _ecFarm;
+    if (btn) btn.textContent = '← Farms';
+    const cnt = _ecFarm === 'Hegins' ? 8 : 5;
+    let html = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">`;
+    for (let i = 1; i <= cnt; i++) {
+      const key = _ecFarm + '-' + i;
+      const st  = bs[key] || 'pending';
+      const bc  = st==='done'?'#4caf50':st==='issue'?'#e53e3e':'#2a4a2a';
+      const bg  = st==='done'?'#1a3a1a':st==='issue'?'#2a1a1a':'#163016';
+      const nc  = st==='done'?'#f0ead8':st==='issue'?'#f0ead8':'#5a8a5a';
+      const ic  = st==='done'?'<div style="font-size:14px;color:#4caf50;margin-top:4px;">✓</div>':
+                  st==='issue'?'<div style="font-size:14px;color:#e53e3e;margin-top:4px;">⚠</div>':
+                  '<div style="font-size:14px;color:#3a6a3a;margin-top:4px;">—</div>';
+      html += `<div style="background:${bg};border:2px solid ${bc};border-radius:12px;padding:16px 4px;text-align:center;cursor:pointer;" onclick="openBarnWalk('${_ecFarm}',${i})">
+        <div style="font-size:9px;color:#5a8a5a;letter-spacing:1px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">Barn</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:700;color:${nc};line-height:1.1;">${i}</div>
+        ${ic}
+      </div>`;
+    }
+    html += `</div>`;
+    document.getElementById('ec-content').innerHTML = html;
+  } else {
+    if (hdr) hdr.textContent = '🐓 Daily Employee Check';
+    if (btn) btn.textContent = '✕ Close';
+    const bsDone = f => Object.entries(bs).filter(([k,v])=>k.startsWith(f+'-')&&(v==='done'||v==='issue')).length;
+    const bsCnt  = f => f==='Hegins'?8:5;
+    document.getElementById('ec-content').innerHTML = `
+      <div style="font-size:13px;color:#5a8a5a;margin-bottom:20px;font-family:'IBM Plex Mono',monospace;">Select your farm to begin</div>
+      <div style="display:grid;gap:14px;">
+        ${['Hegins','Danville'].map(f=>`
+        <button onclick="_ecFarm='${f}';renderECContent()" style="width:100%;padding:28px 20px;background:#1a3a1a;border:2px solid #2a5a2a;border-radius:16px;color:#fff;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">📍 ${f}</div>
+            <div style="font-size:12px;color:#7ab07a;margin-top:6px;">${bsDone(f)}/${bsCnt(f)} barns checked today</div>
+          </div>
+          <div style="font-size:28px;">→</div>
+        </button>`).join('')}
+      </div>`;
   }
+}
 
-  const grid = document.getElementById('prod-barn-grid');
-  if (!grid) return;
-  grid.innerHTML = `
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#4caf50;text-transform:uppercase;margin-bottom:12px;">🐓 Daily Employee Check — tap a barn to log</div>
-    ${barnGrid(bs, 'openBarnWalk', '#7ab07a')}
-    <div style="margin-top:24px;padding-top:20px;border-top:1px solid #1a2a3a;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#6a90d9;text-transform:uppercase;margin-bottom:4px;">☀️ Morning Walk — Lead / WNO</div>
-      <div style="font-size:11px;color:#3a5a8a;margin-bottom:12px;">${mDone}/${totalBarns} barns walked today${mIssues>0?' · '+mIssues+' flagged':''}</div>
-      ${barnGrid(ms, 'openMorningWalk', '#6a90d9')}
-    </div>`;
+// ── MW Section (Morning Walk) ──
+var _mwSectionFarm = null;
+
+function openMWSection() {
+  _mwSectionFarm = null;
+  document.getElementById('mw-section').style.display = 'block';
+  document.getElementById('mw-section').scrollTop = 0;
+  renderMWContent();
+}
+
+function mwBack() {
+  if (_mwSectionFarm) { _mwSectionFarm = null; renderMWContent(); }
+  else { document.getElementById('mw-section').style.display = 'none'; }
+}
+
+function renderMWContent() {
+  const ms = typeof MORNING_STATUS !== 'undefined' ? MORNING_STATUS : {};
+  const hdr = document.getElementById('mw-header');
+  const btn = document.getElementById('mw-back-btn');
+  if (_mwSectionFarm) {
+    if (hdr) hdr.textContent = '☀️ ' + _mwSectionFarm;
+    if (btn) btn.textContent = '← Farms';
+    const cnt = _mwSectionFarm === 'Hegins' ? 8 : 5;
+    let html = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">`;
+    for (let i = 1; i <= cnt; i++) {
+      const key = _mwSectionFarm + '-' + i;
+      const st  = ms[key] || 'pending';
+      const bc  = st==='done'?'#4a90d9':st==='issue'?'#e53e3e':'#1e3a6a';
+      const bg  = st==='done'?'#0d2a4a':st==='issue'?'#2a1a1a':'#091529';
+      const nc  = st==='done'?'#f0ead8':st==='issue'?'#f0ead8':'#3a5a8a';
+      const ic  = st==='done'?'<div style="font-size:14px;color:#4a90d9;margin-top:4px;">✓</div>':
+                  st==='issue'?'<div style="font-size:14px;color:#e53e3e;margin-top:4px;">⚠</div>':
+                  '<div style="font-size:14px;color:#1e3a6a;margin-top:4px;">—</div>';
+      html += `<div style="background:${bg};border:2px solid ${bc};border-radius:12px;padding:16px 4px;text-align:center;cursor:pointer;" onclick="openMorningWalk('${_mwSectionFarm}',${i})">
+        <div style="font-size:9px;color:#3a5a8a;letter-spacing:1px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">Barn</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:700;color:${nc};line-height:1.1;">${i}</div>
+        ${ic}
+      </div>`;
+    }
+    html += `</div>`;
+    document.getElementById('mw-content').innerHTML = html;
+  } else {
+    if (hdr) hdr.textContent = '☀️ Morning Walk';
+    if (btn) btn.textContent = '✕ Close';
+    const msDone = f => Object.entries(ms).filter(([k,v])=>k.startsWith(f+'-')&&(v==='done'||v==='issue')).length;
+    const msCnt  = f => f==='Hegins'?8:5;
+    document.getElementById('mw-content').innerHTML = `
+      <div style="font-size:13px;color:#3a5a8a;margin-bottom:20px;font-family:'IBM Plex Mono',monospace;">Select farm to walk</div>
+      <div style="display:grid;gap:14px;">
+        ${['Hegins','Danville'].map(f=>`
+        <button onclick="_mwSectionFarm='${f}';renderMWContent()" style="width:100%;padding:28px 20px;background:#0d1f3a;border:2px solid #1e3a6a;border-radius:16px;color:#fff;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">📍 ${f}</div>
+            <div style="font-size:12px;color:#6a90d9;margin-top:6px;">${msDone(f)}/${msCnt(f)} barns walked today</div>
+          </div>
+          <div style="font-size:28px;">→</div>
+        </button>`).join('')}
+      </div>`;
+  }
 }
 
 // ── Employee Daily Barn Check ──
@@ -6459,6 +6573,7 @@ async function submitBarnWalk() {
 
   closeBarnWalk();
   renderProdPanel();
+  renderECContent();
   if (document.getElementById('panel-dash')?.classList.contains('active')) renderDash();
 }
 
@@ -6543,6 +6658,7 @@ async function submitMorningWalk() {
 
   closeMorningWalk();
   renderProdPanel();
+  renderMWContent();
   if (document.getElementById('panel-dash')?.classList.contains('active')) renderDash();
 }
 
