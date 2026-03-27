@@ -7186,8 +7186,6 @@ async function submitBarnWalk() {
     'Rodents present':            {problem:'Building / Structure',priority:'high'},
     'Fly activity':               {problem:'Building / Structure',priority:'normal'},
   };
-  const submitted = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  const woDate    = new Date().toISOString().slice(0,10);
   for (const flag of flags) {
     try {
       const mapKey = Object.keys(flagProblemMap).find(k => flag.startsWith(k)) || flag;
