@@ -277,6 +277,28 @@ textarea { resize: vertical; min-height: 85px; }
 
 .recent-hdr { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: #fff; letter-spacing: 2px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid var(--green-mid); margin-top: 20px; }
 
+/* ── FEED MILL ── */
+.feed-section{display:none;}
+.feed-bin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:10px;}
+.feed-bin-card{background:#0c1f0c;border:1.5px solid #2a5a2a;border-radius:14px;padding:16px;transition:border-color .2s;}
+.feed-bin-card:hover{border-color:#4caf50;}
+.feed-bin-name{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;margin-bottom:2px;}
+.feed-bin-loc{font-size:11px;color:#6a9a6a;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;}
+.feed-bin-bar-wrap{background:#162816;border-radius:8px;height:22px;position:relative;overflow:hidden;margin-bottom:8px;border:1px solid #2a5a2a;}
+.feed-bin-bar{height:100%;border-radius:8px;transition:width .5s ease;}
+.feed-bin-bar.fb-green{background:linear-gradient(90deg,#2e7d32,#4caf50);}
+.feed-bin-bar.fb-amber{background:linear-gradient(90deg,#b7791f,#d69e2e);}
+.feed-bin-bar.fb-red{background:linear-gradient(90deg,#9b2335,#e53e3e);}
+.feed-bin-threshold{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,.7);z-index:2;}
+.feed-bin-pct{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;line-height:1;}
+.feed-bin-pct.fb-green{color:#4caf50;}
+.feed-bin-pct.fb-amber{color:#d69e2e;}
+.feed-bin-pct.fb-red{color:#e53e3e;}
+.feed-bin-meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;margin-top:4px;}
+.feed-bin-status{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;font-family:'IBM Plex Mono',monospace;margin-top:8px;}
+.feed-bin-status.ok{background:#1a4a1a;color:#4caf50;border:1px solid #4caf5040;}
+.feed-bin-status.low{background:#3a2a00;color:#d69e2e;border:1px solid #d69e2e40;}
+.feed-bin-status.critical{background:#2d1a1a;color:#e53e3e;border:1px solid #e53e3e40;}
 /* ── WORK INSTRUCTIONS ── */
 .wi-card { background: var(--cream); border-radius: 10px; padding: 14px 16px; margin-bottom: 9px; box-shadow: 0 2px 8px rgba(0,0,0,0.09); border-left: 4px solid var(--green-bright); cursor: pointer; transition: box-shadow .15s, transform .15s; }
 .wi-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.16); transform: translateY(-1px); }
@@ -716,6 +738,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <button class="nav-tab" id="tab-prod" onclick="go('prod')">🏭 Production</button>
       <button class="nav-tab" id="tab-maint" onclick="go('maint')">🔧 Maintenance</button>
       <button class="nav-tab" id="tab-pkg" onclick="go('pkg')">📦 Packaging</button>
+      <button class="nav-tab" id="tab-feed" onclick="go('feed')">🌾 Feed Mill</button>
       <button class="nav-tab" id="tab-ship" onclick="go('ship')">🚚 Shipping</button>
       <button class="nav-tab" id="tab-reports" onclick="go('reports')">📊 Reports</button>
     </nav>
@@ -747,6 +770,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <div id="dash-maint-card" onclick="go('maint')" style="cursor:pointer;background:#0d1f3a;border:1.5px solid #1e3a6a;border-radius:12px;padding:14px 12px;transition:border-color .15s;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#1e3a6a'"></div>
     <div id="dash-pkg-card" onclick="go('pkg')" style="cursor:pointer;background:#1a1400;border:1.5px solid #4a3a00;border-radius:12px;padding:14px 12px;transition:border-color .15s;" onmouseover="this.style.borderColor='#d69e2e'" onmouseout="this.style.borderColor='#4a3a00'"></div>
     <div id="dash-ship-card" onclick="go('ship')" style="cursor:pointer;background:#1a0a2a;border:1.5px solid #3a1a5a;border-radius:12px;padding:14px 12px;transition:border-color .15s;" onmouseover="this.style.borderColor='#9b59b6'" onmouseout="this.style.borderColor='#3a1a5a'"></div>
+    <div id="dash-feed-card" onclick="go('feed')" style="cursor:pointer;grid-column:1/-1;background:#0c1f0c;border:1.5px solid #2a5a2a;border-radius:12px;padding:14px 12px;transition:border-color .15s;" onmouseover="this.style.borderColor='#4caf50'" onmouseout="this.style.borderColor='#2a5a2a'"></div>
   </div>
 
   <!-- Critical alerts -->
@@ -1064,6 +1088,10 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <button class="bw-yn-btn" id="bw-waste-yes" onclick="bwSet('waste','yes')">⚠️ YES</button>
         <button class="bw-yn-btn" id="bw-waste-no"  onclick="bwSet('waste','no')">✅ NO</button>
       </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div class="bw-row-label">Feed Bin Reading (lbs) — record current bin level</div>
+      <input type="number" id="bw-feed-bin-reading" class="bw-input" placeholder="Enter reading in lbs" min="0">
     </div>
     <div style="margin-bottom:12px;">
       <div class="bw-row-label">Water Pressure (PSI) — Normal: 10–60</div>
@@ -1647,6 +1675,119 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <div class="recent-hdr" style="margin-bottom:10px;">Packing Log</div>
     <div class="stats-grid g4" id="pack-stats" style="margin-bottom:16px;"></div>
     <div style="overflow-x:auto;"><table class="ops-table" id="pack-table"></table></div>
+  </div>
+</div>
+
+<!-- ═══ FEED MILL PANEL ═══ -->
+<div class="panel" id="panel-feed">
+  <div class="section-title">🌾 Feed Mill</div>
+  <div class="sub-nav">
+    <button class="sub-btn active" data-section="dashboard"  onclick="goFeedSection('dashboard')">📊 Dashboard</button>
+    <button class="sub-btn" data-section="readings"   onclick="goFeedSection('readings')">📖 Readings</button>
+    <button class="sub-btn" data-section="deliveries" onclick="goFeedSection('deliveries')">🚛 Deliveries</button>
+    <button class="sub-btn" data-section="made"       onclick="goFeedSection('made')">🏭 Feed Made</button>
+    <button class="sub-btn" data-section="bins"       onclick="goFeedSection('bins')">⚙️ Bins</button>
+  </div>
+
+  <!-- ── Dashboard ── -->
+  <div class="feed-section" id="feed-dashboard" style="display:block;">
+    <div class="stats-grid g4" id="feed-dash-stats" style="margin-bottom:16px;"></div>
+    <div class="feed-bin-grid" id="feed-bin-cards"></div>
+  </div>
+
+  <!-- ── Daily Readings ── -->
+  <div class="feed-section" id="feed-readings">
+    <div class="ops-quick-form">
+      <div class="ops-qf-title">📖 Log Feed Bin Reading</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label>Date *</label><input type="date" id="fr-date"></div>
+        <div class="fg"><label>Bin / Barn *</label><select id="fr-bin"><option value="">— Select Bin —</option></select></div>
+        <div class="fg"><label>Reading (lbs) *</label><input type="number" id="fr-reading" min="0" placeholder="0"></div>
+        <div class="fg"><label>Entered By</label><input type="text" id="fr-by" placeholder="Name"></div>
+        <div class="fg ops-form-full"><label>Notes</label><input type="text" id="fr-notes" placeholder="Optional"></div>
+      </div>
+      <div class="ops-form-actions">
+        <button class="ops-save-btn" onclick="saveFeedReading()">✓ Save Reading</button>
+        <button class="ops-cancel-btn" onclick="clearFeedReadingForm()">Clear</button>
+      </div>
+    </div>
+    <div class="ops-filter-row"><input type="date" class="ops-date-input" id="fr-filter-date" onchange="renderFeedReadings()"></div>
+    <div class="recent-hdr" style="margin-bottom:10px;">Reading Log</div>
+    <div style="overflow-x:auto;"><table class="ops-table" id="feed-readings-table"></table></div>
+  </div>
+
+  <!-- ── Deliveries ── -->
+  <div class="feed-section" id="feed-deliveries">
+    <div class="ops-quick-form">
+      <div class="ops-qf-title">🚛 Log Feed Delivery</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label>Date *</label><input type="date" id="fd-date"></div>
+        <div class="fg"><label>Tons *</label><input type="number" id="fd-tons" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="fg"><label>Feed Type</label><input type="text" id="fd-type" placeholder="e.g. Layer Mash"></div>
+        <div class="fg"><label>Destination Bin</label><select id="fd-bin"><option value="">— Select Bin —</option></select></div>
+        <div class="fg"><label>Supplier / Truck</label><input type="text" id="fd-supplier" placeholder="Supplier name"></div>
+        <div class="fg"><label>Received By</label><input type="text" id="fd-by" placeholder="Name"></div>
+        <div class="fg ops-form-full"><label>Notes</label><input type="text" id="fd-notes" placeholder="Optional"></div>
+      </div>
+      <div class="ops-form-actions">
+        <button class="ops-save-btn" onclick="saveFeedDelivery()">✓ Log Delivery</button>
+        <button class="ops-cancel-btn" onclick="clearFeedDeliveryForm()">Clear</button>
+      </div>
+    </div>
+    <div class="recent-hdr" style="margin-bottom:10px;">Delivery Log</div>
+    <div style="overflow-x:auto;"><table class="ops-table" id="feed-deliveries-table"></table></div>
+  </div>
+
+  <!-- ── Feed Made ── -->
+  <div class="feed-section" id="feed-made">
+    <div class="ops-quick-form">
+      <div class="ops-qf-title">🏭 Log Feed Made</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label>Date *</label><input type="date" id="fm-date"></div>
+        <div class="fg"><label>Tons Made *</label><input type="number" id="fm-tons" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="fg"><label>Feed Type</label><input type="text" id="fm-type" placeholder="e.g. Layer Mash"></div>
+        <div class="fg"><label>Destination</label>
+          <select id="fm-dest" onchange="feedMadeDestChange()">
+            <option value="">— Select —</option>
+            <option value="own">🐔 Own Barns</option>
+            <option value="external">🚚 External Site</option>
+          </select>
+        </div>
+        <div class="fg"><label>Bin / Site</label><select id="fm-bin"><option value="">— Select —</option></select></div>
+        <div class="fg"><label>Made By</label><input type="text" id="fm-by" placeholder="Name"></div>
+        <div class="fg ops-form-full"><label>Notes</label><input type="text" id="fm-notes" placeholder="Optional"></div>
+      </div>
+      <div class="ops-form-actions">
+        <button class="ops-save-btn" onclick="saveFeedMade()">✓ Log Feed Made</button>
+        <button class="ops-cancel-btn" onclick="clearFeedMadeForm()">Clear</button>
+      </div>
+    </div>
+    <div class="recent-hdr" style="margin-bottom:10px;">Feed Made Log</div>
+    <div style="overflow-x:auto;"><table class="ops-table" id="feed-made-table"></table></div>
+  </div>
+
+  <!-- ── Bins Setup ── -->
+  <div class="feed-section" id="feed-bins">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <button class="ops-save-btn" onclick="openFeedBinForm()">➕ Add Bin</button>
+    </div>
+    <div id="feed-bins-list"></div>
+    <!-- Add/Edit Bin inline form -->
+    <div id="feed-bin-form" style="display:none;" class="ops-quick-form">
+      <div class="ops-qf-title" id="feed-bin-form-title">Add Feed Bin</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label>Bin Name *</label><input type="text" id="fbin-name" placeholder="e.g. Barn 3 Bin A"></div>
+        <div class="fg"><label>Farm / Location</label><input type="text" id="fbin-farm" placeholder="e.g. Hegins"></div>
+        <div class="fg"><label>Barn / Area</label><input type="text" id="fbin-barn" placeholder="e.g. House 3"></div>
+        <div class="fg"><label>Feed Type</label><input type="text" id="fbin-type" placeholder="e.g. Layer Mash"></div>
+        <div class="fg"><label>Capacity (lbs) *</label><input type="number" id="fbin-capacity" min="1" placeholder="e.g. 40000"></div>
+        <div class="fg"><label>Order Point %</label><input type="number" id="fbin-order" min="1" max="99" placeholder="25" value="25"></div>
+      </div>
+      <div class="ops-form-actions">
+        <button class="ops-save-btn" onclick="saveFeedBin()">✓ Save Bin</button>
+        <button class="ops-cancel-btn" onclick="closeFeedBinForm()">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2563,6 +2704,8 @@ async function initApp() {
     await loadAssets();
     await loadWI();
     await loadCustomParts();
+    await loadFeedBins();
+    await loadFeedData();
     await seedMortalityCompostingWI();
     await seedWaterRegulatorWI();
     assignRHNumbers();
@@ -2677,8 +2820,8 @@ function go(tab) {
   closeAssetForm();
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', ship:'panel-ship', reports:'panel-reports'};
-  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', ship:'tab-ship', reports:'tab-reports'};
+  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', reports:'panel-reports'};
+  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', reports:'tab-reports'};
   if (!pm[tab]) return;
   document.getElementById(pm[tab]).classList.add('active');
   const tabEl = document.getElementById(tm[tab]);
@@ -2687,6 +2830,7 @@ function go(tab) {
   if (tab === 'prod') renderProdPanel();
   if (tab === 'maint') { goMaintSection(window._maintSection || 'wo'); }
   if (tab === 'pkg')   { goPkgSection(window._pkgSection || 'packing'); }
+  if (tab === 'feed')  { goFeedSection(window._feedSection || 'dashboard'); }
   if (tab === 'ship')  { goShipSection(window._shipSection || 'shipping'); }
   if (tab === 'reports') renderReports();
 }
@@ -2842,6 +2986,45 @@ function renderDash() {
       </div>
     </div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6a4a8a;">${todayShipLoads} loads today${holds>0?' &nbsp;·&nbsp; <span style="color:#e07070;">'+holds+' on hold</span>':''}</div>`;
+
+  // ── FEED MILL card ──
+  const feedCard = document.getElementById('dash-feed-card');
+  if (feedCard && typeof feedBins !== 'undefined') {
+    const latestByBin = {};
+    (feedReadings||[]).forEach(r => { if (!latestByBin[r.binId] || r.ts > latestByBin[r.binId].ts) latestByBin[r.binId] = r; });
+    const totalFeedLbs = feedBins.reduce((s,b) => { const r=latestByBin[b.binId]; return s + (r?Number(r.readingLbs):0); }, 0);
+    const lowBins  = feedBins.filter(b => { const r=latestByBin[b.binId]; const pct=r&&b.capacityLbs?Math.round((r.readingLbs/b.capacityLbs)*100):101; return pct < (b.orderPct||25); });
+    const todayDel = (feedDeliveries||[]).filter(r=>r.date===todayStr).reduce((s,r)=>s+(Number(r.tons)||0),0);
+    const todayMade= (feedMadeLog||[]).filter(r=>r.date===todayStr).reduce((s,r)=>s+(Number(r.tons)||0),0);
+
+    const binBars = feedBins.slice(0,6).map(b => {
+      const r = latestByBin[b.binId];
+      const pct = r&&b.capacityLbs ? Math.min(100,Math.round((r.readingLbs/b.capacityLbs)*100)) : 0;
+      const col = pct >= 50 ? '#4caf50' : pct >= (b.orderPct||25) ? '#d69e2e' : '#e53e3e';
+      return `<div style="flex:1;min-width:60px;">
+        <div style="font-size:9px;color:#6a9a6a;font-family:'IBM Plex Mono',monospace;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${b.name}">${b.barn||b.name}</div>
+        <div style="background:#162816;border-radius:4px;height:8px;position:relative;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${col};border-radius:4px;transition:width .4s;"></div>
+          <div style="position:absolute;top:0;bottom:0;left:${b.orderPct||25}%;width:1px;background:rgba(255,255,255,.5);"></div>
+        </div>
+        <div style="font-size:9px;font-family:'IBM Plex Mono',monospace;color:${col};margin-top:2px;text-align:center;font-weight:700;">${r?pct+'%':'—'}</div>
+      </div>`;
+    }).join('');
+
+    feedCard.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#4caf50;">🌾 Feed Mill</div>
+        <span style="font-size:11px;color:#4caf50;">→</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+        <div><div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">${feedBins.length}</div><div style="font-size:9px;color:#4a8a4a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;">Bins</div></div>
+        <div><div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">${fmtNum(Math.round(totalFeedLbs/2000*10)/10)} T</div><div style="font-size:9px;color:#4a8a4a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;">Total Inv.</div></div>
+        <div><div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:${lowBins.length>0?'#e53e3e':'#4caf50'};">${lowBins.length}</div><div style="font-size:9px;color:#4a8a4a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;">Low Bins</div></div>
+        <div><div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">${todayDel>0?todayDel+'T':todayMade>0?todayMade+'T':'—'}</div><div style="font-size:9px;color:#4a8a4a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;">${todayDel>0?'Delivered':todayMade>0?'Made Today':'No Activity'}</div></div>
+      </div>
+      ${feedBins.length ? `<div style="display:flex;gap:8px;align-items:flex-end;">${binBars}</div>` : '<div style="font-size:11px;color:#4a8a4a;font-family:\'IBM Plex Mono\',monospace;">No bins configured — go to Feed Mill to set up bins.</div>'}
+      ${lowBins.length ? `<div style="margin-top:8px;font-size:10px;color:#e53e3e;font-family:'IBM Plex Mono',monospace;">⚠️ Low: ${lowBins.map(b=>b.barn||b.name).join(', ')}</div>` : ''}`;
+  }
 
   // ── Urgent WOs ──
   const urgent = workOrders.filter(w=>w.priority==='urgent'&&w.status!=='completed');
@@ -7209,6 +7392,7 @@ async function submitBarnWalk() {
   const rodentCount = document.getElementById('bw-rodent-count').value ? Number(document.getElementById('bw-rodent-count').value) : null;
   const flyCount    = document.getElementById('bw-fly-count').value    ? Number(document.getElementById('bw-fly-count').value)    : null;
   const weeklyRodentCount = document.getElementById('bw-weekly-rodent-count')?.value ? Number(document.getElementById('bw-weekly-rodent-count').value) : null;
+  const feedBinReading    = document.getElementById('bw-feed-bin-reading')?.value ? Number(document.getElementById('bw-feed-bin-reading').value) : null;
 
   const flags = [];
   if (_bwData.mort === 'yes')           flags.push('Mortality found' + (mortCount ? ' (' + mortCount + ')' : ''));
@@ -7238,7 +7422,7 @@ async function submitBarnWalk() {
 
   const record = {
     farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
-    waterPSI, temp, mortCount, looseCount, rodentCount, flyCount, weeklyRodentCount,
+    waterPSI, temp, mortCount, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading,
     mort: _bwData.mort, feather: _bwData.feather, air: _bwData.air,
     feed: _bwData.feed, rodent: _bwData.rodent, loose: _bwData.loose,
     dryers: _bwData.dryers, eggbelt: _bwData.eggbelt, manure: _bwData.manure,
@@ -7252,6 +7436,28 @@ async function submitBarnWalk() {
   };
 
   try { await db.collection('barnWalks').add(record); } catch(e) { console.error(e); }
+
+  // Auto-save feed bin reading to feedReadings
+  if (feedBinReading && feedBinReading > 0) {
+    try {
+      // Find best matching bin by farm+barn
+      const matchBin = feedBins.find(b =>
+        (b.farm||'').toLowerCase().includes((_bwFarm||'').toLowerCase()) &&
+        (b.barn||'').toLowerCase().includes(String(_bwHouse))
+      ) || feedBins.find(b =>
+        (b.barn||'').toLowerCase().includes(String(_bwHouse))
+      );
+      const frRec = {
+        date: new Date().toISOString().slice(0,10),
+        binId: matchBin?.binId || ('BARN-' + _bwHouse),
+        binName: matchBin?.name || (_bwFarm + ' House ' + _bwHouse),
+        readingLbs: feedBinReading, by: employee,
+        notes: 'From daily barn walk', ts: Date.now()
+      };
+      const frRef = await db.collection('feedReadings').add(frRec);
+      feedReadings.unshift({ ...frRec, _fbId: frRef.id });
+    } catch(e) { console.error('feedReading save:', e); }
+  }
 
   // Auto-save egg count to opsEggProduction (replaces Egg Ops form)
   const eggCount = parseInt(document.getElementById('bw-egg-count')?.value||'0')||0;
@@ -7605,6 +7811,382 @@ function renderOpsScoreboard() {
 
   const tsEl = document.getElementById('ops-score-ts');
   if (tsEl) tsEl.textContent = 'As of ' + new Date().toLocaleTimeString();
+}
+
+// ═══════════════════════════════════════════
+// FEED MILL
+// ═══════════════════════════════════════════
+let feedBins      = [];   // bin configs from Firestore
+let feedReadings  = [];   // reading logs
+let feedDeliveries= [];   // delivery logs
+let feedMadeLog   = [];   // feed made logs
+let _editFeedBinId= null;
+
+function goFeedSection(sec) {
+  window._feedSection = sec;
+  document.querySelectorAll('.feed-section').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('#panel-feed .sub-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('feed-' + sec);
+  if (el) el.style.display = 'block';
+  const btn = document.querySelector(`#panel-feed .sub-btn[data-section="${sec}"]`);
+  if (btn) btn.classList.add('active');
+  if (sec === 'dashboard')  renderFeedDashboard();
+  if (sec === 'readings')   { populateFeedBinSelect('fr-bin'); renderFeedReadings(); }
+  if (sec === 'deliveries') { populateFeedBinSelect('fd-bin'); renderFeedDeliveries(); }
+  if (sec === 'made')       { populateFeedBinSelect('fm-bin'); renderFeedMade(); }
+  if (sec === 'bins')       renderFeedBinsList();
+}
+
+// ── Bins ──
+function populateFeedBinSelect(selectId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Select Bin —</option>';
+  feedBins.forEach(b => {
+    const o = document.createElement('option');
+    o.value = b.binId;
+    o.textContent = b.name + (b.barn ? ' — ' + b.barn : '') + (b.farm ? ' (' + b.farm + ')' : '');
+    sel.appendChild(o);
+  });
+  if (cur) sel.value = cur;
+}
+
+function openFeedBinForm(binId) {
+  _editFeedBinId = binId || null;
+  const form = document.getElementById('feed-bin-form');
+  if (_editFeedBinId) {
+    const b = feedBins.find(x => x.binId === binId);
+    if (!b) return;
+    document.getElementById('feed-bin-form-title').textContent = 'Edit Bin';
+    document.getElementById('fbin-name').value     = b.name || '';
+    document.getElementById('fbin-farm').value     = b.farm || '';
+    document.getElementById('fbin-barn').value     = b.barn || '';
+    document.getElementById('fbin-type').value     = b.feedType || '';
+    document.getElementById('fbin-capacity').value = b.capacityLbs || '';
+    document.getElementById('fbin-order').value    = b.orderPct || 25;
+  } else {
+    document.getElementById('feed-bin-form-title').textContent = 'Add Feed Bin';
+    ['fbin-name','fbin-farm','fbin-barn','fbin-type','fbin-capacity'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('fbin-order').value = 25;
+  }
+  form.style.display = 'block';
+  form.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function closeFeedBinForm() {
+  document.getElementById('feed-bin-form').style.display = 'none';
+  _editFeedBinId = null;
+}
+
+async function saveFeedBin() {
+  const name     = document.getElementById('fbin-name').value.trim();
+  const farm     = document.getElementById('fbin-farm').value.trim();
+  const barn     = document.getElementById('fbin-barn').value.trim();
+  const feedType = document.getElementById('fbin-type').value.trim();
+  const cap      = parseInt(document.getElementById('fbin-capacity').value) || 0;
+  const order    = parseInt(document.getElementById('fbin-order').value) || 25;
+  if (!name || !cap) return alert('Bin Name and Capacity are required.');
+  const data = { name, farm, barn, feedType, capacityLbs: cap, orderPct: order, ts: Date.now() };
+  try {
+    if (_editFeedBinId) {
+      const existing = feedBins.find(b => b.binId === _editFeedBinId);
+      if (existing?._fbId) {
+        await db.collection('feedBins').doc(existing._fbId).update(data);
+      }
+    } else {
+      const binId = 'BIN-' + Date.now().toString(36).toUpperCase();
+      const ref = await db.collection('feedBins').add({ ...data, binId });
+      feedBins.push({ ...data, binId, _fbId: ref.id });
+    }
+    await loadFeedBins();
+    closeFeedBinForm();
+    renderFeedBinsList();
+    renderFeedDashboard();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function deleteFeedBin(binId) {
+  if (!confirm('Delete this bin? All readings for it will remain in the log.')) return;
+  const b = feedBins.find(x => x.binId === binId);
+  if (b?._fbId) await db.collection('feedBins').doc(b._fbId).delete();
+  await loadFeedBins();
+  renderFeedBinsList();
+  renderFeedDashboard();
+}
+
+function renderFeedBinsList() {
+  const el = document.getElementById('feed-bins-list');
+  if (!el) return;
+  if (!feedBins.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">⚙️</div><p>No bins set up yet — add your first bin above.</p></div>';
+    return;
+  }
+  el.innerHTML = feedBins.map(b => `
+    <div style="background:#f9f9f9;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <div>
+        <div style="font-weight:700;font-size:14px;">${b.name}</div>
+        <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">${[b.barn,b.farm,b.feedType].filter(Boolean).join(' · ')} · Cap: ${fmtNum(b.capacityLbs)} lbs · Order @ ${b.orderPct||25}%</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="ops-action-btn" onclick="openFeedBinForm('${b.binId}')">✏️</button>
+        <button class="ops-action-btn danger" onclick="deleteFeedBin('${b.binId}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+// ── Dashboard ──
+function renderFeedDashboard() {
+  const statsEl = document.getElementById('feed-dash-stats');
+  const cardsEl = document.getElementById('feed-bin-cards');
+  if (!cardsEl) return;
+
+  if (!feedBins.length) {
+    if (statsEl) statsEl.innerHTML = '';
+    cardsEl.innerHTML = '<div class="empty"><div class="ei">🌾</div><p>No bins configured yet — go to ⚙️ Bins to add your first bin.</p></div>';
+    return;
+  }
+
+  // Get latest reading per bin
+  const latestByBin = {};
+  feedReadings.forEach(r => {
+    if (!latestByBin[r.binId] || r.ts > latestByBin[r.binId].ts) latestByBin[r.binId] = r;
+  });
+
+  let totalLbs = 0, totalCap = 0, lowCount = 0, critCount = 0;
+  feedBins.forEach(b => {
+    const r = latestByBin[b.binId];
+    const lbs = r ? Number(r.readingLbs) : 0;
+    const pct = b.capacityLbs > 0 ? Math.min(100, Math.round((lbs / b.capacityLbs) * 100)) : 0;
+    totalLbs += lbs; totalCap += b.capacityLbs;
+    if (pct < (b.orderPct||25)) lowCount++;
+    if (pct < 10) critCount++;
+  });
+
+  if (statsEl) statsEl.innerHTML =
+    sc('s-green', feedBins.length, '🌾 Total Bins') +
+    sc('s-blue', fmtNum(totalLbs) + ' lbs', '📦 Total Inventory') +
+    sc(lowCount > 0 ? 's-amber' : 's-green', lowCount, '⚠️ Low Bins') +
+    sc(critCount > 0 ? 's-red' : 's-green', critCount, '🔴 Critical');
+
+  cardsEl.innerHTML = feedBins.map(b => {
+    const r = latestByBin[b.binId];
+    const lbs = r ? Number(r.readingLbs) : 0;
+    const pct = b.capacityLbs > 0 ? Math.min(100, Math.round((lbs / b.capacityLbs) * 100)) : 0;
+    const orderPct = b.orderPct || 25;
+    const colorClass = pct >= 50 ? 'fb-green' : pct >= orderPct ? 'fb-amber' : 'fb-red';
+    const statusClass = pct >= orderPct ? 'ok' : pct >= 10 ? 'low' : 'critical';
+    const statusLabel = pct >= orderPct ? '✅ OK' : pct >= 10 ? '⚠️ Low — Order Soon' : '🔴 Critical';
+    const thresholdLeft = orderPct + '%';
+    const lastDate = r ? fmtDate(r.date) : 'No reading yet';
+    // Consumption since prev reading
+    const prevReadings = feedReadings.filter(x => x.binId === b.binId).sort((a,b2) => b2.ts - a.ts);
+    const consumed = prevReadings.length >= 2 ? prevReadings[1].readingLbs - prevReadings[0].readingLbs : null;
+    return `<div class="feed-bin-card">
+      <div class="feed-bin-name">${b.name}</div>
+      <div class="feed-bin-loc">${[b.barn, b.farm, b.feedType].filter(Boolean).join(' · ')}</div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:8px;">
+        <div class="feed-bin-pct ${colorClass}">${r ? pct + '%' : '—'}</div>
+        <div style="text-align:right;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#f0ead8;">${fmtNum(lbs)} lbs</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;">of ${fmtNum(b.capacityLbs)} lbs cap.</div>
+        </div>
+      </div>
+      <div class="feed-bin-bar-wrap">
+        <div class="feed-bin-bar ${colorClass}" style="width:${pct}%;"></div>
+        <div class="feed-bin-threshold" style="left:${thresholdLeft};" title="Order point: ${orderPct}%"></div>
+      </div>
+      <div class="feed-bin-meta">Order point: ${orderPct}% · Last reading: ${lastDate}${consumed !== null && consumed > 0 ? ' · Used: ' + fmtNum(consumed) + ' lbs' : ''}</div>
+      <div class="feed-bin-status ${statusClass}">${statusLabel}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Readings ──
+async function saveFeedReading() {
+  const date     = document.getElementById('fr-date')?.value;
+  const binId    = document.getElementById('fr-bin')?.value;
+  const readingLbs = parseInt(document.getElementById('fr-reading')?.value || '0') || 0;
+  const by       = document.getElementById('fr-by')?.value?.trim() || '';
+  const notes    = document.getElementById('fr-notes')?.value?.trim() || '';
+  if (!date || !binId || !readingLbs) return alert('Date, Bin, and Reading are required.');
+  const bin = feedBins.find(b => b.binId === binId);
+  try {
+    const ref = await db.collection('feedReadings').add({ date, binId, binName: bin?.name||'', readingLbs, by, notes, ts: Date.now() });
+    feedReadings.unshift({ date, binId, binName: bin?.name||'', readingLbs, by, notes, ts: Date.now(), _fbId: ref.id });
+    clearFeedReadingForm();
+    renderFeedReadings();
+    renderFeedDashboard();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+function clearFeedReadingForm() {
+  const t = new Date().toISOString().slice(0,10);
+  document.getElementById('fr-date').value = t;
+  ['fr-bin','fr-reading','fr-by','fr-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+}
+
+function renderFeedReadings() {
+  const tbl = document.getElementById('feed-readings-table'); if (!tbl) return;
+  const filterDate = document.getElementById('fr-filter-date')?.value || '';
+  let data = filterDate ? feedReadings.filter(r => r.date === filterDate) : feedReadings.slice(0, 50);
+  if (!data.length) { tbl.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;">No readings found.</td></tr>'; return; }
+  let html = '<thead><tr><th>Date</th><th>Bin</th><th>Reading (lbs)</th><th>% Full</th><th>By</th><th></th></tr></thead><tbody>';
+  data.forEach(r => {
+    const bin = feedBins.find(b => b.binId === r.binId);
+    const pct = bin?.capacityLbs ? Math.round((r.readingLbs / bin.capacityLbs) * 100) : '—';
+    html += `<tr>
+      <td style="font-family:'IBM Plex Mono',monospace;">${fmtDate(r.date)}</td>
+      <td><strong>${r.binName || r.binId}</strong></td>
+      <td style="font-weight:700;">${fmtNum(r.readingLbs)}</td>
+      <td style="font-weight:700;color:${typeof pct==='number'?(pct>=50?'#4caf50':pct>=25?'#d69e2e':'#e53e3e'):'var(--muted)'};">${typeof pct==='number'?pct+'%':pct}</td>
+      <td>${r.by||'—'}</td>
+      <td><button class="ops-action-btn danger" onclick="deleteFeedReading('${r._fbId}')">✕</button></td>
+    </tr>`;
+  });
+  tbl.innerHTML = html + '</tbody>';
+}
+
+async function deleteFeedReading(fbId) {
+  if (!fbId || !confirm('Delete this reading?')) return;
+  await db.collection('feedReadings').doc(fbId).delete();
+  feedReadings = feedReadings.filter(r => r._fbId !== fbId);
+  renderFeedReadings(); renderFeedDashboard();
+}
+
+// ── Deliveries ──
+async function saveFeedDelivery() {
+  const date     = document.getElementById('fd-date')?.value;
+  const tons     = parseFloat(document.getElementById('fd-tons')?.value || '0') || 0;
+  const type     = document.getElementById('fd-type')?.value?.trim() || '';
+  const binId    = document.getElementById('fd-bin')?.value || '';
+  const supplier = document.getElementById('fd-supplier')?.value?.trim() || '';
+  const by       = document.getElementById('fd-by')?.value?.trim() || '';
+  const notes    = document.getElementById('fd-notes')?.value?.trim() || '';
+  if (!date || !tons) return alert('Date and Tons are required.');
+  const bin = feedBins.find(b => b.binId === binId);
+  try {
+    const ref = await db.collection('feedDeliveries').add({ date, tons, type, binId, binName: bin?.name||'', supplier, by, notes, ts: Date.now() });
+    feedDeliveries.unshift({ date, tons, type, binId, binName: bin?.name||'', supplier, by, notes, ts: Date.now(), _fbId: ref.id });
+    clearFeedDeliveryForm();
+    renderFeedDeliveries();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+function clearFeedDeliveryForm() {
+  const t = new Date().toISOString().slice(0,10);
+  document.getElementById('fd-date').value = t;
+  ['fd-tons','fd-type','fd-bin','fd-supplier','fd-by','fd-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+}
+
+function renderFeedDeliveries() {
+  const tbl = document.getElementById('feed-deliveries-table'); if (!tbl) return;
+  if (!feedDeliveries.length) { tbl.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;">No deliveries logged yet.</td></tr>'; return; }
+  let html = '<thead><tr><th>Date</th><th>Tons</th><th>Type</th><th>Destination</th><th>Supplier</th><th>By</th><th></th></tr></thead><tbody>';
+  feedDeliveries.slice(0,50).forEach(r => {
+    html += `<tr>
+      <td style="font-family:'IBM Plex Mono',monospace;">${fmtDate(r.date)}</td>
+      <td style="font-weight:700;color:#4caf50;">${r.tons} T</td>
+      <td>${r.type||'—'}</td>
+      <td>${r.binName||r.binId||'—'}</td>
+      <td>${r.supplier||'—'}</td>
+      <td>${r.by||'—'}</td>
+      <td><button class="ops-action-btn danger" onclick="deleteFeedDelivery('${r._fbId}')">✕</button></td>
+    </tr>`;
+  });
+  tbl.innerHTML = html + '</tbody>';
+}
+
+async function deleteFeedDelivery(fbId) {
+  if (!fbId || !confirm('Delete this delivery record?')) return;
+  await db.collection('feedDeliveries').doc(fbId).delete();
+  feedDeliveries = feedDeliveries.filter(r => r._fbId !== fbId);
+  renderFeedDeliveries();
+}
+
+// ── Feed Made ──
+function feedMadeDestChange() {
+  const dest = document.getElementById('fm-dest')?.value;
+  populateFeedBinSelect('fm-bin');
+  const binSel = document.getElementById('fm-bin');
+  if (!binSel) return;
+  if (dest === 'external') {
+    binSel.innerHTML = '<option value="external">External Site</option><option value="">Other (see notes)</option>';
+  } else {
+    populateFeedBinSelect('fm-bin');
+  }
+}
+
+async function saveFeedMade() {
+  const date  = document.getElementById('fm-date')?.value;
+  const tons  = parseFloat(document.getElementById('fm-tons')?.value || '0') || 0;
+  const type  = document.getElementById('fm-type')?.value?.trim() || '';
+  const dest  = document.getElementById('fm-dest')?.value || '';
+  const binId = document.getElementById('fm-bin')?.value || '';
+  const by    = document.getElementById('fm-by')?.value?.trim() || '';
+  const notes = document.getElementById('fm-notes')?.value?.trim() || '';
+  if (!date || !tons) return alert('Date and Tons Made are required.');
+  const bin = feedBins.find(b => b.binId === binId);
+  try {
+    const ref = await db.collection('feedMade').add({ date, tons, type, dest, binId, binName: bin?.name||binId||'', by, notes, ts: Date.now() });
+    feedMadeLog.unshift({ date, tons, type, dest, binId, binName: bin?.name||binId||'', by, notes, ts: Date.now(), _fbId: ref.id });
+    clearFeedMadeForm();
+    renderFeedMade();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+function clearFeedMadeForm() {
+  const t = new Date().toISOString().slice(0,10);
+  document.getElementById('fm-date').value = t;
+  ['fm-tons','fm-type','fm-dest','fm-bin','fm-by','fm-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+}
+
+function renderFeedMade() {
+  const tbl = document.getElementById('feed-made-table'); if (!tbl) return;
+  if (!feedMadeLog.length) { tbl.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;">No feed made records yet.</td></tr>'; return; }
+  let html = '<thead><tr><th>Date</th><th>Tons</th><th>Type</th><th>Dest</th><th>Bin / Site</th><th>By</th><th></th></tr></thead><tbody>';
+  feedMadeLog.slice(0,50).forEach(r => {
+    const destLabel = r.dest === 'own' ? '🐔 Own Barns' : r.dest === 'external' ? '🚚 External' : '—';
+    html += `<tr>
+      <td style="font-family:'IBM Plex Mono',monospace;">${fmtDate(r.date)}</td>
+      <td style="font-weight:700;color:#4caf50;">${r.tons} T</td>
+      <td>${r.type||'—'}</td>
+      <td>${destLabel}</td>
+      <td>${r.binName||r.binId||'—'}</td>
+      <td>${r.by||'—'}</td>
+      <td><button class="ops-action-btn danger" onclick="deleteFeedMade('${r._fbId}')">✕</button></td>
+    </tr>`;
+  });
+  tbl.innerHTML = html + '</tbody>';
+}
+
+async function deleteFeedMade(fbId) {
+  if (!fbId || !confirm('Delete this record?')) return;
+  await db.collection('feedMade').doc(fbId).delete();
+  feedMadeLog = feedMadeLog.filter(r => r._fbId !== fbId);
+  renderFeedMade();
+}
+
+// ── Load from Firestore ──
+async function loadFeedBins() {
+  try {
+    const snap = await db.collection('feedBins').orderBy('ts','asc').get();
+    feedBins = [];
+    snap.forEach(d => feedBins.push({ ...d.data(), _fbId: d.id }));
+  } catch(e) { console.error('feedBins load:', e); }
+}
+
+async function loadFeedData() {
+  try {
+    const [rSnap, dSnap, mSnap] = await Promise.all([
+      db.collection('feedReadings').orderBy('ts','desc').limit(200).get(),
+      db.collection('feedDeliveries').orderBy('ts','desc').limit(200).get(),
+      db.collection('feedMade').orderBy('ts','desc').limit(200).get(),
+    ]);
+    feedReadings   = []; rSnap.forEach(d => feedReadings.push({ ...d.data(), _fbId: d.id }));
+    feedDeliveries = []; dSnap.forEach(d => feedDeliveries.push({ ...d.data(), _fbId: d.id }));
+    feedMadeLog    = []; mSnap.forEach(d => feedMadeLog.push({ ...d.data(), _fbId: d.id }));
+  } catch(e) { console.error('feedData load:', e); }
 }
 
 // ── Packing ──
