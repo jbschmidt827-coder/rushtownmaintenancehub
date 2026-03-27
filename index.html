@@ -2541,6 +2541,7 @@ async function initApp() {
     await loadWI();
     await loadCustomParts();
     await seedMortalityCompostingWI();
+    await seedWaterRegulatorWI();
     assignRHNumbers();
 
     // Real-time listeners
@@ -5871,6 +5872,40 @@ async function seedMortalityCompostingWI() {
   } catch(e) {
     console.error('Seed error:', e);
   }
+}
+
+async function seedWaterRegulatorWI() {
+  const SEED_ID = 'WI-WATER-REG-H5-8';
+  try {
+    const check = await db.collection('workInstructions').where('wiId','==', SEED_ID).get();
+    if (!check.empty) return;
+  } catch(e) { return; }
+
+  const today = new Date().toISOString().slice(0,10);
+  await db.collection('workInstructions').add({
+    wiId: SEED_ID,
+    title: 'Water Regulator Replacement — Houses 5–8',
+    type: 'repair',
+    system: 'Watering System',
+    time: 30,
+    author: 'Rushtown Poultry',
+    date: today,
+    ppe: '',
+    warnings: 'Ensure water is fully shut off before disassembly. Avoid overtightening connections to prevent damage.',
+    steps: [
+      'Shut Off Water Supply — Turn off the water valve located on top of the water regulator.',
+      'Remove Sight Tube — Carefully remove the sight tube from the regulator and set it aside in a safe location.',
+      'Disconnect Unions — Loosen and disconnect both unions that connect to the water nipples in the cages.',
+      'Remove Pipes from Regulator — Twist the pipes counterclockwise to remove them from the regulator once all couplers are disconnected.',
+      'Install Pipes into New Regulator — Insert the pipes into the new water regulator and twist clockwise until the locking tab is fully engaged.',
+      'Reinstall Regulator — Place the new regulator back into position. Reconnect all unions securely. Reinstall the sight tube.',
+      'Restore Water Supply — Turn the water supply back on.',
+      'Adjust Regulator — Turn the red adjustment knob located at the bottom of the regulator. Adjust until the red ball in the sight tube reaches approximately ¾ of the way up.',
+      'Verification — Check for leaks at all connections. Confirm proper water flow and regulator function.',
+    ],
+    ts: Date.now()
+  });
+  console.log('✅ Water Regulator WI seeded.');
 }
 
 function startWIListener() {
