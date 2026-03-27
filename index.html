@@ -1768,20 +1768,63 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
   <!-- ── Bins Setup ── -->
   <div class="feed-section" id="feed-bins">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
-      <button class="ops-save-btn" onclick="openFeedBinForm()">➕ Add Bin</button>
+
+    <!-- Quick Setup -->
+    <div class="ops-quick-form" style="margin-bottom:18px;">
+      <div class="ops-qf-title">⚡ Quick Setup — Add All Bins for a Farm</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label>Farm *</label>
+          <select id="fqs-farm">
+            <option value="">— Select Farm —</option>
+            <option value="Turbotville">Turbotville (TBV)</option>
+            <option value="W&amp;M">W&amp;M Farms</option>
+            <option value="Hegins">Hegins</option>
+            <option value="Danville">Danville</option>
+            <option value="A&amp;L">A&amp;L</option>
+            <option value="Hegins Valley">Hegins Valley Farms</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="fg"><label># of Houses *</label><input type="number" id="fqs-houses" min="1" max="20" placeholder="e.g. 5"></div>
+        <div class="fg"><label>Capacity per Bin (lbs)</label><input type="number" id="fqs-capacity" min="1" placeholder="e.g. 75000" value="75000"></div>
+        <div class="fg"><label>Order Point %</label><input type="number" id="fqs-order" min="1" max="99" value="25"></div>
+        <div class="fg"><label>Daily Consumption (lbs/day)</label><input type="number" id="fqs-consumption" min="0" placeholder="e.g. 22000"></div>
+        <div class="fg"><label>Feed Type</label><input type="text" id="fqs-type" placeholder="e.g. Layer Mash"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:10px;">Creates 2 bins per house: House 1 — Bin A &amp; Bin B, House 2 — Bin A &amp; Bin B, etc.</div>
+      <div class="ops-form-actions">
+        <button class="ops-save-btn" onclick="quickAddBins()">⚡ Generate Bins</button>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">All Bins</div>
+      <button class="ops-save-btn" onclick="openFeedBinForm()">➕ Add Single Bin</button>
     </div>
     <div id="feed-bins-list"></div>
-    <!-- Add/Edit Bin inline form -->
+
+    <!-- Add/Edit Single Bin form -->
     <div id="feed-bin-form" style="display:none;" class="ops-quick-form">
       <div class="ops-qf-title" id="feed-bin-form-title">Add Feed Bin</div>
       <div class="ops-form-grid">
-        <div class="fg"><label>Bin Name *</label><input type="text" id="fbin-name" placeholder="e.g. Barn 3 Bin A"></div>
-        <div class="fg"><label>Farm / Location</label><input type="text" id="fbin-farm" placeholder="e.g. Hegins"></div>
-        <div class="fg"><label>Barn / Area</label><input type="text" id="fbin-barn" placeholder="e.g. House 3"></div>
+        <div class="fg"><label>Bin Name *</label><input type="text" id="fbin-name" placeholder="e.g. House 3 — Bin A"></div>
+        <div class="fg"><label>Farm / Location</label>
+          <select id="fbin-farm">
+            <option value="">— Select —</option>
+            <option value="Turbotville">Turbotville (TBV)</option>
+            <option value="W&amp;M">W&amp;M Farms</option>
+            <option value="Hegins">Hegins</option>
+            <option value="Danville">Danville</option>
+            <option value="A&amp;L">A&amp;L</option>
+            <option value="Hegins Valley">Hegins Valley Farms</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="fg"><label>House / Area</label><input type="text" id="fbin-barn" placeholder="e.g. House 3"></div>
         <div class="fg"><label>Feed Type</label><input type="text" id="fbin-type" placeholder="e.g. Layer Mash"></div>
-        <div class="fg"><label>Capacity (lbs) *</label><input type="number" id="fbin-capacity" min="1" placeholder="e.g. 40000"></div>
-        <div class="fg"><label>Order Point %</label><input type="number" id="fbin-order" min="1" max="99" placeholder="25" value="25"></div>
+        <div class="fg"><label>Capacity (lbs) *</label><input type="number" id="fbin-capacity" min="1" placeholder="e.g. 75000"></div>
+        <div class="fg"><label>Daily Consumption (lbs/day)</label><input type="number" id="fbin-consumption" min="0" placeholder="e.g. 22000"></div>
+        <div class="fg"><label>Order Point %</label><input type="number" id="fbin-order" min="1" max="99" value="25"></div>
       </div>
       <div class="ops-form-actions">
         <button class="ops-save-btn" onclick="saveFeedBin()">✓ Save Bin</button>
@@ -7859,15 +7902,17 @@ function openFeedBinForm(binId) {
     const b = feedBins.find(x => x.binId === binId);
     if (!b) return;
     document.getElementById('feed-bin-form-title').textContent = 'Edit Bin';
-    document.getElementById('fbin-name').value     = b.name || '';
-    document.getElementById('fbin-farm').value     = b.farm || '';
-    document.getElementById('fbin-barn').value     = b.barn || '';
-    document.getElementById('fbin-type').value     = b.feedType || '';
-    document.getElementById('fbin-capacity').value = b.capacityLbs || '';
-    document.getElementById('fbin-order').value    = b.orderPct || 25;
+    document.getElementById('fbin-name').value        = b.name || '';
+    document.getElementById('fbin-farm').value        = b.farm || b.location || '';
+    document.getElementById('fbin-barn').value        = b.barn || '';
+    document.getElementById('fbin-type').value        = b.feedType || '';
+    document.getElementById('fbin-capacity').value    = b.capacityLbs || '';
+    document.getElementById('fbin-consumption').value = b.dailyConsumptionLbs || '';
+    document.getElementById('fbin-order').value       = b.orderPct || 25;
   } else {
     document.getElementById('feed-bin-form-title').textContent = 'Add Feed Bin';
-    ['fbin-name','fbin-farm','fbin-barn','fbin-type','fbin-capacity'].forEach(id => { document.getElementById(id).value = ''; });
+    ['fbin-name','fbin-barn','fbin-type','fbin-capacity','fbin-consumption'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('fbin-farm').value = '';
     document.getElementById('fbin-order').value = 25;
   }
   form.style.display = 'block';
@@ -7879,15 +7924,45 @@ function closeFeedBinForm() {
   _editFeedBinId = null;
 }
 
+async function quickAddBins() {
+  const farm     = document.getElementById('fqs-farm').value;
+  const houses   = parseInt(document.getElementById('fqs-houses').value)||0;
+  const cap         = parseInt(document.getElementById('fqs-capacity').value)||75000;
+  const order       = parseInt(document.getElementById('fqs-order').value)||25;
+  const consumption = parseInt(document.getElementById('fqs-consumption').value)||0;
+  const feedType    = document.getElementById('fqs-type').value.trim();
+  if (!farm || !houses) return alert('Farm and # of Houses are required.');
+  if (!confirm(`Create ${houses * 2} bins for ${farm} (Houses 1–${houses}, Bin A + Bin B each)?`)) return;
+
+  const existing = feedBins.filter(b => b.farm === farm).map(b => b.name);
+  let created = 0;
+  for (let h = 1; h <= houses; h++) {
+    for (const side of ['A','B']) {
+      const name = `House ${h} — Bin ${side}`;
+      if (existing.includes(name)) continue; // skip if already exists
+      const binId = 'BIN-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,5).toUpperCase();
+      const data = { binId, name, farm, barn: `House ${h}`, feedType, capacityLbs: cap, orderPct: order, dailyConsumptionLbs: consumption, ts: Date.now() };
+      const ref = await db.collection('feedBins').add(data);
+      feedBins.push({ ...data, _fbId: ref.id });
+      created++;
+      await new Promise(r => setTimeout(r, 30)); // small delay to ensure unique IDs
+    }
+  }
+  alert(`✅ Created ${created} bins for ${farm}.`);
+  renderFeedBinsList();
+  renderFeedDashboard();
+}
+
 async function saveFeedBin() {
   const name     = document.getElementById('fbin-name').value.trim();
-  const farm     = document.getElementById('fbin-farm').value.trim();
+  const farm     = document.getElementById('fbin-farm').value;
   const barn     = document.getElementById('fbin-barn').value.trim();
-  const feedType = document.getElementById('fbin-type').value.trim();
-  const cap      = parseInt(document.getElementById('fbin-capacity').value) || 0;
-  const order    = parseInt(document.getElementById('fbin-order').value) || 25;
+  const feedType    = document.getElementById('fbin-type').value.trim();
+  const cap         = parseInt(document.getElementById('fbin-capacity').value) || 0;
+  const consumption = parseInt(document.getElementById('fbin-consumption').value) || 0;
+  const order       = parseInt(document.getElementById('fbin-order').value) || 25;
   if (!name || !cap) return alert('Bin Name and Capacity are required.');
-  const data = { name, farm, barn, feedType, capacityLbs: cap, orderPct: order, ts: Date.now() };
+  const data = { name, farm, barn, feedType, capacityLbs: cap, dailyConsumptionLbs: consumption, orderPct: order, ts: Date.now() };
   try {
     if (_editFeedBinId) {
       const existing = feedBins.find(b => b.binId === _editFeedBinId);
@@ -7919,18 +7994,41 @@ function renderFeedBinsList() {
   const el = document.getElementById('feed-bins-list');
   if (!el) return;
   if (!feedBins.length) {
-    el.innerHTML = '<div class="empty"><div class="ei">⚙️</div><p>No bins set up yet — add your first bin above.</p></div>';
+    el.innerHTML = '<div class="empty"><div class="ei">⚙️</div><p>No bins set up yet — use Quick Setup above or add a single bin.</p></div>';
     return;
   }
-  el.innerHTML = feedBins.map(b => `
-    <div style="background:#f9f9f9;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
-      <div>
-        <div style="font-weight:700;font-size:14px;">${b.name}</div>
-        <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">${[b.barn,b.farm,b.feedType].filter(Boolean).join(' · ')} · Cap: ${fmtNum(b.capacityLbs)} lbs · Order @ ${b.orderPct||25}%</div>
+  // Group by farm
+  const byFarm = {};
+  feedBins.forEach(b => {
+    const f = b.farm || 'Unassigned';
+    if (!byFarm[f]) byFarm[f] = [];
+    byFarm[f].push(b);
+  });
+  // Sort bins within each farm by house number
+  Object.values(byFarm).forEach(arr => arr.sort((a,b2) => {
+    const na = parseInt((a.barn||a.name||'').replace(/\D/g,''))||0;
+    const nb = parseInt((b2.barn||b2.name||'').replace(/\D/g,''))||0;
+    if (na !== nb) return na - nb;
+    return (a.name||'').localeCompare(b2.name||'');
+  }));
+
+  el.innerHTML = Object.entries(byFarm).map(([farm, bins]) => `
+    <div style="margin-bottom:20px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#4caf50;margin-bottom:8px;padding:6px 10px;background:#0f2a0f;border-radius:6px;">
+        🌾 ${farm} <span style="font-weight:400;color:#4a8a4a;">(${bins.length} bins)</span>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="ops-action-btn" onclick="openFeedBinForm('${b.binId}')">✏️</button>
-        <button class="ops-action-btn danger" onclick="deleteFeedBin('${b.binId}')">✕</button>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;">
+        ${bins.map(b => `
+          <div style="background:#f9f9f9;border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div>
+              <div style="font-weight:700;font-size:13px;">${b.name}</div>
+              <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">${[b.feedType].filter(Boolean).join(' · ')}${b.feedType?' · ':''}Cap: ${fmtNum(b.capacityLbs)} lbs · Order @ ${b.orderPct||25}%</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button class="ops-action-btn" onclick="openFeedBinForm('${b.binId}')">✏️</button>
+              <button class="ops-action-btn danger" onclick="deleteFeedBin('${b.binId}')">✕</button>
+            </div>
+          </div>`).join('')}
       </div>
     </div>`).join('');
 }
@@ -7969,36 +8067,94 @@ function renderFeedDashboard() {
     sc(lowCount > 0 ? 's-amber' : 's-green', lowCount, '⚠️ Low Bins') +
     sc(critCount > 0 ? 's-red' : 's-green', critCount, '🔴 Critical');
 
-  cardsEl.innerHTML = feedBins.map(b => {
-    const r = latestByBin[b.binId];
-    const lbs = r ? Number(r.readingLbs) : 0;
-    const pct = b.capacityLbs > 0 ? Math.min(100, Math.round((lbs / b.capacityLbs) * 100)) : 0;
-    const orderPct = b.orderPct || 25;
-    const colorClass = pct >= 50 ? 'fb-green' : pct >= orderPct ? 'fb-amber' : 'fb-red';
-    const statusClass = pct >= orderPct ? 'ok' : pct >= 10 ? 'low' : 'critical';
-    const statusLabel = pct >= orderPct ? '✅ OK' : pct >= 10 ? '⚠️ Low — Order Soon' : '🔴 Critical';
-    const thresholdLeft = orderPct + '%';
-    const lastDate = r ? fmtDate(r.date) : 'No reading yet';
-    // Consumption since prev reading
-    const prevReadings = feedReadings.filter(x => x.binId === b.binId).sort((a,b2) => b2.ts - a.ts);
-    const consumed = prevReadings.length >= 2 ? prevReadings[1].readingLbs - prevReadings[0].readingLbs : null;
-    return `<div class="feed-bin-card">
-      <div class="feed-bin-name">${b.name}</div>
-      <div class="feed-bin-loc">${[b.barn, b.farm, b.feedType].filter(Boolean).join(' · ')}</div>
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:8px;">
-        <div class="feed-bin-pct ${colorClass}">${r ? pct + '%' : '—'}</div>
-        <div style="text-align:right;">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#f0ead8;">${fmtNum(lbs)} lbs</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;">of ${fmtNum(b.capacityLbs)} lbs cap.</div>
+  // Group bins by farm → house
+  const byFarm = {};
+  feedBins.forEach(b => {
+    const f = b.farm || 'Unassigned';
+    if (!byFarm[f]) byFarm[f] = {};
+    const house = b.barn || b.name;
+    if (!byFarm[f][house]) byFarm[f][house] = [];
+    byFarm[f][house].push(b);
+  });
+
+  cardsEl.innerHTML = Object.entries(byFarm).map(([farm, houses]) => {
+    // Sort houses numerically
+    const sortedHouses = Object.entries(houses).sort((a,b2) => {
+      const na = parseInt(a[0].replace(/\D/g,''))||0;
+      const nb = parseInt(b2[0].replace(/\D/g,''))||0;
+      return na - nb;
+    });
+    return `
+      <div style="margin-bottom:24px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#4caf50;margin-bottom:10px;padding:6px 10px;background:#0c1f0c;border-radius:6px;">🌾 ${farm}</div>
+        <div class="feed-bin-grid">
+          ${sortedHouses.map(([house, bins]) => {
+            // Sum lbs across all bins in this house
+            const totalLbsHouse = bins.reduce((s,b) => {
+              const r = latestByBin[b.binId];
+              return s + (r ? Number(r.readingLbs) : 0);
+            }, 0);
+            // Daily consumption — use per-bin value (take max set)
+            const consumption = bins.reduce((s,b) => s + (Number(b.dailyConsumptionLbs)||0), 0);
+            // Auto-calc consumption from readings if not set
+            let calcConsumption = 0;
+            if (!consumption) {
+              bins.forEach(b => {
+                const recs = feedReadings.filter(x => x.binId === b.binId).sort((a,c)=>c.ts-a.ts);
+                if (recs.length >= 2) {
+                  const days = Math.max(1, Math.round((recs[0].ts - recs[1].ts) / 86400000));
+                  calcConsumption += Math.max(0, (recs[1].readingLbs - recs[0].readingLbs)) / days;
+                }
+              });
+            }
+            const dailyCons = consumption || calcConsumption;
+            const daysLeft = dailyCons > 0 ? Math.round((totalLbsHouse / dailyCons) * 10) / 10 : null;
+            const daysColor = daysLeft === null ? '#7ab07a' : daysLeft >= 3 ? '#4caf50' : daysLeft >= 1.5 ? '#d69e2e' : '#e53e3e';
+
+            const binRows = bins.map(b => {
+              const r = latestByBin[b.binId];
+              const lbs = r ? Number(r.readingLbs) : 0;
+              const pct = b.capacityLbs > 0 ? Math.min(100, Math.round((lbs / b.capacityLbs) * 100)) : 0;
+              const orderPct = b.orderPct || 25;
+              const colorClass = pct >= 50 ? 'fb-green' : pct >= orderPct ? 'fb-amber' : 'fb-red';
+              const lastDate = r ? fmtDate(r.date) : 'No reading';
+              const binLabel = b.name.includes('Bin A') ? 'A' : b.name.includes('Bin B') ? 'B' : b.name.split('—').pop().trim();
+              return `
+                <div style="margin-bottom:8px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#a0c8a0;">Bin ${binLabel}</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#f0ead8;">${fmtNum(lbs)} lbs</span>
+                    <span class="feed-bin-pct ${colorClass}" style="font-size:14px;">${r ? pct+'%' : '—'}</span>
+                  </div>
+                  <div class="feed-bin-bar-wrap" style="height:14px;margin-bottom:2px;">
+                    <div class="feed-bin-bar ${colorClass}" style="width:${pct}%;"></div>
+                    <div class="feed-bin-threshold" style="left:${orderPct}%;"></div>
+                  </div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a8a4a;">Last: ${lastDate}</div>
+                </div>`;
+            }).join('');
+
+            const totalLbs = bins.reduce((s,b) => s + b.capacityLbs, 0);
+            const statusClass = daysLeft === null ? 'ok' : daysLeft >= 3 ? 'ok' : daysLeft >= 1.5 ? 'low' : 'critical';
+            const statusLabel = daysLeft === null ? '— No consumption set' : daysLeft >= 3 ? '✅ OK' : daysLeft >= 1.5 ? '⚠️ Order Soon' : '🔴 Critical';
+
+            return `<div class="feed-bin-card">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+                <div class="feed-bin-name">${house}</div>
+                <div style="text-align:right;">
+                  ${daysLeft !== null ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:${daysColor};line-height:1;">${daysLeft}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a8a4a;">days left</div>` : ''}
+                </div>
+              </div>
+              <div class="feed-bin-loc">${[b.feedType, farm].filter(Boolean).join(' · ')}</div>
+              ${binRows}
+              <div style="border-top:1px solid #2a5a2a;padding-top:8px;margin-top:4px;display:flex;justify-content:space-between;align-items:center;">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;">Total: ${fmtNum(totalLbsHouse)} lbs${dailyCons?` · ${fmtNum(Math.round(dailyCons))} lbs/day`:''}</div>
+                <div class="feed-bin-status ${statusClass}" style="margin-top:0;">${statusLabel}</div>
+              </div>
+            </div>`;
+          }).join('')}
         </div>
-      </div>
-      <div class="feed-bin-bar-wrap">
-        <div class="feed-bin-bar ${colorClass}" style="width:${pct}%;"></div>
-        <div class="feed-bin-threshold" style="left:${thresholdLeft};" title="Order point: ${orderPct}%"></div>
-      </div>
-      <div class="feed-bin-meta">Order point: ${orderPct}% · Last reading: ${lastDate}${consumed !== null && consumed > 0 ? ' · Used: ' + fmtNum(consumed) + ' lbs' : ''}</div>
-      <div class="feed-bin-status ${statusClass}">${statusLabel}</div>
-    </div>`;
+      </div>`;
   }).join('');
 }
 
