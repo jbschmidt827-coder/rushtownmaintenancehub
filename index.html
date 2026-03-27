@@ -897,12 +897,21 @@ body { min-height: 100dvh; overflow-x: hidden; }
 .bw-submit:disabled{background:#2a5a2a;color:#5a8a5a;cursor:not-allowed;}
 .bw-submit:not(:disabled):hover{background:#43a047;}
 .bw-row-label{font-size:11px;color:#7ab07a;margin-bottom:6px;}
-.bw-check-item{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border-radius:8px;border:1.5px solid #2a5a2a;background:#163016;cursor:pointer;margin-bottom:8px;transition:all .15s;user-select:none;}
-.bw-check-item.bw-checked{background:#1a4a1a;border-color:#4caf50;}
-.bw-check-icon{width:22px;height:22px;min-width:22px;border-radius:5px;border:2px solid #3a7a3a;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:1px;background:#0f2a0f;transition:all .15s;}
-.bw-check-item.bw-checked .bw-check-icon{background:#4caf50;border-color:#4caf50;}
-.bw-check-text{font-size:12px;color:#7ab07a;line-height:1.5;font-family:'IBM Plex Sans',sans-serif;}
-.bw-check-item.bw-checked .bw-check-text{color:#f0ead8;}
+.bw-cl-row{border:1.5px solid #2a5a2a;border-radius:10px;background:#163016;margin-bottom:10px;overflow:hidden;}
+.bw-cl-row.bw-pass{border-color:#4caf50;background:#1a4a1a;}
+.bw-cl-row.bw-fail{border-color:#e53e3e;background:#2d1a1a;}
+.bw-cl-top{display:flex;align-items:center;gap:10px;padding:10px 12px;}
+.bw-cl-label{flex:1;font-size:12px;color:#a0c8a0;line-height:1.5;font-family:'IBM Plex Sans',sans-serif;}
+.bw-cl-row.bw-pass .bw-cl-label{color:#f0ead8;}
+.bw-cl-row.bw-fail .bw-cl-label{color:#f0ead8;}
+.bw-cl-btns{display:flex;gap:6px;flex-shrink:0;}
+.bw-cl-pass{padding:7px 12px;border-radius:7px;border:1.5px solid #2a5a2a;background:#0f2a0f;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;}
+.bw-cl-pass.active{background:#4caf50;border-color:#4caf50;color:#fff;}
+.bw-cl-fail-btn{padding:7px 12px;border-radius:7px;border:1.5px solid #5a2a2a;background:#1a0f0f;color:#e57373;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;}
+.bw-cl-fail-btn.active{background:#e53e3e;border-color:#e53e3e;color:#fff;}
+.bw-cl-fail-detail{display:none;padding:10px 12px;border-top:1px solid #3a1a1a;background:#1a0808;}
+.bw-cl-fail-detail input{width:100%;padding:8px 10px;border-radius:7px;border:1px solid #5a2a2a;background:#2a1010;color:#f0ead8;font-size:12px;font-family:'IBM Plex Sans',sans-serif;box-sizing:border-box;outline:none;}
+.bw-wo-badge{display:inline-block;margin-top:6px;background:#7b341e;color:#fbd38d;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:.5px;}
 .bw-weekly-step{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #1a3a1a;font-size:12px;color:#a0c8a0;line-height:1.5;}
 .bw-weekly-step:last-child{border-bottom:none;}
 .bw-step-num{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4caf50;font-weight:700;min-width:18px;margin-top:2px;}
@@ -1081,22 +1090,71 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <!-- Daily Checklist -->
   <div class="bw-card">
     <div class="bw-card-title">✅ Daily Checklist</div>
-    <div style="font-size:10px;color:#5a8a5a;margin-bottom:12px;font-family:'IBM Plex Mono',monospace;">TAP EACH TASK WHEN COMPLETE</div>
+    <div style="font-size:10px;color:#5a8a5a;margin-bottom:12px;font-family:'IBM Plex Mono',monospace;">MARK EACH ITEM PASS OR FAIL</div>
     <div id="bw-checklist-items">
-      <div class="bw-check-item" onclick="bwToggleCheck('waterleaks',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Check for water leaks — notify manager if found</div></div>
-      <div class="bw-check-item" onclick="bwToggleCheck('cagebirdcheck',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Check all cages — cull any injured or sick birds</div></div>
-      <div class="bw-check-item" onclick="bwToggleCheck('mortchute',this)"><div class="bw-check-icon"></div><div class="bw-check-text">All dead birds placed in white chute (back of barn, top floor)</div></div>
-      <div class="bw-check-item" onclick="bwToggleCheck('chutefull',this)"><div class="bw-check-icon"></div><div class="bw-check-text">White chute checked — manager notified if getting full</div></div>
-      <div class="bw-check-item" onclick="bwToggleCheck('damagedcages',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Damaged cages &amp; egg belts checked — manager notified if found</div></div>
-      <div class="bw-check-item" onclick="bwToggleCheck('watertubes',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Water tubes cleaned (front &amp; back of house)</div></div>
-      <div class="bw-check-item" onclick="bwToggleCheck('dustblown',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Dust &amp; dander blown off ceiling, walls, cages &amp; fan screens (top &amp; bottom floors)</div></div>
-      <div class="bw-check-item" onclick="bwToggleCheck('aislesblown',this)"><div class="bw-check-icon"></div><div class="bw-check-text">All aisles blown out on bottom floor (under cages &amp; egg collectors)</div></div>
-      <div class="bw-check-item" onclick="bwToggleCheck('eggcollblown',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Front &amp; back of egg collectors blown off</div></div>
-      <div class="bw-check-item" onclick="bwToggleCheck('eggspills',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Egg spills cleaned up after egg collector run (aisles, under collectors, front conveyor area)</div></div>
-      <div class="bw-check-item" onclick="bwToggleCheck('wheelbarrow',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Wheelbarrow emptied behind manure belts — DO NOT dump on pit belt</div></div>
-      <div class="bw-check-item" onclick="bwToggleCheck('toolsback',this)"><div class="bw-check-icon"></div><div class="bw-check-text">All tools returned to designated spots</div></div>
+
+      <div class="bw-cl-row" id="bw-cl-waterleaks">
+        <div class="bw-cl-top"><div class="bw-cl-label">Check for water leaks — notify manager if found</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('waterleaks','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('waterleaks','fail',this)">❌ Fail</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-waterleaks"><input type="text" placeholder="Describe location / issue..." id="bw-cl-note-waterleaks"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-cagebirdcheck">
+        <div class="bw-cl-top"><div class="bw-cl-label">Check all cages — cull any injured or sick birds</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('cagebirdcheck','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('cagebirdcheck','fail',this)">❌ Fail</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-cagebirdcheck"><input type="text" placeholder="Describe issue (location, count)..." id="bw-cl-note-cagebirdcheck"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-mortchute">
+        <div class="bw-cl-top"><div class="bw-cl-label">All dead birds placed in white chute (back of barn, top floor)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('mortchute','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('mortchute','fail',this)">❌ Fail</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-mortchute"><input type="text" placeholder="Notes..." id="bw-cl-note-mortchute"></div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-chutefull">
+        <div class="bw-cl-top"><div class="bw-cl-label">White chute checked — getting full?</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('chutefull','pass',this)">✅ OK</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('chutefull','fail',this)">⚠️ Full</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-chutefull"><input type="text" placeholder="Notes..." id="bw-cl-note-chutefull"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-damagedcages">
+        <div class="bw-cl-top"><div class="bw-cl-label">Damaged cages &amp; egg belts — any damage found?</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('damagedcages','pass',this)">✅ None</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('damagedcages','fail',this)">❌ Found</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-damagedcages"><input type="text" placeholder="Describe damage location..." id="bw-cl-note-damagedcages"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-watertubes">
+        <div class="bw-cl-top"><div class="bw-cl-label">Water tubes cleaned (front &amp; back of house)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('watertubes','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('watertubes','fail',this)">❌ Fail</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-watertubes"><input type="text" placeholder="Notes on issue..." id="bw-cl-note-watertubes"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-dustblown">
+        <div class="bw-cl-top"><div class="bw-cl-label">Dust &amp; dander blown off — ceiling, walls, cages &amp; fan screens (top &amp; bottom)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('dustblown','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('dustblown','fail',this)">❌ Fail</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-dustblown"><input type="text" placeholder="Notes..." id="bw-cl-note-dustblown"></div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-aislesblown">
+        <div class="bw-cl-top"><div class="bw-cl-label">All aisles blown out on bottom floor (under cages &amp; egg collectors)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('aislesblown','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('aislesblown','fail',this)">❌ Fail</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-aislesblown"><input type="text" placeholder="Notes..." id="bw-cl-note-aislesblown"></div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-eggcollblown">
+        <div class="bw-cl-top"><div class="bw-cl-label">Front &amp; back of egg collectors blown off</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('eggcollblown','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('eggcollblown','fail',this)">❌ Fail</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-eggcollblown"><input type="text" placeholder="Notes..." id="bw-cl-note-eggcollblown"></div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-eggspills">
+        <div class="bw-cl-top"><div class="bw-cl-label">Egg spills cleaned up after egg collector run</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('eggspills','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('eggspills','fail',this)">❌ Fail</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-eggspills"><input type="text" placeholder="Notes..." id="bw-cl-note-eggspills"></div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-wheelbarrow">
+        <div class="bw-cl-top"><div class="bw-cl-label">Wheelbarrow emptied behind manure belts — NOT on pit belt</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('wheelbarrow','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('wheelbarrow','fail',this)">❌ Fail</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-wheelbarrow"><input type="text" placeholder="Notes..." id="bw-cl-note-wheelbarrow"></div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-toolsback">
+        <div class="bw-cl-top"><div class="bw-cl-label">All tools returned to designated spots</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('toolsback','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('toolsback','fail',this)">❌ Fail</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-toolsback"><input type="text" placeholder="What is missing?" id="bw-cl-note-toolsback"></div>
+      </div>
+
     </div>
-    <div id="bw-checklist-progress" style="margin-top:10px;font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-align:right;">0 / 12 completed</div>
+    <div id="bw-checklist-progress" style="margin-top:10px;font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-align:right;">0 / 12 reviewed</div>
   </div>
 
   <!-- Weekly Tasks (day-conditional) -->
@@ -6918,11 +6976,13 @@ const _BW_WEEKLY = {
 
 function bwInitChecklist() {
   _bwChecklist = {};
-  document.querySelectorAll('#bw-checklist-items .bw-check-item').forEach(el => {
-    el.classList.remove('bw-checked');
-    el.querySelector('.bw-check-icon').textContent = '';
+  document.querySelectorAll('#bw-checklist-items .bw-cl-row').forEach(el => {
+    el.classList.remove('bw-pass','bw-fail');
+    el.querySelectorAll('.bw-cl-pass,.bw-cl-fail-btn').forEach(b => b.classList.remove('active'));
   });
-  document.getElementById('bw-checklist-progress').textContent = '0 / 12 completed';
+  document.querySelectorAll('#bw-checklist-items .bw-cl-fail-detail').forEach(el => el.style.display='none');
+  document.querySelectorAll('#bw-checklist-items input[id^="bw-cl-note-"]').forEach(el => el.value='');
+  document.getElementById('bw-checklist-progress').textContent = '0 / 12 reviewed';
 
   const day = new Date().getDay();
   const weekly = _BW_WEEKLY[day];
@@ -6940,14 +7000,35 @@ function bwInitChecklist() {
   }
 }
 
-function bwToggleCheck(key, el) {
-  _bwChecklist[key] = !_bwChecklist[key];
-  el.classList.toggle('bw-checked', _bwChecklist[key]);
-  el.querySelector('.bw-check-icon').textContent = _bwChecklist[key] ? '✓' : '';
-  const total = document.querySelectorAll('#bw-checklist-items .bw-check-item').length;
-  const done  = Object.values(_bwChecklist).filter(Boolean).length;
-  document.getElementById('bw-checklist-progress').textContent = done + ' / ' + total + ' completed';
-  document.getElementById('bw-checklist-progress').style.color = done === total ? '#4caf50' : '#5a8a5a';
+// items that auto-generate a WO on fail
+const _BW_WO_ITEMS = {
+  waterleaks:    { desc:'Water leak found',                   problem:'Watering System',       priority:'urgent' },
+  cagebirdcheck: { desc:'Injured/sick birds found in cages',  problem:'Building / Structure',  priority:'urgent' },
+  chutefull:     { desc:'Mortality chute getting full',        problem:'Building / Structure',  priority:'high'   },
+  damagedcages:  { desc:'Damaged cages or egg belts found',   problem:'Egg Collection',        priority:'high'   },
+  watertubes:    { desc:'Water tubes not cleaned / issue',    problem:'Watering System',       priority:'normal' },
+};
+
+function bwSetCheck(key, val, btn) {
+  _bwChecklist[key] = val;
+  const row    = document.getElementById('bw-cl-' + key);
+  const detail = document.getElementById('bw-cl-det-' + key);
+  // Reset button styles in this row
+  row.querySelectorAll('.bw-cl-pass').forEach(b => b.classList.remove('active'));
+  row.querySelectorAll('.bw-cl-fail-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // Row color
+  row.classList.remove('bw-pass','bw-fail');
+  row.classList.add(val === 'pass' ? 'bw-pass' : 'bw-fail');
+  // Show/hide fail detail
+  if (detail) detail.style.display = val === 'fail' ? 'block' : 'none';
+  // Update progress
+  const total   = document.querySelectorAll('#bw-checklist-items .bw-cl-row').length;
+  const reviewed = Object.keys(_bwChecklist).length;
+  const fails   = Object.values(_bwChecklist).filter(v => v === 'fail').length;
+  const prog    = document.getElementById('bw-checklist-progress');
+  prog.textContent = reviewed + ' / ' + total + ' reviewed' + (fails ? ' · ' + fails + ' ⚠️ FAIL' : '');
+  prog.style.color = fails ? '#e53e3e' : (reviewed === total ? '#4caf50' : '#5a8a5a');
 }
 
 function openBarnWalk(farm, house) {
@@ -7036,8 +7117,16 @@ async function submitBarnWalk() {
   if (_bwData.fly === 'yes')            flags.push('Fly activity' + (flyCount ? ' (' + flyCount + ')' : ''));
   if (_bwData.doors === 'open')         flags.push('House doors open');
 
-  const checklistTotal = document.querySelectorAll('#bw-checklist-items .bw-check-item').length;
-  const checklistDone  = Object.values(_bwChecklist).filter(Boolean).length;
+  const checklistTotal  = document.querySelectorAll('#bw-checklist-items .bw-cl-row').length;
+  const checklistFails  = Object.entries(_bwChecklist).filter(([,v]) => v === 'fail').map(([k]) => k);
+  const checklistPasses = Object.entries(_bwChecklist).filter(([,v]) => v === 'pass').map(([k]) => k);
+  // Collect checklist fail notes
+  const checklistNotes = {};
+  checklistFails.forEach(k => {
+    const el = document.getElementById('bw-cl-note-' + k);
+    if (el && el.value.trim()) checklistNotes[k] = el.value.trim();
+  });
+  if (checklistFails.length) flags.push('Checklist failures: ' + checklistFails.join(', '));
 
   const record = {
     farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
@@ -7047,14 +7136,35 @@ async function submitBarnWalk() {
     dryers: _bwData.dryers, eggbelt: _bwData.eggbelt, manure: _bwData.manure,
     stand: _bwData.stand, fly: _bwData.fly, mortrem: _bwData.mortrem,
     doors: _bwData.doors,
-    checklist: _bwChecklist,
-    checklistDone, checklistTotal,
+    checklist: _bwChecklist, checklistNotes,
+    checklistFails: checklistFails.length, checklistTotal,
     date: new Date().toISOString().slice(0,10),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
     ts: Date.now()
   };
 
   try { await db.collection('barnWalks').add(record); } catch(e) { console.error(e); }
+
+  // Auto-create WOs for checklist failures that warrant one
+  const submitted = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const woDate    = new Date().toISOString().slice(0,10);
+  for (const key of checklistFails) {
+    if (!_BW_WO_ITEMS[key]) continue;
+    try {
+      const {desc, problem, priority} = _BW_WO_ITEMS[key];
+      const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
+      woCounter = (woCounter || 900) + 1;
+      const extraNote = checklistNotes[key] ? ' — ' + checklistNotes[key] : '';
+      await db.collection('workOrders').add({
+        id: woId, farm: _bwFarm, house: String(_bwHouse),
+        problem, priority, status: 'open',
+        desc: desc + extraNote,
+        tech: employee,
+        notes: 'Auto-created from daily checklist — ' + _bwFarm + ' Barn ' + _bwHouse,
+        submitted, date: woDate, ts: Date.now()
+      });
+    } catch(e) { console.error(e); }
+  }
 
   const key = _bwFarm + '-' + _bwHouse;
   BARN_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
