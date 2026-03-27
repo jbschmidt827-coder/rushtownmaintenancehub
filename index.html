@@ -1040,7 +1040,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
   <!-- Belts -->
   <div class="bw-card">
-    <div class="bw-card-title">🥚 Belts</div>
+    <div class="bw-card-title">🥚 Belts &amp; Egg Count</div>
     <div style="margin-bottom:12px;">
       <div class="bw-row-label">Egg Belt Working?</div>
       <div class="bw-yn-row">
@@ -1051,12 +1051,16 @@ body { min-height: 100dvh; overflow-x: hidden; }
         🔧 Work Order will be auto-created when you submit.
       </div>
     </div>
-    <div>
+    <div style="margin-bottom:12px;">
       <div class="bw-row-label">Manure Belts</div>
       <div class="bw-yn-row">
         <button class="bw-yn-btn" id="bw-manure-run"  onclick="bwSet('manure','run')">✅ Running</button>
         <button class="bw-yn-btn" id="bw-manure-stop" onclick="bwSet('manure','stop')">❌ Not Running</button>
       </div>
+    </div>
+    <div>
+      <div class="bw-row-label">Egg Count — This Barn (total eggs)</div>
+      <input type="number" id="bw-egg-count" class="bw-input" placeholder="Enter egg count" min="0">
     </div>
   </div>
 
@@ -1546,44 +1550,8 @@ body { min-height: 100dvh; overflow-x: hidden; }
 <!-- ═══ PACKAGING PANEL ═══ -->
 <div class="panel" id="panel-pkg">
   <div class="section-title">📦 Packaging</div>
-  <div class="sub-nav">
-    <button class="sub-btn active" data-section="eggops" onclick="goPkgSection('eggops')">🥚 Egg Ops</button>
-    <button class="sub-btn"       data-section="packing" onclick="goPkgSection('packing')">📦 Packing</button>
-  </div>
-
-  <!-- Egg Ops -->
-  <div class="pkg-section" id="pkg-eggops" style="display:block;">
-    <div class="ops-quick-form">
-      <div class="ops-qf-title">➕ Log Egg Production</div>
-      <div class="ops-form-grid" id="egg-form-grid">
-        <div class="fg"><label>Date *</label><input type="date" id="ef-date"></div>
-        <div class="fg"><label>Farm *</label><select id="ef-farm" onchange="efFarmChange()"><option value="">— Select —</option><option>Hegins</option><option>Danville</option></select></div>
-        <div class="fg"><label>House / Barn *</label><select id="ef-house"><option value="">— Select Farm First —</option></select></div>
-        <div class="fg"><label>Shift</label><select id="ef-shift"><option>AM</option><option>PM</option><option>Night</option></select></div>
-        <div class="fg"><label>Total Eggs *</label><input type="number" id="ef-eggs" min="0" placeholder="0"></div>
-        <div class="fg"><label>Entered By</label><input type="text" id="ef-by" placeholder="Name"></div>
-        <div class="fg ops-form-full"><label>Notes</label><input type="text" id="ef-notes" placeholder="Optional notes"></div>
-      </div>
-      <div class="ops-form-actions">
-        <button class="ops-save-btn" onclick="saveEggOps()">✓ Log Production</button>
-        <button class="ops-cancel-btn" onclick="clearEggForm()">Clear</button>
-      </div>
-    </div>
-    <div class="ops-filter-row">
-      <input type="date" class="ops-date-input" id="egg-filter-date" onchange="renderEggOps()">
-      <div class="pill-bar" id="egg-farm-filter">
-        <button class="pill active" onclick="opsEggFarm('all',this)">All Farms</button>
-        <button class="pill" onclick="opsEggFarm('Hegins',this)">📍 Hegins</button>
-        <button class="pill" onclick="opsEggFarm('Danville',this)">📍 Danville</button>
-      </div>
-    </div>
-    <div class="recent-hdr" style="margin-bottom:10px;">Production Log</div>
-    <div class="stats-grid g3" id="egg-stats" style="margin-bottom:16px;"></div>
-    <div style="overflow-x:auto;"><table class="ops-table" id="egg-table"></table></div>
-  </div>
-
   <!-- Packing -->
-  <div class="pkg-section" id="pkg-packing">
+  <div class="pkg-section" id="pkg-packing" style="display:block;">
     <div class="ops-quick-form">
       <div class="ops-qf-title">➕ Log Packing</div>
       <div class="ops-form-grid" id="pack-form-grid">
@@ -2606,8 +2574,7 @@ function refreshCurrentPanel() {
   }
   // Packaging sub-sections
   if (active('pkg')) {
-    if (window._pkgSection==='eggops') renderEggOps();
-    else if (window._pkgSection==='packing') renderPacking();
+    if (window._pkgSection==='packing') renderPacking();
     return;
   }
   // Shipping sub-sections
@@ -2655,7 +2622,7 @@ function go(tab) {
   if (tab === 'dash') renderDash();
   if (tab === 'prod') renderProdPanel();
   if (tab === 'maint') { goMaintSection(window._maintSection || 'wo'); }
-  if (tab === 'pkg')   { goPkgSection(window._pkgSection || 'eggops'); }
+  if (tab === 'pkg')   { goPkgSection(window._pkgSection || 'packing'); }
   if (tab === 'ship')  { goShipSection(window._shipSection || 'shipping'); }
   if (tab === 'reports') renderReports();
 }
@@ -6636,7 +6603,7 @@ function goMaintSection(section) {
 // ═══════════════════════════════════════════
 // PACKAGING SUB-NAV
 // ═══════════════════════════════════════════
-window._pkgSection = 'eggops';
+window._pkgSection = 'packing';
 function goPkgSection(section) {
   window._pkgSection = section;
   document.querySelectorAll('.pkg-section').forEach(s => s.style.display = 'none');
@@ -6646,7 +6613,6 @@ function goPkgSection(section) {
   document.querySelectorAll('#panel-pkg .sub-btn').forEach(b => {
     if (b.dataset.section === section) b.classList.add('active');
   });
-  if (section === 'eggops') renderEggOps();
   if (section === 'packing') renderPacking();
 }
 
@@ -7057,7 +7023,7 @@ function openBarnWalk(farm, house) {
   _bwFarm = farm; _bwHouse = house; _bwData = {};
   document.getElementById('bw-title').textContent = farm + ' — Barn ' + house;
   document.getElementById('bw-subtitle').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-  ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count'].forEach(id => {
+  ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count','bw-egg-count'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('bw-mort-count-row').style.display    = 'none';
@@ -7166,6 +7132,18 @@ async function submitBarnWalk() {
   };
 
   try { await db.collection('barnWalks').add(record); } catch(e) { console.error(e); }
+
+  // Auto-save egg count to opsEggProduction (replaces Egg Ops form)
+  const eggCount = parseInt(document.getElementById('bw-egg-count')?.value||'0')||0;
+  if (eggCount > 0) {
+    try {
+      const eggRec = { date: new Date().toISOString().slice(0,10), farm: _bwFarm, house: String(_bwHouse),
+        shift: shiftFromTime(), eggs: eggCount, by: employee, notes: 'From daily barn check', ts: Date.now() };
+      const eggRef = await db.collection('opsEggProduction').add(eggRec);
+      eggRec._fbId = eggRef.id;
+      opsEggData.unshift(eggRec);
+    } catch(e) { console.error(e); }
+  }
 
   // Auto-create WOs for checklist failures that warrant one
   const submitted = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
@@ -7400,7 +7378,6 @@ function goOps(section) {
 function renderOpsPanel() {
   // Legacy - now routed through goShipSection / goPkgSection
   if (opsCurrentSection === 'scoreboard')     renderOpsScoreboard();
-  else if (opsCurrentSection === 'eggops')    renderEggOps();
   else if (opsCurrentSection === 'packing')   renderPacking();
   else if (opsCurrentSection === 'shipping')  renderShipping();
   else if (opsCurrentSection === 'reconciliation') renderReconciliation();
@@ -7508,81 +7485,6 @@ function renderOpsScoreboard() {
 
   const tsEl = document.getElementById('ops-score-ts');
   if (tsEl) tsEl.textContent = 'As of ' + new Date().toLocaleTimeString();
-}
-
-// ── Egg Ops ──
-function opsEggFarm(val, btn) {
-  opsEggFarm_ = val;
-  document.querySelectorAll('#egg-farm-filter .pill').forEach(b=>b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  renderEggOps();
-}
-
-function efFarmChange() {
-  const farm = document.getElementById('ef-farm')?.value;
-  const houseEl = document.getElementById('ef-house');
-  if (!houseEl) return;
-  const hH = ['House 1','House 2','House 3','House 4','House 5','House 6','House 7','House 8'];
-  const dH = ['House 1','House 2','House 3','House 4','House 5'];
-  const houses = farm==='Hegins'?hH:farm==='Danville'?dH:[];
-  houseEl.innerHTML = '<option value="">— Select —</option>' + houses.map(h=>`<option>${h}</option>`).join('');
-}
-
-function renderEggOps() {
-  const filterDate = document.getElementById('egg-filter-date')?.value || opsToday();
-  let data = opsEggData.filter(r=>r.date===filterDate);
-  if (opsEggFarm_!=='all') data = data.filter(r=>r.farm===opsEggFarm_);
-  data.sort((a,b)=>a.farm.localeCompare(b.farm)||a.house.localeCompare(b.house));
-
-  const todayAll = opsEggData.filter(r=>r.date===filterDate);
-  const hegins  = todayAll.filter(r=>r.farm==='Hegins').reduce((s,r)=>s+(Number(r.eggs)||0),0);
-  const danvill = todayAll.filter(r=>r.farm==='Danville').reduce((s,r)=>s+(Number(r.eggs)||0),0);
-  const statsEl = document.getElementById('egg-stats');
-  if (statsEl) statsEl.innerHTML = sc('s-green',fmtNum(hegins+danvill),'🥚 Total Eggs')+sc('s-blue',fmtNum(hegins),'📍 Hegins')+sc('s-amber',fmtNum(danvill),'📍 Danville');
-
-  const tbl = document.getElementById('egg-table');
-  if (!tbl) return;
-  if (!data.length) { tbl.innerHTML='<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;">No entries for this date. Use the form above to log production.</td></tr>'; return; }
-
-  let total=0, html='<thead><tr><th>Date</th><th>Farm</th><th>House</th><th>Shift</th><th>Eggs Produced</th><th>Entered By</th><th>Notes</th><th></th></tr></thead><tbody>';
-  data.forEach(r=>{
-    total+=Number(r.eggs)||0;
-    const sc2=r.shift==='AM'?'open':r.shift==='PM'?'in-progress':'on-hold';
-    html+=`<tr><td>${r.date}</td><td>${r.farm}</td><td>${r.house}</td><td><span class="badge ${sc2}" style="font-size:9px;">${r.shift}</span></td><td><strong>${fmtNum(r.eggs)}</strong></td><td>${r.by||'—'}</td><td style="color:var(--muted);font-size:11px;">${r.notes||''}</td><td><button class="ops-action-btn danger" onclick="deleteEggOps('${r._fbId}')">✕</button></td></tr>`;
-  });
-  html+=`<tr class="total-row"><td colspan="4">DAILY TOTAL</td><td>${fmtNum(total)}</td><td colspan="3"></td></tr></tbody>`;
-  tbl.innerHTML=html;
-}
-
-async function saveEggOps() {
-  const date=document.getElementById('ef-date')?.value, farm=document.getElementById('ef-farm')?.value, house=document.getElementById('ef-house')?.value;
-  const shift=document.getElementById('ef-shift')?.value||'AM', eggs=parseInt(document.getElementById('ef-eggs')?.value||'0');
-  const by=document.getElementById('ef-by')?.value?.trim()||'Unknown', notes=document.getElementById('ef-notes')?.value?.trim()||'';
-  if (!date||!farm||!house||!eggs) { alert('Date, Farm, House, and Total Eggs are required.'); return; }
-  const record={date,farm,house,shift,eggs,by,notes,ts:Date.now()};
-  try {
-    const ref=await db.collection('opsEggProduction').add(record);
-    record._fbId=ref.id; opsEggData.unshift(record);
-    await db.collection('activityLog').add({type:'ops-egg',id:'EGG',desc:`Egg production: ${farm} ${house} — ${fmtNum(eggs)} eggs (${shift})`,tech:by,date,ts:Date.now()});
-    clearEggForm(); renderEggOps(); renderOpsScoreboard();
-  } catch(e) { console.error(e); alert('Error saving: '+e.message); }
-}
-
-function clearEggForm() {
-  const t=opsToday(), s=shiftFromTime();
-  ['ef-date','ef-farm','ef-house','ef-shift','ef-eggs','ef-by','ef-notes'].forEach(id=>{
-    const el=document.getElementById(id); if(!el)return;
-    if(id==='ef-date') el.value=t;
-    else if(id==='ef-shift') el.value=s;
-    else el.value='';
-  });
-}
-
-async function deleteEggOps(fbId) {
-  if (!confirm('Delete this production entry?')) return;
-  if (!fbId.startsWith('demo-')) await db.collection('opsEggProduction').doc(fbId).delete();
-  opsEggData=opsEggData.filter(r=>r._fbId!==fbId);
-  renderEggOps(); renderOpsScoreboard();
 }
 
 // ── Packing ──
@@ -8042,7 +7944,6 @@ async function loadOpsData() {
 function startOpsListeners() {
   db.collection('opsEggProduction').orderBy('ts','desc').limit(500).onSnapshot(snap=>{
     opsEggData=[]; snap.forEach(d=>opsEggData.push({...d.data(),_fbId:d.id}));
-    if(window._pkgSection==='eggops') renderEggOps();
     if(document.getElementById('panel-dash')?.classList.contains('active')) renderDash();
   },e=>console.error('opsEgg listener:',e));
   db.collection('opsPacking').orderBy('ts','desc').limit(500).onSnapshot(snap=>{
