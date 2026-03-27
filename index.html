@@ -1557,6 +1557,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <div class="section-title">🚚 Shipping</div>
   <div class="sub-nav">
     <button class="sub-btn active" data-section="shipping"       onclick="goShipSection('shipping')">🚛 Active Loads</button>
+    <button class="sub-btn"        data-section="farms"          onclick="goShipSection('farms')">🏚️ Farms</button>
     <button class="sub-btn"        data-section="reconciliation" onclick="goShipSection('reconciliation')">⚖️ Reconciliation</button>
     <button class="sub-btn"        data-section="exceptions"     onclick="goShipSection('exceptions')">⚠️ Exceptions <span id="ops-exc-badge" style="display:none;background:#e53e3e;color:#fff;border-radius:50%;font-size:10px;padding:1px 5px;margin-left:3px;vertical-align:middle;"></span></button>
   </div>
@@ -1576,7 +1577,8 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <div class="ops-form-grid" id="ship-form-grid">
         <div class="fg"><label>Ship Date *</label><input type="date" id="sf-date"></div>
         <div class="fg"><label>Load # *</label><input type="text" id="sf-loadnum" placeholder="e.g. L-001"></div>
-        <div class="fg"><label>Customer *</label><input type="text" id="sf-customer" placeholder="Customer name"></div>
+        <div class="fg"><label>Farm / Customer *</label><select id="sf-customer" onchange="onShipFarmSelect()"><option value="">— Select Farm —</option></select></div>
+        <div id="sf-farm-info" style="display:none;grid-column:1/-1;background:#f0f9f0;border:1.5px solid #b2dfb2;border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.7;font-family:'IBM Plex Sans',sans-serif;"></div>
         <div class="fg"><label>Product *</label><select id="sf-product"><option value="">— Select —</option><option>Jumbo</option><option>XL</option><option>Large</option><option>Medium</option><option>Small</option><option>Pullet</option><option>Nest Run</option></select></div>
         <div class="fg"><label>Quantity *</label><input type="number" id="sf-qty" min="0" placeholder="0"></div>
         <div class="fg"><label>Unit</label><select id="sf-unit"><option>Cases</option><option>Dozen</option><option>Flats</option><option>Pallets</option></select></div>
@@ -1595,6 +1597,26 @@ body { min-height: 100dvh; overflow-x: hidden; }
     </div>
     <div class="stats-grid g4" id="ship-stats" style="margin-bottom:16px;"></div>
     <div id="ship-list"></div>
+  </div>
+
+  <!-- Farms Directory -->
+  <div class="ship-section" id="ship-farms">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+      <input type="text" id="farm-search" placeholder="🔍  Search farms, contacts, city..." oninput="renderFarms()" style="flex:1;min-width:200px;padding:9px 14px;border-radius:9px;border:1.5px solid #ddd;font-size:14px;font-family:'IBM Plex Sans',sans-serif;outline:none;">
+      <select id="farm-owner-filter" onchange="renderFarms()" style="padding:9px 12px;border-radius:9px;border:1.5px solid #ddd;font-size:13px;font-family:'IBM Plex Sans',sans-serif;background:#fff;">
+        <option value="">All Owners</option>
+        <option value="R&L">R&L Owned</option>
+        <option value="RTP">RTP Owned</option>
+        <option value="Rushtown">Rushtown Owned</option>
+        <option value="independent">Independent</option>
+      </select>
+    </div>
+    <div id="farm-dir-stats" style="margin-bottom:14px;"></div>
+    <div id="farm-dir-list"></div>
+    <!-- Farm Detail Modal -->
+    <div id="farm-detail-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;align-items:center;justify-content:center;padding:16px;">
+      <div id="farm-detail-card" style="background:#fff;border-radius:18px;padding:28px 24px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.3);position:relative;"></div>
+    </div>
   </div>
 
   <!-- Reconciliation -->
@@ -2110,6 +2132,38 @@ function _adminUpdateDots() {
     dot.style.borderColor = i <= _adminPinEntry.length ? '#4caf50' : '#3a7a3a';
   });
 }
+
+// ═══════════════════════════════════════════
+// LAYER FARM DIRECTORY
+// ═══════════════════════════════════════════
+const LAYER_FARMS = [
+  { name:'A&L',               owner:'R&L',            address:'3304 Mountain Rd, Hamburg, PA 19526',          stateId:'PA060001',  fedId:'003G17A',  npip:'23-815', doorCode:'8391', contacts:[{name:'Cleason',phone:'717-926-1529'},{name:'Joshua',phone:'717-422-2231'}], email:'' },
+  { name:'Ernest Hursh',      owner:'R&L',            address:'2050 Turkey Bird Rd, Newport, PA 17074',       stateId:'PA5002YG',  fedId:'00J4LZX',  npip:'23-818', doorCode:'3411', contacts:[{name:'Ernest Hursh',phone:'717-275-2642'}], email:'' },
+  { name:'Mike Ewing',        owner:'R&L',            address:'497 Bannerville Hill Rd, McClure, PA 17841',   stateId:'PA5500CN',  fedId:'00G116P',  npip:'23-816', doorCode:'N/A',  contacts:[{name:'Michael Ewing',phone:'570-765-3614'},{name:'Janelle Brouse',phone:'570-765-3628'}], email:'gnatsumstacey@gmail.com' },
+  { name:'Swatara Creek Poultry', owner:'Swatara Creek', address:'105 Dead End Rd, Lebanon, PA 17046',       stateId:'PA380387',  fedId:'00PMHNK',  npip:'23-813', doorCode:'8495', contacts:[{name:'Colleen Snyder',phone:'717-675-8495'}], email:'' },
+  { name:'Collett Farms',     owner:'Collett',        address:'1118 Luxemburg Rd, Lykens, PA 17048',          stateId:'PA22033M',  fedId:'00K0LAP',  npip:'23-814', doorCode:'6264', contacts:[{name:'Obed',phone:'484-332-8438'}], email:'' },
+  { name:'Kenneth Snyder',    owner:'Kenneth Snyder', address:'3797 Irish Creek Rd, Bernville, PA 19506',     stateId:'PA06004K',  fedId:'003G516',  npip:'23-829', doorCode:'3230', contacts:[{name:'Kenneth Snyder',phone:'267-278-1300'}], email:'' },
+  { name:'Leonard Martin',    owner:'R&L',            address:'601 Bloody Spring Rd, Bernville, PA 19506',    stateId:'PA0603FH',  fedId:'00SDR53',  npip:'23-826', doorCode:'1066', contacts:[{name:'Leonard',phone:'570-294-3656'}], email:'' },
+  { name:'JT Poultry, LLC',   owner:'JT Poultry',     address:'664 Mountain Rd, Elizabethville, PA 17023',    stateId:'PA2203AH',  fedId:'00STHLP',  npip:'23-846', doorCode:'4600', contacts:[{name:'Jared Moore',phone:'570-274-6896'}], email:'jtpoultryfarms@gmail.com' },
+  { name:'Brian Martin',      owner:'Brian Martin',   address:'195 Fort Swatara Rd, Jonestown, PA 17038',     stateId:'PA3803BB',  fedId:'00R5CXB',  npip:'',       doorCode:'N/A',  contacts:[{name:'Brian Martin',phone:'717-813-4826'}], email:'brianlmartin1980@gmail.com' },
+  { name:'Travis Burkholder', owner:'Travis Burkholder', address:'700 Green Spring Rd, Newville, PA 17241',   stateId:'',          fedId:'00SWXM5',  npip:'23-852', doorCode:'0421', contacts:[{name:'Travis',phone:'717-776-4738'}], email:'tkburkholder@upwardmail.com' },
+  { name:'Samuel Lapp',       owner:'R&L',            address:'7780 Lancaster Ave, Myerstown, PA 17067',      stateId:'',          fedId:'00K9066',  npip:'',       doorCode:'N/A',  contacts:[{name:'Samuel Lapp',phone:'717-926-1965'}], email:'' },
+  { name:'Hidden Hollow Poultry LLC', owner:'Hidden Hollow', address:'160 Oakville Rd, Newville, PA 17241',   stateId:'',          fedId:'00T57KT',  npip:'23-879', doorCode:'8360', contacts:[{name:'Matt Neally',phone:'717-226-5435'},{name:'Steven Weaver',phone:'717-446-4217'},{name:'Tommy',phone:'717-226-4018'}], email:'hiddenhollowpoultryllc@gmail.com' },
+  { name:'Alex Hursh',        owner:'R&L',            address:'1900 Turkey Bird Rd, Newport, PA 17074',       stateId:'',          fedId:'00TKT7U',  npip:'23-896', doorCode:'6474', contacts:[{name:'Alex Hursh',phone:'717-275-6204'}], email:'' },
+  { name:'Austin Hurst',      owner:'R&L',            address:'37 New Schaefferstown Rd, Bernville, PA 19506',stateId:'',          fedId:'00KCWM1',  npip:'',       doorCode:'',     contacts:[{name:'Austin Hurst',phone:'717-517-0706'}], email:'kaitlynlorelle@gmail.com' },
+  { name:'Dwayne Peifer',     owner:'R&L',            address:'510 Mt. Eden Rd, Kirkwood, PA 17536',          stateId:'',          fedId:'00TKQHM',  npip:'23-895', doorCode:'2838', contacts:[{name:'Dwayne Peifer',phone:'717-666-8093'}], email:'dkpeifer@frontier.com' },
+  { name:'Timothy Reiff',     owner:'R&L',            address:'480 Baltimore Rd, Shippensburg, PA 17257',     stateId:'',          fedId:'00TLPN6',  npip:'',       doorCode:'',     contacts:[{name:'Tim Reiff (Home)',phone:'717-477-8063'},{name:'Tim Reiff (Work)',phone:'717-491-5477'}], email:'Sparkies5477@gmail.com' },
+  { name:'Nathan Zimmerman',  owner:'R&L',            address:'760 N Market St, Myerstown, PA 17067',         stateId:'',          fedId:'00TKDY1',  npip:'23-898', doorCode:'3589', contacts:[{name:'Nathan Zimmerman',phone:'717-304-9905'}], email:'Nzim34906@gmail.com' },
+  { name:'Keith Nolt',        owner:'Keith Nolt',     address:'1519 Slate Hill Rd, Peach Bottom, PA 17563',   stateId:'',          fedId:'004FA05',  npip:'',       doorCode:'',     contacts:[{name:'Keith',phone:'717-669-5331'}], email:'Knolt97@yahoo.com' },
+  { name:'Rushtown Poultry, LLC', owner:'Rushtown',   address:'970 Rushtown Rd, Danville, PA 17821',          stateId:'',          fedId:'00REKKB',  npip:'23-541', doorCode:'N/A',  contacts:[{name:'Katie Ronk',phone:'717-644-1060'},{name:'Nate Piestrak',phone:'570-284-7520'},{name:'Brad Martin',phone:'717-376-8104'}], email:'' },
+  { name:'Milan',             owner:'RTP',            address:'1194 Milan Rd, Milan, PA 18831',               stateId:'PA08035H',  fedId:'00S4JCH',  npip:'23-819', doorCode:'4635', contacts:[{name:'Jorge (Spanish Only)',phone:'484-940-0295'},{name:'Nate Piestrak',phone:'570-284-7520'},{name:'Brad Martin',phone:'717-376-8104'}], email:'' },
+  { name:'W&M Farms LLC',     owner:'RTP',            address:'972 Friedline Rd, Danville, PA 17822',         stateId:'',          fedId:'00D6RKA',  npip:'23-871', doorCode:'2525', contacts:[{name:'Wade Martin',phone:'717-639-1121'}], email:'Wademar678@gmail.com' },
+  { name:'Meadow Ridge Farms',owner:'RTP',            address:'9 W Four Point Rd, Richland, PA 17087',        stateId:'PA06032B',  fedId:'00JZ7FP',  npip:'',       doorCode:'1555', contacts:[{name:'Glenden Martin',phone:'717-926-1888'}], email:'glendenmartin1@yahoo.com' },
+  { name:'Turbotville',       owner:'RTP',            address:'155 Foggy Mountain Rd, Turbotville, PA 17772', stateId:'PA47014W',  fedId:'00PAHL7',  npip:'23-817', doorCode:'',     contacts:[{name:'Daniel',phone:'570-293-0022'},{name:'Nate Piestrak',phone:'570-284-7520'},{name:'Brad Martin',phone:'717-376-8104'}], email:'' },
+  { name:'Nelson Martin',     owner:'RTP',            address:'502 E Rosebud Rd, Myerstown, PA 17067',        stateId:'',          fedId:'003LHJU',  npip:'',       doorCode:'',     contacts:[{name:'Nelson Martin',phone:'717-679-3270'}], email:'' },
+  { name:'Lamar Zimmerman',   owner:'Rushtown',       address:'138 Hetzels Church Rd, Pinegrove, PA 17963',   stateId:'',          fedId:'00LUJ61',  npip:'23-603', doorCode:'',     contacts:[{name:'Kris Zimmerman',phone:'717-673-0753'}], email:'' },
+  { name:'Hegins Valley Farms',owner:'Rushtown',      address:'824 Church Rd, Hegins, PA 17938',              stateId:'',          fedId:'003MQLH',  npip:'23-583', doorCode:'',     contacts:[{name:'Debra Martz',phone:''}], email:'' },
+];
 
 // ═══════════════════════════════════════════
 // CONSTANTS
@@ -6531,8 +6585,153 @@ function goShipSection(section) {
   });
   updateOpsExcBadge();
   if (section === 'shipping') renderShipping();
+  if (section === 'farms') renderFarms();
   if (section === 'reconciliation') renderReconciliation();
   if (section === 'exceptions') renderExceptions();
+}
+
+// ═══════════════════════════════════════════
+// FARMS DIRECTORY
+// ═══════════════════════════════════════════
+function initShipFarmDropdown() {
+  const sel = document.getElementById('sf-customer');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Select Farm —</option>' +
+    LAYER_FARMS.map(f => `<option value="${f.name}">${f.name}</option>`).join('');
+}
+
+function onShipFarmSelect() {
+  const name = document.getElementById('sf-customer').value;
+  const panel = document.getElementById('sf-farm-info');
+  if (!name) { panel.style.display = 'none'; return; }
+  const f = LAYER_FARMS.find(x => x.name === name);
+  if (!f) { panel.style.display = 'none'; return; }
+  const contacts = f.contacts.map(c => `<span style="margin-right:14px;">📞 <b>${c.name}</b>: <a href="tel:${c.phone}" style="color:#2e7d32;text-decoration:none;">${c.phone}</a></span>`).join('');
+  const email = f.email ? `<br>✉️ <a href="mailto:${f.email}" style="color:#2e7d32;">${f.email}</a>` : '';
+  panel.innerHTML = `
+    <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#1b5e20;">${f.name} <span style="font-weight:400;color:#666;font-size:11px;">(${f.owner})</span></div>
+    <div style="color:#444;margin-bottom:4px;">📍 ${f.address}</div>
+    <div style="margin-bottom:4px;">${contacts}${email}</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:#555;margin-top:4px;">
+      ${f.stateId ? `<span>State ID: <b>${f.stateId}</b></span>` : ''}
+      ${f.fedId   ? `<span>Fed ID: <b>${f.fedId}</b></span>`     : ''}
+      ${f.npip    ? `<span>NPIP: <b>${f.npip}</b></span>`        : ''}
+      ${f.doorCode && f.doorCode !== 'N/A' ? `<span style="color:#9b59b6;">🔑 Door: <b>${f.doorCode}</b></span>` : ''}
+    </div>`;
+  panel.style.display = 'block';
+}
+
+function renderFarms() {
+  const q = (document.getElementById('farm-search')?.value || '').toLowerCase();
+  const ownerFilter = document.getElementById('farm-owner-filter')?.value || '';
+  const rlOwners = ['R&L','RTP','Rushtown'];
+
+  let farms = LAYER_FARMS.filter(f => {
+    if (ownerFilter === 'independent') {
+      if (rlOwners.includes(f.owner)) return false;
+    } else if (ownerFilter && !f.owner.includes(ownerFilter)) return false;
+    if (!q) return true;
+    return [f.name, f.address, f.owner, f.npip, f.fedId, f.stateId,
+            ...f.contacts.map(c => c.name + ' ' + c.phone), f.email]
+      .join(' ').toLowerCase().includes(q);
+  });
+
+  // Stats
+  document.getElementById('farm-dir-stats').innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+      <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:6px 14px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:700;color:#2e7d32;">${farms.length} FARMS</div>
+      <div style="background:#f3e5f5;border:1px solid #ce93d8;border-radius:8px;padding:6px 14px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:700;color:#6a1b9a;">${farms.filter(f=>rlOwners.includes(f.owner)).length} R&L / RTP</div>
+      <div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:8px;padding:6px 14px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:700;color:#e65100;">${farms.filter(f=>!rlOwners.includes(f.owner)).length} INDEPENDENT</div>
+    </div>`;
+
+  if (!farms.length) {
+    document.getElementById('farm-dir-list').innerHTML = `<div style="text-align:center;padding:40px;color:#999;font-family:'IBM Plex Mono',monospace;">No farms match your search.</div>`;
+    return;
+  }
+
+  document.getElementById('farm-dir-list').innerHTML = farms.map(f => {
+    const ownerBadge = rlOwners.includes(f.owner)
+      ? `<span style="background:#e8f5e9;color:#2e7d32;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;">${f.owner}</span>`
+      : `<span style="background:#fff3e0;color:#e65100;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;">${f.owner}</span>`;
+    const contacts = f.contacts.map(c =>
+      `<a href="tel:${c.phone}" style="display:inline-block;margin:2px 6px 2px 0;color:#1976d2;font-size:12px;text-decoration:none;">📞 ${c.name}${c.phone ? ': ' + c.phone : ''}</a>`
+    ).join('');
+    const email = f.email ? `<a href="mailto:${f.email}" style="display:inline-block;margin:2px 6px 2px 0;color:#666;font-size:11px;">✉️ ${f.email}</a>` : '';
+    const ids = [
+      f.stateId ? `State: ${f.stateId}` : '',
+      f.fedId   ? `Fed: ${f.fedId}`   : '',
+      f.npip    ? `NPIP: ${f.npip}`   : '',
+    ].filter(Boolean).join(' · ');
+    const door = f.doorCode && f.doorCode !== 'N/A' && f.doorCode
+      ? `<span style="background:#f3e5f5;color:#6a1b9a;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:6px;">🔑 ${f.doorCode}</span>` : '';
+
+    return `<div onclick="openFarmDetail('${f.name.replace(/'/g,"\\'")}')" style="background:#fff;border:1.5px solid #e0e0e0;border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='#4caf50'" onmouseout="this.style.borderColor='#e0e0e0'">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div style="font-weight:700;font-size:15px;color:#111;">${f.name} ${ownerBadge}${door}</div>
+        <div style="font-size:11px;color:#999;font-family:'IBM Plex Mono',monospace;">›</div>
+      </div>
+      <div style="font-size:12px;color:#555;margin-bottom:6px;">📍 ${f.address}</div>
+      <div style="margin-bottom:4px;">${contacts}${email}</div>
+      ${ids ? `<div style="font-size:11px;color:#888;margin-top:4px;font-family:'IBM Plex Mono',monospace;">${ids}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openFarmDetail(name) {
+  const f = LAYER_FARMS.find(x => x.name === name);
+  if (!f) return;
+  const rlOwners = ['R&L','RTP','Rushtown'];
+  const ownerColor = rlOwners.includes(f.owner) ? '#2e7d32' : '#e65100';
+  const contacts = f.contacts.map(c =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;">
+       <span style="font-weight:600;">${c.name}</span>
+       ${c.phone ? `<a href="tel:${c.phone}" style="color:#1976d2;font-weight:700;text-decoration:none;">${c.phone}</a>` : '<span style="color:#999;">—</span>'}
+     </div>`
+  ).join('');
+
+  document.getElementById('farm-detail-card').innerHTML = `
+    <button onclick="closeFarmDetail()" style="position:absolute;top:14px;right:14px;background:#f5f5f5;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:700;color:#555;">✕</button>
+    <div style="font-size:22px;font-weight:800;color:#111;margin-bottom:4px;">${f.name}</div>
+    <div style="font-size:12px;font-weight:700;color:${ownerColor};margin-bottom:16px;text-transform:uppercase;letter-spacing:1px;">Owned by ${f.owner}</div>
+    <div style="background:#f9f9f9;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Address</div>
+      <div style="font-size:14px;color:#333;">📍 ${f.address}</div>
+      <a href="https://maps.google.com/?q=${encodeURIComponent(f.address)}" target="_blank" style="display:inline-block;margin-top:8px;font-size:12px;color:#1976d2;">Open in Maps →</a>
+    </div>
+    <div style="background:#f9f9f9;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Contacts</div>
+      ${contacts}
+      ${f.email ? `<div style="padding:8px 0;"><a href="mailto:${f.email}" style="color:#555;font-size:12px;">✉️ ${f.email}</a></div>` : ''}
+    </div>
+    <div style="background:#f9f9f9;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">IDs & Codes</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div><div style="font-size:10px;color:#999;">State ID</div><div style="font-weight:700;">${f.stateId || '—'}</div></div>
+        <div><div style="font-size:10px;color:#999;">Federal ID</div><div style="font-weight:700;">${f.fedId || '—'}</div></div>
+        <div><div style="font-size:10px;color:#999;">NPIP #</div><div style="font-weight:700;">${f.npip || '—'}</div></div>
+        <div><div style="font-size:10px;color:#999;">Door Code</div><div style="font-weight:700;color:#6a1b9a;">${f.doorCode || '—'}</div></div>
+      </div>
+    </div>
+    <button onclick="startLoadFromFarm('${f.name.replace(/'/g,"\\'")}');closeFarmDetail();" style="width:100%;padding:14px;background:#4caf50;color:#fff;border:none;border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;">🚛 CREATE LOAD FOR THIS FARM</button>`;
+
+  const overlay = document.getElementById('farm-detail-overlay');
+  overlay.style.display = 'flex';
+  overlay.onclick = e => { if (e.target === overlay) closeFarmDetail(); };
+}
+
+function closeFarmDetail() {
+  document.getElementById('farm-detail-overlay').style.display = 'none';
+}
+
+function startLoadFromFarm(name) {
+  goShipSection('shipping');
+  const panel = document.getElementById('ship-form-panel');
+  if (panel.style.display === 'none') toggleShipForm();
+  setTimeout(() => {
+    const sel = document.getElementById('sf-customer');
+    if (sel) { sel.value = name; onShipFarmSelect(); }
+    document.getElementById('sf-date').value = new Date().toISOString().slice(0,10);
+  }, 100);
 }
 
 // ═══════════════════════════════════════════
@@ -7312,7 +7511,12 @@ function toggleShipForm() {
   const panel=document.getElementById('ship-form-panel'); if(!panel)return;
   const open=panel.style.display!=='none';
   panel.style.display=open?'none':'block';
-  if(!open) { document.getElementById('sf-date').value=opsToday(); setupEnterChain('ship-form-grid',saveShipping); }
+  if(!open) {
+    document.getElementById('sf-date').value=opsToday();
+    initShipFarmDropdown();
+    document.getElementById('sf-farm-info').style.display='none';
+    setupEnterChain('ship-form-grid',saveShipping);
+  }
 }
 
 function opsShipView(mode,btn) {
