@@ -1547,6 +1547,15 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <button class="pill" onclick="wiTypeFilter('safety',this)">🦺 Safety &amp; PPE</button>
       <button class="pill" onclick="wiTypeFilter('onboarding',this)">🆕 Onboarding</button>
     </div>
+    <div class="pill-bar" id="wi-dept-bar">
+      <button class="pill active" onclick="wiDeptFilter('all',this)">All Depts</button>
+      <button class="pill" onclick="wiDeptFilter('Maintenance',this)">🔧 Maintenance</button>
+      <button class="pill" onclick="wiDeptFilter('Egg Ops',this)">🥚 Egg Ops</button>
+      <button class="pill" onclick="wiDeptFilter('Shipping',this)">🚚 Shipping</button>
+      <button class="pill" onclick="wiDeptFilter('Barn / Layer',this)">🐔 Barn / Layer</button>
+      <button class="pill" onclick="wiDeptFilter('Management',this)">📋 Management</button>
+      <button class="pill" onclick="wiDeptFilter('General',this)">⚙️ General</button>
+    </div>
     <div class="stats-grid g4" id="wi-stats" style="margin-bottom:16px;"></div>
     <div id="wi-list"></div>
   </div>
@@ -1769,6 +1778,19 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <div class="modal-field">
       <label>Title <span class="req">*</span></label>
       <input type="text" id="wif-title" placeholder="e.g. Replace House 3 Tunnel Fan Belt">
+    </div>
+
+    <div class="modal-field">
+      <label>Department</label>
+      <select id="wif-dept">
+        <option value="">— All Departments —</option>
+        <option value="Maintenance">🔧 Maintenance</option>
+        <option value="Egg Ops">🥚 Egg Ops</option>
+        <option value="Shipping">🚚 Shipping</option>
+        <option value="Barn / Layer">🐔 Barn / Layer</option>
+        <option value="Management">📋 Management</option>
+        <option value="General">⚙️ General</option>
+      </select>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -5754,6 +5776,7 @@ function tmMarkPM(pmId) {
 // ═══════════════════════════════════════════
 let allWI = [];
 let wiTypeFilterVal = 'all';
+let wiDeptFilterVal = 'all';
 let wiSearchVal = '';
 let wiStepCount = 0;
 let editingWIId = null;
@@ -5923,6 +5946,13 @@ function wiTypeFilter(val, btn) {
   renderWI();
 }
 
+function wiDeptFilter(val, btn) {
+  wiDeptFilterVal = val;
+  document.querySelectorAll('#wi-dept-bar .pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderWI();
+}
+
 function wiSearch() {
   wiSearchVal = document.getElementById('wi-search').value.toLowerCase().trim();
   renderWI();
@@ -5943,6 +5973,7 @@ function renderWI() {
   // Filter
   let list = allWI;
   if (wiTypeFilterVal !== 'all') list = list.filter(w => w.type === wiTypeFilterVal);
+  if (wiDeptFilterVal !== 'all') list = list.filter(w => (w.dept || w.department || '') === wiDeptFilterVal);
   if (wiSearchVal) {
     list = list.filter(w =>
       (w.title||'').toLowerCase().includes(wiSearchVal) ||
@@ -5976,7 +6007,7 @@ function renderWI() {
       </div>
       <div class="wi-title">${wi.title}</div>
       <div class="wi-meta">
-        ${sysIcon ? sysIcon + ' ' + wi.system + ' · ' : ''}${stepCount} step${stepCount !== 1 ? 's' : ''}${wi.ppe ? ' · 🦺 PPE required' : ''}
+        ${(wi.dept||wi.department) ? `<span style="background:#e8f4e8;color:#2e7d32;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-right:5px;">🏢 ${wi.dept||wi.department}</span>` : ''}${sysIcon ? sysIcon + ' ' + wi.system + ' · ' : ''}${stepCount} step${stepCount !== 1 ? 's' : ''}${wi.ppe ? ' · 🦺 PPE required' : ''}
       </div>
       <div class="wi-meta" style="margin-top:2px;">By ${wi.author || 'Unknown'} · ${fmtDate(wi.date)}</div>
     </div>`;
@@ -5998,6 +6029,7 @@ function _openWIForm(wiId) {
     document.getElementById('wi-form-title').textContent = 'Edit Work Instruction';
     document.getElementById('wif-title').value   = wi.title || '';
     document.getElementById('wif-type').value    = wi.type || '';
+    document.getElementById('wif-dept').value    = wi.dept || wi.department || '';
     document.getElementById('wif-system').value  = wi.system || '';
     document.getElementById('wif-time').value    = wi.time || '';
     document.getElementById('wif-ppe').value     = wi.ppe || '';
@@ -6008,6 +6040,7 @@ function _openWIForm(wiId) {
     document.getElementById('wi-form-title').textContent = 'Add Work Instruction';
     ['wif-title','wif-time','wif-ppe','wif-warnings','wif-author'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('wif-type').value   = '';
+    document.getElementById('wif-dept').value   = '';
     document.getElementById('wif-system').value = '';
     wiAddStep(); wiAddStep(); wiAddStep(); // start with 3 blank steps
   }
@@ -6049,6 +6082,7 @@ function wiCollectSteps() {
 async function saveWI() {
   const title    = document.getElementById('wif-title').value.trim();
   const type     = document.getElementById('wif-type').value;
+  const dept     = document.getElementById('wif-dept').value;
   const system   = document.getElementById('wif-system').value;
   const time     = document.getElementById('wif-time').value;
   const ppe      = document.getElementById('wif-ppe').value.trim();
@@ -6069,13 +6103,13 @@ async function saveWI() {
       const existing = allWI.find(w => w.wiId === editingWIId);
       if (existing && existing._fbId) {
         await db.collection('workInstructions').doc(existing._fbId).update({
-          title, type, system, time: parseInt(time)||0, ppe, warnings, author, steps, updatedTs: Date.now()
+          title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, updatedTs: Date.now()
         });
       }
     } else {
       const wiId = 'WI-' + Date.now().toString(36).toUpperCase();
       await db.collection('workInstructions').add({
-        wiId, title, type, system, time: parseInt(time)||0,
+        wiId, title, type, dept, system, time: parseInt(time)||0,
         ppe, warnings, author, steps, date, ts: Date.now()
       });
       await db.collection('activityLog').add({
