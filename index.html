@@ -1613,6 +1613,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div class="fg"><label>Break (min)</label><input type="number" id="pf-break" min="0" placeholder="0" oninput="calcPack()"></div>
         <div class="fg"><label>Downtime (min)</label><input type="number" id="pf-downtime" min="0" placeholder="0" oninput="calcPack()"></div>
         <div class="fg"><label>Houses Packed</label><input type="number" id="pf-houses" min="1" placeholder="0" oninput="calcPack()"></div>
+        <div class="fg"><label>Total Stops</label><input type="number" id="pf-stops" min="0" placeholder="0"></div>
         <div class="fg"><label>Line / Area</label><input type="text" id="pf-line" placeholder="e.g. Line 1"></div>
         <div class="fg"><label>Shift</label><select id="pf-shift"><option>AM</option><option>PM</option><option>Night</option></select></div>
         <div class="fg"><label>Entered By</label><input type="text" id="pf-by" placeholder="Name"></div>
@@ -7645,10 +7646,11 @@ function renderPacking() {
     sc('s-green',fmtNum(total),'📦 Total Dz')+
     sc('s-blue',avgDzHr?fmtNum(avgDzHr)+' dz':'—','⏱ Avg Dz/Hr')+
     sc('s-amber',avgDzHouse?fmtNum(avgDzHouse)+' dz':'—','🏠 Avg Dz/House')+
+    sc('s-red',data.reduce((s,r)=>s+(Number(r.stops)||0),0)||'—','🛑 Total Stops')+
     sc('s-red',data.length,'# Entries');
   const tbl=document.getElementById('pack-table'); if(!tbl)return;
   if (!data.length) { tbl.innerHTML='<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;">No entries for this date.</td></tr>'; return; }
-  let html='<thead><tr><th>Product</th><th>Total Dz</th><th>Start</th><th>End</th><th>Break</th><th>Downtime</th><th>Run Time</th><th>Dz/Hr</th><th>Dz/House</th><th>Houses</th><th>Shift</th><th>By</th><th></th></tr></thead><tbody>';
+  let html='<thead><tr><th>Product</th><th>Total Dz</th><th>Start</th><th>End</th><th>Break</th><th>Downtime</th><th>Run Time</th><th>Dz/Hr</th><th>Dz/House</th><th>Houses</th><th>Stops</th><th>Shift</th><th>By</th><th></th></tr></thead><tbody>';
   let tot=0;
   data.forEach(r=>{
     tot+=Number(r.qty)||0;
@@ -7666,6 +7668,7 @@ function renderPacking() {
       <td style="font-weight:700;color:#4caf50;">${r.dzPerHr?fmtNum(r.dzPerHr):'—'}</td>
       <td style="font-weight:700;color:#4caf50;">${r.dzPerHouse?fmtNum(r.dzPerHouse):'—'}</td>
       <td>${r.houses||'—'}</td>
+      <td style="font-weight:700;">${r.stops||'—'}</td>
       <td><span class="badge ${sc2}" style="font-size:9px;">${r.shift}</span></td>
       <td>${r.by||'—'}</td>
       <td><button class="ops-action-btn danger" onclick="deletePacking('${r._fbId}')">✕</button></td>
@@ -7682,6 +7685,7 @@ async function savePacking() {
   const breakMin=parseInt(document.getElementById('pf-break')?.value||'0')||0;
   const downtimeMin=parseInt(document.getElementById('pf-downtime')?.value||'0')||0;
   const houses=parseInt(document.getElementById('pf-houses')?.value||'0')||0;
+  const stops=parseInt(document.getElementById('pf-stops')?.value||'0')||0;
   const line=document.getElementById('pf-line')?.value?.trim()||'', shift=document.getElementById('pf-shift')?.value||'AM';
   const by=document.getElementById('pf-by')?.value?.trim()||'Unknown', notes=document.getElementById('pf-notes')?.value?.trim()||'';
   if (!date||!product||!qty) { alert('Date, Product Type, and Total Dz are required.'); return; }
@@ -7695,7 +7699,7 @@ async function savePacking() {
     if(runMin>0) dzPerHr=Math.round((qty/(runMin/60))*10)/10;
   }
   if(houses>0) dzPerHouse=Math.round((qty/houses)*10)/10;
-  const record={date,product,qty,unit,startTime,endTime,breakMin,downtimeMin,runMin,houses,dzPerHr,dzPerHouse,line,shift,by,notes,ts:Date.now()};
+  const record={date,product,qty,unit,startTime,endTime,breakMin,downtimeMin,runMin,houses,stops,dzPerHr,dzPerHouse,line,shift,by,notes,ts:Date.now()};
   try {
     const ref=await db.collection('opsPacking').add(record);
     record._fbId=ref.id; opsPackData.unshift(record);
@@ -7706,7 +7710,7 @@ async function savePacking() {
 
 function clearPackForm() {
   const t=opsToday(),s=shiftFromTime();
-  ['pf-date','pf-product','pf-qty','pf-unit','pf-start','pf-end','pf-break','pf-downtime','pf-houses','pf-line','pf-shift','pf-by','pf-notes'].forEach(id=>{
+  ['pf-date','pf-product','pf-qty','pf-unit','pf-start','pf-end','pf-break','pf-downtime','pf-houses','pf-stops','pf-line','pf-shift','pf-by','pf-notes'].forEach(id=>{
     const el=document.getElementById(id);if(!el)return;
     if(id==='pf-date')el.value=t; else if(id==='pf-shift')el.value=s; else if(id==='pf-unit')el.value='Dozen'; else el.value='';
   });
