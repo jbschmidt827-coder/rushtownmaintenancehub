@@ -1589,12 +1589,34 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <div class="ops-form-grid" id="pack-form-grid">
         <div class="fg"><label>Date *</label><input type="date" id="pf-date"></div>
         <div class="fg"><label>Product Type *</label><select id="pf-product"><option value="">— Select —</option><option>Jumbo</option><option>XL</option><option>Large</option><option>Medium</option><option>Small</option><option>Pullet</option><option>Nest Run</option></select></div>
-        <div class="fg"><label>Qty Packed *</label><input type="number" id="pf-qty" min="0" placeholder="0"></div>
+        <div class="fg"><label>Total Dz *</label><input type="number" id="pf-qty" min="0" placeholder="0" oninput="calcPack()"></div>
         <div class="fg"><label>Unit</label><select id="pf-unit"><option>Dozen</option><option>Cases</option><option>Flats</option></select></div>
+        <div class="fg"><label>Start Time</label><input type="time" id="pf-start" oninput="calcPack()"></div>
+        <div class="fg"><label>End Time</label><input type="time" id="pf-end" oninput="calcPack()"></div>
+        <div class="fg"><label>Break (min)</label><input type="number" id="pf-break" min="0" placeholder="0" oninput="calcPack()"></div>
+        <div class="fg"><label>Downtime (min)</label><input type="number" id="pf-downtime" min="0" placeholder="0" oninput="calcPack()"></div>
+        <div class="fg"><label>Houses Packed</label><input type="number" id="pf-houses" min="1" placeholder="0" oninput="calcPack()"></div>
         <div class="fg"><label>Line / Area</label><input type="text" id="pf-line" placeholder="e.g. Line 1"></div>
         <div class="fg"><label>Shift</label><select id="pf-shift"><option>AM</option><option>PM</option><option>Night</option></select></div>
         <div class="fg"><label>Entered By</label><input type="text" id="pf-by" placeholder="Name"></div>
         <div class="fg ops-form-full"><label>Notes</label><input type="text" id="pf-notes" placeholder="Optional notes"></div>
+        <div class="fg ops-form-full" id="pf-calc-row" style="display:none;background:#0f1f0f;border:1.5px solid #2a5a2a;border-radius:10px;padding:12px 14px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;color:#4caf50;text-transform:uppercase;margin-bottom:10px;">⚡ Auto-Calculated</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+            <div style="text-align:center;">
+              <div style="font-size:11px;color:#7ab07a;margin-bottom:3px;font-family:'IBM Plex Mono',monospace;">Run Time</div>
+              <div id="pf-calc-runtime" style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">—</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:11px;color:#7ab07a;margin-bottom:3px;font-family:'IBM Plex Mono',monospace;">Dz / Hour</div>
+              <div id="pf-calc-dzhr" style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">—</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:11px;color:#7ab07a;margin-bottom:3px;font-family:'IBM Plex Mono',monospace;">Dz / House</div>
+              <div id="pf-calc-dzhouse" style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">—</div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="ops-form-actions">
         <button class="ops-save-btn" onclick="savePacking()">✓ Log Packing</button>
@@ -7564,47 +7586,110 @@ async function deleteEggOps(fbId) {
 }
 
 // ── Packing ──
+function calcPack() {
+  const start=document.getElementById('pf-start')?.value;
+  const end=document.getElementById('pf-end')?.value;
+  const brk=parseInt(document.getElementById('pf-break')?.value||'0')||0;
+  const down=parseInt(document.getElementById('pf-downtime')?.value||'0')||0;
+  const qty=parseInt(document.getElementById('pf-qty')?.value||'0')||0;
+  const houses=parseInt(document.getElementById('pf-houses')?.value||'0')||0;
+  const row=document.getElementById('pf-calc-row');
+  if (!start||!end) { if(row)row.style.display='none'; return; }
+  const [sh,sm]=start.split(':').map(Number);
+  const [eh,em]=end.split(':').map(Number);
+  let totalMin=(eh*60+em)-(sh*60+sm);
+  if (totalMin<=0) { if(row)row.style.display='none'; return; }
+  const runMin=Math.max(0,totalMin-brk-down);
+  const runH=Math.floor(runMin/60), runM=runMin%60;
+  const runLabel=runH>0?`${runH}h ${runM}m`:`${runM}m`;
+  const dzhr=runMin>0?Math.round((qty/(runMin/60))*10)/10:0;
+  const dzhouse=houses>0?Math.round((qty/houses)*10)/10:0;
+  if(row)row.style.display='block';
+  document.getElementById('pf-calc-runtime').textContent=runLabel;
+  document.getElementById('pf-calc-dzhr').textContent=dzhr?fmtNum(dzhr):'—';
+  document.getElementById('pf-calc-dzhouse').textContent=dzhouse?fmtNum(dzhouse):'—';
+}
+
 function renderPacking() {
   const filterDate=document.getElementById('pack-filter-date')?.value||opsToday();
   const data=opsPackData.filter(r=>r.date===filterDate);
   const total=data.reduce((s,r)=>s+(Number(r.qty)||0),0);
+  // Use saved runTime for avg dz/hr if available
+  const withTime=data.filter(r=>r.runMin>0);
+  const avgDzHr=withTime.length?Math.round(withTime.reduce((s,r)=>s+(Number(r.dzPerHr)||0),0)/withTime.length):0;
+  const avgDzHouse=withTime.length?Math.round(withTime.reduce((s,r)=>s+(Number(r.dzPerHouse)||0),0)/withTime.length):0;
   const byShift={};data.forEach(r=>{byShift[r.shift]=(byShift[r.shift]||0)+(Number(r.qty)||0);});
   const statsEl=document.getElementById('pack-stats');
-  if (statsEl) statsEl.innerHTML=sc('s-green',fmtNum(total),'📦 Total Packed')+sc('s-blue',fmtNum(byShift.AM||0),'🌅 AM Shift')+sc('s-amber',fmtNum(byShift.PM||0),'🌆 PM Shift')+sc('s-red',data.length,'# Entries');
+  if (statsEl) statsEl.innerHTML=
+    sc('s-green',fmtNum(total),'📦 Total Dz')+
+    sc('s-blue',avgDzHr?fmtNum(avgDzHr)+' dz':'—','⏱ Avg Dz/Hr')+
+    sc('s-amber',avgDzHouse?fmtNum(avgDzHouse)+' dz':'—','🏠 Avg Dz/House')+
+    sc('s-red',data.length,'# Entries');
   const tbl=document.getElementById('pack-table'); if(!tbl)return;
-  if (!data.length) { tbl.innerHTML='<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;">No entries for this date.</td></tr>'; return; }
-  let html='<thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Unit</th><th>Line</th><th>Shift</th><th>Entered By</th><th></th></tr></thead><tbody>';
+  if (!data.length) { tbl.innerHTML='<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;">No entries for this date.</td></tr>'; return; }
+  let html='<thead><tr><th>Product</th><th>Total Dz</th><th>Start</th><th>End</th><th>Break</th><th>Downtime</th><th>Run Time</th><th>Dz/Hr</th><th>Dz/House</th><th>Houses</th><th>Shift</th><th>By</th><th></th></tr></thead><tbody>';
   let tot=0;
   data.forEach(r=>{
     tot+=Number(r.qty)||0;
     const sc2=r.shift==='AM'?'open':r.shift==='PM'?'in-progress':'on-hold';
-    html+=`<tr><td>${r.date}</td><td><strong>${r.product}</strong></td><td>${fmtNum(r.qty)}</td><td>${r.unit}</td><td>${r.line||'—'}</td><td><span class="badge ${sc2}" style="font-size:9px;">${r.shift}</span></td><td>${r.by||'—'}</td><td><button class="ops-action-btn danger" onclick="deletePacking('${r._fbId}')">✕</button></td></tr>`;
+    const runMin=r.runMin||0;
+    const runLabel=runMin>0?(Math.floor(runMin/60)>0?`${Math.floor(runMin/60)}h ${runMin%60}m`:`${runMin}m`):'—';
+    html+=`<tr>
+      <td><strong>${r.product}</strong></td>
+      <td>${fmtNum(r.qty)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;">${r.startTime||'—'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;">${r.endTime||'—'}</td>
+      <td>${r.breakMin||0}m</td>
+      <td>${r.downtimeMin||0}m</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-weight:700;">${runLabel}</td>
+      <td style="font-weight:700;color:#4caf50;">${r.dzPerHr?fmtNum(r.dzPerHr):'—'}</td>
+      <td style="font-weight:700;color:#4caf50;">${r.dzPerHouse?fmtNum(r.dzPerHouse):'—'}</td>
+      <td>${r.houses||'—'}</td>
+      <td><span class="badge ${sc2}" style="font-size:9px;">${r.shift}</span></td>
+      <td>${r.by||'—'}</td>
+      <td><button class="ops-action-btn danger" onclick="deletePacking('${r._fbId}')">✕</button></td>
+    </tr>`;
   });
-  html+=`<tr class="total-row"><td colspan="2">TOTAL</td><td>${fmtNum(tot)}</td><td colspan="5"></td></tr></tbody>`;
+  html+=`<tr class="total-row"><td>TOTAL</td><td>${fmtNum(tot)}</td><td colspan="11"></td></tr></tbody>`;
   tbl.innerHTML=html;
 }
 
 async function savePacking() {
   const date=document.getElementById('pf-date')?.value, product=document.getElementById('pf-product')?.value;
   const qty=parseInt(document.getElementById('pf-qty')?.value||'0'), unit=document.getElementById('pf-unit')?.value||'Dozen';
+  const startTime=document.getElementById('pf-start')?.value||'', endTime=document.getElementById('pf-end')?.value||'';
+  const breakMin=parseInt(document.getElementById('pf-break')?.value||'0')||0;
+  const downtimeMin=parseInt(document.getElementById('pf-downtime')?.value||'0')||0;
+  const houses=parseInt(document.getElementById('pf-houses')?.value||'0')||0;
   const line=document.getElementById('pf-line')?.value?.trim()||'', shift=document.getElementById('pf-shift')?.value||'AM';
   const by=document.getElementById('pf-by')?.value?.trim()||'Unknown', notes=document.getElementById('pf-notes')?.value?.trim()||'';
-  if (!date||!product||!qty) { alert('Date, Product Type, and Quantity are required.'); return; }
-  const record={date,product,qty,unit,line,shift,by,notes,ts:Date.now()};
+  if (!date||!product||!qty) { alert('Date, Product Type, and Total Dz are required.'); return; }
+  // Compute run time and rates
+  let runMin=0, dzPerHr=0, dzPerHouse=0;
+  if (startTime&&endTime) {
+    const [sh,sm]=startTime.split(':').map(Number);
+    const [eh,em]=endTime.split(':').map(Number);
+    const totalMin=(eh*60+em)-(sh*60+sm);
+    runMin=Math.max(0,totalMin-breakMin-downtimeMin);
+    if(runMin>0) dzPerHr=Math.round((qty/(runMin/60))*10)/10;
+  }
+  if(houses>0) dzPerHouse=Math.round((qty/houses)*10)/10;
+  const record={date,product,qty,unit,startTime,endTime,breakMin,downtimeMin,runMin,houses,dzPerHr,dzPerHouse,line,shift,by,notes,ts:Date.now()};
   try {
     const ref=await db.collection('opsPacking').add(record);
     record._fbId=ref.id; opsPackData.unshift(record);
-    await db.collection('activityLog').add({type:'ops-pack',id:'PACK',desc:`Packing: ${product} — ${fmtNum(qty)} ${unit} (${shift})`,tech:by,date,ts:Date.now()});
+    await db.collection('activityLog').add({type:'ops-pack',id:'PACK',desc:`Packing: ${product} — ${fmtNum(qty)} dz${runMin?' | '+Math.round(dzPerHr)+' dz/hr':''}`,tech:by,date,ts:Date.now()});
     clearPackForm(); renderPacking(); renderOpsScoreboard();
   } catch(e) { console.error(e); alert('Error saving: '+e.message); }
 }
 
 function clearPackForm() {
   const t=opsToday(),s=shiftFromTime();
-  ['pf-date','pf-product','pf-qty','pf-unit','pf-line','pf-shift','pf-by','pf-notes'].forEach(id=>{
+  ['pf-date','pf-product','pf-qty','pf-unit','pf-start','pf-end','pf-break','pf-downtime','pf-houses','pf-line','pf-shift','pf-by','pf-notes'].forEach(id=>{
     const el=document.getElementById(id);if(!el)return;
     if(id==='pf-date')el.value=t; else if(id==='pf-shift')el.value=s; else if(id==='pf-unit')el.value='Dozen'; else el.value='';
   });
+  const row=document.getElementById('pf-calc-row');if(row)row.style.display='none';
 }
 
 async function deletePacking(fbId) {
