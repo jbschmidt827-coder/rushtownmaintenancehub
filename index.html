@@ -7924,8 +7924,15 @@ function closeFeedBinForm() {
   _editFeedBinId = null;
 }
 
-// Per-house daily consumption in lbs (tons × 2000)
-const HOUSE_CONSUMPTION_LBS = { 1: 28000, 2: 30000, 3: 18000, 5: 32000 };
+// Per-farm, per-house daily consumption in lbs (tons × 2000)
+// Add or adjust farms/houses here as needed
+const FARM_HOUSE_CONSUMPTION = {
+  'Rushtown':      { 1:28000, 2:30000, 3:18000, 4:14000, 5:32000 },
+  'Turbotville':   { 1:20000, 2:16000, 3:14000, 4:14000 },
+  'W&M':           { 1:20000, 2:24000 },
+};
+// Fallback global per-house rates (used when farm not listed above)
+const HOUSE_CONSUMPTION_LBS = { 1:28000, 2:30000, 3:18000, 4:14000, 5:32000 };
 
 async function quickAddBins() {
   const farm     = document.getElementById('fqs-farm').value;
@@ -7940,7 +7947,8 @@ async function quickAddBins() {
   const existing = feedBins.filter(b => b.farm === farm).map(b => b.name);
   let created = 0;
   for (let h = 1; h <= houses; h++) {
-    const consumption = HOUSE_CONSUMPTION_LBS[h] !== undefined ? HOUSE_CONSUMPTION_LBS[h] : defaultConsumption;
+    const farmRates = FARM_HOUSE_CONSUMPTION[farm] || HOUSE_CONSUMPTION_LBS;
+    const consumption = farmRates[h] !== undefined ? farmRates[h] : defaultConsumption;
     for (const side of ['A','B']) {
       const name = `House ${h} — Bin ${side}`;
       if (existing.includes(name)) continue;
