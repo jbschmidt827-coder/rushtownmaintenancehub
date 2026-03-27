@@ -1698,20 +1698,39 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <!-- ── Daily Readings ── -->
   <div class="feed-section" id="feed-readings">
     <div class="ops-quick-form">
-      <div class="ops-qf-title">📖 Log Feed Bin Reading</div>
+      <div class="ops-qf-title">📖 Log Daily Feed Readings</div>
       <div class="ops-form-grid">
+        <div class="fg">
+          <label>Farm / Location *</label>
+          <select id="fr-farm" onchange="renderBulkReadingInputs()">
+            <option value="">— Select Farm —</option>
+            <option value="Turbotville">Turbotville (TBV)</option>
+            <option value="W&M">W&amp;M Farms</option>
+            <option value="Hegins">Hegins</option>
+            <option value="Danville">Danville</option>
+            <option value="Rushtown">Rushtown</option>
+          </select>
+        </div>
         <div class="fg"><label>Date *</label><input type="date" id="fr-date"></div>
-        <div class="fg"><label>Bin / Barn *</label><select id="fr-bin"><option value="">— Select Bin —</option></select></div>
-        <div class="fg"><label>Reading (lbs) *</label><input type="number" id="fr-reading" min="0" placeholder="0"></div>
         <div class="fg"><label>Entered By</label><input type="text" id="fr-by" placeholder="Name"></div>
-        <div class="fg ops-form-full"><label>Notes</label><input type="text" id="fr-notes" placeholder="Optional"></div>
       </div>
-      <div class="ops-form-actions">
-        <button class="ops-save-btn" onclick="saveFeedReading()">✓ Save Reading</button>
-        <button class="ops-cancel-btn" onclick="clearFeedReadingForm()">Clear</button>
+      <div id="fr-house-inputs" style="margin-top:10px;"></div>
+      <div class="ops-form-actions" id="fr-save-row" style="display:none;">
+        <button class="ops-save-btn" onclick="saveBulkFeedReadings()">✓ Save All Readings</button>
+        <button class="ops-cancel-btn" onclick="clearBulkReadingForm()">Clear</button>
       </div>
     </div>
-    <div class="ops-filter-row"><input type="date" class="ops-date-input" id="fr-filter-date" onchange="renderFeedReadings()"></div>
+    <div class="ops-filter-row">
+      <select class="ops-date-input" id="fr-filter-farm" onchange="renderFeedReadings()" style="width:180px;">
+        <option value="">All Farms</option>
+        <option value="Turbotville">Turbotville</option>
+        <option value="W&M">W&M</option>
+        <option value="Hegins">Hegins</option>
+        <option value="Danville">Danville</option>
+        <option value="Rushtown">Rushtown</option>
+      </select>
+      <input type="date" class="ops-date-input" id="fr-filter-date" onchange="renderFeedReadings()" style="margin-left:8px;">
+    </div>
     <div class="recent-hdr" style="margin-bottom:10px;">Reading Log</div>
     <div style="overflow-x:auto;"><table class="ops-table" id="feed-readings-table"></table></div>
   </div>
@@ -7875,7 +7894,11 @@ function goFeedSection(sec) {
   const btn = document.querySelector(`#panel-feed .sub-btn[data-section="${sec}"]`);
   if (btn) btn.classList.add('active');
   if (sec === 'dashboard')  renderFeedDashboard();
-  if (sec === 'readings')   { populateFeedBinSelect('fr-bin'); renderFeedReadings(); }
+  if (sec === 'readings')   {
+    const dateEl = document.getElementById('fr-date');
+    if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0,10);
+    renderFeedReadings();
+  }
   if (sec === 'deliveries') { populateFeedBinSelect('fd-bin'); renderFeedDeliveries(); }
   if (sec === 'made')       { populateFeedBinSelect('fm-bin'); renderFeedMade(); }
   if (sec === 'bins')       renderFeedBinsList();
@@ -8094,7 +8117,11 @@ function renderFeedDashboard() {
 
   if (!feedBins.length) {
     if (statsEl) statsEl.innerHTML = '';
-    cardsEl.innerHTML = '<div class="empty"><div class="ei">🌾</div><p>No bins configured yet — go to ⚙️ Bins to add your first bin.</p></div>';
+    cardsEl.innerHTML = `<div class="empty">
+      <div class="ei">🌾</div>
+      <p style="margin-bottom:14px;">No bins set up yet.</p>
+      <button class="ops-save-btn" onclick="goFeedSection('bins')" style="margin:0 auto;display:block;">⚙️ Go to Bins → Seed All Farms</button>
+    </div>`;
     return;
   }
 
@@ -8211,46 +8238,93 @@ function renderFeedDashboard() {
   }).join('');
 }
 
-// ── Readings ──
-async function saveFeedReading() {
-  const date     = document.getElementById('fr-date')?.value;
-  const binId    = document.getElementById('fr-bin')?.value;
-  const readingLbs = parseInt(document.getElementById('fr-reading')?.value || '0') || 0;
-  const by       = document.getElementById('fr-by')?.value?.trim() || '';
-  const notes    = document.getElementById('fr-notes')?.value?.trim() || '';
-  if (!date || !binId || !readingLbs) return alert('Date, Bin, and Reading are required.');
-  const bin = feedBins.find(b => b.binId === binId);
-  try {
-    const ref = await db.collection('feedReadings').add({ date, binId, binName: bin?.name||'', readingLbs, by, notes, ts: Date.now() });
-    feedReadings.unshift({ date, binId, binName: bin?.name||'', readingLbs, by, notes, ts: Date.now(), _fbId: ref.id });
-    clearFeedReadingForm();
-    renderFeedReadings();
-    renderFeedDashboard();
-  } catch(e) { alert('Error: ' + e.message); }
+// ── Readings — Bulk Entry ──
+function renderBulkReadingInputs() {
+  const farm = document.getElementById('fr-farm')?.value;
+  const container = document.getElementById('fr-house-inputs');
+  const saveRow = document.getElementById('fr-save-row');
+  if (!container) return;
+  if (!farm) { container.innerHTML = ''; if(saveRow) saveRow.style.display='none'; return; }
+  const farmBins = feedBins.filter(b => b.farm === farm);
+  if (!farmBins.length) {
+    container.innerHTML = `<div style="padding:16px;text-align:center;color:#e53e3e;font-family:'IBM Plex Mono',monospace;font-size:12px;">⚠ No bins set up for ${farm} yet.<br>Go to <strong>Bins</strong> tab and click <strong>🌾 Seed All Farms</strong> first.</div>`;
+    if(saveRow) saveRow.style.display='none'; return;
+  }
+  // Group by house
+  const houses = {};
+  farmBins.forEach(b => { if (!houses[b.barn]) houses[b.barn] = []; houses[b.barn].push(b); });
+  const sorted = Object.entries(houses).sort((a,b) => { const n=s=>parseInt(s.replace(/\D/g,''))||0; return n(a[0])-n(b[0]); });
+  container.innerHTML = sorted.map(([house, bins]) => {
+    const sortedBins = bins.sort((a,b) => a.name.localeCompare(b.name));
+    return `<div style="margin-bottom:10px;padding:12px 14px;border:1.5px solid #2a5a2a;border-radius:10px;background:#163016;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#a0c8a0;margin-bottom:10px;">${house}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        ${sortedBins.map(b => {
+          const label = b.name.includes('Bin A') ? 'Bin A' : b.name.includes('Bin B') ? 'Bin B' : b.name.split('—').pop().trim();
+          const cap = b.capacityLbs || 90000;
+          return `<div>
+            <label style="font-size:11px;color:#5a8a5a;display:block;margin-bottom:4px;">${label} <span style="color:#3a6a3a;">(max ${fmtNum(cap)} lbs)</span></label>
+            <input type="number" id="fr-input-${b.binId}" class="bw-input" min="0" max="${cap}" placeholder="0" style="width:100%;box-sizing:border-box;">
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  if(saveRow) saveRow.style.display='flex';
 }
 
-function clearFeedReadingForm() {
-  const t = new Date().toISOString().slice(0,10);
-  document.getElementById('fr-date').value = t;
-  ['fr-bin','fr-reading','fr-by','fr-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+async function saveBulkFeedReadings() {
+  const farm = document.getElementById('fr-farm')?.value;
+  const date = document.getElementById('fr-date')?.value;
+  const by   = document.getElementById('fr-by')?.value?.trim() || '';
+  if (!farm || !date) return alert('Farm and Date are required.');
+  const farmBins = feedBins.filter(b => b.farm === farm);
+  let saved = 0;
+  for (const b of farmBins) {
+    const el = document.getElementById('fr-input-' + b.binId);
+    if (!el || el.value === '') continue;
+    const readingLbs = parseInt(el.value) || 0;
+    const ref = await db.collection('feedReadings').add({ date, binId: b.binId, binName: b.name, farm, readingLbs, by, ts: Date.now() });
+    feedReadings.unshift({ date, binId: b.binId, binName: b.name, farm, readingLbs, by, ts: Date.now(), _fbId: ref.id });
+    saved++;
+  }
+  if (!saved) return alert('Enter at least one reading.');
+  alert(`✅ ${saved} readings saved for ${farm}.`);
+  clearBulkReadingForm();
+  renderFeedReadings();
+  renderFeedDashboard();
+}
+
+function clearBulkReadingForm() {
+  document.getElementById('fr-farm').value = '';
+  document.getElementById('fr-date').value = new Date().toISOString().slice(0,10);
+  const container = document.getElementById('fr-house-inputs');
+  if(container) container.innerHTML = '';
+  const saveRow = document.getElementById('fr-save-row');
+  if(saveRow) saveRow.style.display = 'none';
 }
 
 function renderFeedReadings() {
   const tbl = document.getElementById('feed-readings-table'); if (!tbl) return;
   const filterDate = document.getElementById('fr-filter-date')?.value || '';
-  let data = filterDate ? feedReadings.filter(r => r.date === filterDate) : feedReadings.slice(0, 50);
+  const filterFarm = document.getElementById('fr-filter-farm')?.value || '';
+  let data = feedReadings.slice(0, 100);
+  if (filterDate) data = data.filter(r => r.date === filterDate);
+  if (filterFarm) data = data.filter(r => r.farm === filterFarm || (feedBins.find(b=>b.binId===r.binId)?.farm===filterFarm));
+  data = data.slice(0, 60);
   if (!data.length) { tbl.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;">No readings found.</td></tr>'; return; }
-  let html = '<thead><tr><th>Date</th><th>Bin</th><th>Reading (lbs)</th><th>% Full</th><th>By</th><th></th></tr></thead><tbody>';
+  let html = '<thead><tr><th>Date</th><th>Location</th><th>Bin</th><th>Reading (lbs)</th><th>% Full</th><th>By</th></tr></thead><tbody>';
   data.forEach(r => {
     const bin = feedBins.find(b => b.binId === r.binId);
     const pct = bin?.capacityLbs ? Math.round((r.readingLbs / bin.capacityLbs) * 100) : '—';
+    const loc = r.farm || bin?.farm || '—';
     html += `<tr>
       <td style="font-family:'IBM Plex Mono',monospace;">${fmtDate(r.date)}</td>
+      <td>${loc}</td>
       <td><strong>${r.binName || r.binId}</strong></td>
       <td style="font-weight:700;">${fmtNum(r.readingLbs)}</td>
       <td style="font-weight:700;color:${typeof pct==='number'?(pct>=50?'#4caf50':pct>=25?'#d69e2e':'#e53e3e'):'var(--muted)'};">${typeof pct==='number'?pct+'%':pct}</td>
       <td>${r.by||'—'}</td>
-      <td><button class="ops-action-btn danger" onclick="deleteFeedReading('${r._fbId}')">✕</button></td>
     </tr>`;
   });
   tbl.innerHTML = html + '</tbody>';
