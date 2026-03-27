@@ -1786,9 +1786,9 @@ body { min-height: 100dvh; overflow-x: hidden; }
           </select>
         </div>
         <div class="fg"><label># of Houses *</label><input type="number" id="fqs-houses" min="1" max="20" placeholder="e.g. 5"></div>
-        <div class="fg"><label>Capacity per Bin (lbs)</label><input type="number" id="fqs-capacity" min="1" placeholder="e.g. 75000" value="75000"></div>
+        <div class="fg"><label>Capacity per Bin (lbs)</label><input type="number" id="fqs-capacity" min="1" placeholder="90000" value="90000"><div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:3px;">45 tons = 90,000 lbs</div></div>
         <div class="fg"><label>Order Point %</label><input type="number" id="fqs-order" min="1" max="99" value="25"></div>
-        <div class="fg"><label>Daily Consumption (lbs/day)</label><input type="number" id="fqs-consumption" min="0" placeholder="e.g. 22000"></div>
+        <div class="fg"><label>Default Daily Consumption (lbs/day)</label><input type="number" id="fqs-consumption" min="0" placeholder="32000" value="32000"><div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:3px;">Per-house rates applied automatically — H1:28k · H2:30k · H3:18k · H5:32k</div></div>
         <div class="fg"><label>Feed Type</label><input type="text" id="fqs-type" placeholder="e.g. Layer Mash"></div>
       </div>
       <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:10px;">Creates 2 bins per house: House 1 — Bin A &amp; Bin B, House 2 — Bin A &amp; Bin B, etc.</div>
@@ -7924,12 +7924,15 @@ function closeFeedBinForm() {
   _editFeedBinId = null;
 }
 
+// Per-house daily consumption in lbs (tons × 2000)
+const HOUSE_CONSUMPTION_LBS = { 1: 28000, 2: 30000, 3: 18000, 5: 32000 };
+
 async function quickAddBins() {
   const farm     = document.getElementById('fqs-farm').value;
   const houses   = parseInt(document.getElementById('fqs-houses').value)||0;
-  const cap         = parseInt(document.getElementById('fqs-capacity').value)||75000;
+  const cap         = parseInt(document.getElementById('fqs-capacity').value)||90000;
   const order       = parseInt(document.getElementById('fqs-order').value)||25;
-  const consumption = parseInt(document.getElementById('fqs-consumption').value)||0;
+  const defaultConsumption = parseInt(document.getElementById('fqs-consumption').value)||32000;
   const feedType    = document.getElementById('fqs-type').value.trim();
   if (!farm || !houses) return alert('Farm and # of Houses are required.');
   if (!confirm(`Create ${houses * 2} bins for ${farm} (Houses 1–${houses}, Bin A + Bin B each)?`)) return;
@@ -7937,15 +7940,16 @@ async function quickAddBins() {
   const existing = feedBins.filter(b => b.farm === farm).map(b => b.name);
   let created = 0;
   for (let h = 1; h <= houses; h++) {
+    const consumption = HOUSE_CONSUMPTION_LBS[h] !== undefined ? HOUSE_CONSUMPTION_LBS[h] : defaultConsumption;
     for (const side of ['A','B']) {
       const name = `House ${h} — Bin ${side}`;
-      if (existing.includes(name)) continue; // skip if already exists
+      if (existing.includes(name)) continue;
       const binId = 'BIN-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,5).toUpperCase();
       const data = { binId, name, farm, barn: `House ${h}`, feedType, capacityLbs: cap, orderPct: order, dailyConsumptionLbs: consumption, ts: Date.now() };
       const ref = await db.collection('feedBins').add(data);
       feedBins.push({ ...data, _fbId: ref.id });
       created++;
-      await new Promise(r => setTimeout(r, 30)); // small delay to ensure unique IDs
+      await new Promise(r => setTimeout(r, 30));
     }
   }
   alert(`✅ Created ${created} bins for ${farm}.`);
