@@ -6954,10 +6954,13 @@ const _BW_WEEKLY = {
     note: 'Check all traps and bait on top & bottom floors.',
     steps: [
       'Check rodent traps on the top & bottom floors on the outside aisles — empty into a bucket.',
-      'Count the rodents caught — record on the whiteboard at the front of the house.',
+      'Count the rodents caught — record below and on the whiteboard at the front of the house.',
       'Check bait boxes & bait tubes on the top & bottom floors on the outside aisles.',
       'Add more bait if any bait boxes or bait tubes are empty.',
       'Notify the barn manager if you are low on bait.'
+    ],
+    fields: [
+      { id: 'bw-weekly-rodent-count', label: 'Rodents Caught (count)', type: 'number', placeholder: '0' }
     ]
   }
 };
@@ -6977,11 +6980,17 @@ function bwInitChecklist() {
   const card = document.getElementById('bw-weekly-card');
   if (weekly) {
     document.getElementById('bw-weekly-title').textContent = weekly.title;
+    const fieldsHtml = (weekly.fields||[]).map(f =>
+      `<div style="margin-top:14px;padding-top:14px;border-top:1px solid #2a5a2a;">
+        <div class="bw-row-label">${f.label}</div>
+        <input type="${f.type}" id="${f.id}" class="bw-input" placeholder="${f.placeholder||''}" min="0">
+      </div>`
+    ).join('');
     document.getElementById('bw-weekly-content').innerHTML =
       `<div style="font-size:11px;color:#5a8a5a;margin-bottom:10px;font-family:'IBM Plex Mono',monospace;">${weekly.note}</div>` +
       weekly.steps.map((s, i) =>
         `<div class="bw-weekly-step"><span class="bw-step-num">${i+1}.</span><span>${s}</span></div>`
-      ).join('');
+      ).join('') + fieldsHtml;
     card.style.display = 'block';
   } else {
     card.style.display = 'none';
@@ -7089,6 +7098,7 @@ async function submitBarnWalk() {
   const looseCount  = document.getElementById('bw-loose-count').value  ? Number(document.getElementById('bw-loose-count').value)  : null;
   const rodentCount = document.getElementById('bw-rodent-count').value ? Number(document.getElementById('bw-rodent-count').value) : null;
   const flyCount    = document.getElementById('bw-fly-count').value    ? Number(document.getElementById('bw-fly-count').value)    : null;
+  const weeklyRodentCount = document.getElementById('bw-weekly-rodent-count')?.value ? Number(document.getElementById('bw-weekly-rodent-count').value) : null;
 
   const flags = [];
   if (_bwData.mort === 'yes')           flags.push('Mortality found' + (mortCount ? ' (' + mortCount + ')' : ''));
@@ -7118,7 +7128,7 @@ async function submitBarnWalk() {
 
   const record = {
     farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
-    waterPSI, temp, mortCount, looseCount, rodentCount, flyCount,
+    waterPSI, temp, mortCount, looseCount, rodentCount, flyCount, weeklyRodentCount,
     mort: _bwData.mort, feather: _bwData.feather, air: _bwData.air,
     feed: _bwData.feed, rodent: _bwData.rodent, loose: _bwData.loose,
     dryers: _bwData.dryers, eggbelt: _bwData.eggbelt, manure: _bwData.manure,
