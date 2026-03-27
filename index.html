@@ -977,10 +977,10 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <div class="bw-card">
     <div class="bw-card-title">🌡️ Air & Environment</div>
     <div style="margin-bottom:12px;">
-      <div class="bw-row-label">Air Quality</div>
+      <div class="bw-row-label">Air Quality Anomaly?</div>
       <div class="bw-yn-row">
-        <button class="bw-yn-btn" id="bw-air-good" onclick="bwSet('air','good')">✅ Good</button>
-        <button class="bw-yn-btn" id="bw-air-poor" onclick="bwSet('air','poor')">❌ Poor</button>
+        <button class="bw-yn-btn" id="bw-air-good" onclick="bwSet('air','good')">✅ Normal</button>
+        <button class="bw-yn-btn" id="bw-air-poor" onclick="bwSet('air','poor')">❌ Anomaly</button>
       </div>
     </div>
     <div>
@@ -1023,10 +1023,13 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <div class="bw-card">
     <div class="bw-card-title">🥚 Belts</div>
     <div style="margin-bottom:12px;">
-      <div class="bw-row-label">Egg Belts</div>
+      <div class="bw-row-label">Egg Belt Working?</div>
       <div class="bw-yn-row">
-        <button class="bw-yn-btn" id="bw-eggbelt-clean" onclick="bwSet('eggbelt','clean')">✅ Clean</button>
-        <button class="bw-yn-btn" id="bw-eggbelt-dirty" onclick="bwSet('eggbelt','dirty')">❌ Dirty</button>
+        <button class="bw-yn-btn" id="bw-eggbelt-working" onclick="bwSet('eggbelt','working')">✅ Working</button>
+        <button class="bw-yn-btn" id="bw-eggbelt-down"    onclick="bwSet('eggbelt','down')">❌ Down</button>
+      </div>
+      <div id="bw-eggbelt-wo-note" style="display:none;margin-top:8px;padding:8px 12px;background:#2d1a1a;border:1px solid #c53030;border-radius:8px;font-size:12px;color:#fc8181;">
+        🔧 Work Order will be auto-created when you submit.
       </div>
     </div>
     <div>
@@ -1047,12 +1050,20 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <button class="bw-yn-btn" id="bw-rodent-yes" onclick="bwSet('rodent','yes')">❌ YES</button>
         <button class="bw-yn-btn" id="bw-rodent-no"  onclick="bwSet('rodent','no')">✅ NO</button>
       </div>
+      <div id="bw-rodent-count-row" style="display:none;margin-top:12px;">
+        <div class="bw-row-label">Rodents caught (count)</div>
+        <input type="number" id="bw-rodent-count" class="bw-input" placeholder="Enter count" min="0">
+      </div>
     </div>
-    <div>
-      <div class="bw-row-label">Fly presence?</div>
+    <div style="margin-top:12px;">
+      <div class="bw-row-label">Fly trap activity?</div>
       <div class="bw-yn-row">
         <button class="bw-yn-btn" id="bw-fly-yes" onclick="bwSet('fly','yes')">⚠️ YES</button>
         <button class="bw-yn-btn" id="bw-fly-no"  onclick="bwSet('fly','no')">✅ NO</button>
+      </div>
+      <div id="bw-fly-count-row" style="display:none;margin-top:12px;">
+        <div class="bw-row-label">Fly trap count (flies caught)</div>
+        <input type="number" id="bw-fly-count" class="bw-input" placeholder="Enter fly count" min="0">
       </div>
     </div>
   </div>
@@ -6537,11 +6548,14 @@ function openBarnWalk(farm, house) {
   _bwFarm = farm; _bwHouse = house; _bwData = {};
   document.getElementById('bw-title').textContent = farm + ' — Barn ' + house;
   document.getElementById('bw-subtitle').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-  ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count'].forEach(id => {
+  ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  document.getElementById('bw-mort-count-row').style.display = 'none';
-  document.getElementById('bw-loose-count-row').style.display = 'none';
+  document.getElementById('bw-mort-count-row').style.display    = 'none';
+  document.getElementById('bw-loose-count-row').style.display   = 'none';
+  document.getElementById('bw-rodent-count-row').style.display  = 'none';
+  document.getElementById('bw-fly-count-row').style.display     = 'none';
+  document.getElementById('bw-eggbelt-wo-note').style.display   = 'none';
   document.querySelectorAll('#barn-walk-modal .bw-yn-btn').forEach(b => b.className = 'bw-yn-btn');
   document.getElementById('bw-submit-btn').disabled = true;
   document.getElementById('barn-walk-modal').style.display = 'block';
@@ -6566,7 +6580,7 @@ function bwSet(key, val) {
     feed:    {full:'bw-yes-sel',empty:'bw-no-sel'},
     waste:   {yes:'bw-warn-sel',no:'bw-yes-sel'},
     stand:   {clean:'bw-yes-sel',dirty:'bw-no-sel'},
-    eggbelt: {clean:'bw-yes-sel',dirty:'bw-no-sel'},
+    eggbelt: {working:'bw-yes-sel',down:'bw-no-sel'},
     manure:  {run:'bw-yes-sel', stop:'bw-no-sel'},
     rodent:  {yes:'bw-no-sel',  no:'bw-yes-sel'},
     fly:     {yes:'bw-warn-sel',no:'bw-yes-sel'},
@@ -6575,7 +6589,10 @@ function bwSet(key, val) {
   const sel = document.getElementById(`bw-${key}-${val}`);
   if (sel) sel.className = 'bw-yn-btn ' + (badge[key]?.[val] || 'bw-sel');
   if (key === 'mort')  document.getElementById('bw-mort-count-row').style.display  = val==='yes' ? 'block' : 'none';
-  if (key === 'loose') document.getElementById('bw-loose-count-row').style.display = val==='yes' ? 'block' : 'none';
+  if (key === 'loose')   document.getElementById('bw-loose-count-row').style.display   = val==='yes'  ? 'block' : 'none';
+  if (key === 'rodent')  document.getElementById('bw-rodent-count-row').style.display  = val==='yes'  ? 'block' : 'none';
+  if (key === 'fly')     document.getElementById('bw-fly-count-row').style.display     = val==='yes'  ? 'block' : 'none';
+  if (key === 'eggbelt') document.getElementById('bw-eggbelt-wo-note').style.display   = val==='down' ? 'block' : 'none';
   checkBWReady();
 }
 
@@ -6593,7 +6610,9 @@ async function submitBarnWalk() {
   const waterPSI   = Number(document.getElementById('bw-water-psi').value) || 0;
   const temp       = document.getElementById('bw-temp').value ? Number(document.getElementById('bw-temp').value) : null;
   const mortCount  = document.getElementById('bw-mort-count').value ? Number(document.getElementById('bw-mort-count').value) : null;
-  const looseCount = document.getElementById('bw-loose-count').value ? Number(document.getElementById('bw-loose-count').value) : null;
+  const looseCount  = document.getElementById('bw-loose-count').value  ? Number(document.getElementById('bw-loose-count').value)  : null;
+  const rodentCount = document.getElementById('bw-rodent-count').value ? Number(document.getElementById('bw-rodent-count').value) : null;
+  const flyCount    = document.getElementById('bw-fly-count').value    ? Number(document.getElementById('bw-fly-count').value)    : null;
 
   const flags = [];
   if (_bwData.mort === 'yes')           flags.push('Mortality found' + (mortCount ? ' (' + mortCount + ')' : ''));
@@ -6601,17 +6620,18 @@ async function submitBarnWalk() {
   if (_bwData.dryers === 'off')         flags.push('Manure dryers off');
   if (_bwData.feather === 'poor')       flags.push('Poor feathering');
   if (_bwData.loose === 'yes')          flags.push('Loose birds' + (looseCount ? ' (' + looseCount + ')' : ''));
-  if (_bwData.air === 'poor')           flags.push('Poor air quality');
+  if (_bwData.air === 'poor')           flags.push('Air quality anomaly');
   if (_bwData.feed === 'empty')         flags.push('Feeders empty');
   if (waterPSI < 10 || waterPSI > 60)  flags.push('Water pressure out of range (' + waterPSI + ' PSI)');
-  if (_bwData.eggbelt === 'dirty')      flags.push('Egg belts dirty');
+  if (_bwData.eggbelt === 'down')       flags.push('Egg belt not working');
   if (_bwData.manure === 'stop')        flags.push('Manure belts not running');
-  if (_bwData.rodent === 'yes')         flags.push('Rodents present');
+  if (_bwData.rodent === 'yes')         flags.push('Rodents present' + (rodentCount ? ' (' + rodentCount + ')' : ''));
+  if (_bwData.fly === 'yes')            flags.push('Fly activity' + (flyCount ? ' (' + flyCount + ')' : ''));
   if (_bwData.doors === 'open')         flags.push('House doors open');
 
   const record = {
     farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
-    waterPSI, temp, mortCount, looseCount,
+    waterPSI, temp, mortCount, looseCount, rodentCount, flyCount,
     mort: _bwData.mort, feather: _bwData.feather, air: _bwData.air,
     feed: _bwData.feed, rodent: _bwData.rodent, loose: _bwData.loose,
     dryers: _bwData.dryers, eggbelt: _bwData.eggbelt, manure: _bwData.manure,
@@ -6637,11 +6657,12 @@ async function submitBarnWalk() {
     'Poor feathering':            {problem:'Building / Structure',priority:'normal'},
     'House doors open':           {problem:'Building / Structure',priority:'high'},
     'Loose birds':                {problem:'Building / Structure',priority:'high'},
-    'Poor air quality':           {problem:'Ventilation / Fans', priority:'urgent'},
+    'Air quality anomaly':        {problem:'Ventilation / Fans', priority:'urgent'},
     'Feeders empty':              {problem:'Feed System',        priority:'urgent'},
     'Water pressure out of range':{problem:'Watering System',    priority:'urgent'},
-    'Egg belts dirty':            {problem:'Egg Collection',     priority:'normal'},
+    'Egg belt not working':       {problem:'Egg Collection',     priority:'urgent'},
     'Rodents present':            {problem:'Building / Structure',priority:'high'},
+    'Fly activity':               {problem:'Building / Structure',priority:'normal'},
   };
   const submitted = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const woDate    = new Date().toISOString().slice(0,10);
