@@ -9496,6 +9496,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (submitBtn && submitBtn.getAttribute('onclick') === 'submitWO()') {
     submitBtn.setAttribute('onclick', 'submitWOEnhanced()');
   }
+  // Pre-populate the farm dropdown as soon as the page loads
+  initShipFarmDropdown();
 });
 
 
