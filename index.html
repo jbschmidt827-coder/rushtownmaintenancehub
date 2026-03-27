@@ -1794,6 +1794,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:10px;">Creates 2 bins per house: House 1 — Bin A &amp; Bin B, House 2 — Bin A &amp; Bin B, etc.</div>
       <div class="ops-form-actions">
         <button class="ops-save-btn" onclick="quickAddBins()">⚡ Generate Bins</button>
+        <button class="ops-save-btn" style="background:#1a4a6a;margin-left:8px;" onclick="seedAllFarms()">🌾 Seed All Farms</button>
       </div>
     </div>
 
@@ -7963,6 +7964,44 @@ async function quickAddBins() {
     }
   }
   alert(`✅ Created ${created} bins for ${farm}.`);
+  renderFeedBinsList();
+  renderFeedDashboard();
+}
+
+// All known farms: { farm, houses[], feedType }
+// houses with no consumption data (inactive) are still created for future use
+const SEED_FARMS = [
+  { farm:'Turbotville', houses:[1,2,3,4],     feedType:'Layer Mash' },
+  { farm:'W&M',         houses:[1,2],          feedType:'Layer Mash' },
+  { farm:'Rushtown',    houses:[1,2,3,4,5],    feedType:'Layer Mash' },
+  { farm:'Danville',    houses:[1,2,3,4,5],    feedType:'Layer Mash' },
+  { farm:'Hegins',      houses:[1,2,3,4,5,6,7,8], feedType:'Layer Mash' },
+];
+
+async function seedAllFarms() {
+  const totalBins = SEED_FARMS.reduce((s,f) => s + f.houses.length * 2, 0);
+  if (!confirm(`Create all bins for ${SEED_FARMS.length} farms (${totalBins} bins total)?\n\nExisting bins will be skipped.`)) return;
+  const cap = 90000; // 45 tons
+  const order = 25;
+  let created = 0, skipped = 0;
+  for (const { farm, houses, feedType } of SEED_FARMS) {
+    const existing = feedBins.filter(b => b.farm === farm).map(b => b.name);
+    const farmRates = FARM_HOUSE_CONSUMPTION[farm] || HOUSE_CONSUMPTION_LBS;
+    for (const h of houses) {
+      const consumption = farmRates[h] !== undefined ? farmRates[h] : 32000;
+      for (const side of ['A','B']) {
+        const name = `House ${h} — Bin ${side}`;
+        if (existing.includes(name)) { skipped++; continue; }
+        const binId = 'BIN-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,5).toUpperCase();
+        const data = { binId, name, farm, barn:`House ${h}`, feedType, capacityLbs:cap, orderPct:order, dailyConsumptionLbs:consumption, ts:Date.now() };
+        const ref = await db.collection('feedBins').add(data);
+        feedBins.push({ ...data, _fbId:ref.id });
+        created++;
+        await new Promise(r => setTimeout(r, 30));
+      }
+    }
+  }
+  alert(`✅ Done!\n${created} bins created, ${skipped} already existed (skipped).`);
   renderFeedBinsList();
   renderFeedDashboard();
 }
