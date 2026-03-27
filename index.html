@@ -8444,11 +8444,16 @@ async function loadFeedData() {
     feedDeliveries = []; dSnap.forEach(d => feedDeliveries.push({ ...d.data(), _fbId: d.id }));
     feedMadeLog    = []; mSnap.forEach(d => feedMadeLog.push({ ...d.data(), _fbId: d.id }));
   } catch(e) { console.error('feedData load:', e); }
-  // Auto-seed bins + initial readings if none exist
+  // Auto-seed bins if none exist
   if (!feedBins.length) {
-    await seedAllFarms(true); // silent mode
+    await seedAllFarms(true);
+  }
+  // Seed initial readings if none exist (runs even if bins already existed)
+  if (!feedReadings.length && feedBins.length) {
     await seedInitialReadings();
   }
+  // Always re-render dashboard after data loads
+  renderFeedDashboard();
 }
 
 // Initial readings from physical records (Turbotville + W&M: 3/27/2026, Hegins: 3/22/2026)
