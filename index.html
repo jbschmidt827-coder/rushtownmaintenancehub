@@ -1813,7 +1813,6 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:10px;">Creates 2 bins per house: House 1 — Bin A &amp; Bin B, House 2 — Bin A &amp; Bin B, etc.</div>
       <div class="ops-form-actions">
         <button class="ops-save-btn" onclick="quickAddBins()">⚡ Generate Bins</button>
-        <button class="ops-save-btn" style="background:#1a4a6a;margin-left:8px;" onclick="seedAllFarms()">🌾 Seed All Farms</button>
       </div>
     </div>
 
@@ -1889,6 +1888,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div class="fg"><label>Trailer #</label><input type="text" id="sf-trailer" placeholder="Trailer ID"></div>
         <div class="fg"><label>Driver / Carrier</label><input type="text" id="sf-driver" placeholder="Driver or carrier"></div>
         <div class="fg"><label>Sched. Departure</label><input type="time" id="sf-sched"></div>
+        <div class="fg"><label># of Stops</label><input type="number" id="sf-stops" min="1" placeholder="1"></div>
         <div class="fg"><label>Status</label><select id="sf-status"><option>Planned</option><option>In Process</option><option>Staged</option><option>Loaded</option></select></div>
         <div class="fg ops-form-full"><label>Notes</label><input type="text" id="sf-notes" placeholder="Optional notes"></div>
       </div>
@@ -6155,12 +6155,13 @@ async function seedWaterRegulatorWI() {
   await db.collection('workInstructions').add({
     wiId: SEED_ID,
     title: 'Water Regulator Replacement — Houses 5–8',
+    dept: 'Maintenance',
     type: 'repair',
     system: 'Watering System',
     time: 30,
     author: 'Rushtown Poultry',
     date: today,
-    ppe: '',
+    ppe: 'Safety glasses, work gloves',
     warnings: 'Ensure water is fully shut off before disassembly. Avoid overtightening connections to prevent damage.',
     steps: [
       'Shut Off Water Supply — Turn off the water valve located on top of the water regulator.',
@@ -8001,33 +8002,6 @@ const SEED_FARMS = [
   { farm:'Hegins',      houses:[1,2,3,4,5,6,7,8], feedType:'Layer Mash' },
 ];
 
-async function seedAllFarms() {
-  const totalBins = SEED_FARMS.reduce((s,f) => s + f.houses.length * 2, 0);
-  if (!confirm(`Create all bins for ${SEED_FARMS.length} farms (${totalBins} bins total)?\n\nExisting bins will be skipped.`)) return;
-  const cap = 90000; // 45 tons
-  const order = 25;
-  let created = 0, skipped = 0;
-  for (const { farm, houses, feedType } of SEED_FARMS) {
-    const existing = feedBins.filter(b => b.farm === farm).map(b => b.name);
-    const farmRates = FARM_HOUSE_CONSUMPTION[farm] || HOUSE_CONSUMPTION_LBS;
-    for (const h of houses) {
-      const consumption = farmRates[h] !== undefined ? farmRates[h] : 32000;
-      for (const side of ['A','B']) {
-        const name = `House ${h} — Bin ${side}`;
-        if (existing.includes(name)) { skipped++; continue; }
-        const binId = 'BIN-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,5).toUpperCase();
-        const data = { binId, name, farm, barn:`House ${h}`, feedType, capacityLbs:cap, orderPct:order, dailyConsumptionLbs:consumption, ts:Date.now() };
-        const ref = await db.collection('feedBins').add(data);
-        feedBins.push({ ...data, _fbId:ref.id });
-        created++;
-        await new Promise(r => setTimeout(r, 30));
-      }
-    }
-  }
-  alert(`✅ Done!\n${created} bins created, ${skipped} already existed (skipped).`);
-  renderFeedBinsList();
-  renderFeedDashboard();
-}
 
 async function saveFeedBin() {
   const name     = document.getElementById('fbin-name').value.trim();
@@ -8120,7 +8094,7 @@ function renderFeedDashboard() {
     cardsEl.innerHTML = `<div class="empty">
       <div class="ei">🌾</div>
       <p style="margin-bottom:14px;">No bins set up yet.</p>
-      <button class="ops-save-btn" onclick="goFeedSection('bins')" style="margin:0 auto;display:block;">⚙️ Go to Bins → Seed All Farms</button>
+      <button class="ops-save-btn" onclick="loadFeedData().then(()=>{renderFeedDashboard();})" style="margin:0 auto;display:block;">⚡ Auto-Setup Bins &amp; Readings</button>
     </div>`;
     return;
   }
@@ -8470,6 +8444,62 @@ async function loadFeedData() {
     feedDeliveries = []; dSnap.forEach(d => feedDeliveries.push({ ...d.data(), _fbId: d.id }));
     feedMadeLog    = []; mSnap.forEach(d => feedMadeLog.push({ ...d.data(), _fbId: d.id }));
   } catch(e) { console.error('feedData load:', e); }
+  // Auto-seed bins + initial readings if none exist
+  if (!feedBins.length) {
+    await seedAllFarms(true); // silent mode
+    await seedInitialReadings();
+  }
+}
+
+// Initial readings from physical records (Turbotville + W&M: 3/27/2026, Hegins: 3/22/2026)
+const INITIAL_READINGS = {
+  'Turbotville': { 'House 1':{A:24311,B:33517}, 'House 2':{A:31543,B:18779}, 'House 3':{A:73367,B:51831}, 'House 4':{A:49400,B:73235} },
+  'W&M':         { 'House 1':{A:17975,B:42600}, 'House 2':{A:47589,B:27902} },
+  'Hegins':      { 'House 1':{A:35500,B:35500}, 'House 3':{A:40000,B:40000}, 'House 4':{A:34020,B:34020}, 'House 6':{A:41270,B:41270}, 'House 7':{A:53850,B:53850}, 'House 8':{A:66910,B:66910} },
+};
+const INITIAL_READING_DATES = { 'Turbotville':'2026-03-27','W&M':'2026-03-27','Hegins':'2026-03-22' };
+
+async function seedInitialReadings() {
+  if (feedReadings.length) return; // already have readings
+  const ts = Date.now();
+  for (const [farm, houses] of Object.entries(INITIAL_READINGS)) {
+    const date = INITIAL_READING_DATES[farm] || '2026-03-27';
+    for (const [house, bins] of Object.entries(houses)) {
+      for (const [side, lbs] of Object.entries(bins)) {
+        const binName = `${house} — Bin ${side}`;
+        const bin = feedBins.find(b => b.farm === farm && b.name === binName);
+        if (!bin) continue;
+        const ref = await db.collection('feedReadings').add({ date, binId:bin.binId, binName:bin.name, farm, readingLbs:lbs, by:'Initial Setup', ts });
+        feedReadings.push({ date, binId:bin.binId, binName:bin.name, farm, readingLbs:lbs, by:'Initial Setup', ts, _fbId:ref.id });
+        await new Promise(r => setTimeout(r,20));
+      }
+    }
+  }
+}
+
+// seedAllFarms can be called silently (no confirm/alert) for auto-init
+async function seedAllFarms(silent=false) {
+  if (!silent && !confirm(`Create all bins for ${SEED_FARMS.length} farms?\n\nExisting bins will be skipped.`)) return;
+  const cap=90000, order=25;
+  let created=0, skipped=0;
+  for (const {farm, houses, feedType} of SEED_FARMS) {
+    const existing=feedBins.filter(b=>b.farm===farm).map(b=>b.name);
+    const farmRates=FARM_HOUSE_CONSUMPTION[farm]||HOUSE_CONSUMPTION_LBS;
+    for (const h of houses) {
+      const consumption=farmRates[h]!==undefined?farmRates[h]:32000;
+      for (const side of ['A','B']) {
+        const name=`House ${h} — Bin ${side}`;
+        if (existing.includes(name)){skipped++;continue;}
+        const binId='BIN-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,5).toUpperCase();
+        const data={binId,name,farm,barn:`House ${h}`,feedType,capacityLbs:cap,orderPct:order,dailyConsumptionLbs:consumption,ts:Date.now()};
+        const ref=await db.collection('feedBins').add(data);
+        feedBins.push({...data,_fbId:ref.id});
+        created++;
+        await new Promise(r=>setTimeout(r,30));
+      }
+    }
+  }
+  if (!silent) { alert(`✅ ${created} bins created, ${skipped} skipped.`); renderFeedBinsList(); renderFeedDashboard(); }
 }
 
 // ── Packing ──
@@ -8619,8 +8649,9 @@ function renderShipping() {
   const activeCount=opsShipData.filter(r=>!['shipped','delivered'].includes(r.status)).length;
   const shippedToday=opsShipData.filter(r=>r.date===opsToday()&&['shipped','delivered'].includes(r.status)).length;
   const holdCount=opsShipData.filter(r=>r.status==='hold').length;
+  const stopsToday=todayLoads.reduce((s,r)=>s+(parseInt(r.stops)||1),0);
   const statsEl=document.getElementById('ship-stats');
-  if(statsEl) statsEl.innerHTML=sc('s-blue',todayLoads.length,'🚚 Loads Today')+sc('s-amber',activeCount,'⏳ Active')+sc('s-green',shippedToday,'✅ Shipped Today')+sc('s-red',holdCount,'🚫 On Hold');
+  if(statsEl) statsEl.innerHTML=sc('s-blue',todayLoads.length,'🚚 Loads Today')+sc('s-purple',stopsToday,'📍 Stops Today')+sc('s-green',shippedToday,'✅ Shipped Today')+sc('s-red',holdCount,'🚫 On Hold');
 
   const listEl=document.getElementById('ship-list'); if(!listEl)return;
   if(!data.length){listEl.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:13px;">No loads to display. Click ➕ New Load to create one.</div>';return;}
@@ -8649,7 +8680,7 @@ function shipCardHtml(r) {
           <span class="ship-badge ${st}">${stLbl[st]||st}</span>
         </div>
         <div style="font-weight:700;font-size:14px;color:var(--ink);">${r.customer}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${r.product} · ${fmtNum(r.qty)} ${r.unit} · ${r.facility}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${r.product} · ${fmtNum(r.qty)} ${r.unit} · ${r.facility}${r.stops>1?' · '+r.stops+' stops':''}</div>
         <div style="font-size:12px;color:var(--muted);margin-top:2px;">${r.date}${r.trailer?' · '+r.trailer:''}${r.driver?' · '+r.driver:''}</div>
         ${delay?'<div style="margin-top:4px;">'+delay+'</div>':''}${wo}
       </div>
@@ -8667,10 +8698,11 @@ async function saveShipping() {
   const facility=document.getElementById('sf-facility')?.value||'Hegins', staging=document.getElementById('sf-staging')?.value?.trim()||'';
   const trailer=document.getElementById('sf-trailer')?.value?.trim()||'', driver=document.getElementById('sf-driver')?.value?.trim()||'';
   const schedDep=document.getElementById('sf-sched')?.value||'';
+  const stops=parseInt(document.getElementById('sf-stops')?.value||'1')||1;
   const status=(document.getElementById('sf-status')?.value||'Planned').toLowerCase().replace(' ','-');
   const notes=document.getElementById('sf-notes')?.value?.trim()||'';
   if(!date||!loadNum||!customer||!product||!qty){alert('Date, Load #, Customer, Product, and Quantity are required.');return;}
-  const record={date,loadNum,customer,product,qty,unit,facility,staging,trailer,driver,schedDep,actDep:'',status,delayReason:'',damageNotes:notes,linkedWO:'',ts:Date.now()};
+  const record={date,loadNum,customer,product,qty,unit,facility,staging,trailer,driver,schedDep,stops,actDep:'',status,delayReason:'',damageNotes:notes,linkedWO:'',ts:Date.now()};
   try {
     const ref=await db.collection('opsShipping').add(record);
     record._fbId=ref.id; opsShipData.unshift(record);
