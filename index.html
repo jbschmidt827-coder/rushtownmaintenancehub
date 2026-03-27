@@ -679,6 +679,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <button class="nav-tab" id="tab-ship" onclick="go('ship')">🚚 Shipping</button>
       <button class="nav-tab" id="tab-reports" onclick="go('reports')">📊 Reports</button>
     </nav>
+    <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
   </div>
 </header>
 
@@ -896,6 +897,15 @@ body { min-height: 100dvh; overflow-x: hidden; }
 .bw-submit:disabled{background:#2a5a2a;color:#5a8a5a;cursor:not-allowed;}
 .bw-submit:not(:disabled):hover{background:#43a047;}
 .bw-row-label{font-size:11px;color:#7ab07a;margin-bottom:6px;}
+.bw-check-item{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border-radius:8px;border:1.5px solid #2a5a2a;background:#163016;cursor:pointer;margin-bottom:8px;transition:all .15s;user-select:none;}
+.bw-check-item.bw-checked{background:#1a4a1a;border-color:#4caf50;}
+.bw-check-icon{width:22px;height:22px;min-width:22px;border-radius:5px;border:2px solid #3a7a3a;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:1px;background:#0f2a0f;transition:all .15s;}
+.bw-check-item.bw-checked .bw-check-icon{background:#4caf50;border-color:#4caf50;}
+.bw-check-text{font-size:12px;color:#7ab07a;line-height:1.5;font-family:'IBM Plex Sans',sans-serif;}
+.bw-check-item.bw-checked .bw-check-text{color:#f0ead8;}
+.bw-weekly-step{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #1a3a1a;font-size:12px;color:#a0c8a0;line-height:1.5;}
+.bw-weekly-step:last-child{border-bottom:none;}
+.bw-step-num{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4caf50;font-weight:700;min-width:18px;margin-top:2px;}
 </style>
 <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #2a5a2a;">
@@ -1068,6 +1078,33 @@ body { min-height: 100dvh; overflow-x: hidden; }
     </div>
   </div>
 
+  <!-- Daily Checklist -->
+  <div class="bw-card">
+    <div class="bw-card-title">✅ Daily Checklist</div>
+    <div style="font-size:10px;color:#5a8a5a;margin-bottom:12px;font-family:'IBM Plex Mono',monospace;">TAP EACH TASK WHEN COMPLETE</div>
+    <div id="bw-checklist-items">
+      <div class="bw-check-item" onclick="bwToggleCheck('waterleaks',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Check for water leaks — notify manager if found</div></div>
+      <div class="bw-check-item" onclick="bwToggleCheck('cagebirdcheck',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Check all cages — cull any injured or sick birds</div></div>
+      <div class="bw-check-item" onclick="bwToggleCheck('mortchute',this)"><div class="bw-check-icon"></div><div class="bw-check-text">All dead birds placed in white chute (back of barn, top floor)</div></div>
+      <div class="bw-check-item" onclick="bwToggleCheck('chutefull',this)"><div class="bw-check-icon"></div><div class="bw-check-text">White chute checked — manager notified if getting full</div></div>
+      <div class="bw-check-item" onclick="bwToggleCheck('damagedcages',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Damaged cages &amp; egg belts checked — manager notified if found</div></div>
+      <div class="bw-check-item" onclick="bwToggleCheck('watertubes',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Water tubes cleaned (front &amp; back of house)</div></div>
+      <div class="bw-check-item" onclick="bwToggleCheck('dustblown',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Dust &amp; dander blown off ceiling, walls, cages &amp; fan screens (top &amp; bottom floors)</div></div>
+      <div class="bw-check-item" onclick="bwToggleCheck('aislesblown',this)"><div class="bw-check-icon"></div><div class="bw-check-text">All aisles blown out on bottom floor (under cages &amp; egg collectors)</div></div>
+      <div class="bw-check-item" onclick="bwToggleCheck('eggcollblown',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Front &amp; back of egg collectors blown off</div></div>
+      <div class="bw-check-item" onclick="bwToggleCheck('eggspills',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Egg spills cleaned up after egg collector run (aisles, under collectors, front conveyor area)</div></div>
+      <div class="bw-check-item" onclick="bwToggleCheck('wheelbarrow',this)"><div class="bw-check-icon"></div><div class="bw-check-text">Wheelbarrow emptied behind manure belts — DO NOT dump on pit belt</div></div>
+      <div class="bw-check-item" onclick="bwToggleCheck('toolsback',this)"><div class="bw-check-icon"></div><div class="bw-check-text">All tools returned to designated spots</div></div>
+    </div>
+    <div id="bw-checklist-progress" style="margin-top:10px;font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-align:right;">0 / 12 completed</div>
+  </div>
+
+  <!-- Weekly Tasks (day-conditional) -->
+  <div class="bw-card" id="bw-weekly-card" style="display:none;">
+    <div class="bw-card-title" id="bw-weekly-title">📅 Weekly Task</div>
+    <div id="bw-weekly-content"></div>
+  </div>
+
   <!-- Notes -->
   <div class="bw-card">
     <div class="bw-card-title">📝 Notes / Corrective Actions</div>
@@ -1076,6 +1113,40 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
   <button class="bw-submit" id="bw-submit-btn" onclick="submitBarnWalk()" disabled>✓ Submit Daily Check</button>
 </div>
+</div>
+
+<!-- ═══ ADMIN PIN MODAL ═══ -->
+<div id="admin-pin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:900;align-items:center;justify-content:center;">
+  <div style="background:#111;border:2px solid #2a5a2a;border-radius:20px;padding:32px 28px;width:320px;max-width:92vw;box-shadow:0 8px 40px rgba(0,0,0,.7);">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:28px;margin-bottom:8px;">🔐</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:2px;color:#f0ead8;text-transform:uppercase;">Admin Access</div>
+      <div style="font-size:11px;color:#5a8a5a;margin-top:4px;font-family:'IBM Plex Mono',monospace;">Enter PIN to continue</div>
+    </div>
+    <!-- PIN dots display -->
+    <div style="display:flex;justify-content:center;gap:14px;margin-bottom:28px;">
+      <div id="admin-pin-d1" style="width:14px;height:14px;border-radius:50%;border:2px solid #3a7a3a;background:#163016;transition:all .15s;"></div>
+      <div id="admin-pin-d2" style="width:14px;height:14px;border-radius:50%;border:2px solid #3a7a3a;background:#163016;transition:all .15s;"></div>
+      <div id="admin-pin-d3" style="width:14px;height:14px;border-radius:50%;border:2px solid #3a7a3a;background:#163016;transition:all .15s;"></div>
+      <div id="admin-pin-d4" style="width:14px;height:14px;border-radius:50%;border:2px solid #3a7a3a;background:#163016;transition:all .15s;"></div>
+    </div>
+    <div id="admin-pin-error" style="display:none;text-align:center;color:#fc8181;font-size:12px;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;">Incorrect PIN — try again</div>
+    <!-- Keypad -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      <button onclick="adminPinDigit('1')" style="padding:18px;font-size:20px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#163016;border:1.5px solid #2a5a2a;border-radius:12px;color:#f0ead8;cursor:pointer;transition:background .1s;" onmousedown="this.style.background='#1a4a1a'" onmouseup="this.style.background='#163016'">1</button>
+      <button onclick="adminPinDigit('2')" style="padding:18px;font-size:20px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#163016;border:1.5px solid #2a5a2a;border-radius:12px;color:#f0ead8;cursor:pointer;transition:background .1s;" onmousedown="this.style.background='#1a4a1a'" onmouseup="this.style.background='#163016'">2</button>
+      <button onclick="adminPinDigit('3')" style="padding:18px;font-size:20px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#163016;border:1.5px solid #2a5a2a;border-radius:12px;color:#f0ead8;cursor:pointer;transition:background .1s;" onmousedown="this.style.background='#1a4a1a'" onmouseup="this.style.background='#163016'">3</button>
+      <button onclick="adminPinDigit('4')" style="padding:18px;font-size:20px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#163016;border:1.5px solid #2a5a2a;border-radius:12px;color:#f0ead8;cursor:pointer;transition:background .1s;" onmousedown="this.style.background='#1a4a1a'" onmouseup="this.style.background='#163016'">4</button>
+      <button onclick="adminPinDigit('5')" style="padding:18px;font-size:20px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#163016;border:1.5px solid #2a5a2a;border-radius:12px;color:#f0ead8;cursor:pointer;transition:background .1s;" onmousedown="this.style.background='#1a4a1a'" onmouseup="this.style.background='#163016'">5</button>
+      <button onclick="adminPinDigit('6')" style="padding:18px;font-size:20px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#163016;border:1.5px solid #2a5a2a;border-radius:12px;color:#f0ead8;cursor:pointer;transition:background .1s;" onmousedown="this.style.background='#1a4a1a'" onmouseup="this.style.background='#163016'">6</button>
+      <button onclick="adminPinDigit('7')" style="padding:18px;font-size:20px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#163016;border:1.5px solid #2a5a2a;border-radius:12px;color:#f0ead8;cursor:pointer;transition:background .1s;" onmousedown="this.style.background='#1a4a1a'" onmouseup="this.style.background='#163016'">7</button>
+      <button onclick="adminPinDigit('8')" style="padding:18px;font-size:20px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#163016;border:1.5px solid #2a5a2a;border-radius:12px;color:#f0ead8;cursor:pointer;transition:background .1s;" onmousedown="this.style.background='#1a4a1a'" onmouseup="this.style.background='#163016'">8</button>
+      <button onclick="adminPinDigit('9')" style="padding:18px;font-size:20px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#163016;border:1.5px solid #2a5a2a;border-radius:12px;color:#f0ead8;cursor:pointer;transition:background .1s;" onmousedown="this.style.background='#1a4a1a'" onmouseup="this.style.background='#163016'">9</button>
+      <button onclick="adminPinCancel()" style="padding:18px;font-size:13px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#2a1a1a;border:1.5px solid #5a2a2a;border-radius:12px;color:#f08080;cursor:pointer;">✕</button>
+      <button onclick="adminPinDigit('0')" style="padding:18px;font-size:20px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#163016;border:1.5px solid #2a5a2a;border-radius:12px;color:#f0ead8;cursor:pointer;transition:background .1s;" onmousedown="this.style.background='#1a4a1a'" onmouseup="this.style.background='#163016'">0</button>
+      <button onclick="adminPinBackspace()" style="padding:18px;font-size:18px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#1a1a2a;border:1.5px solid #3a3a5a;border-radius:12px;color:#a0a0d0;cursor:pointer;">⌫</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ MORNING WALK MODAL ═══ -->
@@ -1970,6 +2041,75 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+
+// ═══════════════════════════════════════════
+// ADMIN PIN SYSTEM
+// ═══════════════════════════════════════════
+const ADMIN_PIN = '1234'; // ← change this to your desired PIN
+var _adminUnlocked = false;
+var _adminPinEntry = '';
+var _adminPendingCallback = null;
+
+function requireAdmin(callback) {
+  if (_adminUnlocked) { callback(); return; }
+  _adminPendingCallback = callback;
+  _adminPinEntry = '';
+  _adminUpdateDots();
+  document.getElementById('admin-pin-error').style.display = 'none';
+  document.getElementById('admin-pin-modal').style.display = 'flex';
+}
+
+function adminPinDigit(d) {
+  if (_adminPinEntry.length >= 4) return;
+  _adminPinEntry += d;
+  _adminUpdateDots();
+  if (_adminPinEntry.length === 4) {
+    setTimeout(() => {
+      if (_adminPinEntry === ADMIN_PIN) {
+        _adminUnlocked = true;
+        document.getElementById('admin-pin-modal').style.display = 'none';
+        document.getElementById('admin-lock-btn').style.display = 'flex';
+        const cb = _adminPendingCallback;
+        _adminPendingCallback = null;
+        if (cb) cb();
+      } else {
+        document.getElementById('admin-pin-error').style.display = 'block';
+        _adminPinEntry = '';
+        _adminUpdateDots();
+        [1,2,3,4].forEach(i => {
+          const d = document.getElementById('admin-pin-d'+i);
+          d.style.background = '#5a1a1a';
+          d.style.borderColor = '#e53e3e';
+          setTimeout(() => { d.style.background = '#163016'; d.style.borderColor = '#3a7a3a'; }, 600);
+        });
+      }
+    }, 120);
+  }
+}
+
+function adminPinBackspace() {
+  _adminPinEntry = _adminPinEntry.slice(0,-1);
+  _adminUpdateDots();
+}
+
+function adminPinCancel() {
+  _adminPendingCallback = null;
+  _adminPinEntry = '';
+  document.getElementById('admin-pin-modal').style.display = 'none';
+}
+
+function adminLock() {
+  _adminUnlocked = false;
+  document.getElementById('admin-lock-btn').style.display = 'none';
+}
+
+function _adminUpdateDots() {
+  [1,2,3,4].forEach(i => {
+    const dot = document.getElementById('admin-pin-d'+i);
+    dot.style.background = i <= _adminPinEntry.length ? '#4caf50' : '#163016';
+    dot.style.borderColor = i <= _adminPinEntry.length ? '#4caf50' : '#3a7a3a';
+  });
+}
 
 // ═══════════════════════════════════════════
 // CONSTANTS
@@ -3442,6 +3582,9 @@ function startPartsDefsListener() {
 }
 
 function openPartForm(partId) {
+  requireAdmin(() => _openPartForm(partId));
+}
+function _openPartForm(partId) {
   editingPartDefId = null;
   document.getElementById('part-form-title').textContent = 'Add Part';
   document.getElementById('pf-delete-row').style.display = 'none';
@@ -5666,6 +5809,9 @@ function renderWI() {
 
 // ── Form ──
 function openWIForm(wiId) {
+  requireAdmin(() => _openWIForm(wiId));
+}
+function _openWIForm(wiId) {
   editingWIId = wiId || null;
   wiStepCount = 0;
   document.getElementById('wif-steps-list').innerHTML = '';
@@ -5828,8 +5974,7 @@ function closeWIView() {
 }
 
 function wiEditCurrent() {
-  closeWIView();
-  openWIForm(currentWIId);
+  requireAdmin(() => { closeWIView(); _openWIForm(currentWIId); });
 }
 
 async function wiDeleteCurrent() {
@@ -5962,6 +6107,9 @@ function renderAssets() {
 
 // ── Add / Edit form ──
 function openAssetForm(assetId) {
+  requireAdmin(() => _openAssetForm(assetId));
+}
+function _openAssetForm(assetId) {
   editingAssetId = assetId || null;
   const modal = document.getElementById('asset-form-modal');
   if (assetId) {
@@ -6048,8 +6196,7 @@ async function saveAsset() {
 }
 
 function editAsset() {
-  closeAssetHistory();
-  openAssetForm(currentAssetId);
+  requireAdmin(() => { closeAssetHistory(); _openAssetForm(currentAssetId); });
 }
 
 // ── Asset History Modal ──
@@ -6542,7 +6689,67 @@ function renderMWContent() {
 }
 
 // ── Employee Daily Barn Check ──
-var _bwFarm = '', _bwHouse = 0, _bwData = {};
+var _bwFarm = '', _bwHouse = 0, _bwData = {}, _bwChecklist = {};
+
+const _BW_WEEKLY = {
+  2: { // Tuesday
+    title: '📅 Weekly Task — Fly Test (Tuesday)',
+    note: 'Open a new fly trap and walk the house.',
+    steps: [
+      'Open a fly trap and walk down an aisle to the end of the house.',
+      'Walk back to the front up a different aisle, holding the fly trap at waist level.',
+      'Count the flies caught on the trap — record on the whiteboard at the front of the house.',
+      'Hang the fly trap in the house.',
+      'Discard the fly trap from the previous week.',
+      'Notify the barn manager if you are low on bait.'
+    ]
+  },
+  5: { // Friday
+    title: '📅 Weekly Task — Rodent Check (Friday)',
+    note: 'Check all traps and bait on top & bottom floors.',
+    steps: [
+      'Check rodent traps on the top & bottom floors on the outside aisles — empty into a bucket.',
+      'Count the rodents caught — record on the whiteboard at the front of the house.',
+      'Check bait boxes & bait tubes on the top & bottom floors on the outside aisles.',
+      'Add more bait if any bait boxes or bait tubes are empty.',
+      'Notify the barn manager if you are low on bait.'
+    ]
+  }
+};
+
+function bwInitChecklist() {
+  _bwChecklist = {};
+  document.querySelectorAll('#bw-checklist-items .bw-check-item').forEach(el => {
+    el.classList.remove('bw-checked');
+    el.querySelector('.bw-check-icon').textContent = '';
+  });
+  document.getElementById('bw-checklist-progress').textContent = '0 / 12 completed';
+
+  const day = new Date().getDay();
+  const weekly = _BW_WEEKLY[day];
+  const card = document.getElementById('bw-weekly-card');
+  if (weekly) {
+    document.getElementById('bw-weekly-title').textContent = weekly.title;
+    document.getElementById('bw-weekly-content').innerHTML =
+      `<div style="font-size:11px;color:#5a8a5a;margin-bottom:10px;font-family:'IBM Plex Mono',monospace;">${weekly.note}</div>` +
+      weekly.steps.map((s, i) =>
+        `<div class="bw-weekly-step"><span class="bw-step-num">${i+1}.</span><span>${s}</span></div>`
+      ).join('');
+    card.style.display = 'block';
+  } else {
+    card.style.display = 'none';
+  }
+}
+
+function bwToggleCheck(key, el) {
+  _bwChecklist[key] = !_bwChecklist[key];
+  el.classList.toggle('bw-checked', _bwChecklist[key]);
+  el.querySelector('.bw-check-icon').textContent = _bwChecklist[key] ? '✓' : '';
+  const total = document.querySelectorAll('#bw-checklist-items .bw-check-item').length;
+  const done  = Object.values(_bwChecklist).filter(Boolean).length;
+  document.getElementById('bw-checklist-progress').textContent = done + ' / ' + total + ' completed';
+  document.getElementById('bw-checklist-progress').style.color = done === total ? '#4caf50' : '#5a8a5a';
+}
 
 function openBarnWalk(farm, house) {
   _bwFarm = farm; _bwHouse = house; _bwData = {};
@@ -6557,6 +6764,7 @@ function openBarnWalk(farm, house) {
   document.getElementById('bw-fly-count-row').style.display     = 'none';
   document.getElementById('bw-eggbelt-wo-note').style.display   = 'none';
   document.querySelectorAll('#barn-walk-modal .bw-yn-btn').forEach(b => b.className = 'bw-yn-btn');
+  bwInitChecklist();
   document.getElementById('bw-submit-btn').disabled = true;
   document.getElementById('barn-walk-modal').style.display = 'block';
   document.getElementById('barn-walk-modal').scrollTop = 0;
@@ -6629,6 +6837,9 @@ async function submitBarnWalk() {
   if (_bwData.fly === 'yes')            flags.push('Fly activity' + (flyCount ? ' (' + flyCount + ')' : ''));
   if (_bwData.doors === 'open')         flags.push('House doors open');
 
+  const checklistTotal = document.querySelectorAll('#bw-checklist-items .bw-check-item').length;
+  const checklistDone  = Object.values(_bwChecklist).filter(Boolean).length;
+
   const record = {
     farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
     waterPSI, temp, mortCount, looseCount, rodentCount, flyCount,
@@ -6637,6 +6848,8 @@ async function submitBarnWalk() {
     dryers: _bwData.dryers, eggbelt: _bwData.eggbelt, manure: _bwData.manure,
     stand: _bwData.stand, fly: _bwData.fly, mortrem: _bwData.mortrem,
     doors: _bwData.doors,
+    checklist: _bwChecklist,
+    checklistDone, checklistTotal,
     date: new Date().toISOString().slice(0,10),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
     ts: Date.now()
