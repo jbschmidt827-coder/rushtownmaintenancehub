@@ -1389,8 +1389,18 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div class="bw-cl-fail-detail" id="bw-cl-det-toolsback"><input type="text" placeholder="What is missing?" id="bw-cl-note-toolsback"></div>
       </div>
 
+      <div class="bw-cl-row" id="bw-cl-hallways">
+        <div class="bw-cl-top"><div class="bw-cl-label">Designated hallways cleaned (swept &amp; tidied)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('hallways','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('hallways','fail',this)">❌ Fail</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-hallways"><input type="text" placeholder="Notes on what was missed..." id="bw-cl-note-hallways"></div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-backofhouse">
+        <div class="bw-cl-top"><div class="bw-cl-label">Back of house cleaned — dusting, sweeping &amp; general cleanup</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('backofhouse','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('backofhouse','fail',this)">❌ Fail</button></div></div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-backofhouse"><input type="text" placeholder="Notes on what was missed..." id="bw-cl-note-backofhouse"></div>
+      </div>
+
     </div>
-    <div id="bw-checklist-progress" style="margin-top:10px;font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-align:right;">0 / 12 reviewed</div>
+    <div id="bw-checklist-progress" style="margin-top:10px;font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-align:right;">0 / 14 reviewed</div>
   </div>
 
   <!-- Weekly Tasks (day-conditional) -->
@@ -7794,7 +7804,7 @@ function bwInitChecklist() {
   });
   document.querySelectorAll('#bw-checklist-items .bw-cl-fail-detail').forEach(el => el.style.display='none');
   document.querySelectorAll('#bw-checklist-items input[id^="bw-cl-note-"]').forEach(el => el.value='');
-  document.getElementById('bw-checklist-progress').textContent = '0 / 12 reviewed';
+  document.getElementById('bw-checklist-progress').textContent = '0 / 14 reviewed';
 
   const day = new Date().getDay();
   const weekly = _BW_WEEKLY[day];
