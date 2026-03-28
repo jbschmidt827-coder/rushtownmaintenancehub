@@ -491,6 +491,16 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <span style="margin-left:auto;font-size:20px;color:#9b59b6;">→</span>
       </button>
 
+      <!-- Feed Mill -->
+      <button onclick="enterApp('feed')" style="width:100%;padding:22px 20px;background:#1a2a1a;border:2px solid #e67e22;border-radius:14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+        <span style="font-size:36px;line-height:1;">🌾</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">Feed Mill</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#f0a060;letter-spacing:1px;margin-top:3px;" id="home-feed-status">Bin levels · Deliveries · Readings</div>
+        </div>
+        <span style="margin-left:auto;font-size:20px;color:#e67e22;">→</span>
+      </button>
+
       <!-- Dashboard (Directors/Owners) -->
       <button onclick="enterApp('dash')" style="width:100%;padding:16px 20px;background:#163016;border:1px solid #2a5a2a;border-radius:14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
         <span style="font-size:28px;line-height:1;">📊</span>
@@ -5460,6 +5470,51 @@ function goHome() {
   document.getElementById('main-content').style.display = 'none';
   var fab = document.getElementById('fab-btn');
   if (fab) fab.style.display = 'none';
+  updateHomeFeedStatus();
+}
+
+async function updateHomeFeedStatus() {
+  var el = document.getElementById('home-feed-status');
+  if (!el) return;
+  try {
+    // Use already-loaded feedBins + feedReadings if available, otherwise quick query
+    var bins = (typeof feedBins !== 'undefined' && feedBins.length) ? feedBins : [];
+    var readings = (typeof feedReadings !== 'undefined' && feedReadings.length) ? feedReadings : [];
+    if (!bins.length) {
+      var snap = await db.collection('feedBins').get();
+      snap.forEach(function(d){ bins.push(d.data()); });
+    }
+    if (!readings.length) {
+      var today = new Date().toISOString().slice(0,10);
+      // get last 7 days of readings for latest per-bin
+      var rSnap = await db.collection('feedReadings').orderBy('date','desc').limit(200).get();
+      rSnap.forEach(function(d){ readings.push(d.data()); });
+    }
+    if (!bins.length) { el.textContent = 'Bin levels · Deliveries · Readings'; return; }
+    // Get latest reading per binId
+    var latestByBin = {};
+    readings.forEach(function(r){ if (!latestByBin[r.binId] || r.date > latestByBin[r.binId].date) latestByBin[r.binId] = r; });
+    var red=0, amber=0, green=0, noData=0;
+    bins.forEach(function(b){
+      var r = latestByBin[b.binId];
+      if (!r) { noData++; return; }
+      var lbs = (parseFloat(r.lbs)||0);
+      var cap = b.capacity||90000;
+      var pct = Math.round((lbs/cap)*100);
+      if (pct < 20) red++;
+      else if (pct < 40) amber++;
+      else green++;
+    });
+    var parts = [];
+    var totalHouses = bins.length / 2; // 2 bins per house
+    if (red > 0) parts.push('🔴 ' + red + ' bins low');
+    if (amber > 0) parts.push('🟡 ' + amber + ' bins watch');
+    if (green > 0) parts.push('✅ ' + green + ' bins ok');
+    if (noData > 0 && !parts.length) parts.push('📖 ' + bins.length + ' bins · tap to read');
+    el.textContent = parts.length ? parts.join(' · ') : '✅ All bins OK';
+  } catch(e) {
+    el.textContent = 'Bin levels · Deliveries · Readings';
+  }
 }
 
 function openProductionScreen() {
@@ -5639,7 +5694,11 @@ setInterval(function() {
 }, 60000); // check every minute
 
 // Init grid on load
-document.addEventListener('DOMContentLoaded', function() { renderBarnGrid(); });
+document.addEventListener('DOMContentLoaded', function() {
+  renderBarnGrid();
+  // Populate Feed Mill status on home card after a short delay (let Firebase init)
+  setTimeout(updateHomeFeedStatus, 1800);
+});
 
 // ═══════════════════════════════════════════
 // OPERATIONS — Mortality / Temp / PSI Logs
