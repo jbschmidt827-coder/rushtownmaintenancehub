@@ -279,6 +279,7 @@ textarea { resize: vertical; min-height: 85px; }
 
 /* ── FEED MILL ── */
 .feed-section{display:none;}
+.kpi-section{display:none;}
 .feed-bin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:10px;}
 .feed-bin-card{background:#0c1f0c;border:1.5px solid #2a5a2a;border-radius:14px;padding:16px;transition:border-color .2s;}
 .feed-bin-card:hover{border-color:#4caf50;}
@@ -760,6 +761,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <button class="nav-tab" id="tab-pkg" onclick="go('pkg')">📦 Packaging</button>
       <button class="nav-tab" id="tab-feed" onclick="go('feed')">🌾 Feed Mill</button>
       <button class="nav-tab" id="tab-ship" onclick="go('ship')">🚚 Shipping</button>
+      <button class="nav-tab" id="tab-kpi" onclick="go('kpi')">🥚 KPI</button>
       <button class="nav-tab" id="tab-reports" onclick="go('reports')">📊 Reports</button>
     </nav>
     <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
@@ -771,6 +773,9 @@ body { min-height: 100dvh; overflow-x: hidden; }
 <div class="panel active" id="panel-dash">
   <div class="section-title">📊 Operations Dashboard</div>
   <div class="section-sub" id="dash-date"></div>
+
+  <!-- Egg KPI Hero -->
+  <div id="dash-egg-kpi" style="margin-bottom:14px;"></div>
 
   <!-- PM overdue alert banner -->
   <div id="dash-pm-alert" style="display:none;background:#fff8e1;border:2px solid var(--amber);border-radius:10px;padding:12px 16px;margin-bottom:12px;flex-direction:row;justify-content:space-between;align-items:center;">
@@ -888,6 +893,81 @@ body { min-height: 100dvh; overflow-x: hidden; }
   </div>
 </div>
 
+<!-- ═══ KPI PANEL ═══ -->
+<div class="panel" id="panel-kpi">
+  <div class="section-title">🥚 Egg Production KPI</div>
+  <div class="sub-nav">
+    <button class="sub-btn active" data-section="dashboard" onclick="goKpiSection('dashboard')">📊 Dashboard</button>
+    <button class="sub-btn" data-section="log"       onclick="goKpiSection('log')">📋 Log</button>
+    <button class="sub-btn" data-section="entry"     onclick="goKpiSection('entry')">➕ Log Eggs</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="kpi-section" id="kpi-dashboard" style="display:block;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <input type="date" id="kpi-dash-date" class="ops-date-input" onchange="renderKpiDashboard()">
+      <button onclick="document.getElementById('kpi-dash-date').value=new Date().toISOString().slice(0,10);renderKpiDashboard();" style="padding:7px 12px;background:#0a1f0a;border:1px solid #2a5a2a;border-radius:8px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;">Today</button>
+    </div>
+    <div id="kpi-dash-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;"></div>
+    <div id="kpi-dash-cards"></div>
+  </div>
+
+  <!-- Log -->
+  <div class="kpi-section" id="kpi-log" style="display:none;">
+    <div class="ops-filter-row">
+      <input type="date" class="ops-date-input" id="kpi-log-date" onchange="renderKpiLog()">
+    </div>
+    <div id="kpi-log-table" style="overflow-x:auto;"></div>
+  </div>
+
+  <!-- Entry -->
+  <div class="kpi-section" id="kpi-entry" style="display:none;">
+    <div class="ops-quick-form" style="background:#0a1f0a;border-color:#2a5a2a;">
+      <div class="ops-qf-title" style="color:#7ab07a;">➕ Log Eggs by Barn</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label style="color:#7ab07a;">Date *</label><input type="date" id="ke-date"></div>
+        <div class="fg"><label style="color:#7ab07a;">Entered By</label><input type="text" id="ke-by" placeholder="Name"></div>
+        <div class="fg"><label style="color:#7ab07a;">Farm *</label>
+          <select id="ke-farm" onchange="updateKeHouses()">
+            <option value="">— select —</option>
+            <option value="Hegins">Hegins</option>
+            <option value="Danville">Danville</option>
+            <option value="Rushtown">Rushtown</option>
+            <option value="Turbotville">Turbotville</option>
+            <option value="W&amp;M">W&amp;M</option>
+          </select>
+        </div>
+        <div class="fg"><label style="color:#7ab07a;">House *</label>
+          <select id="ke-house"><option value="">—</option></select>
+        </div>
+        <div class="fg"><label style="color:#7ab07a;">Eggs Collected</label><input type="number" id="ke-collected" min="0" placeholder="e.g. 134500" oninput="calcKeKpi()"></div>
+        <div class="fg"><label style="color:#7ab07a;">Eggs Packed (Dz)</label><input type="number" id="ke-packed-dz" min="0" placeholder="e.g. 11200" oninput="calcKeKpi()"></div>
+        <div class="fg ops-form-full" id="ke-kpi-row" style="display:none;background:#0c2a0c;border:1.5px solid #2a5a2a;border-radius:10px;padding:12px 14px;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;">
+            <div>
+              <div style="font-size:10px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;margin-bottom:3px;">KPI %</div>
+              <div id="ke-kpi-pct" style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;">—</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;margin-bottom:3px;">vs Target</div>
+              <div id="ke-kpi-diff" style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;">—</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;margin-bottom:3px;">Pack Rate</div>
+              <div id="ke-kpi-packrate" style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="fg ops-form-full"><label style="color:#7ab07a;">Notes</label><input type="text" id="ke-notes" placeholder="Optional"></div>
+      </div>
+      <div class="ops-form-actions">
+        <button class="ops-save-btn" onclick="saveKpiEntry()">✓ Save Barn Eggs</button>
+        <button class="ops-cancel-btn" onclick="clearKeForm()">Clear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="panel" id="panel-reports">
   <div class="section-title">Reports</div>
   <div class="section-sub">Summary of activity — updated in real time</div>
@@ -902,7 +982,8 @@ body { min-height: 100dvh; overflow-x: hidden; }
 <!-- ═══ PRODUCTION PANEL ═══ -->
 <div class="panel" id="panel-prod">
   <div class="section-title">🏭 Production</div>
-  <div id="prod-kpi-bar" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;"></div>
+  <div id="prod-kpi-bar" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;"></div>
+  <div id="prod-egg-kpi" style="margin-bottom:18px;"></div>
   <div style="display:grid;gap:14px;">
     <button onclick="openECSection()" style="width:100%;padding:24px 20px;background:#1a3a1a;border:2px solid #4caf50;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
       <span style="font-size:40px;line-height:1;">🐓</span>
@@ -925,6 +1006,68 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div style="font-size:12px;color:#a0a05a;margin-top:4px;">All barn checks, mortality, flags & morning walks</div>
       </div>
     </button>
+    <button onclick="openFlockSection()" style="width:100%;padding:24px 20px;background:#1a0d2e;border:2px solid #7c3aed;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">🐣</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Flock Ages</div>
+        <div style="font-size:12px;color:#a78bfa;margin-top:4px;">Track placement dates, age in weeks & depop timeline</div>
+      </div>
+    </button>
+  </div>
+</div>
+
+<!-- ═══ FLOCK SECTION ═══ -->
+<div id="flock-section" style="display:none;position:fixed;inset:0;background:#0a060f;z-index:500;overflow-y:auto;">
+  <div style="max-width:520px;margin:0 auto;padding:20px 16px 60px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #3b1d6e;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">🐣 Flock Ages</div>
+      <button onclick="closeFlockSection()" style="background:#1a0d2e;border:1px solid #7c3aed;color:#a78bfa;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">← Back</button>
+    </div>
+
+    <!-- Add Flock Form -->
+    <div style="background:#12082a;border:1px solid #5b21b6;border-radius:14px;padding:16px;margin-bottom:20px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#a78bfa;margin-bottom:14px;">+ Add / Update Flock</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:11px;color:#a78bfa;margin-bottom:5px;">Farm</div>
+          <select id="fl-farm" class="bw-input" style="border-color:#5b21b6;background:#1a0d2e;color:#f0ead8;" onchange="updateFlHouses()">
+            <option value="">— select —</option>
+            <option value="Turbotville">Turbotville</option>
+            <option value="W&amp;M">W&amp;M</option>
+            <option value="Rushtown">Rushtown</option>
+            <option value="Danville">Danville</option>
+            <option value="Hegins">Hegins</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#a78bfa;margin-bottom:5px;">House</div>
+          <select id="fl-house" class="bw-input" style="border-color:#5b21b6;background:#1a0d2e;color:#f0ead8;">
+            <option value="">—</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:11px;color:#a78bfa;margin-bottom:5px;">Placement Date</div>
+          <input type="date" id="fl-date" class="bw-input" style="border-color:#5b21b6;background:#1a0d2e;color:#f0ead8;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#a78bfa;margin-bottom:5px;">Bird Count</div>
+          <input type="number" id="fl-birds" class="bw-input" style="border-color:#5b21b6;background:#1a0d2e;color:#f0ead8;" placeholder="150000" value="150000" min="0">
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px;color:#a78bfa;margin-bottom:5px;">Notes (optional)</div>
+        <input type="text" id="fl-notes" class="bw-input" style="border-color:#5b21b6;background:#1a0d2e;color:#f0ead8;" placeholder="e.g. Pullet placement, strain, etc.">
+      </div>
+      <button onclick="saveFlock()" style="width:100%;padding:13px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;">✓ Save Flock</button>
+      <div id="fl-save-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:8px;min-height:16px;text-align:center;"></div>
+    </div>
+
+    <!-- Flock List -->
+    <div id="flock-list-container">
+      <div style="text-align:center;padding:30px;color:#5a4a7a;font-family:'IBM Plex Mono',monospace;font-size:12px;">Loading flocks…</div>
+    </div>
   </div>
 </div>
 
@@ -1111,7 +1254,8 @@ body { min-height: 100dvh; overflow-x: hidden; }
     </div>
     <div style="margin-bottom:12px;">
       <div class="bw-row-label">Feed Bin Reading (lbs) — record current bin level</div>
-      <input type="number" id="bw-feed-bin-reading" class="bw-input" placeholder="Enter reading in lbs" min="0">
+      <input type="number" id="bw-feed-bin-reading" class="bw-input" placeholder="Enter reading in lbs" min="0" onchange="liveUpdateFeedBin('bw-feed-bin-reading','bw-feed-bin-status',_bwFarm,_bwHouse)">
+      <div id="bw-feed-bin-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:6px;min-height:18px;"></div>
     </div>
     <div style="margin-bottom:12px;">
       <div class="bw-row-label">Water Pressure (PSI) — Normal: 10–60</div>
@@ -1321,7 +1465,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <!-- Readings -->
   <div style="background:#0d1f3a;border:1px solid #1e3a6a;border-radius:14px;padding:18px 16px;margin-bottom:14px;">
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6a90d9;margin-bottom:12px;">📊 Readings</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
       <div>
         <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">Water Pressure (PSI)</div>
         <input type="number" id="mw-water" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="10–60 PSI" oninput="checkMWReady()">
@@ -1330,6 +1474,11 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">House Temp (°F)</div>
         <input type="number" id="mw-temp" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="e.g. 72" oninput="checkMWReady()">
       </div>
+    </div>
+    <div>
+      <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">🌾 Feed Meter Reading (lbs) — updates bin level instantly</div>
+      <input type="number" id="mw-feed-meter" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter total lbs remaining" min="0" onchange="liveUpdateFeedBin('mw-feed-meter','mw-feed-meter-status',_mwFarm,_mwHouse)">
+      <div id="mw-feed-meter-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:6px;min-height:18px;"></div>
     </div>
   </div>
 
@@ -1647,6 +1796,10 @@ body { min-height: 100dvh; overflow-x: hidden; }
 <!-- ═══ PACKAGING PANEL ═══ -->
 <div class="panel" id="panel-pkg">
   <div class="section-title">📦 Packaging</div>
+  <div class="sub-nav">
+    <button class="sub-btn active" data-section="packing" onclick="goPkgSection('packing')">📦 Packing</button>
+    <button class="sub-btn" data-section="eggs" onclick="goPkgSection('eggs')">🥚 Eggs by Barn</button>
+  </div>
   <!-- Packing -->
   <div class="pkg-section" id="pkg-packing" style="display:block;">
     <div class="ops-quick-form">
@@ -1695,6 +1848,58 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <div class="recent-hdr" style="margin-bottom:10px;">Packing Log</div>
     <div class="stats-grid g4" id="pack-stats" style="margin-bottom:16px;"></div>
     <div style="overflow-x:auto;"><table class="ops-table" id="pack-table"></table></div>
+  </div>
+
+  <!-- Eggs by Barn -->
+  <div class="pkg-section" id="pkg-eggs" style="display:none;">
+    <div class="ops-quick-form" style="background:#0a1f0a;border-color:#2a5a2a;">
+      <div class="ops-qf-title" style="color:#7ab07a;">🥚 Log Eggs by Barn</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label style="color:#7ab07a;">Date *</label><input type="date" id="eb-date"></div>
+        <div class="fg"><label style="color:#7ab07a;">Entered By</label><input type="text" id="eb-by" placeholder="Name"></div>
+        <div class="fg"><label style="color:#7ab07a;">Farm *</label>
+          <select id="eb-farm" onchange="updateEbHouses()">
+            <option value="">— select —</option>
+            <option value="Hegins">Hegins</option>
+            <option value="Danville">Danville</option>
+            <option value="Rushtown">Rushtown</option>
+            <option value="Turbotville">Turbotville</option>
+            <option value="W&amp;M">W&amp;M</option>
+          </select>
+        </div>
+        <div class="fg"><label style="color:#7ab07a;">House *</label>
+          <select id="eb-house"><option value="">—</option></select>
+        </div>
+        <div class="fg"><label style="color:#7ab07a;">Eggs Collected</label><input type="number" id="eb-collected" min="0" placeholder="e.g. 134500" oninput="calcEbKpi()"></div>
+        <div class="fg"><label style="color:#7ab07a;">Eggs Packed (Dz)</label><input type="number" id="eb-packed-dz" min="0" placeholder="e.g. 11200" oninput="calcEbKpi()"></div>
+        <div class="fg ops-form-full" id="eb-kpi-row" style="display:none;background:#0c2a0c;border:1.5px solid #2a5a2a;border-radius:10px;padding:12px 14px;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;">
+            <div>
+              <div style="font-size:10px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;margin-bottom:3px;">KPI %</div>
+              <div id="eb-kpi-pct" style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#f0ead8;">—</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;margin-bottom:3px;">vs Target</div>
+              <div id="eb-kpi-diff" style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#f0ead8;">—</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;margin-bottom:3px;">Pack Rate</div>
+              <div id="eb-kpi-packrate" style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#f0ead8;">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="fg ops-form-full"><label style="color:#7ab07a;">Notes</label><input type="text" id="eb-notes" placeholder="Optional"></div>
+      </div>
+      <div class="ops-form-actions">
+        <button class="ops-save-btn" onclick="saveEggByBarn()">✓ Save Barn Eggs</button>
+        <button class="ops-cancel-btn" onclick="clearEbForm()">Clear</button>
+      </div>
+    </div>
+    <div class="ops-filter-row">
+      <input type="date" class="ops-date-input" id="eb-filter-date" onchange="renderEggByBarn()">
+    </div>
+    <div id="eb-summary" style="margin-bottom:14px;"></div>
+    <div id="eb-list" style="margin-bottom:20px;"></div>
   </div>
 </div>
 
@@ -2731,6 +2936,8 @@ let pmLocFilter = 'all', pmStatFilter = 'all';
 let logFilterVal = 'all';
 let modalPMId   = null;
 let woCounter   = 1;
+let flocks        = [];   // flock placement records
+let opsEggByBarn  = [];   // per-barn egg collection + packing log
 
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
 const todayStr = TODAY.toISOString().split('T')[0];
@@ -2789,6 +2996,7 @@ async function initApp() {
     await loadCustomParts();
     await loadFeedBins();
     await loadFeedData();
+    await loadEggByBarn();
     await seedMortalityCompostingWI();
     await seedWaterRegulatorWI();
     assignRHNumbers();
@@ -2903,8 +3111,8 @@ function go(tab) {
   closeAssetForm();
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', reports:'panel-reports'};
-  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', reports:'tab-reports'};
+  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports'};
+  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports'};
   if (!pm[tab]) return;
   document.getElementById(pm[tab]).classList.add('active');
   const tabEl = document.getElementById(tm[tab]);
@@ -2915,6 +3123,7 @@ function go(tab) {
   if (tab === 'pkg')   { goPkgSection(window._pkgSection || 'packing'); }
   if (tab === 'feed')  { goFeedSection(window._feedSection || 'dashboard'); }
   if (tab === 'ship')  { goShipSection(window._shipSection || 'shipping'); }
+  if (tab === 'kpi')   { goKpiSection(window._kpiSection || 'dashboard'); }
   if (tab === 'reports') renderReports();
 }
 
@@ -2983,7 +3192,11 @@ function renderDash() {
   const flaggedBarns = allBarns.filter(b=>bs[b.farm+'-'+b.n]==='issue').length;
   const barnPct = Math.round(barnsDone/allBarns.length*100);
   const todayMortTotal = typeof _todayMortTotal !== 'undefined' ? _todayMortTotal : 0;
-  const todayEggs = (typeof opsEggData!=='undefined'?opsEggData:[]).filter(r=>r.date===todayStr).reduce((s,r)=>s+(Number(r.eggs)||0),0);
+  // Build egg map: "Farm-House" → total eggs today (sum across shifts)
+  const eggMap = {};
+  (typeof opsEggData!=='undefined'?opsEggData:[]).filter(r=>r.date===todayStr)
+    .forEach(r=>{ const k=r.farm+'-'+r.house; eggMap[k]=(eggMap[k]||0)+(Number(r.eggs)||0); });
+  const todayEggs = Object.values(eggMap).reduce((s,v)=>s+v,0);
   const barnColor = barnPct>=80?'#4caf50':barnPct>=50?'#d69e2e':'#e53e3e';
   const prodCard = document.getElementById('dash-prod-card');
   if (prodCard) prodCard.innerHTML = `
@@ -3130,6 +3343,9 @@ function renderDash() {
       </div>`).join('')
     : '';
 
+  // ── Egg KPI Hero ──
+  renderDashEggKPI(todayStr);
+
   // ── Low Stock Parts ──
   updatePartsAlerts();
   const lowPartsArr = PARTS_DEFS.filter(p=>{const inv=partsInventory[p.id]||{qty:0,min:1};return inv.qty<=inv.min;});
@@ -3145,6 +3361,99 @@ function renderDash() {
     : '<div class="empty"><div class="ei">✅</div><p>All parts stocked</p></div>';
 }
 
+
+function renderDashEggKPI(todayStr) {
+  const el = document.getElementById('dash-egg-kpi');
+  if (!el) return;
+
+  const farmOrder  = ['Hegins','Danville','Rushtown','Turbotville','W&M'];
+  const farmHouses = {Hegins:8, Danville:5, Rushtown:5, Turbotville:4, 'W&M':2};
+  const totalHouses = Object.values(farmHouses).reduce((s,v)=>s+v,0);
+
+  // Index today's opsEggByBarn by farm+house (newest per barn)
+  const barnMap = {};  // "Farm-House" → record
+  (opsEggByBarn||[]).filter(r => r.date === todayStr)
+    .forEach(r => {
+      const k = r.farm + '-' + r.house;
+      if (!barnMap[k] || r.ts > barnMap[k].ts) barnMap[k] = r;
+    });
+
+  const barnsReported  = Object.keys(barnMap).length;
+  const totalCollected = Object.values(barnMap).reduce((s,r)=>s+(Number(r.eggsCollected)||0),0);
+  const totalPackedDz  = Object.values(barnMap).reduce((s,r)=>s+(Number(r.eggsPacked)||0),0);
+  const totalTarget    = barnsReported * EGG_TARGET;
+  const overallPct     = totalTarget > 0 ? Math.round((totalCollected / totalTarget) * 100) : null;
+  const heroCol        = overallPct === null ? '#2a5a2a' : kpiCol(overallPct);
+
+  // Per-farm breakdown
+  let farmRows = '';
+  farmOrder.forEach(farm => {
+    let farmCollected = 0, farmPacked = 0, farmCount = 0;
+    let houseRows = '';
+    for (let h = 1; h <= farmHouses[farm]; h++) {
+      const rec = barnMap[farm + '-' + h];
+      if (!rec) continue;
+      const collected = Number(rec.eggsCollected) || 0;
+      const packedDz  = Number(rec.eggsPacked) || 0;
+      const pct = Math.round((collected / EGG_TARGET) * 100);
+      const hc  = kpiCol(pct);
+      farmCollected += collected; farmPacked += packedDz; farmCount++;
+      houseRows += `
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a8a5a;">H${h}</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:${hc};font-weight:700;">${pct}% &nbsp;<span style="color:#3a5a3a;font-weight:400;">${fmtNum(collected)}</span></span>
+          </div>
+          <div style="background:#0c2a0c;border-radius:3px;height:10px;overflow:hidden;margin-bottom:2px;">
+            <div style="height:100%;width:${Math.min(100,pct)}%;background:${hc};border-radius:3px;"></div>
+          </div>
+          ${packedDz > 0 ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a5a;text-align:right;">📦 ${fmtNum(packedDz)} dz packed</div>` : ''}
+        </div>`;
+    }
+    if (!houseRows) return;
+    const fp = Math.round((farmCollected / (farmCount * EGG_TARGET)) * 100);
+    farmRows += `
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #1e3a1e;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#7ab07a;letter-spacing:1px;">${farm}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:${kpiCol(fp)};font-weight:700;">${fmtNum(farmCollected)} eggs &nbsp;·&nbsp; ${fp}%</span>
+        </div>
+        ${houseRows}
+      </div>`;
+  });
+
+  const hasData = barnsReported > 0;
+
+  el.innerHTML = `
+    <div style="background:#050f05;border:2px solid ${heroCol};border-radius:18px;overflow:hidden;" onclick="go('pkg');setTimeout(()=>goPkgSection('eggs'),50)" style="cursor:pointer;">
+      <!-- Hero Header -->
+      <div style="background:linear-gradient(135deg,#0a2a0a,#0f1f0f);padding:20px 18px 16px;cursor:pointer;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#4caf50;margin-bottom:10px;">🥚 EGG PRODUCTION KPI</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+          <div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:52px;font-weight:700;color:${heroCol};line-height:1;">${overallPct !== null ? overallPct+'%' : '—'}</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3a6a3a;margin-top:4px;">of 90% target · ${fmtNum(EGG_TARGET)}/barn/day</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#f0ead8;">${fmtNum(totalCollected)}</div>
+            <div style="font-size:9px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;">eggs today</div>
+            ${totalPackedDz > 0 ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#4caf50;margin-top:6px;">${fmtNum(totalPackedDz)} dz</div><div style="font-size:9px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;">packed</div>` : ''}
+          </div>
+        </div>
+        <!-- Master progress bar -->
+        <div style="margin-top:14px;background:#0c2a0c;border-radius:6px;height:12px;overflow:hidden;">
+          <div style="height:100%;width:${Math.min(100,overallPct||0)}%;background:${heroCol};border-radius:6px;transition:width .5s;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:5px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a6a3a;">${barnsReported} of ${totalHouses} barns reported</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a6a3a;">Target: ${fmtNum(totalTarget||0)}</div>
+        </div>
+      </div>
+      <!-- Per-barn breakdown -->
+      ${hasData ? `<div style="padding:14px 18px 16px;background:#050f05;">${farmRows}</div>` :
+        `<div style="padding:16px 18px;background:#050f05;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#2a5a2a;">No egg data yet today — log in Packaging → Eggs by Barn</div>`}
+    </div>`;
+}
 
 // ═══════════════════════════════════════════
 // WORK ORDERS
@@ -7040,6 +7349,12 @@ function goPkgSection(section) {
     if (b.dataset.section === section) b.classList.add('active');
   });
   if (section === 'packing') renderPacking();
+  if (section === 'eggs') {
+    const today = new Date().toISOString().slice(0,10);
+    if (!document.getElementById('eb-date').value) document.getElementById('eb-date').value = today;
+    if (!document.getElementById('eb-filter-date').value) document.getElementById('eb-filter-date').value = today;
+    renderEggByBarn();
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -7209,16 +7524,32 @@ function startLoadFromFarm(name) {
 // ═══════════════════════════════════════════
 // PRODUCTION PANEL RENDER
 // ═══════════════════════════════════════════
+const EGG_BIRDS_PER_BARN = 150000;
+const EGG_KPI_RATE       = 0.90;
+const EGG_TARGET         = Math.round(EGG_BIRDS_PER_BARN * EGG_KPI_RATE); // 135,000
+
+function kpiCol(pct) {
+  return pct >= 90 ? '#4caf50' : pct >= 75 ? '#d69e2e' : '#e53e3e';
+}
+
 function renderProdPanel() {
   const bs = typeof BARN_STATUS !== 'undefined' ? BARN_STATUS : {};
-  const ms = typeof MORNING_STATUS !== 'undefined' ? MORNING_STATUS : {};
   const totalBarns = 13;
   const done   = Object.values(bs).filter(s => s==='done'||s==='issue').length;
   const issues = Object.values(bs).filter(s => s==='issue').length;
   const pct    = Math.round(done / totalBarns * 100);
   const todayStr = new Date().toISOString().slice(0,10);
-  const todayEggs = (typeof opsEggData !== 'undefined' ? opsEggData : [])
-    .filter(r => r.date === todayStr).reduce((s,r) => s + (Number(r.eggs)||0), 0);
+
+  // Sum today's eggs per farm+house
+  const eggMap = {};  // key: "Farm-House" → total eggs
+  (typeof opsEggData !== 'undefined' ? opsEggData : [])
+    .filter(r => r.date === todayStr)
+    .forEach(r => {
+      const k = r.farm + '-' + r.house;
+      eggMap[k] = (eggMap[k] || 0) + (Number(r.eggs) || 0);
+    });
+
+  const todayEggs = Object.values(eggMap).reduce((s,v) => s + v, 0);
 
   const kpiBar = document.getElementById('prod-kpi-bar');
   if (kpiBar) kpiBar.innerHTML = `
@@ -7235,6 +7566,70 @@ function renderProdPanel() {
       <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:${issues>0?'#e53e3e':'#4caf50'};line-height:1;">${issues}</div>
       <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Flagged</div>
     </div>`;
+
+  // ── Per-barn Egg KPI ──────────────────────────────────────────────────────
+  const eggKpi = document.getElementById('prod-egg-kpi');
+  if (!eggKpi) return;
+
+  const farmOrder = ['Hegins','Danville','Rushtown','Turbotville','W&M'];
+  const farmHouses = { Hegins:8, Danville:5, Rushtown:5, Turbotville:4, 'W&M':2 };
+
+  // Only show farms that have at least one barn with reported eggs today
+  const farmsWithData = farmOrder.filter(farm =>
+    Object.keys(eggMap).some(k => k.startsWith(farm + '-'))
+  );
+
+  if (farmsWithData.length === 0) {
+    eggKpi.innerHTML = `
+      <div style="background:#0f1a0f;border:1px solid #1e3a1e;border-radius:12px;padding:12px 14px;text-align:center;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#3a6a3a;margin-bottom:4px;">🥚 Egg KPI — 90% Target (135,000 / barn)</div>
+        <div style="font-size:11px;color:#3a5a3a;font-family:'IBM Plex Mono',monospace;">No egg counts submitted yet today.</div>
+      </div>`;
+    return;
+  }
+
+  let html = `<div style="background:#0f1a0f;border:1px solid #1e3a1e;border-radius:12px;padding:12px 14px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#5a8a5a;margin-bottom:12px;">🥚 Egg KPI — 90% Target (${fmtNum(EGG_TARGET)} / barn)</div>`;
+
+  farmsWithData.forEach(farm => {
+    const houseCount = farmHouses[farm] || 0;
+    let farmTotal = 0, farmTarget = 0;
+    let barnRows = '';
+
+    for (let h = 1; h <= houseCount; h++) {
+      const k = farm + '-' + h;
+      const actual = eggMap[k] || 0;
+      if (actual === 0) continue;   // skip barns with no report today
+      const barnPct = Math.round((actual / EGG_TARGET) * 100);
+      const col = kpiCol(barnPct);
+      const barW = Math.min(100, barnPct);
+      farmTotal  += actual;
+      farmTarget += EGG_TARGET;
+      barnRows += `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;min-width:22px;">H${h}</div>
+          <div style="flex:1;background:#163016;border-radius:3px;height:10px;overflow:hidden;">
+            <div style="height:100%;width:${barW}%;background:${col};border-radius:3px;"></div>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:${col};min-width:70px;text-align:right;">${fmtNum(actual)} <span style="color:#4a7a4a;">(${barnPct}%)</span></div>
+        </div>`;
+    }
+
+    if (!barnRows) return;
+    const farmPct = Math.round((farmTotal / farmTarget) * 100);
+    const farmCol = kpiCol(farmPct);
+    html += `
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#a0c0a0;">${farm}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:${farmCol};font-weight:700;">${farmPct}% <span style="font-size:9px;color:#4a7a4a;">avg</span></div>
+        </div>
+        ${barnRows}
+      </div>`;
+  });
+
+  html += '</div>';
+  eggKpi.innerHTML = html;
 }
 
 // ── EC Section (Employee Daily Check) ──
@@ -7570,27 +7965,7 @@ async function submitBarnWalk() {
 
   try { await db.collection('barnWalks').add(record); } catch(e) { console.error(e); }
 
-  // Auto-save feed bin reading to feedReadings
-  if (feedBinReading && feedBinReading > 0) {
-    try {
-      // Find best matching bin by farm+barn
-      const matchBin = feedBins.find(b =>
-        (b.farm||'').toLowerCase().includes((_bwFarm||'').toLowerCase()) &&
-        (b.barn||'').toLowerCase().includes(String(_bwHouse))
-      ) || feedBins.find(b =>
-        (b.barn||'').toLowerCase().includes(String(_bwHouse))
-      );
-      const frRec = {
-        date: new Date().toISOString().slice(0,10),
-        binId: matchBin?.binId || ('BARN-' + _bwHouse),
-        binName: matchBin?.name || (_bwFarm + ' House ' + _bwHouse),
-        readingLbs: feedBinReading, by: employee,
-        notes: 'From daily barn walk', ts: Date.now()
-      };
-      const frRef = await db.collection('feedReadings').add(frRec);
-      feedReadings.unshift({ ...frRec, _fbId: frRef.id });
-    } catch(e) { console.error('feedReading save:', e); }
-  }
+  // Feed bin reading is saved live via liveUpdateFeedBin (onchange) — no duplicate save needed here.
 
   // Auto-save egg count to opsEggProduction (replaces Egg Ops form)
   const eggCount = parseInt(document.getElementById('bw-egg-count')?.value||'0')||0;
@@ -7722,9 +8097,11 @@ async function submitMorningWalk() {
   if (_mwData.fans === 'no')           flags.push('Fan issue');
   if (_mwData.blowers === 'no')        flags.push('Blower issue');
 
+  const feedMeterReading = document.getElementById('mw-feed-meter')?.value ? Number(document.getElementById('mw-feed-meter').value) : null;
   const record = {
     farm: _mwFarm, house: String(_mwHouse), employee, notes, flags,
-    waterPSI, temp, eeCount, feed: _mwData.feed, fans: _mwData.fans, blowers: _mwData.blowers,
+    waterPSI, temp, eeCount, feedMeterReading,
+    feed: _mwData.feed, fans: _mwData.fans, blowers: _mwData.blowers,
     date: new Date().toISOString().slice(0,10),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
     ts: Date.now()
@@ -8502,6 +8879,71 @@ async function loadFeedBins() {
   } catch(e) { console.error('feedBins load:', e); }
 }
 
+// ─── Live Feed Bin Update (from morning walk / barn walk) ───────────────────
+// Called onchange of a meter reading input. Immediately saves to feedReadings
+// and updates the Feed Mill dashboard + the status display below the input.
+async function liveUpdateFeedBin(inputId, statusId, farm, house) {
+  const el  = document.getElementById(inputId);
+  const sEl = document.getElementById(statusId);
+  if (!el || !sEl) return;
+  const lbs = parseFloat(el.value);
+  if (!lbs || lbs <= 0) { sEl.textContent = ''; return; }
+
+  // Find the best-matching bin for this farm + house
+  const matchBin = (typeof feedBins !== 'undefined' && feedBins.length)
+    ? (feedBins.find(b =>
+        (b.farm||'').toLowerCase() === (farm||'').toLowerCase() &&
+        (b.barn||'').replace(/\D/g,'') === String(house)
+      ) || feedBins.find(b =>
+        (b.farm||'').toLowerCase().includes((farm||'').toLowerCase()) &&
+        (b.barn||'').replace(/\D/g,'') === String(house)
+      ))
+    : null;
+
+  // Show saving spinner
+  sEl.innerHTML = '<span style="color:#d69e2e;">⏳ Saving…</span>';
+
+  try {
+    const date = new Date().toISOString().slice(0,10);
+    const by   = document.getElementById('mw-employee')?.value?.trim() ||
+                 document.getElementById('bw-employee')?.value?.trim() || 'Morning Walk';
+    // Resolve farm name: prefer matched bin, then param, then DOM globals as last resort
+    const resolvedFarm = matchBin?.farm || farm || _bwFarm || _mwFarm || '';
+    const frRec = {
+      date,
+      binId:   matchBin?.binId   || (resolvedFarm ? resolvedFarm + '-H' + house : 'BARN-' + house),
+      binName: matchBin?.name    || (resolvedFarm ? resolvedFarm + ' House ' + house : 'House ' + house),
+      farm:    resolvedFarm,
+      readingLbs: lbs,
+      by,
+      notes: 'From morning walk — live entry',
+      ts: Date.now()
+    };
+
+    // Save to Firestore
+    const ref = await db.collection('feedReadings').add(frRec);
+    // Update in-memory array (remove any existing reading for same bin+date, add new one)
+    if (typeof feedReadings !== 'undefined') {
+      feedReadings = feedReadings.filter(r => !(r.binId === frRec.binId && r.date === date));
+      feedReadings.unshift({ ...frRec, _fbId: ref.id });
+    }
+
+    // Re-render feed dashboard if it's loaded
+    if (typeof renderFeedDashboard === 'function') renderFeedDashboard();
+    if (typeof renderFeedReadings  === 'function') renderFeedReadings();
+    if (typeof updateHomeFeedStatus === 'function') updateHomeFeedStatus();
+
+    // Show confirmation with % full
+    const cap = matchBin?.capacityLbs || 90000;
+    const pct = Math.min(100, Math.round((lbs / cap) * 100));
+    const col = pct >= 40 ? '#4caf50' : pct >= 20 ? '#d69e2e' : '#e53e3e';
+    sEl.innerHTML = `<span style="color:${col};">✅ Bin updated — ${pct}% full (${lbs.toLocaleString()} lbs)</span>`;
+  } catch(e) {
+    console.error('liveUpdateFeedBin:', e);
+    sEl.innerHTML = '<span style="color:#e53e3e;">⚠ Save failed — will retry on submit</span>';
+  }
+}
+
 async function loadFeedData() {
   try {
     const [rSnap, dSnap, mSnap] = await Promise.all([
@@ -9103,6 +9545,556 @@ function seedOpsDemo() {
   opsExcData.push({_fbId:'demo-e3',date:dayStr(-1),type:'Short Load',desc:'L-097 delivered 20 cases short. Customer complaint received from Giant Food.',dept:'Shipping',severity:'High',rootCause:'Inventory count error at staging — under review',owner:'Quality Lead',status:'Open',shipLink:'L-097',woLink:'',ts:Date.now()-86400000});
   opsExcData.push({_fbId:'demo-e4',date:dayStr(-1),type:'Equipment Failure',desc:'Grading machine jammed on Line 2. Caused 3-hour packing delay.',dept:'Packing',severity:'High',rootCause:'Belt worn — replacement ordered and installed',owner:'Maintenance',status:'Resolved',shipLink:'',woLink:'WO-039',ts:Date.now()-90000000});
   opsExcData.push({_fbId:'demo-e5',date:dayStr(-1),type:'Inventory Variance',desc:'Hegins House 3 daily count is 900 eggs short vs expected flock production rate.',dept:'Production',severity:'Medium',rootCause:'Under investigation',owner:'Production Lead',status:'Open',shipLink:'',woLink:'',ts:Date.now()-93600000});
+}
+
+// ─── KPI TAB ───────────────────────────────────────────────────────────────
+
+function goKpiSection(sec) {
+  window._kpiSection = sec;
+  document.querySelectorAll('.kpi-section').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('#panel-kpi .sub-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('kpi-' + sec);
+  if (el) el.style.display = 'block';
+  document.querySelectorAll('#panel-kpi .sub-btn').forEach(b => {
+    if (b.dataset.section === sec) b.classList.add('active');
+  });
+  const today = new Date().toISOString().slice(0,10);
+  if (sec === 'dashboard') {
+    if (!document.getElementById('kpi-dash-date').value)
+      document.getElementById('kpi-dash-date').value = today;
+    renderKpiDashboard();
+  }
+  if (sec === 'log') {
+    if (!document.getElementById('kpi-log-date').value)
+      document.getElementById('kpi-log-date').value = today;
+    renderKpiLog();
+  }
+  if (sec === 'entry') {
+    if (!document.getElementById('ke-date').value)
+      document.getElementById('ke-date').value = today;
+  }
+}
+
+function updateKeHouses() {
+  const farm = document.getElementById('ke-farm').value;
+  const sel  = document.getElementById('ke-house');
+  sel.innerHTML = '<option value="">—</option>';
+  for (let h = 1; h <= (EB_HOUSES[farm]||0); h++) {
+    const o = document.createElement('option');
+    o.value = h; o.textContent = 'House ' + h;
+    sel.appendChild(o);
+  }
+}
+
+function calcKeKpi() {
+  const collected = Number(document.getElementById('ke-collected').value) || 0;
+  const packedDz  = Number(document.getElementById('ke-packed-dz').value) || 0;
+  const row = document.getElementById('ke-kpi-row');
+  if (!collected && !packedDz) { row.style.display = 'none'; return; }
+  row.style.display = '';
+  const pct     = Math.round((collected / EGG_TARGET) * 100);
+  const diff    = collected - EGG_TARGET;
+  const packPct = collected > 0 ? Math.round(((packedDz * 12) / collected) * 100) : 0;
+  const col = kpiCol(pct);
+  document.getElementById('ke-kpi-pct').style.color = col;
+  document.getElementById('ke-kpi-pct').textContent = pct + '%';
+  document.getElementById('ke-kpi-diff').style.color = diff >= 0 ? '#4caf50' : '#e53e3e';
+  document.getElementById('ke-kpi-diff').textContent = (diff >= 0 ? '+' : '') + fmtNum(diff);
+  document.getElementById('ke-kpi-packrate').style.color = packPct >= 90 ? '#4caf50' : '#d69e2e';
+  document.getElementById('ke-kpi-packrate').textContent = packedDz > 0 ? packPct + '%' : '—';
+}
+
+async function saveKpiEntry() {
+  const date      = document.getElementById('ke-date').value;
+  const farm      = document.getElementById('ke-farm').value;
+  const house     = document.getElementById('ke-house').value;
+  const collected = Number(document.getElementById('ke-collected').value) || 0;
+  const packedDz  = Number(document.getElementById('ke-packed-dz').value) || 0;
+  const by        = document.getElementById('ke-by').value.trim() || 'Packaging';
+  const notes     = document.getElementById('ke-notes').value.trim();
+  if (!date || !farm || !house) { alert('Date, farm, and house are required.'); return; }
+  if (!collected && !packedDz)  { alert('Enter eggs collected or eggs packed.'); return; }
+
+  const rec = { date, farm, house: String(house), eggsCollected: collected,
+    eggsPacked: packedDz, by, notes, ts: Date.now() };
+  try {
+    const ref = await db.collection('opsEggByBarn').add(rec);
+    rec._fbId = ref.id;
+    opsEggByBarn = opsEggByBarn.filter(r => !(r.farm===farm && r.house===String(house) && r.date===date));
+    opsEggByBarn.unshift(rec);
+    clearKeForm();
+    renderKpiDashboard();
+    renderKpiLog();
+    if (document.getElementById('panel-dash')?.classList.contains('active')) renderDash();
+  } catch(e) { alert('Save failed: ' + e.message); }
+}
+
+function clearKeForm() {
+  ['ke-farm','ke-house','ke-collected','ke-packed-dz','ke-by','ke-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('ke-house').innerHTML = '<option value="">—</option>';
+  document.getElementById('ke-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ke-kpi-row').style.display = 'none';
+}
+
+function renderKpiDashboard() {
+  const date = document.getElementById('kpi-dash-date')?.value || new Date().toISOString().slice(0,10);
+  const farmOrder  = ['Hegins','Danville','Rushtown','Turbotville','W&M'];
+  const farmHouses = {Hegins:8, Danville:5, Rushtown:5, Turbotville:4, 'W&M':2};
+
+  // Index newest record per farm+house for the selected date
+  const barnMap = {};
+  (opsEggByBarn||[]).filter(r => r.date === date).forEach(r => {
+    const k = r.farm + '-' + r.house;
+    if (!barnMap[k] || r.ts > barnMap[k].ts) barnMap[k] = r;
+  });
+
+  const totalHouses   = Object.values(farmHouses).reduce((s,v)=>s+v,0);
+  const barnsReported = Object.keys(barnMap).length;
+  const totalCollected= Object.values(barnMap).reduce((s,r)=>s+(Number(r.eggsCollected)||0),0);
+  const totalPackedDz = Object.values(barnMap).reduce((s,r)=>s+(Number(r.eggsPacked)||0),0);
+  const totalTarget   = barnsReported * EGG_TARGET;
+  const overallPct    = totalTarget > 0 ? Math.round((totalCollected / totalTarget) * 100) : null;
+  const col           = overallPct !== null ? kpiCol(overallPct) : '#5a8a5a';
+
+  // Stats bar
+  const statsEl = document.getElementById('kpi-dash-stats');
+  if (statsEl) statsEl.innerHTML = `
+    <div style="background:#0a1f0a;border:1px solid #2a5a2a;border-radius:10px;padding:14px 10px;text-align:center;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:700;color:${col};line-height:1;">${overallPct !== null ? overallPct+'%' : '—'}</div>
+      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">KPI</div>
+      <div style="background:#163016;border-radius:3px;height:4px;overflow:hidden;margin-top:6px;"><div style="height:100%;background:${col};width:${Math.min(100,overallPct||0)}%;border-radius:3px;"></div></div>
+    </div>
+    <div style="background:#0a1f0a;border:1px solid #2a5a2a;border-radius:10px;padding:14px 10px;text-align:center;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#f0ead8;line-height:1;">${fmtNum(totalCollected)}</div>
+      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Eggs Collected</div>
+    </div>
+    <div style="background:#0a1f0a;border:1px solid #2a5a2a;border-radius:10px;padding:14px 10px;text-align:center;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#f0ead8;line-height:1;">${fmtNum(totalPackedDz)}<span style="font-size:11px;color:#5a8a5a;">dz</span></div>
+      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Packed</div>
+    </div>`;
+
+  // Per-farm cards (Feed Mill style)
+  const cardsEl = document.getElementById('kpi-dash-cards');
+  if (!cardsEl) return;
+
+  if (!barnsReported) {
+    cardsEl.innerHTML = `<div class="empty"><div class="ei">🥚</div><p>No egg data for this date.<br>Use <strong>Log Eggs</strong> to enter barn counts.</p></div>`;
+    return;
+  }
+
+  cardsEl.innerHTML = farmOrder.map(farm => {
+    const houseCount = farmHouses[farm];
+    const farmRecs   = [];
+    for (let h = 1; h <= houseCount; h++) {
+      const rec = barnMap[farm + '-' + h];
+      if (rec) farmRecs.push({ h, rec });
+    }
+    if (!farmRecs.length) return '';
+
+    const farmCollected = farmRecs.reduce((s,x)=>s+(Number(x.rec.eggsCollected)||0),0);
+    const farmPacked    = farmRecs.reduce((s,x)=>s+(Number(x.rec.eggsPacked)||0),0);
+    const farmTarget    = farmRecs.length * EGG_TARGET;
+    const farmPct       = Math.round((farmCollected / farmTarget) * 100);
+    const fc            = kpiCol(farmPct);
+
+    const houseCards = farmRecs.map(({h, rec}) => {
+      const collected = Number(rec.eggsCollected) || 0;
+      const packedDz  = Number(rec.eggsPacked) || 0;
+      const pct       = Math.round((collected / EGG_TARGET) * 100);
+      const hc        = kpiCol(pct);
+      const diff      = collected - EGG_TARGET;
+      const packPct   = collected > 0 && packedDz > 0
+        ? Math.round(((packedDz * 12) / collected) * 100) : null;
+      return `
+        <div style="background:#0d1f0d;border:1px solid #1e3a1e;border-radius:12px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#7ab07a;">House ${h}</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:${hc};">${pct}%</span>
+          </div>
+          <div style="background:#163016;border-radius:4px;height:12px;overflow:hidden;margin-bottom:10px;">
+            <div style="height:100%;width:${Math.min(100,pct)}%;background:${hc};border-radius:4px;"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <div style="background:#0a1a0a;border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:#f0ead8;">${fmtNum(collected)}</div>
+              <div style="font-size:9px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;margin-top:2px;">collected</div>
+            </div>
+            <div style="background:#0a1a0a;border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:${diff>=0?'#4caf50':'#e53e3e'};">${diff>=0?'+':''}${fmtNum(diff)}</div>
+              <div style="font-size:9px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;margin-top:2px;">vs target</div>
+            </div>
+          </div>
+          ${packedDz > 0 ? `
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid #1e3a1e;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:10px;color:#3a7a5a;font-family:'IBM Plex Mono',monospace;">📦 ${fmtNum(packedDz)} dz packed</span>
+            ${packPct !== null ? `<span style="font-size:10px;font-weight:700;color:${kpiCol(packPct)};font-family:'IBM Plex Mono',monospace;">${packPct}% pack rate</span>` : ''}
+          </div>` : ''}
+          ${rec.notes ? `<div style="margin-top:6px;font-size:9px;color:#2a5a2a;font-style:italic;">${rec.notes}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    return `
+      <div style="margin-bottom:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#4caf50;margin-bottom:10px;padding:8px 12px;background:#0c1f0c;border-radius:8px;">
+          <span>🐓 ${farm}</span>
+          <span style="color:${fc};">${farmPct}% &nbsp;·&nbsp; ${fmtNum(farmCollected)} eggs${farmPacked?` &nbsp;·&nbsp; ${fmtNum(farmPacked)} dz`:''}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">${houseCards}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderKpiLog() {
+  const date  = document.getElementById('kpi-log-date')?.value || new Date().toISOString().slice(0,10);
+  const rows  = (opsEggByBarn||[]).filter(r => r.date === date)
+    .sort((a,b) => a.farm.localeCompare(b.farm) || Number(a.house)-Number(b.house));
+  const el    = document.getElementById('kpi-log-table');
+  if (!el) return;
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">🥚</div><p>No entries for this date.</p></div>';
+    return;
+  }
+  el.innerHTML = `<table class="ops-table"><thead><tr>
+    <th>Farm</th><th>House</th><th>Collected</th><th>KPI %</th><th>Packed (Dz)</th><th>By</th>
+  </tr></thead><tbody>${rows.map(r => {
+    const pct = r.eggsCollected > 0 ? Math.round((r.eggsCollected / EGG_TARGET) * 100) : 0;
+    const col = kpiCol(pct);
+    return `<tr>
+      <td>${r.farm}</td><td>H${r.house}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;">${fmtNum(r.eggsCollected||0)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:${col};font-weight:700;">${pct}%</td>
+      <td style="font-family:'IBM Plex Mono',monospace;">${r.eggsPacked>0?fmtNum(r.eggsPacked)+' dz':'—'}</td>
+      <td style="font-size:11px;color:#888;">${r.by}</td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+// ─── EGG BY BARN ───────────────────────────────────────────────────────────
+
+const EB_HOUSES = {Hegins:8, Danville:5, Rushtown:5, Turbotville:4, 'W&M':2};
+
+function updateEbHouses() {
+  const farm = document.getElementById('eb-farm').value;
+  const sel  = document.getElementById('eb-house');
+  sel.innerHTML = '<option value="">—</option>';
+  for (let h = 1; h <= (EB_HOUSES[farm]||0); h++) {
+    const o = document.createElement('option');
+    o.value = h; o.textContent = 'House ' + h;
+    sel.appendChild(o);
+  }
+}
+
+function calcEbKpi() {
+  const collected = Number(document.getElementById('eb-collected').value) || 0;
+  const packedDz  = Number(document.getElementById('eb-packed-dz').value) || 0;
+  const row = document.getElementById('eb-kpi-row');
+  if (!collected && !packedDz) { row.style.display = 'none'; return; }
+  row.style.display = '';
+  const pct     = Math.round((collected / EGG_TARGET) * 100);
+  const diff    = collected - EGG_TARGET;
+  const packPct = collected > 0 ? Math.round((packedDz * 12 / collected) * 100) : 0;
+  const col     = kpiCol(pct);
+  document.getElementById('eb-kpi-pct').style.color = col;
+  document.getElementById('eb-kpi-pct').textContent = pct + '%';
+  document.getElementById('eb-kpi-diff').style.color = diff >= 0 ? '#4caf50' : '#e53e3e';
+  document.getElementById('eb-kpi-diff').textContent = (diff >= 0 ? '+' : '') + fmtNum(diff);
+  document.getElementById('eb-kpi-packrate').style.color = packPct >= 90 ? '#4caf50' : '#d69e2e';
+  document.getElementById('eb-kpi-packrate').textContent = packedDz > 0 ? packPct + '%' : '—';
+}
+
+async function loadEggByBarn() {
+  try {
+    const snap = await db.collection('opsEggByBarn').orderBy('ts','desc').limit(500).get();
+    opsEggByBarn = snap.docs.map(d => ({...d.data(), _fbId: d.id}));
+  } catch(e) { console.error('opsEggByBarn load:', e); }
+}
+
+async function saveEggByBarn() {
+  const date      = document.getElementById('eb-date').value;
+  const farm      = document.getElementById('eb-farm').value;
+  const house     = document.getElementById('eb-house').value;
+  const collected = Number(document.getElementById('eb-collected').value) || 0;
+  const packedDz  = Number(document.getElementById('eb-packed-dz').value) || 0;
+  const by        = document.getElementById('eb-by').value.trim() || 'Packaging';
+  const notes     = document.getElementById('eb-notes').value.trim();
+
+  if (!date || !farm || !house) { alert('Date, farm, and house are required.'); return; }
+  if (!collected && !packedDz) { alert('Enter at least eggs collected or eggs packed.'); return; }
+
+  const rec = { date, farm, house: String(house), eggsCollected: collected,
+    eggsPacked: packedDz, by, notes, ts: Date.now() };
+
+  try {
+    const ref = await db.collection('opsEggByBarn').add(rec);
+    rec._fbId = ref.id;
+    // Replace any existing record for same farm+house+date (keep newest)
+    opsEggByBarn = opsEggByBarn.filter(r => !(r.farm===farm && r.house===String(house) && r.date===date));
+    opsEggByBarn.unshift(rec);
+    clearEbForm();
+    renderEggByBarn();
+    // Refresh dashboard KPI if visible
+    if (document.getElementById('panel-dash')?.classList.contains('active')) renderDash();
+  } catch(e) { console.error('saveEggByBarn:', e); alert('Save failed: ' + e.message); }
+}
+
+function clearEbForm() {
+  ['eb-farm','eb-house','eb-collected','eb-packed-dz','eb-by','eb-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = id === 'eb-farm' || id === 'eb-house' ? '' : '';
+  });
+  document.getElementById('eb-house').innerHTML = '<option value="">—</option>';
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('eb-date').value = today;
+  document.getElementById('eb-kpi-row').style.display = 'none';
+}
+
+function renderEggByBarn() {
+  const filterDate = document.getElementById('eb-filter-date')?.value ||
+                     new Date().toISOString().slice(0,10);
+  const dayData = opsEggByBarn.filter(r => r.date === filterDate);
+
+  // Summary tiles
+  const totalCollected = dayData.reduce((s,r) => s + (Number(r.eggsCollected)||0), 0);
+  const totalPackedDz  = dayData.reduce((s,r) => s + (Number(r.eggsPacked)||0), 0);
+  const totalTarget    = dayData.length * EGG_TARGET;
+  const overallPct     = totalTarget > 0 ? Math.round((totalCollected / totalTarget) * 100) : null;
+  const col = overallPct !== null ? kpiCol(overallPct) : '#5a8a5a';
+
+  const sumEl = document.getElementById('eb-summary');
+  if (sumEl) sumEl.innerHTML = dayData.length === 0 ? '' : `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      <div style="background:#0a1f0a;border:1px solid #2a5a2a;border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:${col};">${overallPct !== null ? overallPct+'%' : '—'}</div>
+        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">KPI</div>
+      </div>
+      <div style="background:#0a1f0a;border:1px solid #2a5a2a;border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#f0ead8;">${fmtNum(totalCollected)}</div>
+        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">Eggs Collected</div>
+      </div>
+      <div style="background:#0a1f0a;border:1px solid #2a5a2a;border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#f0ead8;">${fmtNum(totalPackedDz)}<span style="font-size:12px;color:#5a8a5a;">dz</span></div>
+        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">Eggs Packed</div>
+      </div>
+    </div>`;
+
+  // Per-barn rows
+  const listEl = document.getElementById('eb-list');
+  if (!listEl) return;
+  if (dayData.length === 0) {
+    listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#3a5a3a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">No entries for this date.</div>';
+    return;
+  }
+
+  // Sort by farm then house
+  const sorted = [...dayData].sort((a,b) => a.farm.localeCompare(b.farm) || Number(a.house)-Number(b.house));
+  listEl.innerHTML = sorted.map(r => {
+    const pct     = r.eggsCollected > 0 ? Math.round((r.eggsCollected / EGG_TARGET) * 100) : 0;
+    const col     = kpiCol(pct);
+    const diff    = r.eggsCollected - EGG_TARGET;
+    const packPct = r.eggsCollected > 0 && r.eggsPacked > 0
+      ? Math.round(((r.eggsPacked * 12) / r.eggsCollected) * 100) : null;
+    return `
+      <div style="background:#0a1f0a;border:1px solid #1e3a1e;border-radius:12px;padding:14px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;">${r.farm} — House ${r.house}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${col};">${pct}%</span>
+        </div>
+        <div style="background:#163016;border-radius:4px;height:10px;overflow:hidden;margin-bottom:8px;">
+          <div style="height:100%;width:${Math.min(100,pct)}%;background:${col};border-radius:4px;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;">
+          <div style="color:#7ab07a;">Collected<br><span style="color:#f0ead8;font-size:13px;font-weight:700;">${fmtNum(r.eggsCollected||0)}</span></div>
+          <div style="color:#7ab07a;">vs Target<br><span style="color:${diff>=0?'#4caf50':'#e53e3e'};font-size:13px;font-weight:700;">${diff>=0?'+':''}${fmtNum(diff)}</span></div>
+          <div style="color:#7ab07a;">Packed<br><span style="color:#f0ead8;font-size:13px;font-weight:700;">${r.eggsPacked>0?fmtNum(r.eggsPacked)+' dz':'—'}${packPct!==null?' ('+packPct+'%)':''}</span></div>
+        </div>
+        ${r.notes?`<div style="margin-top:6px;font-size:10px;color:#3a6a3a;font-style:italic;">${r.notes}</div>`:''}
+        <div style="margin-top:4px;font-size:9px;color:#2a4a2a;">By: ${r.by}</div>
+      </div>`;
+  }).join('');
+}
+
+// ─── FLOCK TRACKING ────────────────────────────────────────────────────────
+
+const FL_HOUSES = {
+  'Turbotville': [1,2,3,4],
+  'W&M':         [1,2],
+  'Rushtown':    [1,2,3,4,5],
+  'Danville':    [1,2,3,4,5],
+  'Hegins':      [1,2,3,4,5,6,7,8]
+};
+// 2.5 years in days
+const FL_CYCLE_DAYS = 912;
+
+function updateFlHouses() {
+  const farm = document.getElementById('fl-farm').value;
+  const sel  = document.getElementById('fl-house');
+  sel.innerHTML = '<option value="">—</option>';
+  (FL_HOUSES[farm] || []).forEach(h => {
+    const o = document.createElement('option');
+    o.value = h; o.textContent = 'House ' + h;
+    sel.appendChild(o);
+  });
+}
+
+async function openFlockSection() {
+  document.getElementById('flock-section').style.display = 'block';
+  document.getElementById('flock-section').scrollTop = 0;
+  await loadFlocks();
+  renderFlockList();
+}
+
+function closeFlockSection() {
+  document.getElementById('flock-section').style.display = 'none';
+}
+
+async function loadFlocks() {
+  try {
+    const snap = await db.collection('flocks').orderBy('ts','desc').get();
+    flocks = snap.docs.map(d => ({ ...d.data(), _fbId: d.id }));
+  } catch(e) { console.error('flocks load:', e); }
+}
+
+async function saveFlock() {
+  const farm  = document.getElementById('fl-farm').value.trim();
+  const house = document.getElementById('fl-house').value;
+  const date  = document.getElementById('fl-date').value;
+  const birds = Number(document.getElementById('fl-birds').value) || 150000;
+  const notes = document.getElementById('fl-notes').value.trim();
+  const statusEl = document.getElementById('fl-save-status');
+
+  if (!farm || !house || !date) {
+    statusEl.innerHTML = '<span style="color:#e53e3e;">⚠ Farm, house, and date are required.</span>';
+    return;
+  }
+
+  statusEl.innerHTML = '<span style="color:#d69e2e;">⏳ Saving…</span>';
+
+  // Deactivate any existing active flock for same farm+house
+  const existing = flocks.find(f => f.farm === farm && String(f.house) === String(house) && f.status === 'active');
+  if (existing && existing._fbId) {
+    try {
+      await db.collection('flocks').doc(existing._fbId).update({ status: 'depopulated' });
+      existing.status = 'depopulated';
+    } catch(e) { console.error('flock deactivate:', e); }
+  }
+
+  const rec = {
+    farm, house: String(house), placedDate: date,
+    birdCount: birds, notes, status: 'active',
+    ts: Date.now()
+  };
+
+  try {
+    const ref = await db.collection('flocks').add(rec);
+    flocks.unshift({ ...rec, _fbId: ref.id });
+    statusEl.innerHTML = '<span style="color:#4caf50;">✅ Flock saved!</span>';
+    // Reset form
+    document.getElementById('fl-farm').value  = '';
+    document.getElementById('fl-house').innerHTML = '<option value="">—</option>';
+    document.getElementById('fl-date').value  = '';
+    document.getElementById('fl-birds').value = '150000';
+    document.getElementById('fl-notes').value = '';
+    renderFlockList();
+    setTimeout(() => { statusEl.textContent = ''; }, 3000);
+  } catch(e) {
+    console.error('flock save:', e);
+    statusEl.innerHTML = '<span style="color:#e53e3e;">⚠ Save failed — check connection.</span>';
+  }
+}
+
+async function depopulateFlock(fbId) {
+  if (!confirm('Mark this flock as depopulated?')) return;
+  try {
+    await db.collection('flocks').doc(fbId).update({ status: 'depopulated' });
+    const f = flocks.find(f => f._fbId === fbId);
+    if (f) f.status = 'depopulated';
+    renderFlockList();
+  } catch(e) { console.error('flock depop:', e); }
+}
+
+function renderFlockList() {
+  const container = document.getElementById('flock-list-container');
+  const active = flocks.filter(f => f.status === 'active');
+  const history = flocks.filter(f => f.status !== 'active');
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  function flockCard(f) {
+    const placed = new Date(f.placedDate + 'T00:00:00');
+    const ageDays = Math.floor((today - placed) / 86400000);
+    const ageWeeks = Math.floor(ageDays / 7);
+    const remDays = FL_CYCLE_DAYS - ageDays;
+    const pct = Math.min(100, Math.round((ageDays / FL_CYCLE_DAYS) * 100));
+    const depopDate = new Date(placed.getTime() + FL_CYCLE_DAYS * 86400000);
+    const depopStr = depopDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const col = pct < 60 ? '#4caf50' : pct < 80 ? '#d69e2e' : '#e53e3e';
+    const barCol = pct < 60 ? '#4caf50' : pct < 80 ? '#d69e2e' : '#e53e3e';
+    const depopLabel = remDays > 0
+      ? remDays + ' days left'
+      : Math.abs(remDays) + ' days past cycle';
+    const isDepop = f.status !== 'active';
+    return `
+      <div style="background:#12082a;border:1px solid ${isDepop ? '#3b2a5a' : '#5b21b6'};border-radius:12px;padding:14px;margin-bottom:10px;opacity:${isDepop ? '0.55' : '1'};">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;">${f.farm} — House ${f.house}</span>
+            ${isDepop ? '<span style="font-size:10px;color:#7c3aed;font-family:\'IBM Plex Mono\',monospace;margin-left:8px;">DEPOP</span>' : ''}
+          </div>
+          <div style="display:flex;gap:6px;">
+            ${!isDepop ? `<button onclick="depopulateFlock('${f._fbId}')" style="font-size:10px;font-family:'IBM Plex Mono',monospace;padding:4px 8px;border-radius:6px;border:1px solid #5b21b6;background:#1a0d2e;color:#a78bfa;cursor:pointer;">Depop</button>` : ''}
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;">
+          <div style="background:#0a0618;border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:${col};">${ageWeeks}</div>
+            <div style="font-size:10px;color:#7c6aaa;">weeks old</div>
+          </div>
+          <div style="background:#0a0618;border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">${(f.birdCount||0).toLocaleString()}</div>
+            <div style="font-size:10px;color:#7c6aaa;">birds</div>
+          </div>
+          <div style="background:#0a0618;border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:${col};">${pct}%</div>
+            <div style="font-size:10px;color:#7c6aaa;">of cycle</div>
+          </div>
+        </div>
+        <div style="background:#0a0618;border-radius:6px;height:8px;overflow:hidden;margin-bottom:8px;">
+          <div style="height:100%;width:${pct}%;background:${barCol};border-radius:6px;transition:width .3s;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;font-family:'IBM Plex Mono',monospace;color:#7c6aaa;">
+          <span>Placed ${new Date(f.placedDate + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+          <span style="color:${col};">Est. depop ${depopStr} · ${depopLabel}</span>
+        </div>
+        ${f.notes ? `<div style="margin-top:6px;font-size:10px;color:#9a8aaa;font-style:italic;">${f.notes}</div>` : ''}
+      </div>`;
+  }
+
+  // Group active flocks by farm
+  const farmOrder = ['Turbotville','W&M','Rushtown','Danville','Hegins'];
+  let html = '';
+
+  if (active.length === 0) {
+    html += '<div style="text-align:center;padding:20px;color:#5a4a7a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">No active flocks yet — add one above.</div>';
+  } else {
+    farmOrder.forEach(farm => {
+      const farmFlocks = active.filter(f => f.farm === farm).sort((a,b) => Number(a.house) - Number(b.house));
+      if (!farmFlocks.length) return;
+      html += `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#7c3aed;margin:14px 0 8px;">${farm}</div>`;
+      farmFlocks.forEach(f => { html += flockCard(f); });
+    });
+  }
+
+  if (history.length > 0) {
+    html += `<details style="margin-top:16px;">
+      <summary style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#5a4a7a;cursor:pointer;padding:4px 0;">▸ History (${history.length} depopulated)</summary>
+      <div style="margin-top:10px;">`;
+    history.forEach(f => { html += flockCard(f); });
+    html += '</div></details>';
+  }
+
+  container.innerHTML = html;
 }
 
 // BOOT
