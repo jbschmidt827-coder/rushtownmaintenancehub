@@ -299,6 +299,16 @@ textarea { resize: vertical; min-height: 85px; }
 .feed-bin-status.ok{background:#1a4a1a;color:#4caf50;border:1px solid #4caf5040;}
 .feed-bin-status.low{background:#3a2a00;color:#d69e2e;border:1px solid #d69e2e40;}
 .feed-bin-status.critical{background:#2d1a1a;color:#e53e3e;border:1px solid #e53e3e40;}
+/* Feed tables — override light-theme ink color so text is visible on dark background */
+#panel-feed .ops-table th{color:#7ab07a;background:#0c1f0c;border-bottom-color:#2a5a2a;}
+#panel-feed .ops-table td{color:#f0ead8;border-bottom-color:#1e3e1e;}
+#panel-feed .ops-table tr:hover td{background:#132a13;}
+#panel-feed .ops-table .total-row td{background:#0c2a0c;border-top-color:#2a5a2a;}
+#panel-feed .ops-quick-form{background:#0c1f0c;border-color:#2a5a2a;}
+#panel-feed .ops-qf-title{color:#7ab07a;}
+#panel-feed .ops-form-grid label{color:#7ab07a;}
+#panel-feed .ops-form-grid input,#panel-feed .ops-form-grid select,#panel-feed .ops-form-grid textarea{background:#163016;border-color:#2a5a2a;color:#f0ead8;}
+#panel-feed .ops-filter-row .ops-date-input{background:#163016;border-color:#2a5a2a;color:#f0ead8;}
 /* ── WORK INSTRUCTIONS ── */
 .wi-card { background: var(--cream); border-radius: 10px; padding: 14px 16px; margin-bottom: 9px; box-shadow: 0 2px 8px rgba(0,0,0,0.09); border-left: 4px solid var(--green-bright); cursor: pointer; transition: box-shadow .15s, transform .15s; }
 .wi-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.16); transform: translateY(-1px); }
