@@ -11782,13 +11782,23 @@ function renderBioLog() {
 // ═══════════════════════════════════════════
 // TEAM SCHEDULE
 // ═══════════════════════════════════════════
-const SCHED_DEPTS = [
-  { key:'prod',  label:'Production',  icon:'🏭', color:'#4a9b6f' },
-  { key:'maint', label:'Maintenance', icon:'🔧', color:'#f0a500' },
-  { key:'pkg',   label:'Packaging',   icon:'📦', color:'#3b82f6' },
-  { key:'feed',  label:'Feed Mill',   icon:'🌾', color:'#a0522d' },
-  { key:'ship',  label:'Shipping',    icon:'🚚', color:'#dc2626' },
-];
+function getSchedDepts() {
+  const houseCount = _schedFacility === 'Hegins' ? 8 : 5;
+  const barns = Array.from({length: houseCount}, (_, i) => ({
+    key:   `house_${i+1}`,
+    label: `House ${i+1}`,
+    icon:  '🏠',
+    color: '#4a9b6f',
+  }));
+  return [
+    ...barns,
+    { key:'maint_manure',   label:'Manure Tech',    icon:'🔧', color:'#f0a500' },
+    { key:'maint_prodflow', label:'Prod Flow Tech', icon:'⚙️', color:'#d69e2e' },
+    { key:'pkg',   label:'Packaging',  icon:'📦', color:'#3b82f6' },
+    { key:'feed',  label:'Feed Mill',  icon:'🌾', color:'#a0522d' },
+    { key:'ship',  label:'Shipping',   icon:'🚚', color:'#dc2626' },
+  ];
+}
 const SCHED_DAYS = ['mon','tue','wed','thu','fri','sat','sun'];
 const SCHED_DAY_LABELS = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
 const SHIFT_COLOR = { morning:'morning', afternoon:'afternoon', night:'night' };
@@ -11852,8 +11862,9 @@ async function loadSchedule() {
 
 function renderSchedule() {
   // KPI bar
+  const depts = getSchedDepts();
   const total = _schedData.length;
-  const deptDays = SCHED_DEPTS.length * 7;
+  const deptDays = depts.length * 7;
   const covered = new Set(_schedData.map(r => r.dept + '_' + r.day)).size;
   const gaps = deptDays - covered;
   const covPct = Math.round((covered / deptDays) * 100);
@@ -11871,7 +11882,7 @@ function renderSchedule() {
   const tbody = document.getElementById('sched-tbody');
   let html = '';
 
-  SCHED_DEPTS.forEach(dept => {
+  depts.forEach(dept => {
     html += `<tr>`;
     html += `<td class="sched-dept-cell" style="border-left:3px solid ${dept.color};">
                <span class="sched-dept-icon">${dept.icon}</span>${dept.label}
