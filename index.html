@@ -1074,6 +1074,13 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div style="font-size:12px;color:#a78bfa;margin-top:4px;">Track placement dates, age in weeks & depop timeline</div>
       </div>
     </button>
+    <button onclick="openBioSection()" style="width:100%;padding:24px 20px;background:#0a1f0a;border:2px solid #dc2626;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">🦠</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Biosecurity Log</div>
+        <div style="font-size:12px;color:#f87171;margin-top:4px;">Visitor & entry log, sanitation records, risk tracking</div>
+      </div>
+    </button>
   </div>
 </div>
 
@@ -1142,6 +1149,99 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <div id="prod-summary-content">
       <div style="text-align:center;padding:40px;color:#5a5a3a;font-family:'IBM Plex Mono',monospace;">Loading...</div>
     </div>
+  </div>
+</div>
+
+<!-- ═══ BIOSECURITY SECTION ═══ -->
+<div id="bio-section" style="display:none;position:fixed;inset:0;background:#080f08;z-index:500;overflow-y:auto;">
+  <div style="max-width:540px;margin:0 auto;padding:20px 16px 60px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #7f1d1d;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">🦠 Biosecurity Log</div>
+      <button onclick="closeBioSection()" style="background:#1a0a0a;border:1px solid #dc2626;color:#f87171;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">← Back</button>
+    </div>
+
+    <!-- Entry Form -->
+    <div style="background:#0f1a0f;border:1.5px solid #dc2626;border-radius:14px;padding:16px;margin-bottom:20px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#f87171;margin-bottom:14px;">+ Log Entry / Visitor</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:11px;color:#f87171;margin-bottom:5px;">Date *</div>
+          <input type="date" id="bio-date" style="width:100%;background:#0a1a0a;border:1px solid #7f1d1d;border-radius:8px;color:#f0ead8;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#f87171;margin-bottom:5px;">Farm *</div>
+          <select id="bio-farm" style="width:100%;background:#0a1a0a;border:1px solid #7f1d1d;border-radius:8px;color:#f0ead8;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-sizing:border-box;">
+            <option value="">— select —</option>
+            <option>Hegins</option><option>Danville</option><option>Rushtown</option>
+            <option>Turbotville</option><option value="W&M">W&amp;M</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#f87171;margin-bottom:5px;">Entry Type *</div>
+          <select id="bio-type" style="width:100%;background:#0a1a0a;border:1px solid #7f1d1d;border-radius:8px;color:#f0ead8;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-sizing:border-box;">
+            <option value="">— select —</option>
+            <option>Employee</option>
+            <option>Visitor</option>
+            <option>Delivery Driver</option>
+            <option>Service Tech</option>
+            <option>Veterinarian</option>
+            <option>USDA / Inspector</option>
+            <option>Management</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#f87171;margin-bottom:5px;">Risk Level *</div>
+          <select id="bio-risk" style="width:100%;background:#0a1a0a;border:1px solid #7f1d1d;border-radius:8px;color:#f0ead8;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-sizing:border-box;">
+            <option value="low">🟢 Low</option>
+            <option value="medium">🟡 Medium</option>
+            <option value="high">🔴 High</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1;">
+          <div style="font-size:11px;color:#f87171;margin-bottom:5px;">Person Name *</div>
+          <input type="text" id="bio-person" placeholder="Full name" style="width:100%;background:#0a1a0a;border:1px solid #7f1d1d;border-radius:8px;color:#f0ead8;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#f87171;margin-bottom:5px;">Company / Origin</div>
+          <input type="text" id="bio-company" placeholder="e.g. ABC Supply" style="width:100%;background:#0a1a0a;border:1px solid #7f1d1d;border-radius:8px;color:#f0ead8;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#f87171;margin-bottom:5px;">Purpose</div>
+          <input type="text" id="bio-purpose" placeholder="Reason for entry" style="width:100%;background:#0a1a0a;border:1px solid #7f1d1d;border-radius:8px;color:#f0ead8;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-sizing:border-box;">
+        </div>
+      </div>
+      <!-- Biosecurity Measures -->
+      <div style="font-size:11px;color:#f87171;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;">Biosecurity Measures Taken</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#f0ead8;cursor:pointer;"><input type="checkbox" id="bio-footbath" style="accent-color:#dc2626;"> Footbath</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#f0ead8;cursor:pointer;"><input type="checkbox" id="bio-coveralls" style="accent-color:#dc2626;"> Coveralls</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#f0ead8;cursor:pointer;"><input type="checkbox" id="bio-bootcovers" style="accent-color:#dc2626;"> Boot Covers</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#f0ead8;cursor:pointer;"><input type="checkbox" id="bio-vehicle" style="accent-color:#dc2626;"> Vehicle Disinfected</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#f0ead8;cursor:pointer;"><input type="checkbox" id="bio-handwash" style="accent-color:#dc2626;"> Hand Wash / Sanitizer</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#f0ead8;cursor:pointer;"><input type="checkbox" id="bio-nopoultrylast7" style="accent-color:#dc2626;"> No Poultry Contact (7d)</label>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:#f87171;margin-bottom:5px;">Notes</div>
+        <textarea id="bio-notes" rows="2" placeholder="Anything to flag..." style="width:100%;background:#0a1a0a;border:1px solid #7f1d1d;border-radius:8px;color:#f0ead8;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;resize:none;box-sizing:border-box;"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="saveBioEntry()" style="flex:1;padding:12px;background:#7f1d1d;border:none;border-radius:10px;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;">✓ Log Entry</button>
+        <button onclick="clearBioForm()" style="padding:12px 18px;background:#0a1a0a;border:1px solid #7f1d1d;border-radius:10px;color:#f87171;font-family:'IBM Plex Mono',monospace;font-size:13px;cursor:pointer;">Clear</button>
+      </div>
+      <div id="bio-save-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:8px;min-height:16px;text-align:center;"></div>
+    </div>
+
+    <!-- Filter & Log -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <input type="date" id="bio-filter-date" style="background:#0a1a0a;border:1px solid #7f1d1d;border-radius:8px;color:#f0ead8;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;" onchange="renderBioLog()">
+      <select id="bio-filter-farm" onchange="renderBioLog()" style="background:#0a1a0a;border:1px solid #7f1d1d;border-radius:8px;color:#f0ead8;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+        <option value="all">All Farms</option>
+        <option>Hegins</option><option>Danville</option><option>Rushtown</option>
+        <option>Turbotville</option><option value="W&M">W&amp;M</option>
+      </select>
+    </div>
+    <div id="bio-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;"></div>
+    <div id="bio-log-list"></div>
   </div>
 </div>
 
@@ -1870,6 +1970,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <div class="sub-nav">
     <button class="sub-btn active" data-section="packing" onclick="goPkgSection('packing')">📦 Packing</button>
     <button class="sub-btn" data-section="eggs" onclick="goPkgSection('eggs')">🥚 Eggs by Barn</button>
+    <button class="sub-btn" data-section="quality" onclick="goPkgSection('quality')">🏅 Egg Quality</button>
   </div>
   <!-- Packing -->
   <div class="pkg-section" id="pkg-packing" style="display:block;">
@@ -1971,6 +2072,58 @@ body { min-height: 100dvh; overflow-x: hidden; }
     </div>
     <div id="eb-summary" style="margin-bottom:14px;"></div>
     <div id="eb-list" style="margin-bottom:20px;"></div>
+  </div>
+
+  <!-- Egg Quality -->
+  <div class="pkg-section" id="pkg-quality" style="display:none;">
+    <div class="ops-quick-form" style="background:#0a1020;border-color:#2a3a6a;">
+      <div class="ops-qf-title" style="color:#7ab0f0;">🏅 Log Egg Quality Grade-Out</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label style="color:#7ab0f0;">Date *</label><input type="date" id="eq-date"></div>
+        <div class="fg"><label style="color:#7ab0f0;">Entered By</label><input type="text" id="eq-by" placeholder="Name"></div>
+        <div class="fg"><label style="color:#7ab0f0;">Farm *</label>
+          <select id="eq-farm" onchange="updateEqHouses()">
+            <option value="">— select —</option>
+            <option>Hegins</option><option>Danville</option><option>Rushtown</option>
+            <option>Turbotville</option><option value="W&M">W&amp;M</option>
+          </select></div>
+        <div class="fg"><label style="color:#7ab0f0;">House *</label>
+          <select id="eq-house"><option value="">—</option></select></div>
+        <div class="fg"><label style="color:#7ab0f0;">Total Graded *</label><input type="number" id="eq-total" min="0" placeholder="e.g. 134000" oninput="calcEqKpi()"></div>
+        <div class="fg"><label style="color:#7ab0f0;">Grade A</label><input type="number" id="eq-grade-a" min="0" placeholder="0" oninput="calcEqKpi()"></div>
+        <div class="fg"><label style="color:#7ab0f0;">Cracks</label><input type="number" id="eq-cracks" min="0" placeholder="0" oninput="calcEqKpi()"></div>
+        <div class="fg"><label style="color:#7ab0f0;">Dirties</label><input type="number" id="eq-dirties" min="0" placeholder="0" oninput="calcEqKpi()"></div>
+        <div class="fg"><label style="color:#7ab0f0;">Floor Eggs</label><input type="number" id="eq-floor" min="0" placeholder="0" oninput="calcEqKpi()"></div>
+        <div class="fg"><label style="color:#7ab0f0;">Soft Shells</label><input type="number" id="eq-soft" min="0" placeholder="0" oninput="calcEqKpi()"></div>
+        <div class="fg"><label style="color:#7ab0f0;">Blood/Meat Spots</label><input type="number" id="eq-blood" min="0" placeholder="0" oninput="calcEqKpi()"></div>
+        <div class="fg ops-form-full" id="eq-calc-row" style="display:none;background:#0c1530;border:1.5px solid #2a3a6a;border-radius:10px;padding:12px 14px;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;">
+            <div>
+              <div style="font-size:10px;color:#7ab0f0;font-family:'IBM Plex Mono',monospace;margin-bottom:3px;">Grade A %</div>
+              <div id="eq-grade-pct" style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;">—</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#7ab0f0;font-family:'IBM Plex Mono',monospace;margin-bottom:3px;">Defect Rate</div>
+              <div id="eq-defect-pct" style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;">—</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#7ab0f0;font-family:'IBM Plex Mono',monospace;margin-bottom:3px;">Σ Level</div>
+              <div id="eq-sigma" style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="fg ops-form-full"><label style="color:#7ab0f0;">Notes</label><input type="text" id="eq-notes" placeholder="Optional"></div>
+      </div>
+      <div class="ops-form-actions">
+        <button class="ops-save-btn" style="background:#1e3a8a;" onclick="saveEggQuality()">✓ Save Quality Log</button>
+        <button class="ops-cancel-btn" onclick="clearEqForm()">Clear</button>
+      </div>
+    </div>
+    <div class="ops-filter-row">
+      <input type="date" class="ops-date-input" id="eq-filter-date" onchange="renderEggQuality()">
+    </div>
+    <div id="eq-dashboard" style="margin-bottom:16px;"></div>
+    <div id="eq-log" style="overflow-x:auto;"></div>
   </div>
 </div>
 
@@ -3068,6 +3221,8 @@ async function initApp() {
     await loadFeedBins();
     await loadFeedData();
     await loadEggByBarn();
+    await loadEggQuality();
+    await loadBioLog();
     await seedMortalityCompostingWI();
     await seedWaterRegulatorWI();
     assignRHNumbers();
@@ -7450,6 +7605,12 @@ function goPkgSection(section) {
     if (!document.getElementById('eb-filter-date').value) document.getElementById('eb-filter-date').value = today;
     renderEggByBarn();
   }
+  if (section === 'quality') {
+    const today = new Date().toISOString().slice(0,10);
+    if (!document.getElementById('eq-date').value) document.getElementById('eq-date').value = today;
+    if (!document.getElementById('eq-filter-date').value) document.getElementById('eq-filter-date').value = today;
+    renderEggQuality();
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -10393,6 +10554,270 @@ function renderFlockList() {
   }
 
   container.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// EGG QUALITY
+// ═══════════════════════════════════════════
+let opsEggQuality = [];
+
+async function loadEggQuality() {
+  try {
+    const snap = await db.collection('opsEggQuality').orderBy('ts','desc').limit(500).get();
+    opsEggQuality = snap.docs.map(d => ({...d.data(), _fbId: d.id}));
+    db.collection('opsEggQuality').orderBy('ts','desc').limit(500).onSnapshot(snap => {
+      opsEggQuality = snap.docs.map(d => ({...d.data(), _fbId: d.id}));
+      if (window._pkgSection === 'quality') renderEggQuality();
+    });
+  } catch(e) { console.warn('loadEggQuality:', e.message); }
+}
+
+function updateEqHouses() {
+  const farm = document.getElementById('eq-farm').value;
+  const houses = {Hegins:8,Danville:5,Rushtown:5,Turbotville:4,'W&M':2};
+  const sel = document.getElementById('eq-house');
+  sel.innerHTML = '<option value="">—</option>';
+  for (let h = 1; h <= (houses[farm]||0); h++) {
+    sel.innerHTML += `<option value="${h}">House ${h}</option>`;
+  }
+}
+
+function calcEqKpi() {
+  const total = Number(document.getElementById('eq-total').value) || 0;
+  const gradeA = Number(document.getElementById('eq-grade-a').value) || 0;
+  const cracks = Number(document.getElementById('eq-cracks').value) || 0;
+  const dirties = Number(document.getElementById('eq-dirties').value) || 0;
+  const floor = Number(document.getElementById('eq-floor').value) || 0;
+  const soft = Number(document.getElementById('eq-soft').value) || 0;
+  const blood = Number(document.getElementById('eq-blood').value) || 0;
+  const row = document.getElementById('eq-calc-row');
+  if (!total) { if (row) row.style.display = 'none'; return; }
+  const defects = cracks + dirties + floor + soft + blood;
+  const gradeAPct = gradeA > 0 ? Math.round((gradeA/total)*100) : Math.round(((total-defects)/total)*100);
+  const defectPct = Math.round((defects/total)*100);
+  const sig = sigmaLevel(gradeAPct);
+  const blt = sigmaBeltLabel(sig);
+  row.style.display = 'block';
+  document.getElementById('eq-grade-pct').textContent = gradeAPct + '%';
+  document.getElementById('eq-grade-pct').style.color = gradeAPct >= 95 ? '#4caf50' : gradeAPct >= 90 ? '#d69e2e' : '#e53e3e';
+  document.getElementById('eq-defect-pct').textContent = defectPct + '%';
+  document.getElementById('eq-defect-pct').style.color = defectPct < 5 ? '#4caf50' : defectPct < 10 ? '#d69e2e' : '#e53e3e';
+  document.getElementById('eq-sigma').textContent = sig.toFixed(1) + 'σ';
+  document.getElementById('eq-sigma').style.color = blt.color;
+}
+
+async function saveEggQuality() {
+  const date = document.getElementById('eq-date').value;
+  const farm = document.getElementById('eq-farm').value;
+  const house = document.getElementById('eq-house').value;
+  const total = Number(document.getElementById('eq-total').value) || 0;
+  if (!date || !farm || !house || !total) { alert('Date, Farm, House, and Total Graded are required.'); return; }
+  const gradeA = Number(document.getElementById('eq-grade-a').value) || 0;
+  const cracks = Number(document.getElementById('eq-cracks').value) || 0;
+  const dirties = Number(document.getElementById('eq-dirties').value) || 0;
+  const floor = Number(document.getElementById('eq-floor').value) || 0;
+  const soft = Number(document.getElementById('eq-soft').value) || 0;
+  const blood = Number(document.getElementById('eq-blood').value) || 0;
+  const by = document.getElementById('eq-by').value || 'System';
+  const notes = document.getElementById('eq-notes').value || '';
+  const defects = cracks + dirties + floor + soft + blood;
+  const gradeAPct = gradeA > 0 ? Math.round((gradeA/total)*100) : Math.round(((total-defects)/total)*100);
+  const rec = { date, farm, house: String(house), total, gradeA, cracks, dirties, floorEggs:floor, softShells:soft, bloodSpots:blood, defects, gradeAPct, by, notes, ts: Date.now() };
+  try {
+    await db.collection('opsEggQuality').add(rec);
+    clearEqForm();
+    renderEggQuality();
+  } catch(e) { alert('Save failed: ' + e.message); }
+}
+
+function clearEqForm() {
+  ['eq-date','eq-farm','eq-house','eq-by','eq-total','eq-grade-a','eq-cracks','eq-dirties','eq-floor','eq-soft','eq-blood','eq-notes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const row = document.getElementById('eq-calc-row'); if (row) row.style.display = 'none';
+}
+
+function renderEggQuality() {
+  const today = new Date().toISOString().slice(0,10);
+  const filterDate = document.getElementById('eq-filter-date')?.value || today;
+  const rows = (opsEggQuality||[]).filter(r => r.date === filterDate)
+    .sort((a,b) => a.farm.localeCompare(b.farm) || Number(a.house)-Number(b.house));
+  const dash = document.getElementById('eq-dashboard');
+  const log = document.getElementById('eq-log');
+
+  // Stats cards
+  const totalGraded = rows.reduce((s,r)=>s+(Number(r.total)||0),0);
+  const totalDefects = rows.reduce((s,r)=>s+(Number(r.defects)||0),0);
+  const avgGradeA = rows.length ? Math.round(rows.reduce((s,r)=>s+(Number(r.gradeAPct)||0),0)/rows.length) : null;
+  const avgSig = avgGradeA !== null ? sigmaLevel(avgGradeA) : null;
+  const blt = avgSig !== null ? sigmaBeltLabel(avgSig) : null;
+
+  if (dash) dash.innerHTML = rows.length ? `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+      <div class="ss-stat-card"><div class="ss-stat-val" style="color:#7ab0f0;">${fmtNum(totalGraded)}</div><div class="ss-stat-lbl">Total Graded</div></div>
+      <div class="ss-stat-card"><div class="ss-stat-val" style="color:${avgGradeA>=95?'#4caf50':avgGradeA>=90?'#d69e2e':'#e53e3e'};">${avgGradeA}%</div><div class="ss-stat-lbl">Avg Grade A</div></div>
+      <div class="ss-stat-card"><div class="ss-stat-val" style="color:${totalDefects/totalGraded*100<5?'#4caf50':'#e53e3e'};">${totalGraded>0?Math.round(totalDefects/totalGraded*100):0}%</div><div class="ss-stat-lbl">Defect Rate</div></div>
+      ${avgSig!==null?`<div class="ss-stat-card" style="background:${blt.bg};"><div class="ss-stat-val" style="color:${blt.color};">${avgSig.toFixed(1)}σ</div><div class="ss-stat-lbl">Sigma Level</div></div>`:''}
+    </div>` : '';
+
+  if (!rows.length) {
+    if (log) log.innerHTML = '<div class="empty"><div class="ei">🏅</div><p>No quality records for this date.</p></div>';
+    return;
+  }
+
+  // Defect breakdown cards
+  const cardHtml = rows.map(r => {
+    const defectPct = r.total > 0 ? Math.round((r.defects/r.total)*100) : 0;
+    const col = r.gradeAPct >= 95 ? '#4caf50' : r.gradeAPct >= 90 ? '#d69e2e' : '#e53e3e';
+    return `<div style="background:#0a1020;border:1px solid #2a3a6a;border-radius:12px;padding:14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#7ab0f0;">${r.farm} — House ${r.house}</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${col};">${r.gradeAPct}% Grade A</span>
+      </div>
+      <div style="background:#1a2030;border-radius:4px;height:10px;overflow:hidden;margin-bottom:10px;">
+        <div style="height:100%;width:${Math.min(100,r.gradeAPct)}%;background:${col};border-radius:4px;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:10px;font-family:'IBM Plex Mono',monospace;text-align:center;">
+        <div style="background:#0c1530;border-radius:6px;padding:6px;"><div style="color:#e53e3e;font-size:14px;font-weight:700;">${fmtNum(r.cracks||0)}</div><div style="color:#5a6a9a;">Cracks</div></div>
+        <div style="background:#0c1530;border-radius:6px;padding:6px;"><div style="color:#d69e2e;font-size:14px;font-weight:700;">${fmtNum(r.dirties||0)}</div><div style="color:#5a6a9a;">Dirties</div></div>
+        <div style="background:#0c1530;border-radius:6px;padding:6px;"><div style="color:#ed8936;font-size:14px;font-weight:700;">${fmtNum(r.floorEggs||0)}</div><div style="color:#5a6a9a;">Floor</div></div>
+        <div style="background:#0c1530;border-radius:6px;padding:6px;"><div style="color:#9b59b6;font-size:14px;font-weight:700;">${fmtNum(r.softShells||0)}</div><div style="color:#5a6a9a;">Soft Shell</div></div>
+        <div style="background:#0c1530;border-radius:6px;padding:6px;"><div style="color:#e53e3e;font-size:14px;font-weight:700;">${fmtNum(r.bloodSpots||0)}</div><div style="color:#5a6a9a;">Blood/Meat</div></div>
+        <div style="background:#0c1530;border-radius:6px;padding:6px;"><div style="color:#f0ead8;font-size:14px;font-weight:700;">${defectPct}%</div><div style="color:#5a6a9a;">Defect %</div></div>
+      </div>
+      <div style="margin-top:8px;font-size:10px;color:#5a6a9a;font-family:'IBM Plex Mono',monospace;">${fmtNum(r.total)} graded · by ${r.by}</div>
+    </div>`;
+  }).join('');
+  if (log) log.innerHTML = cardHtml;
+}
+
+// ═══════════════════════════════════════════
+// BIOSECURITY
+// ═══════════════════════════════════════════
+let bioLog = [];
+
+async function loadBioLog() {
+  try {
+    const snap = await db.collection('biosecurityLog').orderBy('ts','desc').limit(300).get();
+    bioLog = snap.docs.map(d => ({...d.data(), _fbId: d.id}));
+    db.collection('biosecurityLog').orderBy('ts','desc').limit(300).onSnapshot(snap => {
+      bioLog = snap.docs.map(d => ({...d.data(), _fbId: d.id}));
+    });
+  } catch(e) { console.warn('loadBioLog:', e.message); }
+}
+
+function openBioSection() {
+  document.getElementById('bio-section').style.display = 'block';
+  const today = new Date().toISOString().slice(0,10);
+  if (!document.getElementById('bio-date').value) document.getElementById('bio-date').value = today;
+  if (!document.getElementById('bio-filter-date').value) document.getElementById('bio-filter-date').value = today;
+  renderBioLog();
+}
+
+function closeBioSection() {
+  document.getElementById('bio-section').style.display = 'none';
+}
+
+async function saveBioEntry() {
+  const date = document.getElementById('bio-date').value;
+  const farm = document.getElementById('bio-farm').value;
+  const type = document.getElementById('bio-type').value;
+  const person = document.getElementById('bio-person').value.trim();
+  const risk = document.getElementById('bio-risk').value;
+  if (!date || !farm || !type || !person) { alert('Date, Farm, Entry Type, and Person Name are required.'); return; }
+  const measures = {
+    footbath: document.getElementById('bio-footbath').checked,
+    coveralls: document.getElementById('bio-coveralls').checked,
+    bootCovers: document.getElementById('bio-bootcovers').checked,
+    vehicleDisinfected: document.getElementById('bio-vehicle').checked,
+    handWash: document.getElementById('bio-handwash').checked,
+    noPoultryContact7d: document.getElementById('bio-nopoultrylast7').checked
+  };
+  const measureCount = Object.values(measures).filter(Boolean).length;
+  const rec = {
+    date, farm, type, person,
+    company: document.getElementById('bio-company').value || '',
+    purpose: document.getElementById('bio-purpose').value || '',
+    risk, measures, measureCount,
+    notes: document.getElementById('bio-notes').value || '',
+    ts: Date.now()
+  };
+  const statusEl = document.getElementById('bio-save-status');
+  try {
+    statusEl.style.color = '#f87171'; statusEl.textContent = 'Saving...';
+    await db.collection('biosecurityLog').add(rec);
+    bioLog.unshift(rec);
+    statusEl.style.color = '#4caf50'; statusEl.textContent = '✓ Entry logged!';
+    setTimeout(() => statusEl.textContent = '', 2000);
+    clearBioForm();
+    renderBioLog();
+  } catch(e) { statusEl.style.color = '#e53e3e'; statusEl.textContent = 'Save failed: ' + e.message; }
+}
+
+function clearBioForm() {
+  ['bio-date','bio-farm','bio-type','bio-person','bio-company','bio-purpose','bio-notes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['bio-footbath','bio-coveralls','bio-bootcovers','bio-vehicle','bio-handwash','bio-nopoultrylast7'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.checked = false;
+  });
+  document.getElementById('bio-risk').value = 'low';
+}
+
+function renderBioLog() {
+  const filterDate = document.getElementById('bio-filter-date')?.value || new Date().toISOString().slice(0,10);
+  const filterFarm = document.getElementById('bio-filter-farm')?.value || 'all';
+  const rows = (bioLog||[]).filter(r => {
+    if (r.date !== filterDate) return false;
+    if (filterFarm !== 'all' && r.farm !== filterFarm) return false;
+    return true;
+  });
+
+  // Stats
+  const statsEl = document.getElementById('bio-stats');
+  const highRisk = rows.filter(r=>r.risk==='high').length;
+  const medRisk = rows.filter(r=>r.risk==='medium').length;
+  if (statsEl) statsEl.innerHTML = `
+    <div style="background:#0f1a0f;border:1px solid #7f1d1d;border-radius:10px;padding:12px;text-align:center;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:700;color:#f0ead8;">${rows.length}</div>
+      <div style="font-size:9px;color:#f87171;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">Entries Today</div>
+    </div>
+    <div style="background:#0f1a0f;border:1px solid ${highRisk>0?'#dc2626':'#7f1d1d'};border-radius:10px;padding:12px;text-align:center;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:700;color:${highRisk>0?'#f87171':'#f0ead8'};">${highRisk}</div>
+      <div style="font-size:9px;color:#f87171;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">🔴 High Risk</div>
+    </div>
+    <div style="background:#0f1a0f;border:1px solid #7f1d1d;border-radius:10px;padding:12px;text-align:center;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:700;color:${medRisk>0?'#d69e2e':'#f0ead8'};">${medRisk}</div>
+      <div style="font-size:9px;color:#f87171;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">🟡 Medium Risk</div>
+    </div>`;
+
+  const listEl = document.getElementById('bio-log-list');
+  if (!listEl) return;
+  if (!rows.length) {
+    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:#7f1d1d;font-family:\'IBM Plex Mono\',monospace;">No entries for this date.</div>';
+    return;
+  }
+  const riskColors = { low:'#4caf50', medium:'#d69e2e', high:'#dc2626' };
+  const riskIcons  = { low:'🟢', medium:'🟡', high:'🔴' };
+  listEl.innerHTML = rows.map(r => {
+    const measures = r.measures || {};
+    const measureTags = Object.entries({footbath:'Footbath',coveralls:'Coveralls',bootCovers:'Boot Covers',vehicleDisinfected:'Vehicle Disinfected',handWash:'Hand Wash',noPoultryContact7d:'No Poultry Contact (7d)'})
+      .filter(([k])=>measures[k])
+      .map(([,v])=>`<span style="background:#1a2a1a;border:1px solid #2a5a2a;border-radius:12px;padding:2px 8px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:#7ab07a;">${v}</span>`)
+      .join('');
+    return `<div style="background:#0f1a0f;border:1.5px solid ${riskColors[r.risk]||'#7f1d1d'};border-radius:12px;padding:14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;">${r.person}</span>
+          <span style="font-size:11px;color:#7a8a7a;margin-left:8px;">${r.type}</span>
+        </div>
+        <span style="font-size:11px;font-weight:700;color:${riskColors[r.risk]||'#ccc'};">${riskIcons[r.risk]||''} ${(r.risk||'').toUpperCase()}</span>
+      </div>
+      <div style="font-size:11px;color:#7a8a7a;font-family:'IBM Plex Mono',monospace;margin-bottom:6px;">${r.farm}${r.company?' · '+r.company:''}${r.purpose?' · '+r.purpose:''}</div>
+      ${measureTags ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">${measureTags}</div>` : '<div style="font-size:10px;color:#dc2626;font-family:\'IBM Plex Mono\',monospace;margin-bottom:6px;">⚠️ No biosecurity measures recorded</div>'}
+      ${r.notes?`<div style="font-size:10px;color:#5a7a5a;font-style:italic;">${r.notes}</div>`:''}
+    </div>`;
+  }).join('');
 }
 
 // BOOT
