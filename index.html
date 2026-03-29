@@ -3349,8 +3349,181 @@ function toggleLang() {
   }
 }
 
+// ── Form-level text translations (labels, options, placeholders, buttons) ──
+// Keyed by exact English text so no HTML changes needed — DOM walks automatically
+const FORM_TEXT = {
+  // ── Packing form ──
+  '➕ Log Packing':           { es:'➕ Registrar Empaque' },
+  'Date *':                   { es:'Fecha *' },
+  'Product Type *':           { es:'Tipo de Producto *' },
+  'Total Dz *':               { es:'Total Docenas *' },
+  'Unit':                     { es:'Unidad' },
+  'Start Time':               { es:'Hora Inicio' },
+  'End Time':                 { es:'Hora Fin' },
+  'Break (min)':              { es:'Descanso (min)' },
+  'Downtime (min)':           { es:'Tiempo Fuera (min)' },
+  'Houses Packed':            { es:'Galpones Empacados' },
+  'Total Stops':              { es:'Paradas Totales' },
+  'Line / Area':              { es:'Línea / Área' },
+  'Shift':                    { es:'Turno' },
+  'Entered By':               { es:'Registrado Por' },
+  'Notes':                    { es:'Notas' },
+  '✓ Log Packing':            { es:'✓ Registrar Empaque' },
+  'Clear':                    { es:'Limpiar' },
+  '⚡ Auto-Calculated':       { es:'⚡ Auto-Calculado' },
+  'Run Time':                 { es:'Tiempo Corrida' },
+  'Dz / Hour':                { es:'Dz / Hora' },
+  'Dz / House':               { es:'Dz / Galpón' },
+  'Packing Log':              { es:'Registro de Empaque' },
+  // Select options
+  '— Select —':               { es:'— Seleccionar —' },
+  '— select —':               { es:'— seleccionar —' },
+  'Jumbo':                    { es:'Jumbo' },
+  'XL':                       { es:'XL' },
+  'Large':                    { es:'Grande' },
+  'Medium':                   { es:'Mediano' },
+  'Small':                    { es:'Pequeño' },
+  'Pullet':                   { es:'Pollita' },
+  'Nest Run':                 { es:'Postura' },
+  'Dozen':                    { es:'Docena' },
+  'Cases':                    { es:'Cajas' },
+  'Flats':                    { es:'Bandejas' },
+  'AM':                       { es:'AM' },
+  'PM':                       { es:'PM' },
+  'Night':                    { es:'Noche' },
+  // ── Eggs by Barn form ──
+  '🥚 Log Eggs by Barn':      { es:'🥚 Registrar Huevos por Galpón' },
+  'Farm *':                   { es:'Granja *' },
+  'House *':                  { es:'Galpón *' },
+  'Eggs Collected':           { es:'Huevos Recolectados' },
+  'Eggs Packed (Dz)':         { es:'Huevos Empacados (Dz)' },
+  '✓ Save Barn Eggs':         { es:'✓ Guardar Huevos' },
+  'KPI %':                    { es:'KPI %' },
+  'vs Target':                { es:'vs Meta' },
+  'Pack Rate':                { es:'Tasa Empaque' },
+  // ── Egg Quality form ──
+  '🏅 Log Egg Quality Grade-Out': { es:'🏅 Registrar Calidad de Huevo' },
+  'Total Graded *':           { es:'Total Clasificado *' },
+  'Grade A':                  { es:'Grado A' },
+  'Cracks':                   { es:'Grietas' },
+  'Dirties':                  { es:'Sucios' },
+  'Floor Eggs':               { es:'Huevos de Piso' },
+  'Soft Shells':              { es:'Cáscaras Blandas' },
+  'Blood Spots':              { es:'Manchas de Sangre' },
+  '✓ Save Quality Record':    { es:'✓ Guardar Calidad' },
+  // ── Work order form ──
+  'Equipment / Item *':       { es:'Equipo / Ítem *' },
+  'Location *':               { es:'Ubicación *' },
+  'Priority':                 { es:'Prioridad' },
+  'Reported By':              { es:'Reportado Por' },
+  'Description':              { es:'Descripción' },
+  'Submit Work Order':        { es:'Enviar Orden' },
+  'Cancel':                   { es:'Cancelar' },
+  '⚠️ Urgent':                { es:'⚠️ Urgente' },
+  '🔴 High':                  { es:'🔴 Alta' },
+  '🟡 Normal':                { es:'🟡 Normal' },
+  '🟢 Low':                   { es:'🟢 Baja' },
+  'open':                     { es:'abierta' },
+  'in-progress':              { es:'en progreso' },
+  'completed':                { es:'completada' },
+  'on-hold':                  { es:'en espera' },
+  // ── Biosecurity form ──
+  'Entry Type':               { es:'Tipo de Entrada' },
+  'Risk Level':               { es:'Nivel de Riesgo' },
+  'Person Name *':            { es:'Nombre *' },
+  'Company / Org':            { es:'Empresa / Org' },
+  'Purpose of Visit':         { es:'Propósito de Visita' },
+  'Visitor':                  { es:'Visitante' },
+  'Vendor':                   { es:'Proveedor' },
+  'Contractor':               { es:'Contratista' },
+  'Employee':                 { es:'Empleado' },
+  'Delivery':                 { es:'Entrega' },
+  'Low':                      { es:'Bajo' },
+  'Medium':                   { es:'Medio' },
+  'High':                     { es:'Alto' },
+  '✓ Log Entry':              { es:'✓ Registrar Entrada' },
+  // ── Downtime form ──
+  'Equipment *':              { es:'Equipo *' },
+  'Start Time *':             { es:'Hora Inicio *' },
+  'Duration (min)':           { es:'Duración (min)' },
+  'Cause':                    { es:'Causa' },
+  'System':                   { es:'Sistema' },
+  'Mechanical':               { es:'Mecánico' },
+  'Electrical':               { es:'Eléctrico' },
+  'Operator':                 { es:'Operador' },
+  'Planned':                  { es:'Planificado' },
+  'Other':                    { es:'Otro' },
+  // ── Barn walk / morning walk ──
+  'Pass':                     { es:'Pasa' },
+  'Fail':                     { es:'Falla' },
+  // ── Common form text ──
+  'Date':                     { es:'Fecha' },
+  'Farm':                     { es:'Granja' },
+  'House':                    { es:'Galpón' },
+  'Name':                     { es:'Nombre' },
+  'Status':                   { es:'Estado' },
+  'All Locations':            { es:'Todas las Ubicaciones' },
+  'All':                      { es:'Todas' },
+  '← Back':                  { es:'← Atrás' },
+  'Save':                     { es:'Guardar' },
+  'Submit':                   { es:'Enviar' },
+  'Today':                    { es:'Hoy' },
+  '+ Add New':                { es:'+ Agregar Nuevo' },
+};
+
+// Placeholders
+const PLACEHOLDER_TEXT = {
+  es: {
+    'Name':            'Nombre',
+    'Optional notes':  'Notas opcionales',
+    'Optional':        'Opcional',
+    'e.g. Line 1':     'ej. Línea 1',
+    'Notes...':        'Notas...',
+    'Search...':       'Buscar...',
+    'e.g. 134500':     'ej. 134500',
+    'e.g. 11200':      'ej. 11200',
+    'e.g. 134000':     'ej. 134000',
+  }
+};
+
+function applyFormTextTranslation() {
+  // Translate <label> and <option> text
+  document.querySelectorAll('label, option').forEach(el => {
+    // Skip options inside dynamically-built selects (managed by render fns)
+    if (!el.dataset.enText) el.dataset.enText = el.textContent.trim();
+    const orig = el.dataset.enText;
+    if (!orig) return;
+    const tr = FORM_TEXT[orig];
+    if (tr) el.textContent = _lang === 'es' ? (tr.es ?? orig) : orig;
+  });
+
+  // Translate .ops-qf-title (form headers like "➕ Log Packing")
+  document.querySelectorAll('.ops-qf-title').forEach(el => {
+    if (!el.dataset.enText) el.dataset.enText = el.textContent.trim();
+    const orig = el.dataset.enText;
+    const tr = FORM_TEXT[orig];
+    if (tr) el.textContent = _lang === 'es' ? (tr.es ?? orig) : orig;
+  });
+
+  // Translate save/cancel button text
+  document.querySelectorAll('.ops-save-btn, .ops-cancel-btn').forEach(el => {
+    if (!el.dataset.enText) el.dataset.enText = el.textContent.trim();
+    const orig = el.dataset.enText;
+    const tr = FORM_TEXT[orig];
+    if (tr) el.textContent = _lang === 'es' ? (tr.es ?? orig) : orig;
+  });
+
+  // Translate placeholders
+  const pmap = PLACEHOLDER_TEXT[_lang] || {};
+  document.querySelectorAll('[placeholder]').forEach(el => {
+    if (!el.dataset.enPlaceholder) el.dataset.enPlaceholder = el.getAttribute('placeholder');
+    const orig = el.dataset.enPlaceholder;
+    el.setAttribute('placeholder', pmap[orig] || orig);
+  });
+}
+
 function applyTranslations() {
-  // Update all data-i18n elements
+  // Update all data-i18n elements (nav, section titles, sub-buttons)
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     const val = t(key);
@@ -3363,8 +3536,9 @@ function applyTranslations() {
   const fab = document.getElementById('lang-fab');
   const fabLbl = document.getElementById('lang-fab-label');
   if (fabLbl) fabLbl.textContent = _lang === 'en' ? 'ES' : 'EN';
-  // Show FAB only when header nav is scrolled off (mobile)
   if (fab) fab.style.display = 'flex';
+  // Translate all form labels, options, placeholders, buttons
+  applyFormTextTranslation();
 }
 
 // Show/hide FAB based on header visibility (mobile UX)
