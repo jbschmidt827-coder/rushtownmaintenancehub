@@ -1332,6 +1332,12 @@ body { min-height: 100dvh; overflow-x: hidden; }
 <div class="panel" id="panel-sched">
   <div class="section-title" data-i18n="title.sched">📅 Team Schedule</div>
 
+  <!-- Facility Toggle -->
+  <div class="pill-bar sched-fac-bar" style="margin-bottom:14px;">
+    <button class="loc-pill active" id="sched-fac-danville" onclick="setSchedFacility('Danville',this)">📍 Danville</button>
+    <button class="loc-pill" id="sched-fac-hegins" onclick="setSchedFacility('Hegins',this)">📍 Hegins</button>
+  </div>
+
   <!-- Week Navigator -->
   <div class="sched-week-nav">
     <button class="sched-nav-btn" onclick="prevSchedWeek()">‹</button>
@@ -1856,7 +1862,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <!-- Work Orders section -->
   <div class="maint-section" id="maint-wo" style="display:block;">
     <div id="wo-dash-section">
-      <div class="section-sub">Tap any card to update status — confirmation required</div>
+      <div class="section-sub" data-i18n="wo.hint">Tap any card to update status — confirmation required</div>
       <div class="stats-grid g5" id="wo-stats"></div>
       <div class="pill-bar" id="wo-loc-bar">
         <button class="loc-pill active" onclick="woLoc('all',this)">All Locations</button>
@@ -3397,6 +3403,19 @@ const TRANSLATIONS = {
     'brief.critical':'critical','brief.warnings':'warnings',
     'brief.worse':'↑ worse','brief.better':'↓ better','brief.flat':'→ flat',
     'brief.vs_yest':'vs yest',
+    // Work Orders dynamic strings
+    'wo.stat.urgent':'🔴 Urgent','wo.stat.high':'🟡 High','wo.stat.open':'Open',
+    'wo.stat.inprog':'In Progress','wo.stat.total':'Total WOs',
+    'wo.empty':'No work orders match this filter.',
+    'wo.age.new':'NEW TODAY','wo.age.1d':'1 DAY OLD',
+    'wo.age.days':'DAYS OLD','wo.age.warn':'DAYS OLD ⚠️','wo.age.over':'DAYS — OVERDUE 🔴',
+    'wo.pri.routine':'🟢 Routine',
+    'wo.down':'⚠️ DOWN','wo.degraded':'⚡ Degraded',
+    'wo.btn.start':'▶ Start','wo.btn.hold':'⏸ Hold',
+    'wo.btn.complete':'✓ Complete','wo.btn.resume':'↩ Resume','wo.btn.reopen':'↩ Re-Open',
+    'wo.unassigned':'Unassigned','wo.completedby':'✓ Completed by',
+    'wo.photo.prev':'← Prev','wo.photo.next':'Next →','wo.photo.close':'✕ Close',
+    'wo.hint':'Tap any card to update status — confirmation required',
   },
   es: {
     // Nav
@@ -3464,6 +3483,19 @@ const TRANSLATIONS = {
     'brief.critical':'críticos','brief.warnings':'alertas',
     'brief.worse':'↑ peor','brief.better':'↓ mejor','brief.flat':'→ igual',
     'brief.vs_yest':'vs ayer',
+    // Work Orders dynamic strings
+    'wo.stat.urgent':'🔴 Urgente','wo.stat.high':'🟡 Alta','wo.stat.open':'Abierto',
+    'wo.stat.inprog':'En Progreso','wo.stat.total':'Total OTs',
+    'wo.empty':'Sin órdenes para este filtro.',
+    'wo.age.new':'NUEVO HOY','wo.age.1d':'1 DÍA',
+    'wo.age.days':'DÍAS','wo.age.warn':'DÍAS ⚠️','wo.age.over':'DÍAS — VENCIDO 🔴',
+    'wo.pri.routine':'🟢 Rutina',
+    'wo.down':'⚠️ CAÍDO','wo.degraded':'⚡ Degradado',
+    'wo.btn.start':'▶ Iniciar','wo.btn.hold':'⏸ Pausar',
+    'wo.btn.complete':'✓ Completar','wo.btn.resume':'↩ Reanudar','wo.btn.reopen':'↩ Reabrir',
+    'wo.unassigned':'Sin Asignar','wo.completedby':'✓ Completado por',
+    'wo.photo.prev':'← Ant','wo.photo.next':'Sig →','wo.photo.close':'✕ Cerrar',
+    'wo.hint':'Toca una tarjeta para actualizar estado — confirmación requerida',
   }
 };
 
@@ -3660,6 +3692,43 @@ const FORM_TEXT = {
   '⚠️ Full':  { es:'⚠️ Lleno' },
   '✅ None':   { es:'✅ Ninguno' },
   '❌ Found':  { es:'❌ Encontrado' },
+  // ── Work Orders form labels ──
+  'Farm Location *':          { es:'Ubicación de Granja *' },
+  'Your Name *':              { es:'Tu Nombre *' },
+  'House / Area':             { es:'Galpón / Área' },
+  'Problem / System *':       { es:'Problema / Sistema *' },
+  'Equipment Down?':          { es:'¿Equipo Fuera de Servicio?' },
+  'Parts Needed':             { es:'Partes Necesarias' },
+  'Est. Hours':               { es:'Horas Est.' },
+  'Additional Notes':         { es:'Notas Adicionales' },
+  // ── Work Orders select options ──
+  '— Select Farm —':          { es:'— Seleccionar Granja —' },
+  '— Select Farm First —':    { es:'— Seleccionar Granja Primero —' },
+  '— Select Problem —':       { es:'— Seleccionar Problema —' },
+  'Ventilation / Fans':       { es:'Ventilación / Ventiladores' },
+  'Watering System':          { es:'Sistema de Agua' },
+  'Feed System':              { es:'Sistema de Alimento' },
+  'Heating / Brooders':       { es:'Calefacción / Criadoras' },
+  'Manure System':            { es:'Sistema de Estiércol' },
+  'Egg Collection':           { es:'Recolección de Huevos' },
+  'Generator':                { es:'Generador' },
+  'Building / Structure':     { es:'Edificio / Estructura' },
+  'No — still running':       { es:'No — sigue funcionando' },
+  'Yes — equipment down':     { es:'Sí — equipo fuera de servicio' },
+  'Normal':                   { es:'Normal' },
+  // ── Work Orders buttons / success ──
+  '✕ Cancel':                 { es:'✕ Cancelar' },
+  '✓ SUBMIT WORK ORDER':      { es:'✓ ENVIAR ORDEN DE TRABAJO' },
+  'Work Order Submitted!':    { es:'¡Orden Enviada!' },
+  'Submit Another':           { es:'Enviar Otra' },
+  'New Work Order':           { es:'Nueva Orden de Trabajo' },
+  'Fill it out — your director will see it immediately': { es:'Complétala — tu director la verá de inmediato' },
+  // ── Work Orders closeout modal ──
+  '✓ Complete Work Order':    { es:'✓ Completar Orden' },
+  'Completed By':             { es:'Completado Por' },
+  'What Was Done':            { es:'Qué Se Hizo' },
+  'Parts Used':               { es:'Partes Usadas' },
+  'Update Status?':           { es:'¿Actualizar Estado?' },
   // ── Team Schedule modal ──
   'Person Name *':            { es:'Nombre *' },
   'Role / Position':          { es:'Rol / Puesto' },
@@ -3699,6 +3768,12 @@ const PLACEHOLDER_TEXT = {
     'e.g. 134500':     'ej. 134500',
     'e.g. 11200':      'ej. 11200',
     'e.g. 134000':     'ej. 134000',
+    'Your name':                               'Tu nombre',
+    'Describe the issue in detail...':         'Describe el problema en detalle...',
+    'Any other details...':                    'Otros detalles...',
+    'List any parts (optional)':               'Lista de partes (opcional)',
+    'e.g. 2':                                  'ej. 2',
+    'Describe what was repaired, replaced, or adjusted...': 'Describe lo que se reparó, reemplazó o ajustó...',
   }
 };
 
@@ -4436,11 +4511,11 @@ function renderWO() {
   const twentyFourHrs = 24 * 60 * 60 * 1000;
   let base = woLocFilter==='all' ? workOrders : workOrders.filter(w=>w.farm===woLocFilter);
   document.getElementById('wo-stats').innerHTML =
-    sc('s-red',base.filter(w=>w.priority==='urgent'&&w.status!=='completed').length,'🔴 Urgent') +
-    sc('s-amber',base.filter(w=>w.priority==='high'&&w.status!=='completed').length,'🟡 High') +
-    sc('s-green',base.filter(w=>w.status==='open').length,'Open') +
-    sc('s-blue',base.filter(w=>w.status==='in-progress').length,'In Progress') +
-    sc('',base.length,'Total WOs');
+    sc('s-red',base.filter(w=>w.priority==='urgent'&&w.status!=='completed').length,t('wo.stat.urgent')) +
+    sc('s-amber',base.filter(w=>w.priority==='high'&&w.status!=='completed').length,t('wo.stat.high')) +
+    sc('s-green',base.filter(w=>w.status==='open').length,t('wo.stat.open')) +
+    sc('s-blue',base.filter(w=>w.status==='in-progress').length,t('wo.stat.inprog')) +
+    sc('',base.length,t('wo.stat.total'));
 
   let list = [...base];
   if (woStatFilter==='urgent') list=list.filter(w=>w.priority==='urgent');
@@ -4459,7 +4534,7 @@ function renderWO() {
 
   document.getElementById('wo-list').innerHTML = list.length
     ? list.map(wo=>woCardHtml(wo)).join('')
-    : '<div class="empty"><div class="ei">📋</div><p>No work orders match this filter.</p></div>';
+    : `<div class="empty"><div class="ei">📋</div><p>${t('wo.empty')}</p></div>`;
 }
 
 function woAgePill(wo) {
@@ -4467,17 +4542,17 @@ function woAgePill(wo) {
   const ts = wo.ts?.toMillis ? wo.ts.toMillis() : (wo.ts || 0);
   if (!ts) return '';
   const days = Math.floor((Date.now() - ts) / 86400000);
-  if (days === 0) return '<span class="wo-age-pill age-new">NEW TODAY</span>';
-  if (days === 1) return '<span class="wo-age-pill age-1d">1 DAY OLD</span>';
-  if (days <= 3)  return `<span class="wo-age-pill age-warn">${days} DAYS OLD</span>`;
-  if (days <= 7)  return `<span class="wo-age-pill age-old">${days} DAYS OLD ⚠️</span>`;
-  return `<span class="wo-age-pill age-critical">${days} DAYS — OVERDUE 🔴</span>`;
+  if (days === 0) return `<span class="wo-age-pill age-new">${t('wo.age.new')}</span>`;
+  if (days === 1) return `<span class="wo-age-pill age-1d">${days} ${t('wo.age.1d')}</span>`;
+  if (days <= 3)  return `<span class="wo-age-pill age-warn">${days} ${t('wo.age.days')}</span>`;
+  if (days <= 7)  return `<span class="wo-age-pill age-old">${days} ${t('wo.age.warn')}</span>`;
+  return `<span class="wo-age-pill age-critical">${days} ${t('wo.age.over')}</span>`;
 }
 
 function woCardHtml(wo) {
-  const pL={urgent:'🔴 Urgent',high:'🟡 High',routine:'🟢 Routine'};
+  const pL={urgent:t('wo.stat.urgent'),high:t('wo.stat.high'),routine:t('wo.pri.routine')};
   const pC={urgent:'var(--red)',high:'#b07a00',routine:'var(--green-mid)'};
-  const dT={yes:' ⚠️ DOWN',partial:' ⚡ Degraded',no:''};
+  const dT={yes:` ${t('wo.down')}`,partial:` ${t('wo.degraded')}`,no:''};
   const ts = wo.ts?.toMillis ? wo.ts.toMillis() : (wo.ts || 0);
   const ageDays = ts ? Math.floor((Date.now() - ts) / 86400000) : 0;
   const escalate = wo.priority === 'urgent' && ageDays >= 2 && wo.status !== 'completed';
@@ -4489,23 +4564,23 @@ function woCardHtml(wo) {
   let actionBtns = '';
   if (wo.status === 'open') {
     actionBtns = `
-      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','in-progress')" style="flex:1;padding:9px;background:#1e3a8a;border:none;border-radius:8px;color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">▶ Start</button>
-      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','on-hold')" style="flex:1;padding:9px;background:#4a3a00;border:1px solid #856404;border-radius:8px;color:#fcd34d;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">⏸ Hold</button>`;
+      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','in-progress')" style="flex:1;padding:9px;background:#1e3a8a;border:none;border-radius:8px;color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">${t('wo.btn.start')}</button>
+      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','on-hold')" style="flex:1;padding:9px;background:#4a3a00;border:1px solid #856404;border-radius:8px;color:#fcd34d;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">${t('wo.btn.hold')}</button>`;
   } else if (wo.status === 'in-progress') {
     actionBtns = `
-      <button onclick="event.stopPropagation();cycleWO('${wo._fbId}')" style="flex:2;padding:9px;background:#14532d;border:none;border-radius:8px;color:#86efac;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✓ Complete</button>
-      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','on-hold')" style="flex:1;padding:9px;background:#4a3a00;border:1px solid #856404;border-radius:8px;color:#fcd34d;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">⏸ Hold</button>`;
+      <button onclick="event.stopPropagation();cycleWO('${wo._fbId}')" style="flex:2;padding:9px;background:#14532d;border:none;border-radius:8px;color:#86efac;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">${t('wo.btn.complete')}</button>
+      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','on-hold')" style="flex:1;padding:9px;background:#4a3a00;border:1px solid #856404;border-radius:8px;color:#fcd34d;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">${t('wo.btn.hold')}</button>`;
   } else if (wo.status === 'on-hold') {
     actionBtns = `
-      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','in-progress')" style="flex:1;padding:9px;background:#1e3a8a;border:none;border-radius:8px;color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">▶ Resume</button>
-      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','open')" style="flex:1;padding:9px;background:#2a2a2a;border:1px solid #555;border-radius:8px;color:#ccc;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">↩ Re-Open</button>`;
+      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','in-progress')" style="flex:1;padding:9px;background:#1e3a8a;border:none;border-radius:8px;color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">${t('wo.btn.resume')}</button>
+      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','open')" style="flex:1;padding:9px;background:#2a2a2a;border:1px solid #555;border-radius:8px;color:#ccc;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">${t('wo.btn.reopen')}</button>`;
   } else if (wo.status === 'completed') {
     actionBtns = `
-      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','open')" style="flex:1;padding:9px;background:#2a1a1a;border:1px solid #7f1d1d;border-radius:8px;color:#f87171;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">↩ Re-Open</button>`;
+      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','open')" style="flex:1;padding:9px;background:#2a1a1a;border:1px solid #7f1d1d;border-radius:8px;color:#f87171;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">${t('wo.btn.reopen')}</button>`;
   }
 
   const completedInfo = wo.status === 'completed' && wo.completedBy
-    ? `<div style="margin-top:6px;padding:6px 8px;background:#0a1f0a;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#4caf50;">✓ Completed by ${wo.completedBy}${wo.completedDate?' · '+wo.completedDate:''}${wo.completedNotes?'<br><span style="color:#7ab07a;">'+wo.completedNotes+'</span>':''}</div>` : '';
+    ? `<div style="margin-top:6px;padding:6px 8px;background:#0a1f0a;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#4caf50;">${t('wo.completedby')} ${wo.completedBy}${wo.completedDate?' · '+wo.completedDate:''}${wo.completedNotes?'<br><span style="color:#7ab07a;">'+wo.completedNotes+'</span>':''}</div>` : '';
 
   return `<div class="wo-card ${wo.priority}${escalate?' wo-escalated':''}">
     <div class="wo-id">${wo.id}<div class="wo-pri" style="color:${pC[wo.priority]}">${pL[wo.priority]}</div></div>
@@ -4520,7 +4595,7 @@ function woCardHtml(wo) {
     <div class="wo-meta">
       <span class="badge ${wo.status}">${wo.status.replace('-',' ').replace(/\b\w/g,c=>c.toUpperCase())}</span>
       ${woAgePill(wo)}
-      <span class="wo-meta-txt">👤 ${wo.tech||'Unassigned'}</span>
+      <span class="wo-meta-txt">👤 ${wo.tech||t('wo.unassigned')}</span>
       <span class="wo-meta-txt">${wo.submitted||''}</span>
     </div>
     <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
@@ -4544,9 +4619,9 @@ function openPhotoViewer(fbId) {
         <div style="text-align:center;color:#ccc;font-size:13px;margin-top:8px;">${idx+1} / ${wo.photos.length} · ${wo.id} · ${wo.farm} · ${wo.house}</div>
       </div>
       <div style="display:flex;gap:16px;margin-top:14px;">
-        ${wo.photos.length > 1 ? `<button onclick="event.stopPropagation();window._lbPrev()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">← Prev</button>` : ''}
-        ${wo.photos.length > 1 ? `<button onclick="event.stopPropagation();window._lbNext()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">Next →</button>` : ''}
-        <button onclick="document.getElementById('photo-lightbox').remove()" style="padding:10px 20px;background:#c0392b;border:none;color:white;border-radius:8px;cursor:pointer;font-size:14px;">✕ Close</button>
+        ${wo.photos.length > 1 ? `<button onclick="event.stopPropagation();window._lbPrev()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">${t('wo.photo.prev')}</button>` : ''}
+        ${wo.photos.length > 1 ? `<button onclick="event.stopPropagation();window._lbNext()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">${t('wo.photo.next')}</button>` : ''}
+        <button onclick="document.getElementById('photo-lightbox').remove()" style="padding:10px 20px;background:#c0392b;border:none;color:white;border-radius:8px;cursor:pointer;font-size:14px;">${t('wo.photo.close')}</button>
       </div>`;
   };
   window._lbPrev = () => { idx = (idx - 1 + wo.photos.length) % wo.photos.length; renderLB(); };
@@ -11718,9 +11793,10 @@ const SCHED_DAYS = ['mon','tue','wed','thu','fri','sat','sun'];
 const SCHED_DAY_LABELS = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
 const SHIFT_COLOR = { morning:'morning', afternoon:'afternoon', night:'night' };
 
-let _schedWeekOf = '';
-let _schedData   = [];
-let _schedEditId = null;
+let _schedWeekOf  = '';
+let _schedFacility = 'Danville';
+let _schedData    = [];
+let _schedEditId  = null;
 let _schedModalDept = '';
 let _schedModalDay  = '';
 
@@ -11743,6 +11819,13 @@ function schedWeekLabel() {
   return m1 === m2 ? `${m1} ${d1} – ${d2}, ${yr}` : `${m1} ${d1} – ${m2} ${d2}, ${yr}`;
 }
 
+function setSchedFacility(fac, btn) {
+  _schedFacility = fac;
+  document.querySelectorAll('.sched-fac-bar .loc-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadSchedule();
+}
+
 function prevSchedWeek() {
   const d = new Date(_schedWeekOf + 'T12:00:00');
   d.setDate(d.getDate() - 7);
@@ -11761,7 +11844,7 @@ async function loadSchedule() {
   document.getElementById('sched-week-label').textContent = 'Week of ' + schedWeekLabel();
   _schedData = [];
   try {
-    const snap = await db.collection('teamSchedule').where('weekOf','==',_schedWeekOf).get();
+    const snap = await db.collection('teamSchedule').where('weekOf','==',_schedWeekOf).where('facility','==',_schedFacility).get();
     snap.forEach(doc => _schedData.push({ _id: doc.id, ...doc.data() }));
   } catch(e) { console.error('Schedule load error:', e); }
   renderSchedule();
@@ -11827,7 +11910,7 @@ function openSchedModal(dept, day, entryId) {
   const deptObj = SCHED_DEPTS.find(d => d.key === dept) || {};
   const dayLabel = SCHED_DAY_LABELS[SCHED_DAYS.indexOf(day)] || day.toUpperCase();
   document.getElementById('sched-modal-title').textContent =
-    `${deptObj.icon || ''} ${deptObj.label || dept} — ${dayLabel}`;
+    `${deptObj.icon || ''} ${deptObj.label || dept} — ${dayLabel} · ${_schedFacility}`;
 
   if (entryId) {
     const entry = _schedData.find(r => r._id === entryId) || {};
@@ -11857,9 +11940,10 @@ async function saveSchedEntry() {
   const person = document.getElementById('sched-person').value.trim();
   if (!person) { alert('Person name is required.'); return; }
   const record = {
-    weekOf: _schedWeekOf,
-    dept:   _schedModalDept,
-    day:    _schedModalDay,
+    weekOf:   _schedWeekOf,
+    facility: _schedFacility,
+    dept:     _schedModalDept,
+    day:      _schedModalDay,
     person,
     role:   document.getElementById('sched-role').value.trim(),
     shift:  document.getElementById('sched-shift').value,
@@ -11903,7 +11987,7 @@ async function copyLastWeek() {
   prevMon.setDate(prevMon.getDate() - 7);
   const prevWeekOf = prevMon.toISOString().slice(0,10);
   try {
-    const snap = await db.collection('teamSchedule').where('weekOf','==',prevWeekOf).get();
+    const snap = await db.collection('teamSchedule').where('weekOf','==',prevWeekOf).where('facility','==',_schedFacility).get();
     if (snap.empty) { alert('No schedule found for last week.'); return; }
     const batch = db.batch();
     snap.forEach(doc => {
