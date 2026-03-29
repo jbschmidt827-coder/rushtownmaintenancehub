@@ -3756,20 +3756,47 @@ function woCardHtml(wo) {
   const photoStrip = (wo.photos && wo.photos.length)
     ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">${wo.photos.map(p=>`<img src="${p}" style="height:60px;border-radius:6px;border:1px solid var(--border);cursor:zoom-in;" onclick="event.stopPropagation();openPhotoViewer('${wo._fbId}')">`).join('')}</div>`
     : '';
-  return `<div class="wo-card ${wo.priority}${escalate?' wo-escalated':''}" onclick="cycleWO('${wo._fbId}')">
+
+  // Build status action buttons based on current status
+  let actionBtns = '';
+  if (wo.status === 'open') {
+    actionBtns = `
+      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','in-progress')" style="flex:1;padding:9px;background:#1e3a8a;border:none;border-radius:8px;color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">▶ Start</button>
+      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','on-hold')" style="flex:1;padding:9px;background:#4a3a00;border:1px solid #856404;border-radius:8px;color:#fcd34d;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">⏸ Hold</button>`;
+  } else if (wo.status === 'in-progress') {
+    actionBtns = `
+      <button onclick="event.stopPropagation();cycleWO('${wo._fbId}')" style="flex:2;padding:9px;background:#14532d;border:none;border-radius:8px;color:#86efac;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✓ Complete</button>
+      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','on-hold')" style="flex:1;padding:9px;background:#4a3a00;border:1px solid #856404;border-radius:8px;color:#fcd34d;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">⏸ Hold</button>`;
+  } else if (wo.status === 'on-hold') {
+    actionBtns = `
+      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','in-progress')" style="flex:1;padding:9px;background:#1e3a8a;border:none;border-radius:8px;color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">▶ Resume</button>
+      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','open')" style="flex:1;padding:9px;background:#2a2a2a;border:1px solid #555;border-radius:8px;color:#ccc;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">↩ Re-Open</button>`;
+  } else if (wo.status === 'completed') {
+    actionBtns = `
+      <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','open')" style="flex:1;padding:9px;background:#2a1a1a;border:1px solid #7f1d1d;border-radius:8px;color:#f87171;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">↩ Re-Open</button>`;
+  }
+
+  const completedInfo = wo.status === 'completed' && wo.completedBy
+    ? `<div style="margin-top:6px;padding:6px 8px;background:#0a1f0a;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#4caf50;">✓ Completed by ${wo.completedBy}${wo.completedDate?' · '+wo.completedDate:''}${wo.completedNotes?'<br><span style="color:#7ab07a;">'+wo.completedNotes+'</span>':''}</div>` : '';
+
+  return `<div class="wo-card ${wo.priority}${escalate?' wo-escalated':''}">
     <div class="wo-id">${wo.id}<div class="wo-pri" style="color:${pC[wo.priority]}">${pL[wo.priority]}</div></div>
     <div class="wo-body">
       <h4>${wo.farm} · ${wo.house}${dT[wo.down]||''}</h4>
       <span class="prob-tag">${wo.problem}</span>
       <p>${wo.desc}</p>
       ${wo.parts?`<p style="margin-top:5px;font-size:12px;color:var(--green-mid)">🔩 ${wo.parts}</p>`:''}
+      ${completedInfo}
       ${photoStrip}
     </div>
     <div class="wo-meta">
       <span class="badge ${wo.status}">${wo.status.replace('-',' ').replace(/\b\w/g,c=>c.toUpperCase())}</span>
       ${woAgePill(wo)}
-      <span class="wo-meta-txt">👤 ${wo.tech}</span>
-      <span class="wo-meta-txt">${wo.submitted}</span>
+      <span class="wo-meta-txt">👤 ${wo.tech||'Unassigned'}</span>
+      <span class="wo-meta-txt">${wo.submitted||''}</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
+      ${actionBtns}
     </div>
   </div>`;
 }
@@ -3838,7 +3865,32 @@ async function confirmWOCycle() {
   const newStatus = cycle[(cycle.indexOf(wo.status)+1) % cycle.length];
   closeWOConfirm();
   setSyncDot('saving');
-  await db.collection('workOrders').doc(wo._fbId).update({status: newStatus});
+  try {
+    await db.collection('workOrders').doc(wo._fbId).update({status: newStatus});
+  } catch(e) { console.error('WO cycle failed:', e); alert('Update failed: ' + e.message); }
+  setSyncDot('live');
+}
+
+// Direct status setter — used by the explicit action buttons on WO cards
+async function woSetStatus(fbId, newStatus) {
+  const wo = workOrders.find(w => w._fbId === fbId);
+  if (!wo) return;
+  // Demo WOs (no real Firestore doc) — update local array only
+  if (fbId.startsWith('demo-')) {
+    wo.status = newStatus;
+    renderWO();
+    return;
+  }
+  setSyncDot('saving');
+  try {
+    await db.collection('workOrders').doc(fbId).update({ status: newStatus, updatedTs: Date.now() });
+    // Optimistically update local copy for instant UI feedback
+    wo.status = newStatus;
+    renderWO();
+  } catch(e) {
+    console.error('woSetStatus failed:', e);
+    alert('Could not update work order: ' + e.message);
+  }
   setSyncDot('live');
 }
 
