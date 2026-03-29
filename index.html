@@ -791,6 +791,9 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <div class="section-title">📊 Operations Dashboard</div>
   <div class="section-sub" id="dash-date"></div>
 
+  <!-- 6am Executive Brief -->
+  <div id="dash-exec-brief" style="margin-bottom:14px;"></div>
+
   <!-- Egg KPI Hero -->
   <div id="dash-egg-kpi" style="margin-bottom:14px;"></div>
 
@@ -978,6 +981,12 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <div class="ss-chart-wrap">
       <div class="ss-chart-title">🔧 PM Compliance Rate</div>
       <canvas id="chart-pm-compliance" height="100"></canvas>
+    </div>
+    <!-- Defect Pareto -->
+    <div class="ss-chart-wrap">
+      <div class="ss-chart-title">📊 Defect Pareto — Top Causes by Count</div>
+      <canvas id="chart-defect-pareto" height="120"></canvas>
+      <div id="kpi-pareto-note" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a6a3a;margin-top:6px;text-align:center;"></div>
     </div>
   </div>
 
@@ -3394,9 +3403,123 @@ function sc(cls, num, lbl) {
 // ═══════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────────────────────
+// 6am Executive Brief — Director-ready top-issues ranked by severity
+// ─────────────────────────────────────────────────────────────────────────────
+function renderExecBrief(todayStr, yesterStr) {
+  const el = document.getElementById('dash-exec-brief');
+  if (!el) return;
+
+  const issues = []; // { sev: 'critical'|'warning'|'ok', icon, title, detail, trend }
+
+  // 1. Equipment down right now
+  const activeDowntime = (downtimeEvents||[]).filter(e => e.ongoing || !e.endTs);
+  if (activeDowntime.length > 0) {
+    const names = activeDowntime.slice(0,3).map(e => e.equipment||'Unknown').join(', ');
+    issues.push({ sev:'critical', icon:'🔴', title:`${activeDowntime.length} Equipment Down`, detail: names, trend:null });
+  }
+
+  // 2. Urgent open work orders
+  const urgentOpen = (workOrders||[]).filter(w => w.priority==='urgent' && w.status!=='completed');
+  if (urgentOpen.length > 0) {
+    const topWO = urgentOpen[0];
+    issues.push({ sev:'critical', icon:'🔧', title:`${urgentOpen.length} Urgent WO${urgentOpen.length>1?'s':''}`, detail: topWO.title||topWO.equipment||'See Work Orders', trend:null });
+  }
+
+  // 3. PM overdue
+  const pmOvCount = (ALL_PM||[]).filter(t=>pmStatus(t.id)==='overdue').length;
+  if (pmOvCount > 0) {
+    issues.push({ sev: pmOvCount >= 3 ? 'critical' : 'warning', icon:'⏰', title:`${pmOvCount} PM Tasks Overdue`, detail:'Tap Maintenance → PM Schedule', trend:null });
+  }
+
+  // 4. Barns flagged today
+  const allBarns2 = [...Array.from({length:8},(_,i)=>({farm:'Hegins',n:i+1})),...Array.from({length:5},(_,i)=>({farm:'Danville',n:i+1})),...Array.from({length:5},(_,i)=>({farm:'Rushtown',n:i+1})),...Array.from({length:4},(_,i)=>({farm:'Turbotville',n:i+1})),...Array.from({length:2},(_,i)=>({farm:'W&M',n:i+1}))];
+  const bs2 = typeof BARN_STATUS !== 'undefined' ? BARN_STATUS : {};
+  const flaggedBarns2 = allBarns2.filter(b=>bs2[b.farm+'-'+b.n]==='issue');
+  if (flaggedBarns2.length > 0) {
+    const names2 = flaggedBarns2.slice(0,3).map(b=>`${b.farm} H${b.n}`).join(', ');
+    issues.push({ sev:'warning', icon:'🚩', title:`${flaggedBarns2.length} Barn${flaggedBarns2.length>1?'s':''} Flagged`, detail: names2, trend:null });
+  }
+
+  // 5. Egg quality — defect rate trend vs yesterday
+  const qToday = (opsEggQuality||[]).filter(r=>r.date===todayStr);
+  const qYest  = (opsEggQuality||[]).filter(r=>r.date===yesterStr);
+  const calcDefRate = recs => {
+    const g = recs.reduce((s,r)=>s+(Number(r.totalGraded)||0),0);
+    const d = recs.reduce((s,r)=>(Number(r.cracks)||0)+(Number(r.dirties)||0)+(Number(r.softShells)||0)+(Number(r.bloodSpots)||0)+(Number(r.floorEggs)||0)+s,0);
+    return g > 0 ? (d/g*100) : null;
+  };
+  const drToday = calcDefRate(qToday);
+  const drYest  = calcDefRate(qYest);
+  if (drToday !== null) {
+    let trend = null;
+    if (drYest !== null) trend = drToday > drYest + 0.5 ? '↑ worse' : drToday < drYest - 0.5 ? '↓ better' : '→ flat';
+    const sev = drToday > 5 ? 'critical' : drToday > 2 ? 'warning' : 'ok';
+    issues.push({ sev, icon:'🥚', title:`Defect Rate ${drToday.toFixed(1)}%`, detail: `${qToday.length} quality record${qToday.length!==1?'s':''} today`, trend });
+  }
+
+  // 6. Mortality spike
+  const todayMort = typeof _todayMortTotal !== 'undefined' ? _todayMortTotal : 0;
+  if (todayMort > 5) {
+    issues.push({ sev: todayMort > 15 ? 'critical' : 'warning', icon:'⚠️', title:`Mortality: ${todayMort} birds`, detail:'Check barn walk logs', trend:null });
+  }
+
+  // 7. Low parts stock
+  const lowParts2 = (typeof PARTS_DEFS!=='undefined'?PARTS_DEFS:[]).filter(p=>{const inv=partsInventory[p.id]||{qty:0,min:1};return inv.qty<=inv.min;}).length;
+  if (lowParts2 > 0) {
+    issues.push({ sev:'warning', icon:'📦', title:`${lowParts2} Part${lowParts2>1?'s':''} Low Stock`, detail:'Tap Maintenance → Parts', trend:null });
+  }
+
+  // Sort: critical first, then warning, then ok
+  const sevOrder = {critical:0, warning:1, ok:2};
+  issues.sort((a,b) => sevOrder[a.sev] - sevOrder[b.sev]);
+
+  // All clear
+  if (issues.length === 0) {
+    el.innerHTML = `
+      <div style="background:linear-gradient(135deg,#0a1f0a,#0f2a0f);border:1.5px solid #2a5a2a;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;">✅</span>
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#4caf50;letter-spacing:1px;text-transform:uppercase;">All Clear</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3a6a3a;margin-top:2px;">No critical issues at this time</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const sevColors = { critical:'#e53e3e', warning:'#d69e2e', ok:'#4caf50' };
+  const sevBg     = { critical:'#1a0505', warning:'#1a1200', ok:'#0a1a0a' };
+  const sevBorder = { critical:'#5a1010', warning:'#4a3500', ok:'#1a3a1a' };
+  const trendColors = { '↑ worse':'#e53e3e', '↓ better':'#4caf50', '→ flat':'#7a8a7a' };
+
+  const rows = issues.slice(0,5).map((iss,i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:${sevBg[iss.sev]};border-left:3px solid ${sevColors[iss.sev]};${i<issues.slice(0,5).length-1?'border-bottom:1px solid #1a2a1a;':''}">
+      <span style="font-size:16px;flex-shrink:0;">${iss.icon}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:${sevColors[iss.sev]};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${iss.title}${iss.trend?` <span style="color:${trendColors[iss.trend]||'#7a8a7a'};font-size:10px;">${iss.trend}</span>`:''}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5a7a5a;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${iss.detail}</div>
+      </div>
+      <div style="font-size:8px;font-family:'IBM Plex Mono',monospace;color:${sevColors[iss.sev]};text-transform:uppercase;letter-spacing:1px;flex-shrink:0;">${iss.sev}</div>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <div style="background:#0a1a0a;border:1.5px solid ${issues[0].sev==='critical'?'#5a1010':'#3a4a1a'};border-radius:12px;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#0f0f0f;border-bottom:1px solid #1a2a1a;">
+        <span style="font-size:13px;">📋</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#9a9a7a;letter-spacing:2px;text-transform:uppercase;">Executive Brief</span>
+        <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a5a4a;">${issues.filter(i=>i.sev==='critical').length} critical · ${issues.filter(i=>i.sev==='warning').length} warnings</span>
+      </div>
+      ${rows}
+    </div>`;
+}
+
 function renderDash() {
   document.getElementById('dash-date').textContent = TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   const todayStr = new Date().toISOString().slice(0,10);
+  const yesterStr = new Date(Date.now()-86400000).toISOString().slice(0,10);
+
+  // ── 6am Executive Brief ──
+  renderExecBrief(todayStr, yesterStr);
 
   // ── PM overdue alert banner ──
   const pmOvCount = ALL_PM.filter(t=>pmStatus(t.id)==='overdue').length;
@@ -3412,17 +3535,26 @@ function renderDash() {
   }
 
   // ── PRODUCTION card ──
-  const allBarns = [...Array.from({length:8},(_,i)=>({farm:'Hegins',n:i+1})),...Array.from({length:5},(_,i)=>({farm:'Danville',n:i+1}))];
+  const allBarns = [...Array.from({length:8},(_,i)=>({farm:'Hegins',n:i+1})),...Array.from({length:5},(_,i)=>({farm:'Danville',n:i+1})),...Array.from({length:5},(_,i)=>({farm:'Rushtown',n:i+1})),...Array.from({length:4},(_,i)=>({farm:'Turbotville',n:i+1})),...Array.from({length:2},(_,i)=>({farm:'W&M',n:i+1}))];
   const bs = typeof BARN_STATUS !== 'undefined' ? BARN_STATUS : {};
   const barnsDone = allBarns.filter(b=>bs[b.farm+'-'+b.n]==='done'||bs[b.farm+'-'+b.n]==='issue').length;
   const flaggedBarns = allBarns.filter(b=>bs[b.farm+'-'+b.n]==='issue').length;
   const barnPct = Math.round(barnsDone/allBarns.length*100);
   const todayMortTotal = typeof _todayMortTotal !== 'undefined' ? _todayMortTotal : 0;
-  // Build egg map: "Farm-House" → total eggs today (sum across shifts)
+  // Build egg map: today vs yesterday for trend
+  const eggMapToday = {}, eggMapYest = {};
+  (typeof opsEggByBarn!=='undefined'?opsEggByBarn:[]).filter(r=>r.date===todayStr)
+    .forEach(r=>{ const k=r.farm+'-'+r.house; if(!eggMapToday[k]||r.ts>eggMapToday[k].ts) eggMapToday[k]=r; });
+  (typeof opsEggByBarn!=='undefined'?opsEggByBarn:[]).filter(r=>r.date===yesterStr)
+    .forEach(r=>{ const k=r.farm+'-'+r.house; if(!eggMapYest[k]||r.ts>eggMapYest[k].ts) eggMapYest[k]=r; });
+  const todayEggTotal = Object.values(eggMapToday).reduce((s,r)=>s+(Number(r.eggsCollected)||0),0);
+  const yesterEggTotal= Object.values(eggMapYest).reduce((s,r)=>s+(Number(r.eggsCollected)||0),0);
+  const eggTrend = (todayEggTotal > 0 && yesterEggTotal > 0) ? (todayEggTotal >= yesterEggTotal ? `<span style="color:#4caf50;font-size:10px;">↑ ${fmtNum(todayEggTotal-yesterEggTotal)} vs yest</span>` : `<span style="color:#e53e3e;font-size:10px;">↓ ${fmtNum(yesterEggTotal-todayEggTotal)} vs yest</span>`) : '';
+  // Legacy opsEggData fallback
   const eggMap = {};
   (typeof opsEggData!=='undefined'?opsEggData:[]).filter(r=>r.date===todayStr)
     .forEach(r=>{ const k=r.farm+'-'+r.house; eggMap[k]=(eggMap[k]||0)+(Number(r.eggs)||0); });
-  const todayEggs = Object.values(eggMap).reduce((s,v)=>s+v,0);
+  const todayEggs = todayEggTotal || Object.values(eggMap).reduce((s,v)=>s+v,0);
   const barnColor = barnPct>=80?'#4caf50':barnPct>=50?'#d69e2e':'#e53e3e';
   const prodCard = document.getElementById('dash-prod-card');
   if (prodCard) prodCard.innerHTML = `
@@ -3440,6 +3572,7 @@ function renderDash() {
         <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Mortality Today</div>
       </div>
     </div>
+    ${todayEggs > 0 ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3a6a3a;margin-bottom:5px;">${fmtNum(todayEggs)} eggs ${eggTrend}</div>` : ''}
     ${flaggedBarns>0?`<div style="font-size:10px;color:#e53e3e;font-family:'IBM Plex Mono',monospace;font-weight:700;margin-bottom:6px;">🚩 ${flaggedBarns} barn${flaggedBarns>1?'s':''} flagged</div>`:''}
     <div style="background:#163016;border-radius:3px;height:4px;overflow:hidden;"><div style="height:100%;background:${barnColor};width:${barnPct}%;border-radius:3px;"></div></div>`;
 
@@ -3476,6 +3609,8 @@ function renderDash() {
 
   // ── PACKAGING card ──
   const todayPacked = (typeof opsPackData!=='undefined'?opsPackData:[]).filter(r=>r.date===todayStr).reduce((s,r)=>s+(Number(r.qty)||0),0);
+  const yesterPacked= (typeof opsPackData!=='undefined'?opsPackData:[]).filter(r=>r.date===yesterStr).reduce((s,r)=>s+(Number(r.qty)||0),0);
+  const packTrend = (todayPacked > 0 && yesterPacked > 0) ? (todayPacked >= yesterPacked ? `<span style="color:#4caf50;">↑ ${todayPacked-yesterPacked}</span>` : `<span style="color:#e53e3e;">↓ ${yesterPacked-todayPacked}</span>`) : '';
   const pkgCard = document.getElementById('dash-pkg-card');
   if (pkgCard) pkgCard.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
@@ -3492,7 +3627,7 @@ function renderDash() {
         <div style="font-size:9px;color:#7a6a30;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Cases Packed</div>
       </div>
     </div>
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8a7040;">${fmtNum(todayPacked)} cases packed today</div>`;
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8a7040;">${fmtNum(todayPacked)} cases${packTrend?' &nbsp;'+packTrend+' vs yest':' packed today'}</div>`;
 
   // ── SHIPPING card ──
   const activeLoads = (typeof opsShipData!=='undefined'?opsShipData:[]).filter(r=>['in-process','staged','loaded'].includes(r.status)).length;
@@ -9991,7 +10126,27 @@ function renderKpiDashboard() {
     return counted > 0 ? totalUsed : null;
   })();
   const fcr = (todayFeedLbs && totalCollected > 0) ? (todayFeedLbs / totalCollected).toFixed(3) : null;
-  const sigmaVal = overallPct !== null ? sigmaLevel(overallPct) : null;
+
+  // ── Sigma Level — from ACTUAL egg quality defect data (real Six Sigma) ──
+  const qRecs = (opsEggQuality||[]).filter(r => r.date === date);
+  let sigmaVal = null, sigmaSource = 'none', sigmaSampleN = 0;
+  if (qRecs.length > 0) {
+    const totalGraded  = qRecs.reduce((s,r)=>s+(Number(r.totalGraded)||0),0);
+    const totalDefects = qRecs.reduce((s,r)=>
+      (Number(r.cracks)||0)+(Number(r.dirties)||0)+(Number(r.softShells)||0)+
+      (Number(r.bloodSpots)||0)+(Number(r.floorEggs)||0)+s, 0);
+    if (totalGraded > 0) {
+      const passRate = ((totalGraded - totalDefects) / totalGraded) * 100;
+      sigmaVal = sigmaLevel(passRate);
+      sigmaSource = 'quality';
+      sigmaSampleN = totalGraded;
+    }
+  }
+  // Fallback: use throughput % only if no quality data yet today
+  if (sigmaVal === null && overallPct !== null) {
+    sigmaVal = sigmaLevel(overallPct);
+    sigmaSource = 'throughput';
+  }
   const blt = sigmaVal !== null ? sigmaBeltLabel(sigmaVal) : null;
 
   // Stats bar
@@ -10014,6 +10169,7 @@ function renderKpiDashboard() {
       <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:${blt.color};line-height:1;">${sigmaVal.toFixed(1)}σ</div>
       <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Sigma Level</div>
       <div style="font-size:9px;color:${blt.color};font-family:'IBM Plex Mono',monospace;margin-top:4px;">${blt.label.split('—')[0].trim()}</div>
+      <div style="font-size:8px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;margin-top:3px;">${sigmaSource==='quality'?`based on ${sigmaSampleN} eggs graded`:'based on throughput %'}</div>
     </div>` : ''}
     ${fcr !== null ? `<div style="background:#0a1a0f;border:1px solid #1a3a2a;border-radius:10px;padding:14px 10px;text-align:center;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#7ab07a;line-height:1;">${fcr}</div>
@@ -10123,7 +10279,7 @@ function renderKpiLog() {
 // SIX SIGMA / TRENDS
 // ═══════════════════════════════════════════════════════════════════════════
 
-let _chartEggSpc = null, _chartMortality = null, _chartPmCompliance = null;
+let _chartEggSpc = null, _chartMortality = null, _chartPmCompliance = null, _chartDefectPareto = null;
 
 function destroyChart(ref) { try { if (ref) ref.destroy(); } catch(e){} }
 
@@ -10178,14 +10334,38 @@ function renderKpiTrends() {
     return totalTarget > 0 ? Math.round((totalCollected/totalTarget)*100) : null;
   });
 
-  // Filter to days with data for stats
+  // Filter to days with data for stats (KPI throughput for control chart)
   const dataPoints = dailyKpi.filter(v => v !== null);
   const mean = dataPoints.length ? dataPoints.reduce((s,v)=>s+v,0)/dataPoints.length : 0;
   const variance = dataPoints.length > 1 ? dataPoints.reduce((s,v)=>s+(v-mean)**2,0)/(dataPoints.length-1) : 0;
   const stdDev = Math.sqrt(variance);
   const ucl = Math.min(100, Math.round(mean + 3*stdDev));
   const lcl = Math.max(0,   Math.round(mean - 3*stdDev));
-  const avgSigma = dataPoints.length ? sigmaLevel(mean) : 0;
+
+  // ── Sigma from ACTUAL egg quality data (real defect rate) ──
+  const qualityPoints = dates.map(date => {
+    const recs = (opsEggQuality||[]).filter(r => {
+      if (r.date !== date) return false;
+      if (farm !== 'all' && r.farm !== farm) return false;
+      return true;
+    });
+    if (!recs.length) return null;
+    const totalGraded  = recs.reduce((s,r)=>s+(Number(r.totalGraded)||0),0);
+    const totalDefects = recs.reduce((s,r)=>
+      (Number(r.cracks)||0)+(Number(r.dirties)||0)+(Number(r.softShells)||0)+
+      (Number(r.bloodSpots)||0)+(Number(r.floorEggs)||0)+s, 0);
+    return totalGraded > 0 ? ((totalGraded - totalDefects) / totalGraded) * 100 : null;
+  });
+  const qualityPts = qualityPoints.filter(v => v !== null);
+  let avgSigma, sigmaNote;
+  if (qualityPts.length > 0) {
+    const qMean = qualityPts.reduce((s,v)=>s+v,0) / qualityPts.length;
+    avgSigma = sigmaLevel(qMean);
+    sigmaNote = `from ${qualityPts.length} quality records`;
+  } else {
+    avgSigma = dataPoints.length ? sigmaLevel(mean) : 0;
+    sigmaNote = 'based on throughput %';
+  }
   const belt = sigmaBeltLabel(avgSigma);
 
   // ── Sigma Level Card ──
@@ -10196,10 +10376,11 @@ function renderKpiTrends() {
         <div class="ss-stat-val" style="color:${belt.color};">${avgSigma.toFixed(1)}σ</div>
         <div class="ss-stat-lbl">Process Sigma</div>
         <div class="ss-sigma-belt" style="background:${belt.bg};color:${belt.color};">${belt.label}</div>
+        <div style="font-size:8px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;margin-top:4px;">${sigmaNote}</div>
       </div>
       <div class="ss-stat-card">
         <div class="ss-stat-val" style="color:${kpiCol(mean)}">${mean.toFixed(1)}%</div>
-        <div class="ss-stat-lbl">Avg KPI (${days}d)</div>
+        <div class="ss-stat-lbl">Avg Throughput (${days}d)</div>
       </div>
       <div class="ss-stat-card" style="border-color:#2a3a5a;background:#0a0f1f;">
         <div class="ss-stat-val" style="color:#e53e3e;">${ucl}%</div>
@@ -10280,6 +10461,55 @@ function renderKpiTrends() {
       ]},
       options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#5a8a5a',font:{family:'IBM Plex Mono',size:9}},grid:{color:'#1a2a1a'}}, y:{min:0,max:110,ticks:{color:'#5a8a5a',font:{family:'IBM Plex Mono',size:9},callback:v=>v+'%'},grid:{color:'#1a2a1a'}} } }
     });
+  }
+
+  // ── Defect Pareto Chart (from opsEggQuality) ──
+  destroyChart(_chartDefectPareto);
+  const paretoCtx = document.getElementById('chart-defect-pareto');
+  const paretoNote = document.getElementById('kpi-pareto-note');
+  const qRecs2 = (opsEggQuality||[]).filter(r => {
+    if (farm !== 'all' && r.farm !== farm) return false;
+    return dates.includes(r.date);
+  });
+  if (paretoCtx && qRecs2.length > 0) {
+    const defectTotals = {
+      'Cracks':      qRecs2.reduce((s,r)=>s+(Number(r.cracks)||0),0),
+      'Dirties':     qRecs2.reduce((s,r)=>s+(Number(r.dirties)||0),0),
+      'Floor Eggs':  qRecs2.reduce((s,r)=>s+(Number(r.floorEggs)||0),0),
+      'Soft Shells': qRecs2.reduce((s,r)=>s+(Number(r.softShells)||0),0),
+      'Blood Spots': qRecs2.reduce((s,r)=>s+(Number(r.bloodSpots)||0),0)
+    };
+    const sorted = Object.entries(defectTotals).sort((a,b)=>b[1]-a[1]);
+    const paretoLabels = sorted.map(([k])=>k);
+    const paretoCounts = sorted.map(([,v])=>v);
+    const totalDef = paretoCounts.reduce((s,v)=>s+v,0);
+    // Cumulative % line
+    let cum = 0;
+    const cumPct = paretoCounts.map(v=>{ cum+=v; return totalDef>0?Math.round(cum/totalDef*100):0; });
+    const barColors = ['#e53e3e','#d69e2e','#ed8936','#9b59b6','#3b82f6'];
+    _chartDefectPareto = new Chart(paretoCtx, {
+      type: 'bar',
+      data: {
+        labels: paretoLabels,
+        datasets: [
+          { type:'bar', label:'Defect Count', data:paretoCounts, backgroundColor:barColors, borderRadius:4, yAxisID:'y' },
+          { type:'line', label:'Cumulative %', data:cumPct, borderColor:'#f0ead8', pointBackgroundColor:'#f0ead8', pointRadius:4, tension:0, yAxisID:'y2' }
+        ]
+      },
+      options: {
+        responsive:true,
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx => ctx.dataset.label+': '+(ctx.datasetIndex===1?ctx.parsed.y+'%':ctx.parsed.y) } } },
+        scales: {
+          x:{ ticks:{color:'#9a9a7a',font:{family:'IBM Plex Mono',size:10}}, grid:{color:'#1a2a1a'} },
+          y:{ position:'left', ticks:{color:'#5a8a5a',font:{family:'IBM Plex Mono',size:9}}, grid:{color:'#1a2a1a'}, title:{display:true,text:'Count',color:'#3a6a3a',font:{family:'IBM Plex Mono',size:9}} },
+          y2:{ position:'right', min:0, max:100, ticks:{color:'#8a8a6a',font:{family:'IBM Plex Mono',size:9},callback:v=>v+'%'}, grid:{display:false}, title:{display:true,text:'Cumulative %',color:'#6a6a4a',font:{family:'IBM Plex Mono',size:9}} }
+        }
+      }
+    });
+    if (paretoNote) paretoNote.textContent = `${totalDef.toLocaleString()} total defects across ${qRecs2.length} quality record${qRecs2.length!==1?'s':''} in last ${days} days`;
+  } else if (paretoCtx) {
+    // No quality data — show placeholder
+    if (paretoNote) paretoNote.textContent = 'No egg quality records in this period. Use Packaging → Egg Quality to log grade-outs.';
   }
 }
 
