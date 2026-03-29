@@ -458,6 +458,53 @@ body { min-height: 100dvh; overflow-x: hidden; }
 .actual-leg::before{background:#4caf50 !important;}
 .pm-compliance-bar{height:10px;border-radius:5px;background:#163016;overflow:hidden;margin-top:6px;}
 .pm-compliance-fill{height:100%;border-radius:5px;transition:width .4s;}
+/* ── TEAM SCHEDULE ── */
+.sched-week-nav{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.sched-nav-btn{background:#1a3a2a;border:1.5px solid #2a5a2a;color:#a8d5b5;border-radius:8px;padding:7px 14px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;}
+.sched-nav-btn:hover{background:#2d5a3d;color:#fff;}
+.sched-week-label{flex:1;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:#e8f5ec;min-width:200px;}
+.sched-copy-btn{background:#163016;border:1.5px solid #4a9b6f;color:#4a9b6f;border-radius:8px;padding:7px 13px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;}
+.sched-copy-btn:hover{background:#2d5a3d;color:#fff;}
+.sched-kpi-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+@media(max-width:600px){.sched-kpi-bar{grid-template-columns:repeat(2,1fr);}}
+.sched-kpi-cell{background:#1a3a2a;border-radius:10px;padding:12px 8px;text-align:center;border-top:3px solid #2d5a3d;}
+.sched-kpi-num{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;color:#e8f5ec;line-height:1;}
+.sched-kpi-lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;color:#6b9b6b;text-transform:uppercase;margin-top:3px;}
+.sched-grid-wrap{overflow-x:auto;border-radius:10px;border:1px solid #2a5a2a;}
+.sched-grid{width:100%;border-collapse:collapse;font-family:'IBM Plex Sans',sans-serif;font-size:13px;min-width:560px;}
+.sched-grid th{background:#163016;color:#a8d5b5;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:9px 6px;text-align:center;border-bottom:2px solid #2a5a2a;}
+.sched-grid th:first-child{text-align:left;padding-left:12px;min-width:110px;}
+.sched-grid td{padding:6px 5px;border:1px solid #1a3a1a;vertical-align:top;min-width:78px;background:#0d1f16;}
+.sched-dept-cell{background:#0d2a1a !important;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;padding:10px 8px 10px 12px;white-space:nowrap;color:#a8d5b5;border-right:2px solid #2a5a2a !important;position:sticky;left:0;z-index:2;}
+.sched-dept-icon{font-size:14px;margin-right:4px;}
+.sched-chip{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:4px 9px;font-size:11px;font-weight:700;color:#fff;margin:2px;cursor:pointer;white-space:nowrap;transition:opacity .15s;}
+.sched-chip:hover{opacity:.8;}
+.sched-chip.morning{background:#1d4ed8;}
+.sched-chip.afternoon{background:#b45309;}
+.sched-chip.night{background:#6d28d9;}
+.sched-add-btn{border:1.5px dashed #2a5a2a;background:transparent;color:#4a9b6f;border-radius:20px;padding:4px 10px;font-size:16px;cursor:pointer;display:block;width:100%;text-align:center;margin-top:2px;transition:all .15s;}
+.sched-add-btn:hover{border-color:#4a9b6f;background:#163016;}
+.sched-ee-row .sched-dept-cell{color:#555;}
+.sched-ee-row td{background:#0a0f0a !important;color:#444;font-style:italic;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.5px;}
+.sched-legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+.sched-legend-item{display:flex;align-items:center;gap:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6b9b6b;letter-spacing:.5px;}
+.sched-legend-dot{width:10px;height:10px;border-radius:50%;}
+/* Schedule modal */
+.sched-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:850;}
+.sched-modal-box{position:fixed;bottom:0;left:0;right:0;background:#0d2a1a;border-radius:18px 18px 0 0;padding:24px 20px 32px;z-index:851;max-height:85vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,.5);}
+.sched-modal-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:#e8f5ec;margin-bottom:16px;}
+.sched-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+@media(max-width:400px){.sched-modal-grid{grid-template-columns:1fr;}}
+.sched-modal-field{display:flex;flex-direction:column;gap:5px;}
+.sched-modal-field.full{grid-column:1/-1;}
+.sched-modal-label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#6b9b6b;}
+.sched-modal-input{background:#163016;border:1.5px solid #2a5a2a;border-radius:8px;padding:10px 12px;color:#e8f5ec;font-family:'IBM Plex Sans',sans-serif;font-size:14px;width:100%;box-sizing:border-box;}
+.sched-modal-input:focus{outline:none;border-color:#4a9b6f;}
+.sched-modal-btns{display:flex;gap:10px;flex-wrap:wrap;}
+.sched-save-btn{flex:1;background:#4a9b6f;border:none;border-radius:10px;padding:12px;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;}
+.sched-save-btn:hover{background:#3d8a5f;}
+.sched-del-btn{background:#3a0a0a;border:1.5px solid #c0392b;border-radius:10px;padding:12px 16px;color:#c0392b;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;}
+.sched-cancel-btn{background:#163016;border:1.5px solid #2a5a2a;border-radius:10px;padding:12px 16px;color:#6b9b6b;font-family:'IBM Plex Mono',monospace;font-size:13px;cursor:pointer;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -780,6 +827,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <button class="nav-tab" id="tab-ship" onclick="go('ship')" data-i18n="nav.ship">🚚 Shipping</button>
       <button class="nav-tab" id="tab-kpi" onclick="go('kpi')" data-i18n="nav.kpi">🥚 KPI</button>
       <button class="nav-tab" id="tab-reports" onclick="go('reports')" data-i18n="nav.reports">📊 Reports</button>
+      <button class="nav-tab" id="tab-sched" onclick="go('sched')" data-i18n="nav.sched">📅 Schedule</button>
     </nav>
     <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
     <button id="lang-toggle-btn" onclick="toggleLang()" title="Switch Language / Cambiar Idioma" style="padding:7px 13px;background:#0a1a2a;border:1.5px solid #3b82f6;border-radius:9px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;flex-shrink:0;">🌐 ES</button>
@@ -1277,6 +1325,96 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <button id="mw-back-btn" onclick="mwBack()" style="background:#1a1a3a;border:1px solid #3a3a6a;color:#9090f0;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">← Back</button>
     </div>
     <div id="mw-content"></div>
+  </div>
+</div>
+
+<!-- ═══ TEAM SCHEDULE PANEL ═══ -->
+<div class="panel" id="panel-sched">
+  <div class="section-title" data-i18n="title.sched">📅 Team Schedule</div>
+
+  <!-- Week Navigator -->
+  <div class="sched-week-nav">
+    <button class="sched-nav-btn" onclick="prevSchedWeek()">‹</button>
+    <div class="sched-week-label" id="sched-week-label">Week of …</div>
+    <button class="sched-nav-btn" onclick="nextSchedWeek()">›</button>
+    <button class="sched-copy-btn" onclick="copyLastWeek()">⎘ Copy Last Week</button>
+  </div>
+
+  <!-- Lean KPI Bar -->
+  <div class="sched-kpi-bar">
+    <div class="sched-kpi-cell" id="sched-kpi-assign">
+      <div class="sched-kpi-num" id="sched-kpi-assign-num">—</div>
+      <div class="sched-kpi-lbl">📋 Assignments</div>
+    </div>
+    <div class="sched-kpi-cell" id="sched-kpi-cov">
+      <div class="sched-kpi-num" id="sched-kpi-cov-num">—</div>
+      <div class="sched-kpi-lbl">✅ Coverage</div>
+    </div>
+    <div class="sched-kpi-cell" id="sched-kpi-gaps">
+      <div class="sched-kpi-num" id="sched-kpi-gaps-num">—</div>
+      <div class="sched-kpi-lbl">🟡 Open Gaps</div>
+    </div>
+    <div class="sched-kpi-cell" id="sched-kpi-people">
+      <div class="sched-kpi-num" id="sched-kpi-people-num">—</div>
+      <div class="sched-kpi-lbl">👥 People</div>
+    </div>
+  </div>
+
+  <!-- Shift Legend -->
+  <div class="sched-legend">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6b9b6b;letter-spacing:.5px;text-transform:uppercase;">Shift:</span>
+    <div class="sched-legend-item"><div class="sched-legend-dot" style="background:#1d4ed8;"></div>Morning</div>
+    <div class="sched-legend-item"><div class="sched-legend-dot" style="background:#b45309;"></div>Afternoon</div>
+    <div class="sched-legend-item"><div class="sched-legend-dot" style="background:#6d28d9;"></div>Night</div>
+  </div>
+
+  <!-- Schedule Grid -->
+  <div class="sched-grid-wrap">
+    <table class="sched-grid">
+      <thead>
+        <tr>
+          <th>DEPT</th>
+          <th>MON</th><th>TUE</th><th>WED</th><th>THU</th><th>FRI</th><th>SAT</th><th>SUN</th>
+        </tr>
+      </thead>
+      <tbody id="sched-tbody">
+        <!-- Rendered by renderSchedule() -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Schedule Assignment Modal -->
+<div class="sched-modal-bg" id="sched-modal-bg" onclick="if(event.target===this)closeSchedModal()">
+  <div class="sched-modal-box">
+    <div class="sched-modal-title" id="sched-modal-title">Assign Team Member</div>
+    <div class="sched-modal-grid">
+      <div class="sched-modal-field full">
+        <div class="sched-modal-label">Person Name *</div>
+        <input class="sched-modal-input" id="sched-person" type="text" placeholder="e.g. J. Smith" autocomplete="off">
+      </div>
+      <div class="sched-modal-field">
+        <div class="sched-modal-label">Role / Position</div>
+        <input class="sched-modal-input" id="sched-role" type="text" placeholder="e.g. Line Lead">
+      </div>
+      <div class="sched-modal-field">
+        <div class="sched-modal-label">Shift</div>
+        <select class="sched-modal-input" id="sched-shift">
+          <option value="morning">🔵 Morning</option>
+          <option value="afternoon">🟡 Afternoon</option>
+          <option value="night">🟣 Night</option>
+        </select>
+      </div>
+      <div class="sched-modal-field full">
+        <div class="sched-modal-label">Notes</div>
+        <input class="sched-modal-input" id="sched-notes" type="text" placeholder="Optional">
+      </div>
+    </div>
+    <div class="sched-modal-btns">
+      <button class="sched-save-btn" onclick="saveSchedEntry()">✓ Save</button>
+      <button class="sched-del-btn" id="sched-del-btn" onclick="deleteSchedEntry()" style="display:none;">🗑 Delete</button>
+      <button class="sched-cancel-btn" onclick="closeSchedModal()">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -3197,12 +3335,12 @@ const TRANSLATIONS = {
     // Nav
     'nav.home':'🏠 Home','nav.dash':'📊 Dashboard','nav.prod':'🏭 Production',
     'nav.maint':'🔧 Maintenance','nav.pkg':'📦 Packaging','nav.feed':'🌾 Feed Mill',
-    'nav.ship':'🚚 Shipping','nav.kpi':'🥚 KPI','nav.reports':'📊 Reports',
+    'nav.ship':'🚚 Shipping','nav.kpi':'🥚 KPI','nav.reports':'📊 Reports','nav.sched':'📅 Schedule',
     // Section titles
     'title.dash':'📊 Operations Dashboard','title.prod':'🏭 Production',
     'title.maint':'🔧 Maintenance','title.pkg':'📦 Packaging',
     'title.feed':'🌾 Feed Mill','title.ship':'🚚 Shipping',
-    'title.kpi':'🥚 Egg Production KPI','title.reports':'Reports',
+    'title.kpi':'🥚 Egg Production KPI','title.reports':'Reports','title.sched':'📅 Team Schedule',
     // Maintenance sub-buttons
     'sub.wo':'🔧 Work Orders','sub.pm':'📋 PM Schedule','sub.parts':'🔩 Parts',
     'sub.downtime':'⏱️ Downtime','sub.assets':'🏭 Assets',
@@ -3264,12 +3402,12 @@ const TRANSLATIONS = {
     // Nav
     'nav.home':'🏠 Inicio','nav.dash':'📊 Panel','nav.prod':'🏭 Producción',
     'nav.maint':'🔧 Mantenimiento','nav.pkg':'📦 Empaque','nav.feed':'🌾 Molino',
-    'nav.ship':'🚚 Envíos','nav.kpi':'🥚 KPI','nav.reports':'📊 Reportes',
+    'nav.ship':'🚚 Envíos','nav.kpi':'🥚 KPI','nav.reports':'📊 Reportes','nav.sched':'📅 Horario',
     // Section titles
     'title.dash':'📊 Panel de Operaciones','title.prod':'🏭 Producción',
     'title.maint':'🔧 Mantenimiento','title.pkg':'📦 Empaque',
     'title.feed':'🌾 Molino de Alimento','title.ship':'🚚 Envíos',
-    'title.kpi':'🥚 KPI de Producción','title.reports':'Reportes',
+    'title.kpi':'🥚 KPI de Producción','title.reports':'Reportes','title.sched':'📅 Horario de Equipo',
     // Maintenance sub-buttons
     'sub.wo':'🔧 Órdenes de Trabajo','sub.pm':'📋 PM Programado','sub.parts':'🔩 Partes',
     'sub.downtime':'⏱️ Tiempo Fuera','sub.assets':'🏭 Equipos',
@@ -3453,6 +3591,84 @@ const FORM_TEXT = {
   'Operator':                 { es:'Operador' },
   'Planned':                  { es:'Planificado' },
   'Other':                    { es:'Otro' },
+  // ── Barn walk modal: card titles ──
+  '👤 Employee Check-In':              { es:'👤 Registro de Empleado' },
+  '💀 Mortality':                      { es:'💀 Mortalidad' },
+  '⚙️ Equipment':                      { es:'⚙️ Equipos' },
+  '🌡️ Air & Environment':             { es:'🌡️ Aire y Ambiente' },
+  '🍗 Feeding & Water':               { es:'🍗 Alimentación y Agua' },
+  '🥚 Belts & Egg Count':             { es:'🥚 Bandas y Conteo de Huevos' },
+  '🐀 Pest Control':                  { es:'🐀 Control de Plagas' },
+  '✅ Daily Checklist':               { es:'✅ Lista de Revisión Diaria' },
+  '📝 Notes / Corrective Actions':    { es:'📝 Notas / Acciones Correctivas' },
+  // ── Barn walk modal: row labels ──
+  'Mortality found?':                 { es:'¿Se encontró mortalidad?' },
+  'How many?':                        { es:'¿Cuántos?' },
+  'All mortality removed?':           { es:'¿Toda la mortalidad removida?' },
+  'Manure Dryers':                    { es:'Secadores de Estiércol' },
+  'Feathering condition':             { es:'Condición del Plumaje' },
+  'House Doors':                      { es:'Puertas del Galpón' },
+  'Loose Birds?':                     { es:'¿Aves Sueltas?' },
+  'How many loose birds?':            { es:'¿Cuántas aves sueltas?' },
+  'Air Quality Anomaly?':             { es:'¿Anomalía en Calidad del Aire?' },
+  'House Temp (°F)':                  { es:'Temperatura del Galpón (°F)' },
+  'Feeders':                          { es:'Comederos' },
+  'Feed Wastage?':                    { es:'¿Desperdicio de Alimento?' },
+  'Feed Bin Reading (lbs) — record current bin level': { es:'Lectura de Tolva (lbs) — nivel actual' },
+  'Water Pressure (PSI) — Normal: 10–60': { es:'Presión de Agua (PSI) — Normal: 10–60' },
+  'Standpipes':                       { es:'Tuberías de Pie' },
+  'Egg Belt Working?':                { es:'¿Banda de Huevos Funcionando?' },
+  'Manure Belts':                     { es:'Bandas de Estiércol' },
+  'Egg Count — This Barn (total eggs)': { es:'Conteo de Huevos — Este Galpón (total)' },
+  'Rodents present?':                 { es:'¿Roedores Presentes?' },
+  'Rodents caught (count)':          { es:'Roedores Atrapados (cantidad)' },
+  'Fly trap activity?':               { es:'¿Actividad en Trampa de Moscas?' },
+  'Fly trap count (flies caught)':    { es:'Conteo de Trampa (moscas atrapadas)' },
+  // ── Barn walk modal: yes/no buttons ──
+  '❌ YES':                           { es:'❌ SÍ' },
+  '✅ NO':                            { es:'✅ NO' },
+  '⚠️ YES':                          { es:'⚠️ SÍ' },
+  '🟢 ON':                           { es:'🟢 ENCENDIDO' },
+  '🔴 OFF':                          { es:'🔴 APAGADO' },
+  '✅ Good':                          { es:'✅ Bueno' },
+  '⚠️ Fair':                         { es:'⚠️ Regular' },
+  '❌ Poor':                          { es:'❌ Malo' },
+  'Open':                             { es:'Abierta' },
+  'Closed':                           { es:'Cerrada' },
+  '✅ Normal':                        { es:'✅ Normal' },
+  '❌ Anomaly':                       { es:'❌ Anomalía' },
+  '✅ Full':                          { es:'✅ Lleno' },
+  '❌ Empty':                         { es:'❌ Vacío' },
+  '✅ Clean':                         { es:'✅ Limpio' },
+  '❌ Dirty':                         { es:'❌ Sucio' },
+  '✅ Working':                       { es:'✅ Funcionando' },
+  '❌ Down':                          { es:'❌ Caído' },
+  '✅ Running':                       { es:'✅ Corriendo' },
+  '❌ Not Running':                   { es:'❌ Detenido' },
+  '✓ Submit Daily Check':             { es:'✓ Enviar Revisión Diaria' },
+  // ── Barn walk checklist labels ──
+  'Check for water leaks — notify manager if found':          { es:'Revisar fugas de agua — notificar al gerente si hay' },
+  'Check all cages — cull any injured or sick birds':         { es:'Revisar todas las jaulas — retirar aves lesionadas o enfermas' },
+  'All dead birds placed in white chute (back of barn, top floor)': { es:'Todas las aves muertas en el chute blanco (parte trasera, piso superior)' },
+  'White chute checked — getting full?':                      { es:'¿Chute blanco revisado — está llenándose?' },
+  'Damaged cages & egg belts — any damage found?':            { es:'Jaulas y bandas de huevos — ¿se encontró daño?' },
+  'Water tubes cleaned (front & back of house)':              { es:'Tubos de agua limpios (frente y fondo del galpón)' },
+  // ── Barn walk checklist buttons ──
+  '✅ Pass':   { es:'✅ OK' },
+  '❌ Fail':   { es:'❌ Falla' },
+  '✅ OK':     { es:'✅ OK' },
+  '⚠️ Full':  { es:'⚠️ Lleno' },
+  '✅ None':   { es:'✅ Ninguno' },
+  '❌ Found':  { es:'❌ Encontrado' },
+  // ── Team Schedule modal ──
+  'Person Name *':            { es:'Nombre *' },
+  'Role / Position':          { es:'Rol / Puesto' },
+  '🔵 Morning':              { es:'🔵 Mañana' },
+  '🟡 Afternoon':            { es:'🟡 Tarde' },
+  '🟣 Night':                { es:'🟣 Noche' },
+  '✓ Save':                  { es:'✓ Guardar' },
+  '🗑 Delete':               { es:'🗑 Eliminar' },
+  '⎘ Copy Last Week':        { es:'⎘ Copiar Semana Anterior' },
   // ── Barn walk / morning walk ──
   'Pass':                     { es:'Pasa' },
   'Fail':                     { es:'Falla' },
@@ -3509,6 +3725,15 @@ function applyFormTextTranslation() {
   document.querySelectorAll('.ops-save-btn, .ops-cancel-btn').forEach(el => {
     if (!el.dataset.enText) el.dataset.enText = el.textContent.trim();
     const orig = el.dataset.enText;
+    const tr = FORM_TEXT[orig];
+    if (tr) el.textContent = _lang === 'es' ? (tr.es ?? orig) : orig;
+  });
+
+  // Translate barn walk modal: card titles, row labels, yn-buttons, checklist labels, submit
+  document.querySelectorAll('.bw-card-title, .bw-row-label, .bw-yn-btn, .bw-cl-label, .bw-cl-pass, .bw-cl-fail-btn, .bw-submit').forEach(el => {
+    if (!el.dataset.enText) el.dataset.enText = el.textContent.trim();
+    const orig = el.dataset.enText;
+    if (!orig) return;
     const tr = FORM_TEXT[orig];
     if (tr) el.textContent = _lang === 'es' ? (tr.es ?? orig) : orig;
   });
@@ -3713,8 +3938,8 @@ function go(tab) {
   closeAssetForm();
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports'};
-  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports'};
+  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports', sched:'panel-sched'};
+  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports', sched:'tab-sched'};
   if (!pm[tab]) return;
   document.getElementById(pm[tab]).classList.add('active');
   const tabEl = document.getElementById(tm[tab]);
@@ -3727,6 +3952,7 @@ function go(tab) {
   if (tab === 'ship')  { goShipSection(window._shipSection || 'shipping'); }
   if (tab === 'kpi')   { goKpiSection(window._kpiSection || 'dashboard'); }
   if (tab === 'reports') renderReports();
+  if (tab === 'sched')   loadSchedule();
 }
 
 // ═══════════════════════════════════════════
@@ -8676,6 +8902,7 @@ function openBarnWalk(farm, house) {
   document.getElementById('bw-submit-btn').disabled = true;
   document.getElementById('barn-walk-modal').style.display = 'block';
   document.getElementById('barn-walk-modal').scrollTop = 0;
+  applyFormTextTranslation();
 }
 
 function closeBarnWalk() {
@@ -11475,6 +11702,221 @@ function renderBioLog() {
       ${r.notes?`<div style="font-size:10px;color:#5a7a5a;font-style:italic;">${r.notes}</div>`:''}
     </div>`;
   }).join('');
+}
+
+// ═══════════════════════════════════════════
+// TEAM SCHEDULE
+// ═══════════════════════════════════════════
+const SCHED_DEPTS = [
+  { key:'prod',  label:'Production',  icon:'🏭', color:'#4a9b6f' },
+  { key:'maint', label:'Maintenance', icon:'🔧', color:'#f0a500' },
+  { key:'pkg',   label:'Packaging',   icon:'📦', color:'#3b82f6' },
+  { key:'feed',  label:'Feed Mill',   icon:'🌾', color:'#a0522d' },
+  { key:'ship',  label:'Shipping',    icon:'🚚', color:'#dc2626' },
+];
+const SCHED_DAYS = ['mon','tue','wed','thu','fri','sat','sun'];
+const SCHED_DAY_LABELS = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
+const SHIFT_COLOR = { morning:'morning', afternoon:'afternoon', night:'night' };
+
+let _schedWeekOf = '';
+let _schedData   = [];
+let _schedEditId = null;
+let _schedModalDept = '';
+let _schedModalDay  = '';
+
+function schedGetMonday(d) {
+  const dt = d ? new Date(d + 'T12:00:00') : new Date();
+  const day = dt.getDay(); // 0=Sun
+  const diff = (day === 0) ? -6 : 1 - day;
+  dt.setDate(dt.getDate() + diff);
+  return dt.toISOString().slice(0,10);
+}
+
+function schedWeekLabel() {
+  if (!_schedWeekOf) return '';
+  const mon = new Date(_schedWeekOf + 'T12:00:00');
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const m1 = mo[mon.getMonth()], d1 = mon.getDate();
+  const m2 = mo[sun.getMonth()], d2 = sun.getDate();
+  const yr = sun.getFullYear();
+  return m1 === m2 ? `${m1} ${d1} – ${d2}, ${yr}` : `${m1} ${d1} – ${m2} ${d2}, ${yr}`;
+}
+
+function prevSchedWeek() {
+  const d = new Date(_schedWeekOf + 'T12:00:00');
+  d.setDate(d.getDate() - 7);
+  _schedWeekOf = d.toISOString().slice(0,10);
+  loadSchedule();
+}
+function nextSchedWeek() {
+  const d = new Date(_schedWeekOf + 'T12:00:00');
+  d.setDate(d.getDate() + 7);
+  _schedWeekOf = d.toISOString().slice(0,10);
+  loadSchedule();
+}
+
+async function loadSchedule() {
+  if (!_schedWeekOf) _schedWeekOf = schedGetMonday();
+  document.getElementById('sched-week-label').textContent = 'Week of ' + schedWeekLabel();
+  _schedData = [];
+  try {
+    const snap = await db.collection('teamSchedule').where('weekOf','==',_schedWeekOf).get();
+    snap.forEach(doc => _schedData.push({ _id: doc.id, ...doc.data() }));
+  } catch(e) { console.error('Schedule load error:', e); }
+  renderSchedule();
+}
+
+function renderSchedule() {
+  // KPI bar
+  const total = _schedData.length;
+  const deptDays = SCHED_DEPTS.length * 7;
+  const covered = new Set(_schedData.map(r => r.dept + '_' + r.day)).size;
+  const gaps = deptDays - covered;
+  const covPct = Math.round((covered / deptDays) * 100);
+  const people = new Set(_schedData.map(r => r.person)).size;
+
+  document.getElementById('sched-kpi-assign-num').textContent = total;
+  const covEl = document.getElementById('sched-kpi-cov-num');
+  covEl.textContent = covPct + '%';
+  const covCell = document.getElementById('sched-kpi-cov');
+  covCell.style.borderTopColor = covPct >= 90 ? '#4a9b6f' : covPct >= 70 ? '#f0a500' : '#dc2626';
+  document.getElementById('sched-kpi-gaps-num').textContent = gaps;
+  document.getElementById('sched-kpi-people-num').textContent = people;
+
+  // Grid body
+  const tbody = document.getElementById('sched-tbody');
+  let html = '';
+
+  SCHED_DEPTS.forEach(dept => {
+    html += `<tr>`;
+    html += `<td class="sched-dept-cell" style="border-left:3px solid ${dept.color};">
+               <span class="sched-dept-icon">${dept.icon}</span>${dept.label}
+             </td>`;
+    SCHED_DAYS.forEach(day => {
+      const entries = _schedData.filter(r => r.dept === dept.key && r.day === day);
+      html += `<td>`;
+      entries.forEach(e => {
+        const sc = SHIFT_COLOR[e.shift] || 'morning';
+        const tip = e.role ? `${e.person} · ${e.role}` : e.person;
+        html += `<span class="sched-chip ${sc}" onclick="openSchedModal('${dept.key}','${day}','${e._id}')" title="${tip}">
+                   ${e.person}
+                 </span>`;
+      });
+      html += `<button class="sched-add-btn" onclick="openSchedModal('${dept.key}','${day}',null)">+</button>`;
+      html += `</td>`;
+    });
+    html += `</tr>`;
+  });
+
+  // EE locked row
+  html += `<tr class="sched-ee-row">
+    <td class="sched-dept-cell" style="border-left:3px solid #444;color:#555;"><span class="sched-dept-icon">⚡</span>EE</td>
+    <td colspan="7" style="text-align:center;padding:12px 8px;">⚡ EE — Coming Soon</td>
+  </tr>`;
+
+  tbody.innerHTML = html;
+  applyFormTextTranslation();
+}
+
+function openSchedModal(dept, day, entryId) {
+  _schedModalDept = dept;
+  _schedModalDay  = day;
+  _schedEditId    = entryId;
+
+  const deptObj = SCHED_DEPTS.find(d => d.key === dept) || {};
+  const dayLabel = SCHED_DAY_LABELS[SCHED_DAYS.indexOf(day)] || day.toUpperCase();
+  document.getElementById('sched-modal-title').textContent =
+    `${deptObj.icon || ''} ${deptObj.label || dept} — ${dayLabel}`;
+
+  if (entryId) {
+    const entry = _schedData.find(r => r._id === entryId) || {};
+    document.getElementById('sched-person').value = entry.person || '';
+    document.getElementById('sched-role').value   = entry.role   || '';
+    document.getElementById('sched-shift').value  = entry.shift  || 'morning';
+    document.getElementById('sched-notes').value  = entry.notes  || '';
+    document.getElementById('sched-del-btn').style.display = '';
+  } else {
+    document.getElementById('sched-person').value = '';
+    document.getElementById('sched-role').value   = '';
+    document.getElementById('sched-shift').value  = 'morning';
+    document.getElementById('sched-notes').value  = '';
+    document.getElementById('sched-del-btn').style.display = 'none';
+  }
+
+  document.getElementById('sched-modal-bg').style.display = 'block';
+  document.getElementById('sched-person').focus();
+  applyFormTextTranslation();
+}
+
+function closeSchedModal() {
+  document.getElementById('sched-modal-bg').style.display = 'none';
+}
+
+async function saveSchedEntry() {
+  const person = document.getElementById('sched-person').value.trim();
+  if (!person) { alert('Person name is required.'); return; }
+  const record = {
+    weekOf: _schedWeekOf,
+    dept:   _schedModalDept,
+    day:    _schedModalDay,
+    person,
+    role:   document.getElementById('sched-role').value.trim(),
+    shift:  document.getElementById('sched-shift').value,
+    notes:  document.getElementById('sched-notes').value.trim(),
+    ts:     Date.now()
+  };
+  try {
+    if (_schedEditId) {
+      await db.collection('teamSchedule').doc(_schedEditId).update(record);
+      const idx = _schedData.findIndex(r => r._id === _schedEditId);
+      if (idx > -1) _schedData[idx] = { _id: _schedEditId, ...record };
+    } else {
+      const ref = await db.collection('teamSchedule').add(record);
+      _schedData.push({ _id: ref.id, ...record });
+    }
+    closeSchedModal();
+    renderSchedule();
+  } catch(e) {
+    console.error('Schedule save error:', e);
+    alert('Error saving: ' + e.message);
+  }
+}
+
+async function deleteSchedEntry() {
+  if (!_schedEditId) return;
+  if (!confirm('Remove this assignment?')) return;
+  try {
+    await db.collection('teamSchedule').doc(_schedEditId).delete();
+    _schedData = _schedData.filter(r => r._id !== _schedEditId);
+    closeSchedModal();
+    renderSchedule();
+  } catch(e) {
+    console.error('Schedule delete error:', e);
+    alert('Error deleting: ' + e.message);
+  }
+}
+
+async function copyLastWeek() {
+  if (!_schedWeekOf) return;
+  const prevMon = new Date(_schedWeekOf + 'T12:00:00');
+  prevMon.setDate(prevMon.getDate() - 7);
+  const prevWeekOf = prevMon.toISOString().slice(0,10);
+  try {
+    const snap = await db.collection('teamSchedule').where('weekOf','==',prevWeekOf).get();
+    if (snap.empty) { alert('No schedule found for last week.'); return; }
+    const batch = db.batch();
+    snap.forEach(doc => {
+      const d = doc.data();
+      const newRef = db.collection('teamSchedule').doc();
+      batch.set(newRef, { ...d, weekOf: _schedWeekOf, ts: Date.now() });
+    });
+    await batch.commit();
+    await loadSchedule();
+  } catch(e) {
+    console.error('Copy last week error:', e);
+    alert('Error copying: ' + e.message);
+  }
 }
 
 // BOOT
