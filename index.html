@@ -771,24 +771,28 @@ body { min-height: 100dvh; overflow-x: hidden; }
       </div>
     </div>
     <nav class="nav-tabs">
-      <button class="nav-tab" onclick="goHome()" style="background:#163016;border-color:#4caf50;color:#4caf50;">🏠 Home</button>
-      <button class="nav-tab active" id="tab-dash" onclick="go('dash')">📊 Dashboard</button>
-      <button class="nav-tab" id="tab-prod" onclick="go('prod')">🏭 Production</button>
-      <button class="nav-tab" id="tab-maint" onclick="go('maint')">🔧 Maintenance</button>
-      <button class="nav-tab" id="tab-pkg" onclick="go('pkg')">📦 Packaging</button>
-      <button class="nav-tab" id="tab-feed" onclick="go('feed')">🌾 Feed Mill</button>
-      <button class="nav-tab" id="tab-ship" onclick="go('ship')">🚚 Shipping</button>
-      <button class="nav-tab" id="tab-kpi" onclick="go('kpi')">🥚 KPI</button>
-      <button class="nav-tab" id="tab-reports" onclick="go('reports')">📊 Reports</button>
+      <button class="nav-tab" id="tab-home" onclick="goHome()" data-i18n="nav.home" style="background:#163016;border-color:#4caf50;color:#4caf50;">🏠 Home</button>
+      <button class="nav-tab active" id="tab-dash" onclick="go('dash')" data-i18n="nav.dash">📊 Dashboard</button>
+      <button class="nav-tab" id="tab-prod" onclick="go('prod')" data-i18n="nav.prod">🏭 Production</button>
+      <button class="nav-tab" id="tab-maint" onclick="go('maint')" data-i18n="nav.maint">🔧 Maintenance</button>
+      <button class="nav-tab" id="tab-pkg" onclick="go('pkg')" data-i18n="nav.pkg">📦 Packaging</button>
+      <button class="nav-tab" id="tab-feed" onclick="go('feed')" data-i18n="nav.feed">🌾 Feed Mill</button>
+      <button class="nav-tab" id="tab-ship" onclick="go('ship')" data-i18n="nav.ship">🚚 Shipping</button>
+      <button class="nav-tab" id="tab-kpi" onclick="go('kpi')" data-i18n="nav.kpi">🥚 KPI</button>
+      <button class="nav-tab" id="tab-reports" onclick="go('reports')" data-i18n="nav.reports">📊 Reports</button>
     </nav>
     <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
+    <button id="lang-toggle-btn" onclick="toggleLang()" title="Switch Language / Cambiar Idioma" style="padding:7px 13px;background:#0a1a2a;border:1.5px solid #3b82f6;border-radius:9px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;flex-shrink:0;">🌐 ES</button>
   </div>
 </header>
+
+<!-- Floating language button for phone/tablet (always visible) -->
+<button id="lang-fab" onclick="toggleLang()" title="Switch Language / Cambiar Idioma" style="position:fixed;bottom:20px;right:16px;z-index:9999;padding:10px 16px;background:#0a1a2a;border:2px solid #3b82f6;border-radius:50px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(59,130,246,.35);display:none;align-items:center;gap:6px;">🌐 <span id="lang-fab-label">ES</span></button>
 
 <main class="main" id="main-content" style="display:none;">
 
 <div class="panel active" id="panel-dash">
-  <div class="section-title">📊 Operations Dashboard</div>
+  <div class="section-title" data-i18n="title.dash">📊 Operations Dashboard</div>
   <div class="section-sub" id="dash-date"></div>
 
   <!-- 6am Executive Brief -->
@@ -807,7 +811,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
   </div>
 
   <!-- Quick action -->
-  <button onclick="newWorkOrder()" style="width:100%;padding:14px;margin-bottom:16px;background:#1a3a6a;border:2px solid #3b82f6;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">🔧 New Work Order</button>
+  <button onclick="newWorkOrder()" data-i18n="btn.new_wo" style="width:100%;padding:14px;margin-bottom:16px;background:#1a3a6a;border:2px solid #3b82f6;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">🔧 New Work Order</button>
 
   <!-- Department summary cards -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
@@ -915,12 +919,12 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ KPI PANEL ═══ -->
 <div class="panel" id="panel-kpi">
-  <div class="section-title">🥚 Egg Production KPI</div>
+  <div class="section-title" data-i18n="title.kpi">🥚 Egg Production KPI</div>
   <div class="sub-nav">
-    <button class="sub-btn active" data-section="dashboard" onclick="goKpiSection('dashboard')">📊 Dashboard</button>
-    <button class="sub-btn" data-section="trends"    onclick="goKpiSection('trends')">📈 Trends</button>
-    <button class="sub-btn" data-section="log"       onclick="goKpiSection('log')">📋 Log</button>
-    <button class="sub-btn" data-section="entry"     onclick="goKpiSection('entry')">➕ Log Eggs</button>
+    <button class="sub-btn active" data-section="dashboard" onclick="goKpiSection('dashboard')" data-i18n="sub.kpi.dashboard">📊 Dashboard</button>
+    <button class="sub-btn" data-section="trends"    onclick="goKpiSection('trends')"    data-i18n="sub.kpi.trends">📈 Trends</button>
+    <button class="sub-btn" data-section="log"       onclick="goKpiSection('log')"       data-i18n="sub.kpi.log">📋 Log</button>
+    <button class="sub-btn" data-section="entry"     onclick="goKpiSection('entry')"     data-i18n="sub.kpi.entry">➕ Log Eggs</button>
   </div>
 
   <!-- Dashboard -->
@@ -1039,7 +1043,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 </div>
 
 <div class="panel" id="panel-reports">
-  <div class="section-title">Reports</div>
+  <div class="section-title" data-i18n="title.reports">Reports</div>
   <div class="section-sub">Summary of activity — updated in real time</div>
   <div class="pill-bar">
     <button class="pill active" onclick="reportRange(7,this)">Last 7 Days</button>
@@ -1051,43 +1055,43 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ PRODUCTION PANEL ═══ -->
 <div class="panel" id="panel-prod">
-  <div class="section-title">🏭 Production</div>
+  <div class="section-title" data-i18n="title.prod">🏭 Production</div>
   <div id="prod-kpi-bar" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;"></div>
   <div id="prod-egg-kpi" style="margin-bottom:18px;"></div>
   <div style="display:grid;gap:14px;">
     <button onclick="openECSection()" style="width:100%;padding:24px 20px;background:#1a3a1a;border:2px solid #4caf50;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
       <span style="font-size:40px;line-height:1;">🐓</span>
       <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Daily Employee Check</div>
-        <div style="font-size:12px;color:#7ab07a;margin-top:4px;">Log barn walk, equipment & conditions</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;" data-i18n="prod.daily_check">Daily Employee Check</div>
+        <div style="font-size:12px;color:#7ab07a;margin-top:4px;" data-i18n="prod.daily_check_sub">Log barn walk, equipment & conditions</div>
       </div>
     </button>
     <button onclick="openMWSection()" style="width:100%;padding:24px 20px;background:#0d1f3a;border:2px solid #3a6aaa;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
       <span style="font-size:40px;line-height:1;">☀️</span>
       <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Morning Walk</div>
-        <div style="font-size:12px;color:#6a90d9;margin-top:4px;">Lead / WNO — water, temp, feed, fans, blowers</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;" data-i18n="prod.morning_walk">Morning Walk</div>
+        <div style="font-size:12px;color:#6a90d9;margin-top:4px;" data-i18n="prod.morning_walk_sub">Lead / WNO — water, temp, feed, fans, blowers</div>
       </div>
     </button>
     <button onclick="openProdSummary()" style="width:100%;padding:24px 20px;background:#1a1a0a;border:2px solid #5a5a00;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
       <span style="font-size:40px;line-height:1;">📋</span>
       <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Today's Summary</div>
-        <div style="font-size:12px;color:#a0a05a;margin-top:4px;">All barn checks, mortality, flags & morning walks</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;" data-i18n="prod.summary">Today's Summary</div>
+        <div style="font-size:12px;color:#a0a05a;margin-top:4px;" data-i18n="prod.summary_sub">All barn checks, mortality, flags & morning walks</div>
       </div>
     </button>
     <button onclick="openFlockSection()" style="width:100%;padding:24px 20px;background:#1a0d2e;border:2px solid #7c3aed;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
       <span style="font-size:40px;line-height:1;">🐣</span>
       <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Flock Ages</div>
-        <div style="font-size:12px;color:#a78bfa;margin-top:4px;">Track placement dates, age in weeks & depop timeline</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;" data-i18n="prod.flock">Flock Ages</div>
+        <div style="font-size:12px;color:#a78bfa;margin-top:4px;" data-i18n="prod.flock_sub">Track placement dates, age in weeks & depop timeline</div>
       </div>
     </button>
     <button onclick="openBioSection()" style="width:100%;padding:24px 20px;background:#0a1f0a;border:2px solid #dc2626;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
       <span style="font-size:40px;line-height:1;">🦠</span>
       <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Biosecurity Log</div>
-        <div style="font-size:12px;color:#f87171;margin-top:4px;">Visitor & entry log, sanitation records, risk tracking</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;" data-i18n="prod.biosec">Biosecurity Log</div>
+        <div style="font-size:12px;color:#f87171;margin-top:4px;" data-i18n="prod.biosec_sub">Visitor & entry log, sanitation records, risk tracking</div>
       </div>
     </button>
   </div>
@@ -1700,15 +1704,15 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ MAINTENANCE PANEL ═══ -->
 <div class="panel" id="panel-maint">
-  <div class="section-title">🔧 Maintenance</div>
+  <div class="section-title" data-i18n="title.maint">🔧 Maintenance</div>
   <div class="sub-nav" id="maint-subnav">
-    <button class="sub-btn active" data-section="wo"       onclick="goMaintSection('wo')">🔧 Work Orders</button>
-    <button class="sub-btn"        data-section="pm"       onclick="goMaintSection('pm')">📋 PM Schedule</button>
-    <button class="sub-btn"        data-section="parts"    onclick="goMaintSection('parts')">🔩 Parts <span id="parts-alert-badge" style="display:none;background:#e53e3e;color:white;border-radius:50%;font-size:10px;padding:1px 5px;margin-left:3px;"></span></button>
-    <button class="sub-btn"        data-section="downtime" onclick="goMaintSection('downtime')">⏱️ Downtime</button>
-    <button class="sub-btn"        data-section="assets"   onclick="goMaintSection('assets')">🏭 Assets</button>
-    <button class="sub-btn"        data-section="wi"       onclick="goMaintSection('wi')">📖 Work Instructions</button>
-    <button class="sub-btn"        data-section="log"      onclick="goMaintSection('log')">📁 Log</button>
+    <button class="sub-btn active" data-section="wo"       onclick="goMaintSection('wo')"       data-i18n="sub.wo">🔧 Work Orders</button>
+    <button class="sub-btn"        data-section="pm"       onclick="goMaintSection('pm')"       data-i18n="sub.pm">📋 PM Schedule</button>
+    <button class="sub-btn"        data-section="parts"    onclick="goMaintSection('parts')"    data-i18n="sub.parts">🔩 Parts <span id="parts-alert-badge" style="display:none;background:#e53e3e;color:white;border-radius:50%;font-size:10px;padding:1px 5px;margin-left:3px;"></span></button>
+    <button class="sub-btn"        data-section="downtime" onclick="goMaintSection('downtime')" data-i18n="sub.downtime">⏱️ Downtime</button>
+    <button class="sub-btn"        data-section="assets"   onclick="goMaintSection('assets')"   data-i18n="sub.assets">🏭 Assets</button>
+    <button class="sub-btn"        data-section="wi"       onclick="goMaintSection('wi')"       data-i18n="sub.wi">📖 Work Instructions</button>
+    <button class="sub-btn"        data-section="log"      onclick="goMaintSection('log')"      data-i18n="sub.log">📁 Log</button>
   </div>
 
   <!-- Work Orders section -->
@@ -1975,11 +1979,11 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ PACKAGING PANEL ═══ -->
 <div class="panel" id="panel-pkg">
-  <div class="section-title">📦 Packaging</div>
+  <div class="section-title" data-i18n="title.pkg">📦 Packaging</div>
   <div class="sub-nav">
-    <button class="sub-btn active" data-section="packing" onclick="goPkgSection('packing')">📦 Packing</button>
-    <button class="sub-btn" data-section="eggs" onclick="goPkgSection('eggs')">🥚 Eggs by Barn</button>
-    <button class="sub-btn" data-section="quality" onclick="goPkgSection('quality')">🏅 Egg Quality</button>
+    <button class="sub-btn active" data-section="packing" onclick="goPkgSection('packing')" data-i18n="sub.packing">📦 Packing</button>
+    <button class="sub-btn" data-section="eggs" onclick="goPkgSection('eggs')" data-i18n="sub.eggs">🥚 Eggs by Barn</button>
+    <button class="sub-btn" data-section="quality" onclick="goPkgSection('quality')" data-i18n="sub.quality">🏅 Egg Quality</button>
   </div>
   <!-- Packing -->
   <div class="pkg-section" id="pkg-packing" style="display:block;">
@@ -2138,7 +2142,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ FEED MILL PANEL ═══ -->
 <div class="panel" id="panel-feed">
-  <div class="section-title">🌾 Feed Mill</div>
+  <div class="section-title" data-i18n="title.feed">🌾 Feed Mill</div>
   <div class="sub-nav">
     <button class="sub-btn active" data-section="dashboard"  onclick="goFeedSection('dashboard')">📊 Dashboard</button>
     <button class="sub-btn" data-section="readings"   onclick="goFeedSection('readings')">📖 Readings</button>
@@ -2313,7 +2317,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ SHIPPING PANEL ═══ -->
 <div class="panel" id="panel-ship">
-  <div class="section-title">🚚 Shipping</div>
+  <div class="section-title" data-i18n="title.ship">🚚 Shipping</div>
   <div class="sub-nav">
     <button class="sub-btn active" data-section="shipping"       onclick="goShipSection('shipping')">🚛 Active Loads</button>
     <button class="sub-btn"        data-section="farms"          onclick="goShipSection('farms')">🏚️ Farms</button>
@@ -3185,6 +3189,195 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 // ═══════════════════════════════════════════
 // FIREBASE LOAD
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// LANGUAGE / TRANSLATION SYSTEM  — 🌐 English ↔ Español
+// ═══════════════════════════════════════════════════════════════════════════
+const TRANSLATIONS = {
+  en: {
+    // Nav
+    'nav.home':'🏠 Home','nav.dash':'📊 Dashboard','nav.prod':'🏭 Production',
+    'nav.maint':'🔧 Maintenance','nav.pkg':'📦 Packaging','nav.feed':'🌾 Feed Mill',
+    'nav.ship':'🚚 Shipping','nav.kpi':'🥚 KPI','nav.reports':'📊 Reports',
+    // Section titles
+    'title.dash':'📊 Operations Dashboard','title.prod':'🏭 Production',
+    'title.maint':'🔧 Maintenance','title.pkg':'📦 Packaging',
+    'title.feed':'🌾 Feed Mill','title.ship':'🚚 Shipping',
+    'title.kpi':'🥚 Egg Production KPI','title.reports':'Reports',
+    // Maintenance sub-buttons
+    'sub.wo':'🔧 Work Orders','sub.pm':'📋 PM Schedule','sub.parts':'🔩 Parts',
+    'sub.downtime':'⏱️ Downtime','sub.assets':'🏭 Assets',
+    'sub.wi':'📖 Work Instructions','sub.log':'📁 Log',
+    // Packaging sub-buttons
+    'sub.packing':'📦 Packing','sub.eggs':'🥚 Eggs by Barn','sub.quality':'🏅 Egg Quality',
+    // KPI sub-buttons
+    'sub.kpi.dashboard':'📊 Dashboard','sub.kpi.trends':'📈 Trends',
+    'sub.kpi.log':'📋 Log','sub.kpi.entry':'➕ Log Eggs',
+    // Production panel buttons
+    'prod.daily_check':'Daily Employee Check',
+    'prod.daily_check_sub':'Log barn walk, equipment & conditions',
+    'prod.morning_walk':'Morning Walk',
+    'prod.morning_walk_sub':'Lead / WNO — water, temp, feed, fans, blowers',
+    'prod.summary':"Today's Summary",
+    'prod.summary_sub':'All barn checks, mortality, flags & morning walks',
+    'prod.flock':'Flock Ages',
+    'prod.flock_sub':'Track placement dates, age in weeks & depop timeline',
+    'prod.biosec':'Biosecurity Log',
+    'prod.biosec_sub':'Visitor & entry log, sanitation records, risk tracking',
+    // Dashboard
+    'btn.new_wo':'🔧 New Work Order',
+    'dash.exec_brief':'📋 Executive Brief','dash.all_clear':'All Clear',
+    'dash.no_issues':'No critical issues at this time',
+    'dash.prod_card':'🏭 Production','dash.maint_card':'🔧 Maintenance',
+    'dash.pkg_card':'📦 Packaging','dash.ship_card':'🚚 Shipping',
+    'dash.checks_done':'Checks Done','dash.mortality':'Mortality Today',
+    'dash.urgent_wo':'Urgent WOs','dash.pm_overdue':'PM Overdue',
+    'dash.pm_compliance':'PM Compliance',
+    'dash.eggs_logged':'Eggs Logged','dash.cases_packed':'Cases Packed',
+    'dash.active_loads':'Active Loads','dash.exceptions':'Exceptions',
+    // Status
+    'status.open':'Open','status.in_progress':'In Progress',
+    'status.completed':'Completed','status.on_hold':'On Hold',
+    // Priority
+    'priority.urgent':'Urgent','priority.high':'High',
+    'priority.normal':'Normal','priority.low':'Low',
+    // Common
+    'lbl.date':'Date','lbl.farm':'Farm','lbl.house':'House','lbl.notes':'Notes',
+    'lbl.by':'Entered By','lbl.status':'Status','lbl.priority':'Priority',
+    'lbl.name':'Name','lbl.company':'Company','lbl.purpose':'Purpose',
+    'btn.save':'Save','btn.cancel':'Cancel','btn.clear':'Clear','btn.today':'Today',
+    // Reports
+    'reports.sub':'Summary of activity — updated in real time',
+    // Executive brief issue labels
+    'brief.equip_down':'Equipment Down','brief.urgent_wo':'Urgent WO',
+    'brief.pm_overdue':'PM Tasks Overdue','brief.barns_flagged':'Barn Flagged',
+    'brief.defect_rate':'Defect Rate','brief.mortality':'Mortality',
+    'brief.low_stock':'Parts Low Stock','brief.tap_maint':'Tap Maintenance → PM Schedule',
+    'brief.tap_parts':'Tap Maintenance → Parts',
+    'brief.check_walk':'Check barn walk logs',
+    'brief.quality_note':'quality records today',
+    'brief.all_clear':'All Clear','brief.no_issues':'No critical issues at this time',
+    'brief.critical':'critical','brief.warnings':'warnings',
+    'brief.worse':'↑ worse','brief.better':'↓ better','brief.flat':'→ flat',
+    'brief.vs_yest':'vs yest',
+  },
+  es: {
+    // Nav
+    'nav.home':'🏠 Inicio','nav.dash':'📊 Panel','nav.prod':'🏭 Producción',
+    'nav.maint':'🔧 Mantenimiento','nav.pkg':'📦 Empaque','nav.feed':'🌾 Molino',
+    'nav.ship':'🚚 Envíos','nav.kpi':'🥚 KPI','nav.reports':'📊 Reportes',
+    // Section titles
+    'title.dash':'📊 Panel de Operaciones','title.prod':'🏭 Producción',
+    'title.maint':'🔧 Mantenimiento','title.pkg':'📦 Empaque',
+    'title.feed':'🌾 Molino de Alimento','title.ship':'🚚 Envíos',
+    'title.kpi':'🥚 KPI de Producción','title.reports':'Reportes',
+    // Maintenance sub-buttons
+    'sub.wo':'🔧 Órdenes de Trabajo','sub.pm':'📋 PM Programado','sub.parts':'🔩 Partes',
+    'sub.downtime':'⏱️ Tiempo Fuera','sub.assets':'🏭 Equipos',
+    'sub.wi':'📖 Instrucciones','sub.log':'📁 Registro',
+    // Packaging sub-buttons
+    'sub.packing':'📦 Empaque','sub.eggs':'🥚 Huevos por Galpón','sub.quality':'🏅 Calidad de Huevo',
+    // KPI sub-buttons
+    'sub.kpi.dashboard':'📊 Panel','sub.kpi.trends':'📈 Tendencias',
+    'sub.kpi.log':'📋 Registro','sub.kpi.entry':'➕ Registrar Huevos',
+    // Production panel buttons
+    'prod.daily_check':'Revisión Diaria del Empleado',
+    'prod.daily_check_sub':'Registrar ronda, equipo y condiciones',
+    'prod.morning_walk':'Ronda Mañanera',
+    'prod.morning_walk_sub':'Líder / WNO — agua, temperatura, alimento, ventiladores',
+    'prod.summary':'Resumen de Hoy',
+    'prod.summary_sub':'Todas las revisiones, mortalidad, alertas y rondas',
+    'prod.flock':'Edades del Lote',
+    'prod.flock_sub':'Fechas de colocación, edad en semanas y cronograma',
+    'prod.biosec':'Registro de Bioseguridad',
+    'prod.biosec_sub':'Registro de visitantes, saneamiento y seguimiento de riesgos',
+    // Dashboard
+    'btn.new_wo':'🔧 Nueva Orden de Trabajo',
+    'dash.exec_brief':'📋 Resumen Ejecutivo','dash.all_clear':'Todo en Orden',
+    'dash.no_issues':'Sin problemas críticos en este momento',
+    'dash.prod_card':'🏭 Producción','dash.maint_card':'🔧 Mantenimiento',
+    'dash.pkg_card':'📦 Empaque','dash.ship_card':'🚚 Envíos',
+    'dash.checks_done':'Revisiones Hechas','dash.mortality':'Mortalidad Hoy',
+    'dash.urgent_wo':'OTs Urgentes','dash.pm_overdue':'PM Atrasado',
+    'dash.pm_compliance':'Cumplimiento PM',
+    'dash.eggs_logged':'Huevos Registrados','dash.cases_packed':'Cajas Empacadas',
+    'dash.active_loads':'Cargas Activas','dash.exceptions':'Excepciones',
+    // Status
+    'status.open':'Abierta','status.in_progress':'En Progreso',
+    'status.completed':'Completada','status.on_hold':'En Espera',
+    // Priority
+    'priority.urgent':'Urgente','priority.high':'Alta',
+    'priority.normal':'Normal','priority.low':'Baja',
+    // Common
+    'lbl.date':'Fecha','lbl.farm':'Granja','lbl.house':'Galpón','lbl.notes':'Notas',
+    'lbl.by':'Registrado Por','lbl.status':'Estado','lbl.priority':'Prioridad',
+    'lbl.name':'Nombre','lbl.company':'Empresa','lbl.purpose':'Propósito',
+    'btn.save':'Guardar','btn.cancel':'Cancelar','btn.clear':'Limpiar','btn.today':'Hoy',
+    // Reports
+    'reports.sub':'Resumen de actividad — actualizado en tiempo real',
+    // Executive brief issue labels
+    'brief.equip_down':'Equipo Fuera de Servicio','brief.urgent_wo':'OT Urgente',
+    'brief.pm_overdue':'Tareas PM Atrasadas','brief.barns_flagged':'Galpón con Alerta',
+    'brief.defect_rate':'Tasa de Defectos','brief.mortality':'Mortalidad',
+    'brief.low_stock':'Partes con Bajo Stock','brief.tap_maint':'Ver Mantenimiento → PM',
+    'brief.tap_parts':'Ver Mantenimiento → Partes',
+    'brief.check_walk':'Revisar registros de ronda',
+    'brief.quality_note':'registros de calidad hoy',
+    'brief.all_clear':'Todo en Orden','brief.no_issues':'Sin problemas críticos en este momento',
+    'brief.critical':'críticos','brief.warnings':'alertas',
+    'brief.worse':'↑ peor','brief.better':'↓ mejor','brief.flat':'→ igual',
+    'brief.vs_yest':'vs ayer',
+  }
+};
+
+let _lang = localStorage.getItem('rushtown_lang') || 'en';
+
+function t(key) {
+  return (TRANSLATIONS[_lang]?.[key]) ?? (TRANSLATIONS.en[key]) ?? key;
+}
+
+function toggleLang() {
+  _lang = _lang === 'en' ? 'es' : 'en';
+  localStorage.setItem('rushtown_lang', _lang);
+  applyTranslations();
+  // Re-render active panel so dynamic content updates
+  const active = document.querySelector('.panel.active');
+  if (active) {
+    const id = active.id.replace('panel-','');
+    if (id === 'dash')    renderDash();
+    else if (id === 'maint') { try { renderWO(); } catch(e){} }
+    else if (id === 'kpi')   { try { renderKpiDashboard(); } catch(e){} }
+  }
+}
+
+function applyTranslations() {
+  // Update all data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = t(key);
+    if (val && val !== key) el.innerHTML = val;
+  });
+  // Header toggle button
+  const hdrBtn = document.getElementById('lang-toggle-btn');
+  if (hdrBtn) hdrBtn.textContent = _lang === 'en' ? '🌐 ES' : '🌐 EN';
+  // Floating FAB
+  const fab = document.getElementById('lang-fab');
+  const fabLbl = document.getElementById('lang-fab-label');
+  if (fabLbl) fabLbl.textContent = _lang === 'en' ? 'ES' : 'EN';
+  // Show FAB only when header nav is scrolled off (mobile)
+  if (fab) fab.style.display = 'flex';
+}
+
+// Show/hide FAB based on header visibility (mobile UX)
+function setupLangFab() {
+  const fab = document.getElementById('lang-fab');
+  const hdrBtn = document.getElementById('lang-toggle-btn');
+  if (!fab || !hdrBtn) return;
+  const obs = new IntersectionObserver(entries => {
+    fab.style.display = entries[0].isIntersecting ? 'none' : 'flex';
+  }, { threshold: 0.5 });
+  obs.observe(hdrBtn);
+}
+
 async function initApp() {
   setMsg('Loading work orders...');
   try {
@@ -3416,20 +3609,20 @@ function renderExecBrief(todayStr, yesterStr) {
   const activeDowntime = (downtimeEvents||[]).filter(e => e.ongoing || !e.endTs);
   if (activeDowntime.length > 0) {
     const names = activeDowntime.slice(0,3).map(e => e.equipment||'Unknown').join(', ');
-    issues.push({ sev:'critical', icon:'🔴', title:`${activeDowntime.length} Equipment Down`, detail: names, trend:null });
+    issues.push({ sev:'critical', icon:'🔴', title:`${activeDowntime.length} ${t('brief.equip_down')}`, detail: names, trend:null });
   }
 
   // 2. Urgent open work orders
   const urgentOpen = (workOrders||[]).filter(w => w.priority==='urgent' && w.status!=='completed');
   if (urgentOpen.length > 0) {
     const topWO = urgentOpen[0];
-    issues.push({ sev:'critical', icon:'🔧', title:`${urgentOpen.length} Urgent WO${urgentOpen.length>1?'s':''}`, detail: topWO.title||topWO.equipment||'See Work Orders', trend:null });
+    issues.push({ sev:'critical', icon:'🔧', title:`${urgentOpen.length} ${t('brief.urgent_wo')}${urgentOpen.length>1?'s':''}`, detail: topWO.title||topWO.equipment||'See Work Orders', trend:null });
   }
 
   // 3. PM overdue
   const pmOvCount = (ALL_PM||[]).filter(t=>pmStatus(t.id)==='overdue').length;
   if (pmOvCount > 0) {
-    issues.push({ sev: pmOvCount >= 3 ? 'critical' : 'warning', icon:'⏰', title:`${pmOvCount} PM Tasks Overdue`, detail:'Tap Maintenance → PM Schedule', trend:null });
+    issues.push({ sev: pmOvCount >= 3 ? 'critical' : 'warning', icon:'⏰', title:`${pmOvCount} ${t('brief.pm_overdue')}`, detail:t('brief.tap_maint'), trend:null });
   }
 
   // 4. Barns flagged today
@@ -3438,7 +3631,7 @@ function renderExecBrief(todayStr, yesterStr) {
   const flaggedBarns2 = allBarns2.filter(b=>bs2[b.farm+'-'+b.n]==='issue');
   if (flaggedBarns2.length > 0) {
     const names2 = flaggedBarns2.slice(0,3).map(b=>`${b.farm} H${b.n}`).join(', ');
-    issues.push({ sev:'warning', icon:'🚩', title:`${flaggedBarns2.length} Barn${flaggedBarns2.length>1?'s':''} Flagged`, detail: names2, trend:null });
+    issues.push({ sev:'warning', icon:'🚩', title:`${flaggedBarns2.length} ${t('brief.barns_flagged')}`, detail: names2, trend:null });
   }
 
   // 5. Egg quality — defect rate trend vs yesterday
@@ -3453,21 +3646,21 @@ function renderExecBrief(todayStr, yesterStr) {
   const drYest  = calcDefRate(qYest);
   if (drToday !== null) {
     let trend = null;
-    if (drYest !== null) trend = drToday > drYest + 0.5 ? '↑ worse' : drToday < drYest - 0.5 ? '↓ better' : '→ flat';
+    if (drYest !== null) trend = drToday > drYest + 0.5 ? t('brief.worse') : drToday < drYest - 0.5 ? t('brief.better') : t('brief.flat');
     const sev = drToday > 5 ? 'critical' : drToday > 2 ? 'warning' : 'ok';
-    issues.push({ sev, icon:'🥚', title:`Defect Rate ${drToday.toFixed(1)}%`, detail: `${qToday.length} quality record${qToday.length!==1?'s':''} today`, trend });
+    issues.push({ sev, icon:'🥚', title:`${t('brief.defect_rate')} ${drToday.toFixed(1)}%`, detail: `${qToday.length} ${t('brief.quality_note')}`, trend });
   }
 
   // 6. Mortality spike
   const todayMort = typeof _todayMortTotal !== 'undefined' ? _todayMortTotal : 0;
   if (todayMort > 5) {
-    issues.push({ sev: todayMort > 15 ? 'critical' : 'warning', icon:'⚠️', title:`Mortality: ${todayMort} birds`, detail:'Check barn walk logs', trend:null });
+    issues.push({ sev: todayMort > 15 ? 'critical' : 'warning', icon:'⚠️', title:`${t('brief.mortality')}: ${todayMort} birds`, detail:t('brief.check_walk'), trend:null });
   }
 
   // 7. Low parts stock
   const lowParts2 = (typeof PARTS_DEFS!=='undefined'?PARTS_DEFS:[]).filter(p=>{const inv=partsInventory[p.id]||{qty:0,min:1};return inv.qty<=inv.min;}).length;
   if (lowParts2 > 0) {
-    issues.push({ sev:'warning', icon:'📦', title:`${lowParts2} Part${lowParts2>1?'s':''} Low Stock`, detail:'Tap Maintenance → Parts', trend:null });
+    issues.push({ sev:'warning', icon:'📦', title:`${lowParts2} ${t('brief.low_stock')}`, detail:t('brief.tap_parts'), trend:null });
   }
 
   // Sort: critical first, then warning, then ok
@@ -3480,8 +3673,8 @@ function renderExecBrief(todayStr, yesterStr) {
       <div style="background:linear-gradient(135deg,#0a1f0a,#0f2a0f);border:1.5px solid #2a5a2a;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
         <span style="font-size:20px;">✅</span>
         <div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#4caf50;letter-spacing:1px;text-transform:uppercase;">All Clear</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3a6a3a;margin-top:2px;">No critical issues at this time</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#4caf50;letter-spacing:1px;text-transform:uppercase;">${t('brief.all_clear')}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3a6a3a;margin-top:2px;">${t('brief.no_issues')}</div>
         </div>
       </div>`;
     return;
@@ -3506,8 +3699,8 @@ function renderExecBrief(todayStr, yesterStr) {
     <div style="background:#0a1a0a;border:1.5px solid ${issues[0].sev==='critical'?'#5a1010':'#3a4a1a'};border-radius:12px;overflow:hidden;">
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#0f0f0f;border-bottom:1px solid #1a2a1a;">
         <span style="font-size:13px;">📋</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#9a9a7a;letter-spacing:2px;text-transform:uppercase;">Executive Brief</span>
-        <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a5a4a;">${issues.filter(i=>i.sev==='critical').length} critical · ${issues.filter(i=>i.sev==='warning').length} warnings</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#9a9a7a;letter-spacing:2px;text-transform:uppercase;">${t('dash.exec_brief').replace('📋 ','')}</span>
+        <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a5a4a;">${issues.filter(i=>i.sev==='critical').length} ${t('brief.critical')} · ${issues.filter(i=>i.sev==='warning').length} ${t('brief.warnings')}</span>
       </div>
       ${rows}
     </div>`;
@@ -3559,17 +3752,17 @@ function renderDash() {
   const prodCard = document.getElementById('dash-prod-card');
   if (prodCard) prodCard.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#4caf50;">🏭 Production</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#4caf50;">${t('dash.prod_card')}</div>
       <span style="font-size:11px;color:#4caf50;">→</span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${barnColor};line-height:1.1;">${barnsDone}/${allBarns.length}</div>
-        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Checks Done</div>
+        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">${t('dash.checks_done')}</div>
       </div>
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${todayMortTotal>0?'#e53e3e':'#f0ead8'};line-height:1.1;">${todayMortTotal}</div>
-        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Mortality Today</div>
+        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">${t('dash.mortality')}</div>
       </div>
     </div>
     ${todayEggs > 0 ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3a6a3a;margin-bottom:5px;">${fmtNum(todayEggs)} eggs ${eggTrend}</div>` : ''}
@@ -3587,21 +3780,21 @@ function renderDash() {
   const maintCard = document.getElementById('dash-maint-card');
   if (maintCard) maintCard.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#3b82f6;">🔧 Maintenance</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#3b82f6;">${t('dash.maint_card')}</div>
       <span style="font-size:11px;color:#3b82f6;">→</span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;">
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${urgOpen>0?'#e53e3e':'#f0ead8'};line-height:1.1;">${urgOpen}</div>
-        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Urgent WOs</div>
+        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">${t('dash.urgent_wo')}</div>
       </div>
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${pmOv>0?'#d69e2e':'#f0ead8'};line-height:1.1;">${pmOv}</div>
-        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">PM Overdue</div>
+        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">${t('dash.pm_overdue')}</div>
       </div>
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${pmCompCol};line-height:1.1;">${pmCompliancePct}%</div>
-        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">PM Compliance</div>
+        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">${t('dash.pm_compliance')}</div>
       </div>
     </div>
     <div class="pm-compliance-bar"><div class="pm-compliance-fill" style="width:${pmCompliancePct}%;background:${pmCompCol};"></div></div>
@@ -3614,17 +3807,17 @@ function renderDash() {
   const pkgCard = document.getElementById('dash-pkg-card');
   if (pkgCard) pkgCard.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#d69e2e;">📦 Packaging</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#d69e2e;">${t('dash.pkg_card')}</div>
       <span style="font-size:11px;color:#d69e2e;">→</span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:#f0ead8;line-height:1.1;">${fmtNum(todayEggs)}</div>
-        <div style="font-size:9px;color:#7a6a30;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Eggs Logged</div>
+        <div style="font-size:9px;color:#7a6a30;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">${t('dash.eggs_logged')}</div>
       </div>
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:#f0ead8;line-height:1.1;">${fmtNum(todayPacked)}</div>
-        <div style="font-size:9px;color:#7a6a30;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Cases Packed</div>
+        <div style="font-size:9px;color:#7a6a30;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">${t('dash.cases_packed')}</div>
       </div>
     </div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8a7040;">${fmtNum(todayPacked)} cases${packTrend?' &nbsp;'+packTrend+' vs yest':' packed today'}</div>`;
@@ -3637,17 +3830,17 @@ function renderDash() {
   const shipCard = document.getElementById('dash-ship-card');
   if (shipCard) shipCard.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#9b59b6;">🚚 Shipping</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#9b59b6;">${t('dash.ship_card')}</div>
       <span style="font-size:11px;color:#9b59b6;">→</span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:#f0ead8;line-height:1.1;">${activeLoads}</div>
-        <div style="font-size:9px;color:#6a4a8a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Active Loads</div>
+        <div style="font-size:9px;color:#6a4a8a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">${t('dash.active_loads')}</div>
       </div>
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${openExc>0?'#e53e3e':'#f0ead8'};line-height:1.1;">${openExc}</div>
-        <div style="font-size:9px;color:#6a4a8a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Exceptions</div>
+        <div style="font-size:9px;color:#6a4a8a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">${t('dash.exceptions')}</div>
       </div>
     </div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6a4a8a;">${todayShipLoads} loads today${holds>0?' &nbsp;·&nbsp; <span style="color:#e07070;">'+holds+' on hold</span>':''}</div>`;
@@ -11112,7 +11305,10 @@ function renderBioLog() {
 
 // BOOT
 // ═══════════════════════════════════════════
-initApp();
+initApp().then(() => {
+  applyTranslations();
+  setupLangFab();
+});
 </script>
 <!-- ═══ BARN CHECKLIST OVERLAY ═══ -->
 <div id="checklist-overlay" style="display:none;position:fixed;inset:0;background:#163016;z-index:500;overflow-y:auto;">
