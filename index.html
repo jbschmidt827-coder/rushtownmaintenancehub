@@ -10675,11 +10675,15 @@ async function saveEggQuality() {
   const defects = cracks + dirties + floor + soft + blood;
   const gradeAPct = gradeA > 0 ? Math.round((gradeA/total)*100) : Math.round(((total-defects)/total)*100);
   const rec = { date, farm, house: String(house), total, gradeA, cracks, dirties, floorEggs:floor, softShells:soft, bloodSpots:blood, defects, gradeAPct, by, notes, ts: Date.now() };
+  setSyncDot('saving');
   try {
-    await db.collection('opsEggQuality').add(rec);
+    const ref = await db.collection('opsEggQuality').add(rec);
+    rec._fbId = ref.id;
+    opsEggQuality.unshift(rec);
     clearEqForm();
     renderEggQuality();
   } catch(e) { alert('Save failed: ' + e.message); }
+  setSyncDot('live');
 }
 
 function clearEqForm() {
@@ -10795,15 +10799,19 @@ async function saveBioEntry() {
     ts: Date.now()
   };
   const statusEl = document.getElementById('bio-save-status');
+  if (!statusEl) return;
+  setSyncDot('saving');
   try {
     statusEl.style.color = '#f87171'; statusEl.textContent = 'Saving...';
-    await db.collection('biosecurityLog').add(rec);
+    const ref = await db.collection('biosecurityLog').add(rec);
+    rec._fbId = ref.id;
     bioLog.unshift(rec);
     statusEl.style.color = '#4caf50'; statusEl.textContent = '✓ Entry logged!';
     setTimeout(() => statusEl.textContent = '', 2000);
     clearBioForm();
     renderBioLog();
   } catch(e) { statusEl.style.color = '#e53e3e'; statusEl.textContent = 'Save failed: ' + e.message; }
+  setSyncDot('live');
 }
 
 function clearBioForm() {
