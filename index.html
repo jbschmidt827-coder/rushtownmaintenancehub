@@ -12009,13 +12009,11 @@ function openSchedModal(dept, day, entryId) {
   if (entryId) {
     const entry = _schedData.find(r => r._id === entryId) || {};
     document.getElementById('sched-person').value = entry.person || '';
-    document.getElementById('sched-role').value   = entry.role   || '';
     document.getElementById('sched-shift').value  = entry.shift  || 'morning';
     document.getElementById('sched-notes').value  = entry.notes  || '';
     document.getElementById('sched-del-btn').style.display = '';
   } else {
     document.getElementById('sched-person').value = '';
-    document.getElementById('sched-role').value   = '';
     document.getElementById('sched-shift').value  = 'morning';
     document.getElementById('sched-notes').value  = '';
     document.getElementById('sched-del-btn').style.display = 'none';
@@ -12039,7 +12037,7 @@ async function saveSchedEntry() {
     dept:     _schedModalDept,
     day:      _schedModalDay,
     person,
-    role:   document.getElementById('sched-role').value.trim(),
+    role:   '',
     shift:  document.getElementById('sched-shift').value,
     notes:  document.getElementById('sched-notes').value.trim(),
     ts:     Date.now()
