@@ -1333,9 +1333,18 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <div class="section-title" data-i18n="title.sched">📅 Team Schedule</div>
 
   <!-- Facility Toggle -->
-  <div class="pill-bar sched-fac-bar" style="margin-bottom:14px;">
+  <div class="pill-bar sched-fac-bar" style="margin-bottom:10px;">
     <button class="loc-pill active" id="sched-fac-danville" onclick="setSchedFacility('Danville',this)">📍 Danville</button>
     <button class="loc-pill" id="sched-fac-hegins" onclick="setSchedFacility('Hegins',this)">📍 Hegins</button>
+  </div>
+
+  <!-- Department Sub-Nav -->
+  <div class="sub-nav sched-dept-bar" id="sched-dept-bar" style="margin-bottom:14px;">
+    <button class="sub-btn active" id="sdept-prod"  onclick="setSchedDept('prod',this)">🏭 Production</button>
+    <button class="sub-btn" id="sdept-maint" onclick="setSchedDept('maint',this)">🔧 Maintenance</button>
+    <button class="sub-btn" id="sdept-pkg"   onclick="setSchedDept('pkg',this)">📦 Packaging</button>
+    <button class="sub-btn" id="sdept-feed"  onclick="setSchedDept('feed',this)">🌾 Feed Mill</button>
+    <button class="sub-btn" id="sdept-ship"  onclick="setSchedDept('ship',this)">🚚 Shipping</button>
   </div>
 
   <!-- Week Navigator -->
@@ -1343,12 +1352,12 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <button class="sched-nav-btn" onclick="prevSchedWeek()">‹</button>
     <div class="sched-week-label" id="sched-week-label">Week of …</div>
     <button class="sched-nav-btn" onclick="nextSchedWeek()">›</button>
-    <button class="sched-copy-btn" onclick="copyLastWeek()">⎘ Copy Last Week</button>
+    <button class="sched-copy-btn" onclick="copyLastWeek()">⎘ Copy Week</button>
   </div>
 
   <!-- Lean KPI Bar -->
   <div class="sched-kpi-bar">
-    <div class="sched-kpi-cell" id="sched-kpi-assign">
+    <div class="sched-kpi-cell">
       <div class="sched-kpi-num" id="sched-kpi-assign-num">—</div>
       <div class="sched-kpi-lbl">📋 Assignments</div>
     </div>
@@ -1356,11 +1365,11 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <div class="sched-kpi-num" id="sched-kpi-cov-num">—</div>
       <div class="sched-kpi-lbl">✅ Coverage</div>
     </div>
-    <div class="sched-kpi-cell" id="sched-kpi-gaps">
+    <div class="sched-kpi-cell">
       <div class="sched-kpi-num" id="sched-kpi-gaps-num">—</div>
       <div class="sched-kpi-lbl">🟡 Open Gaps</div>
     </div>
-    <div class="sched-kpi-cell" id="sched-kpi-people">
+    <div class="sched-kpi-cell">
       <div class="sched-kpi-num" id="sched-kpi-people-num">—</div>
       <div class="sched-kpi-lbl">👥 People</div>
     </div>
@@ -1379,7 +1388,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <table class="sched-grid">
       <thead>
         <tr>
-          <th>DEPT</th>
+          <th id="sched-grid-pos-hdr">POSITION</th>
           <th>MON</th><th>TUE</th><th>WED</th><th>THU</th><th>FRI</th><th>SAT</th><th>SUN</th>
         </tr>
       </thead>
@@ -1388,6 +1397,11 @@ body { min-height: 100dvh; overflow-x: hidden; }
       </tbody>
     </table>
   </div>
+
+  <!-- Add Position button (shown for pkg/feed/ship) -->
+  <div id="sched-add-pos-wrap" style="display:none;margin-top:12px;">
+    <button class="sched-copy-btn" onclick="openSchedNewPosition()">➕ Add Position to This Dept</button>
+  </div>
 </div>
 
 <!-- Schedule Assignment Modal -->
@@ -1395,13 +1409,15 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <div class="sched-modal-box">
     <div class="sched-modal-title" id="sched-modal-title">Assign Team Member</div>
     <div class="sched-modal-grid">
+      <!-- Position field — shown for non-production depts -->
+      <div class="sched-modal-field full" id="sched-pos-field" style="display:none;">
+        <div class="sched-modal-label">Position *</div>
+        <input class="sched-modal-input" id="sched-position" type="text" list="sched-pos-list" placeholder="e.g. Manure Tech" autocomplete="off">
+        <datalist id="sched-pos-list"></datalist>
+      </div>
       <div class="sched-modal-field full">
         <div class="sched-modal-label">Person Name *</div>
         <input class="sched-modal-input" id="sched-person" type="text" placeholder="e.g. J. Smith" autocomplete="off">
-      </div>
-      <div class="sched-modal-field">
-        <div class="sched-modal-label">Role / Position</div>
-        <input class="sched-modal-input" id="sched-role" type="text" placeholder="e.g. Line Lead">
       </div>
       <div class="sched-modal-field">
         <div class="sched-modal-label">Shift</div>
@@ -1411,7 +1427,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
           <option value="night">🟣 Night</option>
         </select>
       </div>
-      <div class="sched-modal-field full">
+      <div class="sched-modal-field">
         <div class="sched-modal-label">Notes</div>
         <input class="sched-modal-input" id="sched-notes" type="text" placeholder="Optional">
       </div>
@@ -3901,6 +3917,7 @@ async function initApp() {
     await loadBioLog();
     await seedMortalityCompostingWI();
     await seedWaterRegulatorWI();
+    await seedAugerRollerWI();
     assignRHNumbers();
 
     // Real-time listeners
@@ -7660,6 +7677,48 @@ async function seedWaterRegulatorWI() {
     ts: Date.now()
   });
   console.log('✅ Water Regulator WI seeded.');
+}
+
+async function seedAugerRollerWI() {
+  const SEED_ID = 'WI-AUGER-ROLLER-CLEAN-REPLACE';
+  try {
+    const check = await db.collection('workInstructions').where('wiId','==', SEED_ID).get();
+    if (!check.empty) return;
+  } catch(e) { return; }
+
+  const today = new Date().toISOString().slice(0,10);
+  await db.collection('workInstructions').add({
+    wiId: SEED_ID,
+    title: 'Auger Roller — Cleaning, Replacement & Preventive Maintenance',
+    dept: 'Maintenance',
+    type: 'repair',
+    system: 'Manure Belt',
+    time: 90,
+    author: 'Rushtown Poultry',
+    date: today,
+    ppe: 'Safety glasses, work gloves. Follow Lockout/Tagout (LOTO) at all times. Use proper lifting techniques and secured rigging when handling the roller.',
+    warnings: 'Verify zero energy before starting work — attempt to start equipment to confirm it will NOT operate after lockout. Uneven belt tension causes tracking issues and premature wear. Always recheck hardware tightness after initial run.',
+    tools: '19mm deep well socket, impact driver, 10mm wrench, emery cloth, anti-seize compound, crowbar, hammer, tape measure, (2) chain come-alongs, (2) chains',
+    steps: [
+      'LOCKOUT & VERIFICATION — Lock out the manure belt at the back of the house. Attempt to start the equipment to confirm it will not operate.',
+      'RECORD BELT ADJUSTMENT — Measure and record the distance between the all-thread adjusters. This ensures proper belt tension can be restored after reassembly.',
+      'LOOSEN BELT — Fully loosen the belt using a 19mm deep well socket and impact driver.',
+      'REMOVE TROUGH — Remove the trough from the side using a 10mm wrench.',
+      'SET UP ROLLER SUPPORT — Attach chains to the cross member above the belt. Connect chain come-alongs to both sides of the roller.',
+      'REMOVE ROLLER FASTENERS — Secure the roller with the come-alongs. Remove bolts from the tail roller using a 19mm socket and impact driver.',
+      'LOWER ROLLER — Slowly lower the roller using the chain hoists. Once fully lowered, remove the roller and place it on the ground.',
+      'CLEANING & INSPECTION — Clean out auger flights thoroughly. Partially remove the shaft, clean shaft ends with emery cloth, and apply anti-seize to both ends.',
+      'REPLACEMENT (if applicable) — Prepare the new auger roller: ensure new bushings and shaft are properly installed before reinstallation.',
+      'REINSTALLATION — Slide the auger roller back into the manure belt. Hoist the roller into position using the come-alongs. Install and tighten all mounting bolts securely.',
+      'REASSEMBLE COMPONENTS — Reinstall the trough on both sides.',
+      'RESTORE BELT TENSION — Tighten the belt back to the original recorded measurements from Step 2.',
+      'STARTUP & TESTING — Notify affected employees before startup. Remove lockout and start the manure belt.',
+      'FINAL CHECKS — Check belt tracking on the auger roller. Verify belt tension and adjust if necessary. Ensure both sides are equal or within 1/8 inch.',
+      'COMPLETION — Once proper operation is confirmed, release the system back to service. Log completion in the work order system.',
+    ],
+    ts: Date.now()
+  });
+  console.log('✅ Auger Roller WI seeded.');
 }
 
 function startWIListener() {
@@ -11805,6 +11864,7 @@ const SHIFT_COLOR = { morning:'morning', afternoon:'afternoon', night:'night' };
 
 let _schedWeekOf  = '';
 let _schedFacility = 'Danville';
+let _schedDept    = 'prod';
 let _schedData    = [];
 let _schedEditId  = null;
 let _schedModalDept = '';
@@ -11833,7 +11893,19 @@ function setSchedFacility(fac, btn) {
   _schedFacility = fac;
   document.querySelectorAll('.sched-fac-bar .loc-pill').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  // Reset to prod when switching facility (house counts differ)
+  _schedDept = 'prod';
+  document.querySelectorAll('.sched-dept-bar .sub-btn').forEach(b => b.classList.remove('active'));
+  const prodBtn = document.getElementById('sdept-prod');
+  if (prodBtn) prodBtn.classList.add('active');
   loadSchedule();
+}
+
+function setSchedDept(dept, btn) {
+  _schedDept = dept;
+  document.querySelectorAll('.sched-dept-bar .sub-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSchedule();
 }
 
 function prevSchedWeek() {
@@ -11861,13 +11933,14 @@ async function loadSchedule() {
 }
 
 function renderSchedule() {
-  // KPI bar
-  const depts = getSchedDepts();
+  const allRows = getSchedDepts();
+
+  // KPI: based on all data for this facility/week
   const total = _schedData.length;
-  const deptDays = depts.length * 7;
+  const allDeptDays = allRows.length * 7;
   const covered = new Set(_schedData.map(r => r.dept + '_' + r.day)).size;
-  const gaps = deptDays - covered;
-  const covPct = Math.round((covered / deptDays) * 100);
+  const gaps = allDeptDays - covered;
+  const covPct = allDeptDays > 0 ? Math.round((covered / allDeptDays) * 100) : 0;
   const people = new Set(_schedData.map(r => r.person)).size;
 
   document.getElementById('sched-kpi-assign-num').textContent = total;
@@ -11878,11 +11951,21 @@ function renderSchedule() {
   document.getElementById('sched-kpi-gaps-num').textContent = gaps;
   document.getElementById('sched-kpi-people-num').textContent = people;
 
+  // Filter rows to active dept
+  const deptRowMap = {
+    prod:  allRows.filter(r => r.key.startsWith('house_')),
+    maint: allRows.filter(r => r.key.startsWith('maint_')),
+    pkg:   allRows.filter(r => r.key === 'pkg'),
+    feed:  allRows.filter(r => r.key === 'feed'),
+    ship:  allRows.filter(r => r.key === 'ship'),
+  };
+  const rows = deptRowMap[_schedDept] || allRows;
+
   // Grid body
   const tbody = document.getElementById('sched-tbody');
   let html = '';
 
-  depts.forEach(dept => {
+  rows.forEach(dept => {
     html += `<tr>`;
     html += `<td class="sched-dept-cell" style="border-left:3px solid ${dept.color};">
                <span class="sched-dept-icon">${dept.icon}</span>${dept.label}
@@ -11893,9 +11976,7 @@ function renderSchedule() {
       entries.forEach(e => {
         const sc = SHIFT_COLOR[e.shift] || 'morning';
         const tip = e.role ? `${e.person} · ${e.role}` : e.person;
-        html += `<span class="sched-chip ${sc}" onclick="openSchedModal('${dept.key}','${day}','${e._id}')" title="${tip}">
-                   ${e.person}
-                 </span>`;
+        html += `<span class="sched-chip ${sc}" onclick="openSchedModal('${dept.key}','${day}','${e._id}')" title="${tip}">${e.person}</span>`;
       });
       html += `<button class="sched-add-btn" onclick="openSchedModal('${dept.key}','${day}',null)">+</button>`;
       html += `</td>`;
@@ -11903,11 +11984,13 @@ function renderSchedule() {
     html += `</tr>`;
   });
 
-  // EE locked row
-  html += `<tr class="sched-ee-row">
-    <td class="sched-dept-cell" style="border-left:3px solid #444;color:#555;"><span class="sched-dept-icon">⚡</span>EE</td>
-    <td colspan="7" style="text-align:center;padding:12px 8px;">⚡ EE — Coming Soon</td>
-  </tr>`;
+  // EE locked row only when on prod or all
+  if (_schedDept === 'prod') {
+    html += `<tr class="sched-ee-row">
+      <td class="sched-dept-cell" style="border-left:3px solid #444;color:#555;"><span class="sched-dept-icon">⚡</span>EE</td>
+      <td colspan="7" style="text-align:center;padding:12px 8px;">⚡ EE — Coming Soon</td>
+    </tr>`;
+  }
 
   tbody.innerHTML = html;
   applyFormTextTranslation();
@@ -11918,7 +12001,7 @@ function openSchedModal(dept, day, entryId) {
   _schedModalDay  = day;
   _schedEditId    = entryId;
 
-  const deptObj = SCHED_DEPTS.find(d => d.key === dept) || {};
+  const deptObj = getSchedDepts().find(d => d.key === dept) || {};
   const dayLabel = SCHED_DAY_LABELS[SCHED_DAYS.indexOf(day)] || day.toUpperCase();
   document.getElementById('sched-modal-title').textContent =
     `${deptObj.icon || ''} ${deptObj.label || dept} — ${dayLabel} · ${_schedFacility}`;
