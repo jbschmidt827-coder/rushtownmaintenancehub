@@ -5661,38 +5661,57 @@ async function confirmCloseout() {
     if (!confirm(msg)) return;
   }
 
+  const savedFbId = wo._fbId;
+  const completedDate = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+
   closeCloseout();
+
+  // Optimistic local update — shows completed immediately without waiting for onSnapshot
+  wo.status = 'completed';
+  wo.completedBy = tech;
+  wo.completedNotes = notes;
+  wo.completedDate = completedDate;
+  renderWO();
+
   setSyncDot('saving');
+  try {
+    await db.collection('workOrders').doc(savedFbId).update({
+      status: 'completed',
+      completedBy: tech,
+      completedNotes: notes,
+      completedDate,
+      partsUsed,
+      completedTs: firebase.firestore.FieldValue.serverTimestamp()
+    });
 
-  // Update WO status
-  await db.collection('workOrders').doc(wo._fbId).update({
-    status: 'completed',
-    completedBy: tech,
-    completedNotes: notes,
-    completedDate: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-    partsUsed,
-    completedTs: firebase.firestore.FieldValue.serverTimestamp()
-  });
+    // Decrement parts inventory
+    for (const {partId, qty} of partsUsed) {
+      const inv = partsInventory[partId]||{qty:0,min:1};
+      const newQty = Math.max(0, inv.qty - qty);
+      partsInventory[partId] = {...inv, qty: newQty};
+      await db.collection('partsInventory').doc(partId).set({...partsInventory[partId], ts: firebase.firestore.FieldValue.serverTimestamp()});
+    }
 
-  // Decrement parts inventory
-  for (const {partId, qty} of partsUsed) {
-    const inv = partsInventory[partId]||{qty:0,min:1};
-    const newQty = Math.max(0, inv.qty - qty);
-    partsInventory[partId] = {...inv, qty: newQty};
-    await db.collection('partsInventory').doc(partId).set({...partsInventory[partId], ts: firebase.firestore.FieldValue.serverTimestamp()});
+    // Log activity
+    await db.collection('activityLog').add({
+      type:'wo', id:wo.id,
+      desc:`WO Completed: ${wo.farm} · ${wo.house} · ${wo.problem}`,
+      tech, notes, partsUsed,
+      date: completedDate,
+      ts: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    setSyncDot('live');
+    updatePartsAlerts();
+  } catch(e) {
+    console.error('WO complete failed:', e);
+    alert('Error completing work order: ' + e.message);
+    // Roll back optimistic update
+    wo.status = 'in-progress';
+    wo.completedBy = '';
+    renderWO();
+    setSyncDot('live');
   }
-
-  // Log activity
-  await db.collection('activityLog').add({
-    type:'wo', id:wo.id,
-    desc:`WO Completed: ${wo.farm} · ${wo.house} · ${wo.problem}`,
-    tech, notes, partsUsed,
-    date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-    ts: firebase.firestore.FieldValue.serverTimestamp()
-  });
-
-  setSyncDot('live');
-  updatePartsAlerts();
 }
 
 // ═══════════════════════════════════════════
