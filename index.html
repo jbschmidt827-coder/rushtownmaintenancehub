@@ -9902,11 +9902,16 @@ function renderFeedDashboard() {
     if (pct < 10) critCount++;
   });
 
-  if (statsEl) statsEl.innerHTML =
-    sc('s-green', feedBins.length, '🌾 Total Bins') +
-    sc('s-blue', fmtNum(totalLbs) + ' lbs', '📦 Total Inventory') +
-    sc(lowCount > 0 ? 's-amber' : 's-green', lowCount, '⚠️ Low Bins') +
-    sc(critCount > 0 ? 's-red' : 's-green', critCount, '🔴 Critical');
+  if (statsEl) {
+    const todayStr = new Date().toISOString().slice(0,10);
+    const activeWithdrawals = feedMedications.filter(m => m.withdrawalEndDate && m.withdrawalEndDate >= todayStr).length;
+    statsEl.innerHTML =
+      sc('s-green', feedBins.length, '🌾 Total Bins') +
+      sc('s-blue', fmtNum(totalLbs) + ' lbs', '📦 Total Inventory') +
+      sc(lowCount > 0 ? 's-amber' : 's-green', lowCount, '⚠️ Low Bins') +
+      sc(critCount > 0 ? 's-red' : 's-green', critCount, '🔴 Critical') +
+      sc(activeWithdrawals > 0 ? 's-amber' : 's-green', activeWithdrawals, '💊 In Withdrawal');
+  }
 
   // Group bins by farm → house
   const byFarm = {};
@@ -9975,9 +9980,56 @@ function renderFeedDashboard() {
                 </div>`;
             }).join('');
 
-            const totalLbs = bins.reduce((s,b) => s + b.capacityLbs, 0);
+            const totalCapHouse = bins.reduce((s,b2) => s + (b2.capacityLbs||0), 0);
             const statusClass = daysLeft === null ? 'ok' : daysLeft >= 3 ? 'ok' : daysLeft >= 1.5 ? 'low' : 'critical';
             const statusLabel = daysLeft === null ? '— No consumption set' : daysLeft >= 3 ? '✅ OK' : daysLeft >= 1.5 ? '⚠️ Order Soon' : '🔴 Critical';
+            const feedTypeLabel = bins[0]?.feedType || '';
+
+            // ── 7-day actual consumption trend from consumption log ──
+            const houseNum = parseInt(house.replace(/\D/g,'')||'0');
+            const today7 = new Date(); today7.setHours(0,0,0,0);
+            const last7Days = Array.from({length:7},(_,i)=>{
+              const d=new Date(today7); d.setDate(d.getDate()-i);
+              return d.toISOString().slice(0,10);
+            }).reverse();
+            const houseConsLogs = feedConsumption.filter(c => c.farm===farm && parseInt((c.house||'').replace(/\D/g,''))||0 === houseNum);
+            const dayTotals = last7Days.map(date => {
+              const rec = houseConsLogs.find(c => c.date === date);
+              return rec ? rec.consumedLbs : null;
+            });
+            const hasConsData = dayTotals.some(v => v !== null);
+            const avg7 = hasConsData ? Math.round(dayTotals.filter(v=>v!==null).reduce((s,v)=>s+v,0) / dayTotals.filter(v=>v!==null).length) : null;
+
+            // Sparkline bars (mini 7-day chart)
+            const sparkMax = hasConsData ? Math.max(...dayTotals.filter(v=>v!==null), dailyCons||1) : 1;
+            const sparkline = hasConsData ? `
+              <div style="margin:8px 0 4px;border-top:1px solid #2a5a2a;padding-top:8px;">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a8a4a;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">7-Day Consumption</div>
+                <div style="display:flex;align-items:flex-end;gap:2px;height:28px;">
+                  ${dayTotals.map((v,i) => {
+                    const h = v !== null ? Math.max(3, Math.round((v/sparkMax)*28)) : 3;
+                    const isToday = last7Days[i] === new Date().toISOString().slice(0,10);
+                    const barColor = v === null ? '#2a5a2a' : v > (dailyCons||0)*1.15 ? '#e53e3e' : v < (dailyCons||0)*0.85 ? '#e67e22' : '#4caf50';
+                    return `<div title="${last7Days[i]}: ${v!==null?fmtNum(v)+' lbs':'No data'}" style="flex:1;height:${h}px;background:${barColor};border-radius:2px 2px 0 0;opacity:${isToday?'1':'0.75'};"></div>`;
+                  }).join('')}
+                </div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab07a;margin-top:3px;">
+                  7-day avg: <strong style="color:#a0c8a0;">${fmtNum(avg7)} lbs</strong>
+                  ${dailyCons && avg7 ? ` · ${avg7 > dailyCons*1.1 ? '▲' : avg7 < dailyCons*0.9 ? '▼' : '≈'} expected` : ''}
+                </div>
+              </div>` : '';
+
+            // ── Active medication warning for this house ──
+            const todayStr = new Date().toISOString().slice(0,10);
+            const activeMeds = feedMedications.filter(m =>
+              m.farm === farm &&
+              (m.barn === house || m.barn === 'All Houses') &&
+              m.withdrawalEndDate && m.withdrawalEndDate >= todayStr
+            );
+            const medWarning = activeMeds.length ? `
+              <div style="margin-top:6px;background:#fff8e1;border:1.5px solid #f59e0b;border-radius:7px;padding:6px 10px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:#d97706;">
+                ⚠️ ${activeMeds.length} active withdrawal${activeMeds.length>1?'s':''}: ${activeMeds.map(m=>m.product).join(', ')}
+              </div>` : '';
 
             return `<div class="feed-bin-card">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
@@ -9986,8 +10038,10 @@ function renderFeedDashboard() {
                   ${daysLeft !== null ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:${daysColor};line-height:1;">${daysLeft}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a8a4a;">days left</div>` : ''}
                 </div>
               </div>
-              <div class="feed-bin-loc">${[b.feedType, farm].filter(Boolean).join(' · ')}</div>
+              <div class="feed-bin-loc">${[feedTypeLabel, farm].filter(Boolean).join(' · ')}</div>
               ${binRows}
+              ${sparkline}
+              ${medWarning}
               <div style="border-top:1px solid #2a5a2a;padding-top:8px;margin-top:4px;display:flex;justify-content:space-between;align-items:center;">
                 <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;">Total: ${fmtNum(totalLbsHouse)} lbs${dailyCons?` · ${fmtNum(Math.round(dailyCons))} lbs/day`:''}</div>
                 <div class="feed-bin-status ${statusClass}" style="margin-top:0;">${statusLabel}</div>
