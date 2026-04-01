@@ -175,6 +175,19 @@ function woCardHtml(wo) {
   const completedInfo = wo.status === 'completed' && wo.completedBy
     ? `<div style="margin-top:6px;padding:6px 8px;background:#0a1f0a;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#4caf50;">${t('wo.completedby')} ${wo.completedBy}${wo.completedDate?' · '+wo.completedDate:''}${timeToClose}${wo.completedNotes?'<br><span style="color:#7ab07a;">'+wo.completedNotes+'</span>':''}${completionPhotoStrip}</div>` : '';
 
+  // Update log entries displayed on card
+  const updateLog = (wo.updates && wo.updates.length)
+    ? `<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.07);padding-top:8px;">` +
+      wo.updates.slice().reverse().map(u =>
+        `<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">
+          <span style="font-size:9px;color:#4a6a4a;font-family:'IBM Plex Mono',monospace;white-space:nowrap;margin-top:2px;">${u.time||''}</span>
+          <span style="font-size:12px;color:#d0c8b8;flex:1;">${u.text}</span>
+          ${u.by?`<span style="font-size:10px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;white-space:nowrap;">— ${u.by}</span>`:''}
+        </div>`
+      ).join('') +
+      `</div>`
+    : '';
+
   return `<div class="wo-card ${wo.priority}${escalate?' wo-escalated':''}${slaBreach?' wo-sla-breach':''}">
     <div class="wo-id">${wo.id}<div class="wo-pri" style="color:${pC[wo.priority]}">${pL[wo.priority]}</div></div>
     <div class="wo-body">
@@ -184,6 +197,7 @@ function woCardHtml(wo) {
       ${wo.parts?`<p style="margin-top:5px;font-size:12px;color:var(--green-mid)">🔩 ${wo.parts}</p>`:''}
       ${completedInfo}
       ${photoStrip}
+      ${updateLog}
     </div>
     <div class="wo-meta">
       <span class="badge ${wo.status}">${wo.status.replace('-',' ').replace(/\b\w/g,c=>c.toUpperCase())}</span>
@@ -193,8 +207,67 @@ function woCardHtml(wo) {
     </div>
     <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
       ${actionBtns}
+      <button onclick="event.stopPropagation();openWOUpdate('${wo._fbId}')" style="padding:9px 12px;background:#1a2a1a;border:1px solid #2a4a2a;border-radius:8px;color:#7ab07a;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">💬 Update</button>
     </div>
   </div>`;
+}
+
+// ── WO Update (append-only notes) ────────────
+function openWOUpdate(fbId) {
+  const wo = workOrders.find(w => w._fbId === fbId);
+  if (!wo) return;
+  const existing = document.getElementById('wo-update-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'wo-update-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.75);display:flex;align-items:flex-end;justify-content:center;padding:0 0 0 0;';
+  modal.innerHTML = `
+    <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:16px 16px 0 0;width:100%;max-width:520px;padding:20px 18px 32px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;">💬 Add Update — ${wo.id}</div>
+          <div style="font-size:11px;color:#5a8a5a;margin-top:2px;">${wo.farm} · ${wo.house} · ${wo.problem}</div>
+        </div>
+        <button onclick="document.getElementById('wo-update-modal').remove()" style="background:none;border:none;color:#5a8a5a;font-size:20px;cursor:pointer;line-height:1;">✕</button>
+      </div>
+      <textarea id="wo-update-text" placeholder="e.g. Waiting on parts — ordered belt tensioner, ETA Thursday..." style="width:100%;background:#0a140a;border:1.5px solid #2a5a2a;border-radius:10px;color:#f0ead8;padding:12px 14px;font-size:14px;font-family:inherit;box-sizing:border-box;resize:none;min-height:90px;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+        <input type="text" id="wo-update-by" placeholder="Your name (optional)" list="staff-datalist" autocomplete="off" style="flex:1;background:#0a140a;border:1px solid #1e3a1e;border-radius:8px;color:#f0ead8;padding:9px 12px;font-size:13px;font-family:inherit;">
+        <button id="wo-update-save-btn" onclick="saveWOUpdate('${fbId}')" style="padding:10px 20px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:10px;color:#f0ead8;font-size:13px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">Save</button>
+      </div>
+      <div id="wo-update-result" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#4caf50;margin-top:10px;text-align:center;">✓ Update saved</div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  setTimeout(() => document.getElementById('wo-update-text')?.focus(), 50);
+}
+
+async function saveWOUpdate(fbId) {
+  const text = (document.getElementById('wo-update-text')?.value || '').trim();
+  if (!text) { document.getElementById('wo-update-text')?.focus(); return; }
+  const by   = (document.getElementById('wo-update-by')?.value || '').trim();
+  const btn  = document.getElementById('wo-update-save-btn');
+  if (btn) btn.disabled = true;
+
+  const now  = new Date();
+  const time = now.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' +
+               now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  const entry = { text, by, time, ts: Date.now() };
+
+  try {
+    const wo = workOrders.find(w => w._fbId === fbId);
+    const current = wo?.updates || [];
+    await db.collection('workOrders').doc(fbId).update({
+      updates: [...current, entry]
+    });
+    const res = document.getElementById('wo-update-result');
+    if (res) res.style.display = 'block';
+    setTimeout(() => document.getElementById('wo-update-modal')?.remove(), 1000);
+  } catch(e) {
+    alert('Save failed: ' + e.message);
+    if (btn) btn.disabled = false;
+  }
 }
 
 // Lightbox viewer for WO photos
