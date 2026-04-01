@@ -589,7 +589,7 @@ function renderPM() {
   let filtered=[...tasks];
   if (pmStatFilter==='overdue') filtered=tasks.filter(t=>pmStatus(t.id)==='overdue');
   else if (pmStatFilter==='soon') filtered=tasks.filter(t=>pmStatus(t.id)==='due-soon');
-  else if (['daily','weekly','monthly','quarterly','semiannual','annual'].includes(pmStatFilter))
+  else if (['daily','mwf','weekly','monthly','quarterly','semiannual','annual'].includes(pmStatFilter))
     filtered=tasks.filter(t=>t.freq===pmStatFilter);
   else if (pmStatFilter && pmStatFilter.startsWith('sys:'))
     filtered=tasks.filter(t=>t.sys===pmStatFilter.slice(4));

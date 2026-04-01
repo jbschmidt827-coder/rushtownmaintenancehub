@@ -122,12 +122,13 @@ const FARM_HOUSES = {
 };
 const AREAS = ['Feed System','Watering System','Ventilation / Fans','Heating / Brooders','Electrical Panel','Well House / Pump','Catch / Load Out','Generator','Vehicle / Equipment','Shop / Office','Other'];
 const FREQ = {
-  daily:      {label:'Daily',      icon:'🟢', days:1},
-  weekly:     {label:'Weekly',     icon:'🔵', days:7},
-  monthly:    {label:'Monthly',    icon:'🟡', days:30},
-  quarterly:  {label:'Quarterly',  icon:'🟠', days:90},
-  semiannual: {label:'Bi-Annual',  icon:'🟣', days:180},
-  annual:     {label:'Annual',     icon:'🔴', days:365},
+  daily:      {label:'Daily',        icon:'🟢', days:1},
+  mwf:        {label:'Mon/Wed/Fri',  icon:'🔁', days:2},
+  weekly:     {label:'Weekly',       icon:'🔵', days:7},
+  monthly:    {label:'Monthly',      icon:'🟡', days:30},
+  quarterly:  {label:'Quarterly',    icon:'🟠', days:90},
+  semiannual: {label:'Bi-Annual',    icon:'🟣', days:180},
+  annual:     {label:'Annual',       icon:'🔴', days:365},
 };
 const SYS_TAG  = {Ventilation:'t-vent',Water:'t-water',Feed:'t-feed','Feed System':'t-feed',Feeders:'t-feed',Manure:'t-manure','Egg Collectors':'t-egg',Building:'t-building',Alarms:'t-water',Lubing:'t-lubing'};
 
@@ -179,10 +180,10 @@ const PM_DEFS = [
   // ── MANURE SYSTEM ─────────────────────────────────────────
   {id:'mn1',sys:'Manure',task:'Check manure drying fans are running',freq:'daily',hrs:0.25},
   {id:'mn2',sys:'Manure',task:'Check manure belts — report any problems to supervisor',freq:'daily',hrs:0.25},
-  {id:'mnr_h',sys:'Manure',task:'Run manure belts — Houses 4, 5, 6, 7, 8 (2.25 hrs per house)',freq:'daily',hrs:11.25, farms:['Hegins']},
+  {id:'mnr_h',sys:'Manure',task:'Run manure belts — Houses 4, 5, 6, 7, 8 (2.25 hrs per house)',freq:'mwf',hrs:11.25, farms:['Hegins']},
   {id:'mnr_d',sys:'Manure',task:'Run manure belts — all 5 houses (2.25 hrs per house)',freq:'daily',hrs:11.25, farms:['Danville']},
-  {id:'mn3',sys:'Manure',task:'Loosen plows and clean off manure after running',freq:'daily',hrs:0.5, farms:['Hegins']},
-  {id:'mn4',sys:'Manure',task:'Open all curtains after done running',freq:'daily',hrs:0.25, farms:['Hegins']},
+  {id:'mn3',sys:'Manure',task:'Loosen plows and clean off manure after running',freq:'mwf',hrs:0.5, farms:['Hegins']},
+  {id:'mn4',sys:'Manure',task:'Open all curtains after done running',freq:'mwf',hrs:0.25, farms:['Hegins']},
   {id:'mn5',sys:'Manure',task:'Clean trip switch on manure scrapers',freq:'daily',hrs:0.25},
   {id:'mn6',sys:'Manure',task:'Clean manure in pit — must stay clean',freq:'weekly',hrs:1.0},
   {id:'mn7',sys:'Manure',task:'Check auger rollers for buildup — clean if necessary',freq:'weekly',hrs:0.5},

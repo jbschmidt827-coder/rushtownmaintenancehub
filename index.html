@@ -1992,6 +1992,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <button class="pill" onclick="pmStat('overdue',this)">🔴 Overdue</button>
       <button class="pill" onclick="pmStat('soon',this)">🟡 Due Soon</button>
       <button class="pill" onclick="pmStat('daily',this)">🟢 Daily</button>
+      <button class="pill" onclick="pmStat('mwf',this)">🔁 Mon/Wed/Fri</button>
       <button class="pill" onclick="pmStat('weekly',this)">🔵 Weekly</button>
       <button class="pill" onclick="pmStat('monthly',this)">Monthly</button>
       <button class="pill" onclick="pmStat('quarterly',this)">Quarterly</button>
@@ -3360,6 +3361,59 @@ body { min-height: 100dvh; overflow-x: hidden; }
     </div>
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px;border-top:1px solid #eee;padding-top:10px;">Completion History (last 20)</div>
     <div id="pm-history-list"></div>
+  </div>
+</div>
+
+<!-- Bulk PM Catch-Up Modal -->
+<div class="overlay" id="bulk-pm-modal">
+  <div class="modal" style="max-width:500px;max-height:90vh;display:flex;flex-direction:column;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h3 style="margin:0;">📋 Bulk PM Catch-Up</h3>
+      <button onclick="closeBulkPM()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:0;">✕</button>
+    </div>
+    <p class="modal-sub" style="margin-bottom:12px;">Select overdue tasks and mark them all done at once.</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+      <select id="bulk-farm-filter" onchange="renderBulkPMList()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;flex:1;min-width:120px;">
+        <option value="all">All Farms</option>
+        <option value="Hegins">📍 Hegins</option>
+        <option value="Danville">📍 Danville</option>
+      </select>
+      <button onclick="bulkSelectAll(true)" style="padding:7px 12px;background:#e6f4ea;border:1px solid #2e7d32;color:#2e7d32;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">Select All</button>
+      <button onclick="bulkSelectAll(false)" style="padding:7px 12px;background:#fff0f0;border:1px solid #c62828;color:#c62828;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">Clear</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+      <button onclick="bulkSelectByFreq('daily')" style="padding:5px 10px;background:#e6f4ea;border:1px solid #4caf50;color:#2e7d32;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">🟢 Daily</button>
+      <button onclick="bulkSelectByFreq('weekly')" style="padding:5px 10px;background:#e8f0fe;border:1px solid #3b82f6;color:#1a56db;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">🔵 Weekly</button>
+      <button onclick="bulkSelectByFreq('monthly')" style="padding:5px 10px;background:#fffde7;border:1px solid #d69e2e;color:#856404;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Monthly</button>
+    </div>
+    <div id="bulk-pm-list" style="flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:8px;max-height:280px;margin-bottom:10px;"></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;" id="bulk-selected-count">0 selected</div>
+    <div class="modal-field">
+      <label>Completed By <span class="req">*</span></label>
+      <select id="bulk-tech">
+        <option value="">— Select Tech —</option>
+        <option>Nathan</option><option>Adam</option><option>Carlos</option><option>Randy</option>
+        <option>Josh</option><option>Cain</option><option>Celia</option><option>Deb</option><option>Steve</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>Completion Date</label>
+      <input type="date" id="bulk-date">
+    </div>
+    <div class="modal-field">
+      <label>Notes</label>
+      <textarea id="bulk-notes" style="min-height:50px;"></textarea>
+    </div>
+    <div id="bulk-pm-progress" style="display:none;margin-bottom:10px;">
+      <div style="background:#e5e7eb;border-radius:6px;height:10px;overflow:hidden;margin-bottom:6px;">
+        <div id="bulk-pm-bar" style="height:100%;width:0%;background:var(--green-mid);transition:width .3s;"></div>
+      </div>
+      <div id="bulk-pm-status" style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-align:center;"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeBulkPM()">Cancel</button>
+      <button class="btn-confirm" id="bulk-pm-submit-btn" onclick="submitBulkPM()">✓ MARK SELECTED DONE</button>
+    </div>
   </div>
 </div>
 
