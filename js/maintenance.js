@@ -55,8 +55,8 @@ function woAgePill(wo) {
 }
 
 function woCardHtml(wo) {
-  const pL={urgent:t('wo.stat.urgent'),high:t('wo.stat.high'),routine:t('wo.pri.routine')};
-  const pC={urgent:'var(--red)',high:'#b07a00',routine:'var(--green-mid)'};
+  const pL={urgent:t('wo.stat.urgent'),high:t('wo.stat.high'),routine:t('wo.pri.routine'),normal:t('wo.pri.routine'),low:t('wo.pri.routine')};
+  const pC={urgent:'var(--red)',high:'#b07a00',routine:'var(--green-mid)',normal:'var(--green-mid)',low:'var(--green-mid)'};
   const dT={yes:` ${t('wo.down')}`,partial:` ${t('wo.degraded')}`,no:''};
   const ts = wo.ts?.toMillis ? wo.ts.toMillis() : (wo.ts || 0);
   const ageDays = ts ? Math.floor((Date.now() - ts) / 86400000) : 0;
@@ -2862,7 +2862,7 @@ function opsDashRender() {
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #2a5a2a">'
         +'<div><span style="font-size:13px;font-weight:700;color:#f0ead8">'+w.id+'</span>'
         +'<span style="font-size:11px;color:#7ab07a;display:block">'+w.farm+' - '+w.house+'</span></div>'
-        +'<div style="text-align:right"><span style="font-size:11px;font-weight:700;color:'+(pC[w.priority]||'#7ab07a')+'">'+w.priority.toUpperCase()+'</span>'
+        +'<div style="text-align:right"><span style="font-size:11px;font-weight:700;color:'+(pC[w.priority]||'#7ab07a')+'">'+(w.priority||'routine').toUpperCase()+'</span>'
         +'<span style="font-size:10px;color:#5a8a5a;display:block">'+w.problem.slice(0,28)+'</span></div></div>';
     }).join('');
   document.getElementById('ops-wo-dash').innerHTML=wHtml;
