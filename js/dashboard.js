@@ -188,13 +188,13 @@ function renderDash() {
       <span style="font-size:11px;color:#3b82f6;">→</span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;">
-      <div>
+      <div style="cursor:pointer;" onclick="go('maint');goMaintSection('wo');woTogglePriority('urgent',document.querySelector('#wo-filter-bar .pill[data-wo=urgent]'))" title="View urgent WOs">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${urgOpen>0?'#e53e3e':'#f0ead8'};line-height:1.1;">${urgOpen}</div>
-        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">${t('dash.urgent_wo')}</div>
+        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">${t('dash.urgent_wo')} →</div>
       </div>
-      <div>
+      <div style="cursor:pointer;" onclick="go('maint');goMaintSection('wo');pmStat('overdue',document.querySelector('#pm-filter-bar .pill'))" title="View overdue PMs">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${pmOv>0?'#d69e2e':'#f0ead8'};line-height:1.1;">${pmOv}</div>
-        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">${t('dash.pm_overdue')}</div>
+        <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">${t('dash.pm_overdue')} →</div>
       </div>
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${pmCompCol};line-height:1.1;">${pmCompliancePct}%</div>
@@ -202,7 +202,7 @@ function renderDash() {
       </div>
     </div>
     <div class="pm-compliance-bar"><div class="pm-compliance-fill" style="width:${pmCompliancePct}%;background:${pmCompCol};"></div></div>
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a7aaa;margin-top:6px;">${woOpenAll} open WOs${lowParts>0?' &nbsp;·&nbsp; <span style="color:#e07070;">⚠ '+lowParts+' low stock</span>':''}</div>`;
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a7aaa;margin-top:6px;cursor:pointer;" onclick="go('maint');goMaintSection('wo');woResetFilters()">${woOpenAll} open WOs →${lowParts>0?' &nbsp;·&nbsp; <span style="color:#e07070;">⚠ '+lowParts+' low stock</span>':''}</div>`;
 
   // ── PACKAGING card ──
   const todayPacked = (typeof opsPackData!=='undefined'?opsPackData:[]).filter(r=>r.date===todayStr).reduce((s,r)=>s+(Number(r.qty)||0),0);

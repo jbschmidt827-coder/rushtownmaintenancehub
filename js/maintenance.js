@@ -1,3 +1,24 @@
+// ═══════════════════════════════════════════
+// PUSH NOTIFICATIONS
+// ═══════════════════════════════════════════
+function requestNotifPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function sendNotif(title, body, tag) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    new Notification(title, { body, tag: tag||'rushtown', icon: '/icon-192.png', badge: '/icon-192.png' });
+  } catch(e) { /* silently fail on unsupported browsers */ }
+}
+
+// Call on app load
+setTimeout(requestNotifPermission, 3000);
+
+// ═══════════════════════════════════════════
 // WORK ORDERS
 // ═══════════════════════════════════════════
 function woLoc(v,btn) {
@@ -78,7 +99,10 @@ function woCardHtml(wo) {
   const dT={yes:` ${t('wo.down')}`,partial:` ${t('wo.degraded')}`,no:''};
   const ts = wo.ts?.toMillis ? wo.ts.toMillis() : (wo.ts || 0);
   const ageDays = ts ? Math.floor((Date.now() - ts) / 86400000) : 0;
-  const escalate = wo.priority === 'urgent' && ageDays >= 2 && wo.status !== 'completed';
+  const escalate = wo.status !== 'completed' && (
+    (wo.priority === 'urgent' && ageDays >= 1) ||
+    (wo.priority === 'high'   && ageDays >= 3)
+  );
   const photoStrip = (wo.photos && wo.photos.length)
     ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">${wo.photos.map(p=>`<img src="${p}" style="height:60px;border-radius:6px;border:1px solid var(--border);cursor:zoom-in;" onclick="event.stopPropagation();openPhotoViewer('${wo._fbId}')">`).join('')}</div>`
     : '';
@@ -105,8 +129,18 @@ function woCardHtml(wo) {
   const completionPhotoStrip = (wo.completionPhotos && wo.completionPhotos.length)
     ? `<div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;">${wo.completionPhotos.map(p=>`<img src="${p}" style="height:55px;border-radius:6px;border:1px solid #2a5a2a;cursor:zoom-in;" onclick="event.stopPropagation();openCompletionPhotoViewer('${wo._fbId}')">`).join('')}</div>`
     : '';
+  let timeToClose = '';
+  if (wo.status === 'completed' && ts) {
+    const closedTs = wo.completedTs?.toMillis ? wo.completedTs.toMillis() : (wo.completedTs || 0);
+    if (closedTs) {
+      const diffMins = Math.round((closedTs - ts) / 60000);
+      if (diffMins < 60) timeToClose = ` · closed in ${diffMins}m`;
+      else if (diffMins < 1440) timeToClose = ` · closed in ${Math.round(diffMins/60)}h`;
+      else timeToClose = ` · closed in ${Math.round(diffMins/1440)}d`;
+    }
+  }
   const completedInfo = wo.status === 'completed' && wo.completedBy
-    ? `<div style="margin-top:6px;padding:6px 8px;background:#0a1f0a;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#4caf50;">${t('wo.completedby')} ${wo.completedBy}${wo.completedDate?' · '+wo.completedDate:''}${wo.completedNotes?'<br><span style="color:#7ab07a;">'+wo.completedNotes+'</span>':''}${completionPhotoStrip}</div>` : '';
+    ? `<div style="margin-top:6px;padding:6px 8px;background:#0a1f0a;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#4caf50;">${t('wo.completedby')} ${wo.completedBy}${wo.completedDate?' · '+wo.completedDate:''}${timeToClose}${wo.completedNotes?'<br><span style="color:#7ab07a;">'+wo.completedNotes+'</span>':''}${completionPhotoStrip}</div>` : '';
 
   return `<div class="wo-card ${wo.priority}${escalate?' wo-escalated':''}">
     <div class="wo-id">${wo.id}<div class="wo-pri" style="color:${pC[wo.priority]}">${pL[wo.priority]}</div></div>
@@ -121,7 +155,7 @@ function woCardHtml(wo) {
     <div class="wo-meta">
       <span class="badge ${wo.status}">${wo.status.replace('-',' ').replace(/\b\w/g,c=>c.toUpperCase())}</span>
       ${woAgePill(wo)}
-      <span class="wo-meta-txt">👤 ${wo.tech||t('wo.unassigned')}</span>
+      <span class="wo-meta-txt">👤 ${wo.tech||t('wo.unassigned')}${wo.assignedTo?' <span style="color:#3b82f6;font-weight:700;">→ '+wo.assignedTo+'</span>':''}</span>
       <span class="wo-meta-txt">${wo.submitted||''}</span>
     </div>
     <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
@@ -278,6 +312,19 @@ function loadHouses() {
     if (name === currentTech) o.selected = true;
     techSel.appendChild(o);
   });
+
+  // Update Assign To dropdown with same crew
+  const assignSel = document.getElementById('wo-assign');
+  if (assignSel) {
+    const currentAssign = assignSel.value;
+    assignSel.innerHTML = '<option value="">— Unassigned —</option>';
+    techs.forEach(name => {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name;
+      if (name === currentAssign) o.selected = true;
+      assignSel.appendChild(o);
+    });
+  }
 }
 
 function setPri(val, el) {
@@ -436,6 +483,7 @@ async function submitWO() {
       date: document.getElementById('wo-date').value,
       tech, farm, house, problem, desc,
       priority: selPri,
+      assignedTo: document.getElementById('wo-assign')?.value || '',
       parts: document.getElementById('wo-parts').value,
       down: document.getElementById('wo-down').value,
       status: 'open',
@@ -460,6 +508,13 @@ async function submitWO() {
 
     setSyncDot('live');
 
+    // Notify on urgent/high WOs
+    if (wo.priority === 'urgent') {
+      sendNotif('🔴 Urgent WO Submitted', `${wo.id} · ${wo.farm} · ${wo.house} — ${wo.problem}`, wo.id);
+    } else if (wo.priority === 'high') {
+      sendNotif('🟡 High Priority WO', `${wo.id} · ${wo.farm} · ${wo.house} — ${wo.problem}`, wo.id);
+    }
+
     // Only hide the form after everything succeeded
     document.getElementById('wo-form-card').style.display='none';
     document.getElementById('wo-success').style.display='block';
@@ -478,7 +533,7 @@ function afterWOSubmit() {
   document.getElementById('fab-btn').style.display = '';
   document.getElementById('wo-form-card').style.display='';
   document.getElementById('wo-success').style.display='none';
-  ['wo-farm','wo-problem','wo-tech','wo-desc','wo-parts','wo-notes'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['wo-farm','wo-problem','wo-tech','wo-assign','wo-desc','wo-parts','wo-notes'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('wo-down').value='no';
   document.getElementById('wo-down').value='no';
   document.getElementById('wo-house').innerHTML='<option value="">— Select Farm First —</option>';
@@ -544,12 +599,32 @@ function renderPM() {
     return o.indexOf(pmStatus(a.id))-o.indexOf(pmStatus(b.id));
   });
 
+  const overdueCount = tasks.filter(t=>pmStatus(t.id)==='overdue').length;
+  const dueSoonCount = tasks.filter(t=>pmStatus(t.id)==='due-soon').length;
+  let banner = '';
+  if (overdueCount > 0) {
+    banner = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#2d1a1a;border:1.5px solid #7f1d1d;border-radius:10px;margin-bottom:12px;">
+      <span style="font-size:18px;">🔴</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#f87171;">${overdueCount} PM task${overdueCount!==1?'s':''} overdue</div>
+        ${dueSoonCount>0?`<div style="font-size:11px;color:#fca5a5;margin-top:2px;">${dueSoonCount} more due soon</div>`:''}
+      </div>
+      <button onclick="pmStat('overdue',this)" style="margin-left:auto;padding:5px 10px;background:#7f1d1d;border:none;border-radius:6px;color:#fca5a5;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">Show Overdue</button>
+    </div>`;
+  } else if (dueSoonCount > 0) {
+    banner = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#2a1f00;border:1.5px solid #856404;border-radius:10px;margin-bottom:12px;">
+      <span style="font-size:18px;">🟡</span>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#fcd34d;">${dueSoonCount} PM task${dueSoonCount!==1?'s':''} due soon</div>
+      <button onclick="pmStat('soon',this)" style="margin-left:auto;padding:5px 10px;background:#856404;border:none;border-radius:6px;color:#fef3c7;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">Show Due Soon</button>
+    </div>`;
+  }
+
   if (!filtered.length) {
-    document.getElementById('pm-container').innerHTML='<div class="empty"><div class="ei">✅</div><p>All tasks on track.</p></div>';
+    document.getElementById('pm-container').innerHTML = banner + '<div class="empty"><div class="ei">✅</div><p>All tasks on track.</p></div>';
     return;
   }
 
-  let html='';
+  let html = banner;
   for (const sys of ['Ventilation','Water','Feed','Manure','Egg Collectors','Building','Alarms','Lubing']) {
     const st=filtered.filter(t=>t.sys===sys);
     if (!st.length) continue;
@@ -1471,7 +1546,44 @@ async function renderReports() {
   } else html += '<div class="empty"><div class="ei">🔩</div><p>No parts logged in this period</p></div>';
   html += '</div>';
 
+  // Export / print button
+  html += `<div style="margin-top:8px;padding-top:16px;border-top:1px solid #e5e5e5;display:flex;gap:10px;">
+    <button onclick="printReport()" style="flex:1;padding:11px;background:#1a3a1a;border:2px solid #4caf50;border-radius:10px;color:#4caf50;font-size:13px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">🖨️ Print / Save PDF</button>
+    <button onclick="copyReportText()" style="flex:1;padding:11px;background:#1a2a3a;border:2px solid #3b82f6;border-radius:10px;color:#3b82f6;font-size:13px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">📋 Copy Summary</button>
+  </div>`;
+
   document.getElementById('reports-container').innerHTML = html;
+
+  // Store report data for copy/export
+  window._lastReportData = { reportDays, recentWOs, completedWOs, openWOs, pmCompliance, pmDoneInRange, pmDueInRange, dtHrs, dtInRange, byTech, hWOs, dWOs };
+}
+
+function printReport() {
+  window.print();
+}
+
+function copyReportText() {
+  const d = window._lastReportData;
+  if (!d) return;
+  const byTechLines = Object.entries(d.byTech||{}).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`  ${n}: ${c} WO${c!==1?'s':''}`).join('\n');
+  const text = `RUSHTOWN MAINTENANCE REPORT — Last ${d.reportDays} Days
+Generated: ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+─────────────────────────────
+WOs Submitted:  ${d.recentWOs.length}
+WOs Completed:  ${d.completedWOs.length}
+Still Open:     ${d.openWOs.length}
+PM Compliance:  ${d.pmCompliance}% (${d.pmDoneInRange} done / ${d.pmDueInRange} due)
+Downtime:       ${d.dtHrs}h across ${d.dtInRange.length} events
+─────────────────────────────
+By Farm:
+  Hegins:   ${d.hWOs} completed
+  Danville: ${d.dWOs} completed
+By Tech:
+${byTechLines||'  (none)'}`;
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn = document.querySelector('#reports-container button:last-child');
+    if (btn) { const orig=btn.textContent; btn.textContent='✓ Copied!'; setTimeout(()=>btn.textContent=orig, 2000); }
+  }).catch(()=> alert(text));
 }
 
 // Classify a raw log entry type — normalises legacy and new types
