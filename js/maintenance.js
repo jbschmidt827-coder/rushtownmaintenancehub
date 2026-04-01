@@ -52,6 +52,17 @@ function woToggleStatus(v, btn) {
   renderWO();
 }
 
+// SLA thresholds in days by priority
+const WO_SLA = { urgent: 1, high: 3, normal: 7, routine: 7, low: 14 };
+
+function woSlaBreached(wo) {
+  if (wo.status === 'completed' || wo.status === 'on-hold') return false;
+  const ts = wo.ts?.toMillis ? wo.ts.toMillis() : (wo.ts||0);
+  if (!ts) return false;
+  const days = Math.floor((Date.now() - ts) / 86400000);
+  return days >= (WO_SLA[wo.priority] || 7);
+}
+
 function renderWO() {
   let base = woLocFilter==='all' ? workOrders : workOrders.filter(w=>w.farm===woLocFilter);
   document.getElementById('wo-stats').innerHTML =
@@ -60,6 +71,27 @@ function renderWO() {
     sc('s-green',base.filter(w=>w.status==='open').length,t('wo.stat.open')) +
     sc('s-blue',base.filter(w=>w.status==='in-progress').length,t('wo.stat.inprog')) +
     sc('',base.length,t('wo.stat.total'));
+
+  // SLA breach banner
+  const slaBreached = base.filter(w => woSlaBreached(w));
+  const slaBanner = document.getElementById('wo-sla-banner');
+  if (slaBanner) {
+    if (slaBreached.length > 0) {
+      const urgCnt = slaBreached.filter(w=>w.priority==='urgent').length;
+      const hiCnt  = slaBreached.filter(w=>w.priority==='high').length;
+      const detail = [urgCnt && `${urgCnt} Urgent`, hiCnt && `${hiCnt} High`, (slaBreached.length - urgCnt - hiCnt) && `${slaBreached.length - urgCnt - hiCnt} other`].filter(Boolean).join(' · ');
+      slaBanner.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#2d0000;border:1.5px solid #7f1d1d;border-radius:10px;margin-bottom:12px;">
+        <span style="font-size:18px;">🚨</span>
+        <div style="flex:1;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#f87171;">${slaBreached.length} WO${slaBreached.length!==1?'s':''} exceeded SLA — need immediate attention</div>
+          <div style="font-size:11px;color:#fca5a5;margin-top:2px;">${detail}</div>
+        </div>
+      </div>`;
+      slaBanner.style.display = 'block';
+    } else {
+      slaBanner.style.display = 'none';
+    }
+  }
 
   let list = [...base];
   const hasPriority = woPriorityFilters.size > 0;
@@ -103,6 +135,7 @@ function woCardHtml(wo) {
     (wo.priority === 'urgent' && ageDays >= 1) ||
     (wo.priority === 'high'   && ageDays >= 3)
   );
+  const slaBreach = woSlaBreached(wo);
   const photoStrip = (wo.photos && wo.photos.length)
     ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">${wo.photos.map(p=>`<img src="${p}" style="height:60px;border-radius:6px;border:1px solid var(--border);cursor:zoom-in;" onclick="event.stopPropagation();openPhotoViewer('${wo._fbId}')">`).join('')}</div>`
     : '';
@@ -142,7 +175,7 @@ function woCardHtml(wo) {
   const completedInfo = wo.status === 'completed' && wo.completedBy
     ? `<div style="margin-top:6px;padding:6px 8px;background:#0a1f0a;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#4caf50;">${t('wo.completedby')} ${wo.completedBy}${wo.completedDate?' · '+wo.completedDate:''}${timeToClose}${wo.completedNotes?'<br><span style="color:#7ab07a;">'+wo.completedNotes+'</span>':''}${completionPhotoStrip}</div>` : '';
 
-  return `<div class="wo-card ${wo.priority}${escalate?' wo-escalated':''}">
+  return `<div class="wo-card ${wo.priority}${escalate?' wo-escalated':''}${slaBreach?' wo-sla-breach':''}">
     <div class="wo-id">${wo.id}<div class="wo-pri" style="color:${pC[wo.priority]}">${pL[wo.priority]}</div></div>
     <div class="wo-body">
       <h4>${wo.farm} · ${wo.house}${dT[wo.down]||''}</h4>
@@ -1583,11 +1616,52 @@ async function renderReports() {
     <div class="stat-card"><div class="stat-num">${dtInRange.filter(e=>e.ongoing).length}</div><div class="stat-label">Still Active</div></div>
   </div>`;
 
+  // PM compliance by farm
+  const pmFarms = ['Hegins','Danville'];
+  const pmByFarm = {};
+  pmFarms.forEach(farm => {
+    const farmPMs = ALL_PM.filter(t => !t.farms || t.farms.includes(farm));
+    let due = 0, done = 0;
+    farmPMs.forEach(t => {
+      const comp = pmComps[t.id];
+      const freqDays = FREQ[t.freq]?.days || 30;
+      const nextDueTs = comp ? new Date(comp.date).getTime() + freqDays * 86400000 : 0;
+      const dueInRange = (nextDueTs <= now) && (nextDueTs >= (cutoff - freqDays * 86400000));
+      if (dueInRange) { due++; if (doneTaskIds.has(t.id)) done++; }
+    });
+    pmByFarm[farm] = { due, done, pct: due > 0 ? Math.round(done/due*100) : 100 };
+  });
+
+  // Parts cost from completed WOs
+  const partsCostMap = {};
+  completedWOs.forEach(wo => {
+    (wo.partsUsed||[]).forEach(p => {
+      if (!partsCostMap[p.name]) partsCostMap[p.name] = { qty: 0, cost: 0 };
+      partsCostMap[p.name].qty += p.qty;
+      const def = (typeof PARTS_DEFS !== 'undefined' ? PARTS_DEFS : []).find(d => d.name === p.name || d.id === p.id);
+      partsCostMap[p.name].cost += (p.qty) * (def?.unitPrice || 0);
+    });
+  });
+  const totalPartsCost = Object.values(partsCostMap).reduce((s,v)=>s+v.cost,0);
+
   // By farm
   html += `<div class="recent-hdr">📍 WOs Completed by Farm</div>
   <div class="stats-grid g2" style="margin-bottom:20px;">
     <div class="stat-card"><div class="stat-num">${hWOs}</div><div class="stat-label">Hegins</div></div>
     <div class="stat-card"><div class="stat-num">${dWOs}</div><div class="stat-label">Danville</div></div>
+  </div>`;
+
+  // PM compliance by farm
+  html += `<div class="recent-hdr">✅ PM Compliance by Farm</div>
+  <div class="stats-grid g2" style="margin-bottom:20px;">
+    ${pmFarms.map(farm => {
+      const d = pmByFarm[farm];
+      return `<div class="stat-card" title="${d.done} done / ${d.due} due">
+        <div class="stat-num" style="color:${d.pct<70?'#e53e3e':d.pct<90?'var(--amber)':'var(--green-mid)'}">${d.pct}%</div>
+        <div class="stat-label">${farm}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${d.done}/${d.due} tasks</div>
+      </div>`;
+    }).join('')}
   </div>`;
 
   // By tech
@@ -1621,14 +1695,15 @@ async function renderReports() {
     html += '</div>';
   }
 
-  // Parts used
-  html += `<div class="recent-hdr">🔩 Parts Used</div><div class="card-list" style="margin-bottom:20px;">`;
-  const partsEntries = Object.entries(partsUsedMap).sort((a,b)=>b[1]-a[1]);
+  // Parts used with cost
+  const partsEntries = Object.entries(partsCostMap).sort((a,b)=>b[1].qty-a[1].qty);
+  html += `<div class="recent-hdr">🔩 Parts Used${totalPartsCost>0?' — Est. Cost: $'+totalPartsCost.toFixed(2):''}</div>
+  <div class="card-list" style="margin-bottom:20px;">`;
   if (partsEntries.length) {
-    partsEntries.forEach(([name,qty]) => {
+    partsEntries.forEach(([name, {qty, cost}]) => {
       html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:white;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);">
         <span style="font-size:13px;">${name}</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;">×${qty}</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;">×${qty}${cost>0?'<span style="color:#888;font-weight:400;margin-left:6px;">$'+cost.toFixed(2)+'</span>':''}</span>
       </div>`;
     });
   } else html += '<div class="empty"><div class="ei">🔩</div><p>No parts logged in this period</p></div>';
@@ -1643,7 +1718,7 @@ async function renderReports() {
   document.getElementById('reports-container').innerHTML = html;
 
   // Store report data for copy/export
-  window._lastReportData = { reportDays, recentWOs, completedWOs, openWOs, pmCompliance, pmDoneInRange, pmDueInRange, dtHrs, dtInRange, byTech, hWOs, dWOs };
+  window._lastReportData = { reportDays, recentWOs, completedWOs, openWOs, pmCompliance, pmDoneInRange, pmDueInRange, dtHrs, dtInRange, byTech, hWOs, dWOs, totalPartsCost, pmByFarm };
 }
 
 function printReport() {
@@ -4245,6 +4320,102 @@ async function loadAHParts(asset) {
 // ── Close on backdrop click ──
 document.getElementById('asset-form-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeAssetForm(); });
 document.getElementById('asset-history-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeAssetHistory(); });
+
+// ═══════════════════════════════════════════
+// MAINTENANCE CALENDAR
+// ═══════════════════════════════════════════
+var _maintCalFarm = 'all';
+
+function maintCalFarm(farm, btn) {
+  _maintCalFarm = farm;
+  document.querySelectorAll('#maint-calendar .pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderMaintCalendar();
+}
+
+function renderMaintCalendar() {
+  const el = document.getElementById('maint-calendar-container');
+  if (!el) return;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const DAYS = 14;
+  const dayMs = 86400000;
+
+  // Build upcoming tasks: compute next due date for each PM
+  const tasks = (_maintCalFarm === 'all' ? ALL_PM : ALL_PM.filter(t => !t.farms || t.farms.includes(_maintCalFarm)));
+  const upcoming = [];
+
+  tasks.forEach(t => {
+    const comp = pmComps[t.id];
+    const freqDays = FREQ[t.freq]?.days || 30;
+    let nextDue;
+    if (!comp) {
+      nextDue = new Date(today); // overdue — show as today
+    } else {
+      nextDue = new Date(new Date(comp.date).getTime() + freqDays * dayMs);
+    }
+    nextDue.setHours(0,0,0,0);
+    const diffDays = Math.round((nextDue - today) / dayMs);
+    if (diffDays <= DAYS) { // show overdue + next 14 days
+      upcoming.push({ task: t, nextDue, diffDays, done: doneToday(t.id) });
+    }
+  });
+
+  // Sort by diffDays, then by task system
+  upcoming.sort((a,b) => a.diffDays - b.diffDays || a.task.sys.localeCompare(b.task.sys));
+
+  if (!upcoming.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">📅</div><p>No PMs due in the next 14 days</p></div>';
+    return;
+  }
+
+  // Group by day bucket
+  const groups = {};
+  upcoming.forEach(item => {
+    let label;
+    if (item.diffDays < 0)       label = `⚠️ Overdue (${Math.abs(item.diffDays)}d ago)`;
+    else if (item.diffDays === 0) label = '📌 Today';
+    else if (item.diffDays === 1) label = '📅 Tomorrow';
+    else {
+      const d = new Date(item.nextDue);
+      label = '📅 ' + d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
+    }
+    if (!groups[label]) groups[label] = [];
+    groups[label].push(item);
+  });
+
+  const freqIcon = freq => FREQ[freq]?.icon || '🔵';
+  const priorityOrder = ['⚠️ Overdue','📌 Today','📅 Tomorrow'];
+
+  let html = '';
+  Object.entries(groups).forEach(([label, items]) => {
+    const isOverdue = label.startsWith('⚠️');
+    html += `<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;color:${isOverdue?'#f87171':'#5a8a5a'};text-transform:uppercase;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid ${isOverdue?'#3a1a1a':'#1e3a1e'};">${label}</div>`;
+    items.forEach(({task, done}) => {
+      const farmTag = task.farms && task.farms.length ? `<span style="font-size:9px;color:#4a7a4a;background:#1a3a1a;border-radius:4px;padding:2px 5px;margin-left:6px;">${task.farms.join('/')}</span>` : '';
+      html += `<div style="background:${done?'#0f2a0f':isOverdue?'#1a0a0a':'#0f1a0f'};border:1px solid ${done?'#2a5a2a':isOverdue?'#3a1a1a':'#1a3a1a'};border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:flex-start;gap:10px;">
+        <div style="font-size:16px;margin-top:1px;">${freqIcon(task.freq)}</div>
+        <div style="flex:1;">
+          <div style="font-size:12px;color:${done?'#5a8a5a':isOverdue?'#f87171':'#f0ead8'};font-weight:${done?'400':'600'};${done?'text-decoration:line-through;':''}">${task.task}${farmTag}</div>
+          <div style="font-size:10px;color:#4a6a4a;margin-top:3px;font-family:'IBM Plex Mono',monospace;">${task.sys} · ${FREQ[task.freq]?.label||task.freq}${task.hrs?' · '+task.hrs+'h':''}</div>
+        </div>
+        ${done?'<div style="font-size:16px;">✅</div>':''}
+      </div>`;
+    });
+  });
+
+  const overdueCnt = upcoming.filter(i=>i.diffDays<0).length;
+  const todayCnt   = upcoming.filter(i=>i.diffDays===0).length;
+  const doneCnt    = upcoming.filter(i=>i.done).length;
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
+      <div class="stat-card"><div class="stat-num" style="color:${overdueCnt>0?'#e53e3e':'var(--green-mid)'}">${overdueCnt}</div><div class="stat-label">Overdue</div></div>
+      <div class="stat-card"><div class="stat-num">${todayCnt}</div><div class="stat-label">Due Today</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--green-mid)">${doneCnt}</div><div class="stat-label">Done Today</div></div>
+    </div>
+    ${html}`;
+}
 
 // ═══════════════════════════════════════════
 // OPERATIONS MODULE

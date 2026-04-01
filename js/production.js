@@ -801,3 +801,253 @@ function renderOpsScoreboard() {
 }
 
 // ═══════════════════════════════════════════
+// ── Barn Walk History ──────────────────────
+var _bwHistFarm = 'All', _bwHistPage = 0;
+const _BW_HIST_PER_PAGE = 20;
+
+function openBarnWalkHistory() {
+  _bwHistFarm = 'All'; _bwHistPage = 0;
+  document.getElementById('bw-history-overlay').style.display = 'block';
+  document.getElementById('bw-history-overlay').scrollTop = 0;
+  loadBarnWalkHistory();
+}
+
+function closeBarnWalkHistory() {
+  document.getElementById('bw-history-overlay').style.display = 'none';
+}
+
+function bwHistFarmFilter(farm, btn) {
+  _bwHistFarm = farm; _bwHistPage = 0;
+  document.querySelectorAll('#bw-history-overlay .pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  loadBarnWalkHistory();
+}
+
+async function loadBarnWalkHistory() {
+  const el = document.getElementById('bw-history-list');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:#5a8a5a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">Loading...</div>';
+  try {
+    const snap = await db.collection('barnWalks').orderBy('ts','desc').limit(200).get();
+    let walks = snap.docs.map(d => ({...d.data(), _id: d.id}));
+    if (_bwHistFarm !== 'All') walks = walks.filter(w => w.farm === _bwHistFarm);
+    renderBarnWalkHistory(walks);
+  } catch(e) {
+    el.innerHTML = `<div style="color:#e53e3e;padding:20px;font-size:12px;">Error: ${e.message}</div>`;
+  }
+}
+
+function renderBarnWalkHistory(walks) {
+  const el = document.getElementById('bw-history-list');
+  if (!el) return;
+  const total = walks.length;
+  const start = _bwHistPage * _BW_HIST_PER_PAGE;
+  const page  = walks.slice(start, start + _BW_HIST_PER_PAGE);
+  const badge = document.getElementById('bw-history-count');
+  if (badge) badge.textContent = total + ' walk' + (total !== 1 ? 's' : '');
+  if (!page.length) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:#3a5a3a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">No walks found.</div>';
+    return;
+  }
+  const byDate = {};
+  page.forEach(w => { const d = w.date || '?'; (byDate[d] = byDate[d]||[]).push(w); });
+  let html = '';
+  Object.entries(byDate).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([date, ws]) => {
+    const d = new Date(date + 'T12:00:00');
+    const label = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    html += `<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;color:#4a7a4a;text-transform:uppercase;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid #1e3a1e;">${label}</div>`;
+    ws.sort((a,b)=>((a.farm||'')+a.house).localeCompare((b.farm||'')+b.house)).forEach(w => {
+      const hasFlagsArr = w.flags && w.flags.length > 0;
+      const clFails = w.checklistFails || 0;
+      const statusColor = hasFlagsArr ? '#e53e3e' : '#4caf50';
+      const statusLabel = hasFlagsArr ? `⚠ ${w.flags.length} Flag${w.flags.length!==1?'s':''}` : '✓ Clear';
+      html += `<div style="background:#0f1a0f;border:1px solid ${hasFlagsArr?'#4a1a1a':'#1a3a1a'};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#f0ead8;">${w.farm} — Barn ${w.house}</div>
+          <div style="font-size:11px;color:${statusColor};font-weight:600;">${statusLabel}</div>
+        </div>
+        <div style="font-size:11px;color:#5a8a5a;">👤 ${w.employee||'—'}${w.time?' · '+w.time:''}</div>
+        ${w.waterPSI!=null?`<div style="font-size:10px;color:#3a6a6a;margin-top:3px;">💧 ${w.waterPSI} PSI${w.temp!=null?' · 🌡 '+w.temp+'°F':''}</div>`:''}
+        ${w.mortCount?`<div style="font-size:10px;color:#e53e3e;margin-top:3px;">💀 Mortality: ${w.mortCount}</div>`:''}
+        ${hasFlagsArr?`<div style="font-size:10px;color:#e07070;margin-top:6px;line-height:1.6;">${w.flags.map(f=>'• '+f).join('<br>')}</div>`:''}
+        ${clFails>0?`<div style="font-size:10px;color:#d69e2e;margin-top:3px;">📋 Checklist: ${clFails} fail${clFails!==1?'s':''}</div>`:''}
+        ${w.notes?`<div style="font-size:10px;color:#4a7a4a;margin-top:4px;font-style:italic;">"${w.notes}"</div>`:''}
+      </div>`;
+    });
+  });
+  const pages = Math.ceil(total / _BW_HIST_PER_PAGE);
+  if (pages > 1) {
+    html += `<div style="display:flex;justify-content:center;gap:8px;margin-top:16px;">`;
+    if (_bwHistPage > 0) html += `<button class="pill" onclick="_bwHistPage--;loadBarnWalkHistory()">← Prev</button>`;
+    html += `<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5a8a5a;padding:6px 10px;">${_bwHistPage+1} / ${pages}</span>`;
+    if (_bwHistPage < pages-1) html += `<button class="pill" onclick="_bwHistPage++;loadBarnWalkHistory()">Next →</button>`;
+    html += `</div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// ── Egg Production Trends ──────────────────
+var _eggTrendDays = 7;
+
+function openEggTrends() {
+  document.getElementById('egg-trends-overlay').style.display = 'block';
+  document.getElementById('egg-trends-overlay').scrollTop = 0;
+  loadEggTrends();
+}
+
+function closeEggTrends() {
+  document.getElementById('egg-trends-overlay').style.display = 'none';
+}
+
+function eggTrendPeriod(days, btn) {
+  _eggTrendDays = days;
+  document.querySelectorAll('#egg-trends-overlay .pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  loadEggTrends();
+}
+
+async function loadEggTrends() {
+  const el = document.getElementById('egg-trends-content');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:#5a8a5a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">Loading...</div>';
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - _eggTrendDays);
+  const cutStr = cutoff.toISOString().slice(0,10);
+  try {
+    const snap = await db.collection('opsEggProduction').where('date','>=',cutStr).orderBy('date','asc').get();
+    renderEggTrends(snap.docs.map(d => d.data()));
+  } catch(e) {
+    el.innerHTML = `<div style="color:#e53e3e;padding:20px;font-size:12px;">Error: ${e.message}</div>`;
+  }
+}
+
+function renderEggTrends(data) {
+  const el = document.getElementById('egg-trends-content');
+  if (!el) return;
+  const dates = [];
+  const now = new Date();
+  for (let i = _eggTrendDays - 1; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().slice(0,10));
+  }
+  const farmOrder = ['Hegins','Danville'];
+  const farmHouses = {Hegins:8, Danville:5};
+  const totals = {};
+  data.forEach(r => {
+    if (!totals[r.date]) totals[r.date] = {};
+    totals[r.date][r.farm] = (totals[r.date][r.farm]||0) + (Number(r.eggs)||0);
+  });
+  const farmTarget = farm => (farmHouses[farm]||5) * EGG_TARGET;
+
+  // Overall section
+  const overallByDate = dates.map(d => Object.values(totals[d]||{}).reduce((s,v)=>s+v,0));
+  const overallTarget = farmOrder.reduce((s,f)=>s+farmTarget(f),0);
+  const overallAvg = overallByDate.reduce((s,v)=>s+v,0) / (overallByDate.filter(v=>v>0).length||1);
+  const overallPct = Math.round(overallAvg / overallTarget * 100);
+  const overallMax = Math.max(overallTarget, ...overallByDate, 1);
+
+  const barChart = (vals, maxV, targetV, ds) =>
+    `<div style="display:flex;align-items:flex-end;gap:3px;height:60px;margin-bottom:4px;">` +
+    ds.map((d,i) => {
+      const v = vals[i]; const h = Math.max(2, Math.round(v/maxV*58));
+      const col = v===0?'#1e3a1e':kpiCol(Math.round(v/targetV*100));
+      return `<div title="${d}: ${fmtNum(v)}" style="flex:1;"><div style="width:100%;height:${h}px;background:${col};border-radius:2px 2px 0 0;min-height:2px;"></div></div>`;
+    }).join('') + `</div>` +
+    `<div style="display:flex;gap:3px;">` +
+    ds.map(d=>`<div style="flex:1;text-align:center;font-size:7px;color:#3a5a3a;font-family:'IBM Plex Mono',monospace;">${d.slice(5).replace('-','/')}</div>`).join('') +
+    `</div>`;
+
+  let html = `<div style="background:#0f1a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px;margin-bottom:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#f0ead8;">🌐 All Farms</div>
+      <div style="font-size:11px;color:${kpiCol(overallPct)};font-family:'IBM Plex Mono',monospace;font-weight:600;">${overallPct}% avg</div>
+    </div>
+    ${barChart(overallByDate, overallMax, overallTarget, dates)}
+    <div style="display:flex;gap:14px;margin-top:8px;padding-top:8px;border-top:1px solid #1a2a1a;">
+      <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;">Avg: <span style="color:#4caf50;font-weight:700;">${fmtNum(Math.round(overallAvg))}</span></div>
+      <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;">Target: <span style="color:#3a6a3a;">${fmtNum(overallTarget)}</span></div>
+      <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;">Peak: <span style="color:#f0ead8;">${fmtNum(Math.max(...overallByDate))}</span></div>
+    </div>
+  </div>`;
+
+  farmOrder.forEach(farm => {
+    const target = farmTarget(farm);
+    const vals = dates.map(d => totals[d]?.[farm]||0);
+    const avg = vals.reduce((s,v)=>s+v,0) / (vals.filter(v=>v>0).length||1);
+    const pct = Math.round(avg/target*100);
+    const maxV = Math.max(target, ...vals, 1);
+    html += `<div style="background:#0f1a0f;border:1px solid #1a3a1a;border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#f0ead8;">📍 ${farm}</div>
+        <div style="font-size:11px;color:${kpiCol(pct)};font-family:'IBM Plex Mono',monospace;font-weight:600;">${pct}% avg</div>
+      </div>
+      ${barChart(vals, maxV, target, dates)}
+      <div style="display:flex;gap:14px;margin-top:8px;padding-top:8px;border-top:1px solid #1a2a1a;">
+        <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;">Avg: <span style="color:#4caf50;font-weight:700;">${fmtNum(Math.round(avg))}</span></div>
+        <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;">Target: <span style="color:#3a6a3a;">${fmtNum(target)}</span></div>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// ── Layer Service Report ───────────────────
+function openLayerServiceReport(farm, house) {
+  const overlay = document.getElementById('lsr-overlay');
+  if (!overlay) return;
+  overlay.style.display = 'block';
+  overlay.scrollTop = 0;
+  document.getElementById('lsr-farm').value = farm || '';
+  document.getElementById('lsr-house').value = house || '';
+  document.getElementById('lsr-date').value = new Date().toISOString().slice(0,10);
+  overlay.querySelectorAll('input:not(#lsr-farm):not(#lsr-house):not(#lsr-date), select, textarea').forEach(el => {
+    if (el.tagName === 'SELECT') el.selectedIndex = 0;
+    else el.value = '';
+  });
+  document.getElementById('lsr-result').style.display = 'none';
+}
+
+function closeLayerServiceReport() {
+  document.getElementById('lsr-overlay').style.display = 'none';
+}
+
+async function submitLayerServiceReport() {
+  const farm  = document.getElementById('lsr-farm').value.trim();
+  const house = document.getElementById('lsr-house').value.trim();
+  const date  = document.getElementById('lsr-date').value;
+  if (!farm || !house || !date) { alert('Farm, House, and Date are required.'); return; }
+  const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const n = id => { const v = g(id); return v !== '' ? Number(v) : null; };
+  const record = {
+    farm, house, date,
+    tech: g('lsr-tech'), flock: g('lsr-flock'), age: n('lsr-age'), birdCount: n('lsr-birdcount'), mortality: n('lsr-mortality'),
+    tempInside: n('lsr-temp-inside'), tempOutside: n('lsr-temp-outside'), tempSet: n('lsr-temp-set'),
+    fansRunning: g('lsr-fans-running'), fansTotal: n('lsr-fans-total'), fanDown: n('lsr-fan-down'),
+    staticPres: n('lsr-static-pres'), staticPresSet: n('lsr-static-pres-set'), inletPos: g('lsr-inlet-pos'),
+    feedType: g('lsr-feed-type'), feedIntake: n('lsr-feed-intake'), feedTarget: n('lsr-feed-target'),
+    waterIntake: n('lsr-water-intake'), waterTarget: n('lsr-water-target'),
+    feedingTimes: g('lsr-feeding-times'), feedBinLevel: n('lsr-feedbin-level'),
+    bodyWeight: n('lsr-body-weight'), bodyWeightTgt: n('lsr-body-weight-tgt'),
+    eggProduction: n('lsr-egg-production'), eggTarget: n('lsr-egg-target'),
+    eggsFloor: n('lsr-eggs-floor'), eggQuality: g('lsr-egg-quality'),
+    ammonia: n('lsr-ammonia'), lighting: g('lsr-lighting'), lightHours: n('lsr-light-hours'),
+    eggBeltStatus: g('lsr-eggbelt-status'), coolerTemp: n('lsr-cooler-temp'),
+    footbaths: g('lsr-footbaths'), visitors: g('lsr-visitors'),
+    biosecNotes: g('lsr-biosec-notes'), comments: g('lsr-comments'),
+    ts: Date.now()
+  };
+  const btn = document.getElementById('lsr-submit-btn');
+  if (btn) btn.disabled = true;
+  try {
+    await db.collection('layerServiceReports').add(record);
+    const res = document.getElementById('lsr-result');
+    if (res) { res.style.display = 'block'; res.textContent = '✓ Report saved successfully'; }
+    setTimeout(() => closeLayerServiceReport(), 1400);
+  } catch(e) {
+    alert('Save failed: ' + e.message);
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════

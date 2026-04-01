@@ -1087,7 +1087,7 @@ function refreshCurrentPanel() {
 function go(tab) {
   const fab = document.getElementById('fab-btn');
   // Backward compat aliases
-  const maintSections = {wo:'wo', pm:'pm', parts:'parts', downtime:'downtime', log:'log', assets:'assets', wi:'wi', '5s':'5s'};
+  const maintSections = {wo:'wo', pm:'pm', parts:'parts', downtime:'downtime', log:'log', assets:'assets', wi:'wi', '5s':'5s', calendar:'calendar'};
   if (maintSections[tab] !== undefined) {
     go('maint');
     setTimeout(()=>goMaintSection(tab), 50);

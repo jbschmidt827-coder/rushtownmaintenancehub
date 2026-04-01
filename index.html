@@ -330,6 +330,8 @@ textarea { resize: vertical; min-height: 85px; }
 .age-old      { background:#fff3e0; color:#e65100; border:1px solid #ffcc80; }
 .age-critical { background:#fde8e6; color:#c62828; border:1px solid #ef9a9a; animation: pulse-red 1.5s ease-in-out infinite; }
 .wo-escalated { border-left: 5px solid #c62828 !important; box-shadow: 0 0 0 2px #fde8e640, 0 4px 16px rgba(198,40,40,0.18) !important; }
+.wo-sla-breach { border-left: 5px solid #ff6b00 !important; box-shadow: 0 0 0 2px rgba(255,107,0,0.15), 0 4px 16px rgba(255,107,0,0.18) !important; animation: pulse-orange 2s ease-in-out infinite; }
+@keyframes pulse-orange { 0%,100%{box-shadow:0 2px 8px rgba(255,107,0,0.15)} 50%{box-shadow:0 2px 16px rgba(255,107,0,0.35)} }
 @keyframes pulse-red { 0%,100%{box-shadow:0 2px 8px rgba(198,40,40,0.15)} 50%{box-shadow:0 2px 16px rgba(198,40,40,0.40)} }
 /* ── ASSET MODULE ── */
 .s-blue { border-color: #3b82f6; }
@@ -1142,6 +1144,27 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div style="font-size:12px;color:#f87171;margin-top:4px;" data-i18n="prod.biosec_sub">Visitor & entry log, sanitation records, risk tracking</div>
       </div>
     </button>
+    <button onclick="openLayerServiceReport()" style="width:100%;padding:24px 20px;background:#0d1a2a;border:2px solid #3a6aaa;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">🐔</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Layer Service Report</div>
+        <div style="font-size:12px;color:#6a90d9;margin-top:4px;">Weekly barn service check — temps, fans, feed, eggs, biosec</div>
+      </div>
+    </button>
+    <button onclick="openBarnWalkHistory()" style="width:100%;padding:24px 20px;background:#0f1a0f;border:2px solid #3a6a3a;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">📂</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Walk History</div>
+        <div style="font-size:12px;color:#7ab07a;margin-top:4px;">Browse all past barn walks — filter by farm, see flags</div>
+      </div>
+    </button>
+    <button onclick="openEggTrends()" style="width:100%;padding:24px 20px;background:#1a2a0a;border:2px solid #5a8a2a;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">📈</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Egg Trends</div>
+        <div style="font-size:12px;color:#a0c060;margin-top:4px;">7, 14, 30-day production charts vs target by farm</div>
+      </div>
+    </button>
   </div>
 </div>
 
@@ -1862,6 +1885,197 @@ body { min-height: 100dvh; overflow-x: hidden; }
 </div>
 </div>
 
+<!-- ═══ BARN WALK HISTORY OVERLAY ═══ -->
+<div id="bw-history-overlay" style="display:none;position:fixed;inset:0;background:#0a1a0a;z-index:600;overflow-y:auto;">
+  <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #2a5a2a;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">📋 Walk History</div>
+        <div id="bw-history-count" style="font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;margin-top:2px;"></div>
+      </div>
+      <button onclick="closeBarnWalkHistory()" style="background:#1a3a1a;border:1px solid #2a5a2a;color:#7ab07a;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Close</button>
+    </div>
+    <!-- Farm filter pills -->
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="pill active" onclick="bwHistFarmFilter('All',this)">All Farms</button>
+      <button class="pill" onclick="bwHistFarmFilter('Hegins',this)">📍 Hegins</button>
+      <button class="pill" onclick="bwHistFarmFilter('Danville',this)">📍 Danville</button>
+    </div>
+    <div id="bw-history-list"></div>
+  </div>
+</div>
+
+<!-- ═══ EGG TRENDS OVERLAY ═══ -->
+<div id="egg-trends-overlay" style="display:none;position:fixed;inset:0;background:#0a1a0a;z-index:600;overflow-y:auto;">
+  <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #2a5a2a;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">📈 Egg Trends</div>
+      <button onclick="closeEggTrends()" style="background:#1a3a1a;border:1px solid #2a5a2a;color:#7ab07a;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Close</button>
+    </div>
+    <div style="display:flex;gap:7px;margin-bottom:16px;">
+      <button class="pill active" onclick="eggTrendPeriod(7,this)">7 Days</button>
+      <button class="pill" onclick="eggTrendPeriod(14,this)">14 Days</button>
+      <button class="pill" onclick="eggTrendPeriod(30,this)">30 Days</button>
+    </div>
+    <div id="egg-trends-content"></div>
+  </div>
+</div>
+
+<!-- ═══ LAYER SERVICE REPORT OVERLAY ═══ -->
+<div id="lsr-overlay" style="display:none;position:fixed;inset:0;background:#080d14;z-index:600;overflow-y:auto;">
+<style>
+.lsr-card{background:#0d1a2a;border:1px solid #1e3a5a;border-radius:14px;padding:16px;margin-bottom:14px;}
+.lsr-card-title{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#4a7aaa;text-transform:uppercase;margin-bottom:12px;}
+.lsr-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.lsr-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
+.lsr-fg label{font-size:11px;color:#4a6a8a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;}
+.lsr-fg input,.lsr-fg select,.lsr-fg textarea{width:100%;background:#0a1520;border:1px solid #1e3a5a;border-radius:6px;color:#f0ead8;padding:8px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;}
+.lsr-fg textarea{resize:vertical;min-height:60px;}
+</style>
+  <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #1e3a5a;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">🐔 Layer Service Report</div>
+        <div style="font-size:11px;color:#4a6a8a;font-family:'IBM Plex Mono',monospace;margin-top:2px;">Weekly barn service check</div>
+      </div>
+      <button onclick="closeLayerServiceReport()" style="background:#0d1a2a;border:1px solid #1e3a5a;color:#4a90d9;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Close</button>
+    </div>
+
+    <!-- Identification -->
+    <div class="lsr-card">
+      <div class="lsr-card-title">📍 Identification</div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Farm *</label><select id="lsr-farm"><option value="">— Select —</option><option>Hegins</option><option>Danville</option><option>Rushtown</option><option>Turbotville</option><option>W&M</option></select></div>
+        <div class="lsr-fg"><label>House *</label><input type="number" id="lsr-house" placeholder="1" min="1" max="8"></div>
+      </div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Date *</label><input type="date" id="lsr-date"></div>
+        <div class="lsr-fg"><label>Tech Name</label><input type="text" id="lsr-tech" placeholder="Your name"></div>
+      </div>
+    </div>
+
+    <!-- Flock -->
+    <div class="lsr-card">
+      <div class="lsr-card-title">🐓 Flock Data</div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Flock ID</label><input type="text" id="lsr-flock" placeholder="e.g. H2-2024A"></div>
+        <div class="lsr-fg"><label>Flock Age (wks)</label><input type="number" id="lsr-age" placeholder="0" min="0"></div>
+      </div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Bird Count</label><input type="number" id="lsr-birdcount" placeholder="150000"></div>
+        <div class="lsr-fg"><label>Mortality (today)</label><input type="number" id="lsr-mortality" placeholder="0" min="0"></div>
+      </div>
+    </div>
+
+    <!-- Temperature -->
+    <div class="lsr-card">
+      <div class="lsr-card-title">🌡️ Temperature</div>
+      <div class="lsr-row3">
+        <div class="lsr-fg"><label>Inside (°F)</label><input type="number" id="lsr-temp-inside" placeholder="72" step="0.1"></div>
+        <div class="lsr-fg"><label>Outside (°F)</label><input type="number" id="lsr-temp-outside" placeholder="55" step="0.1"></div>
+        <div class="lsr-fg"><label>Set Point</label><input type="number" id="lsr-temp-set" placeholder="72" step="0.1"></div>
+      </div>
+    </div>
+
+    <!-- Ventilation / Fans -->
+    <div class="lsr-card">
+      <div class="lsr-card-title">💨 Ventilation &amp; Fans</div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Fans Status</label><select id="lsr-fans-running"><option value="">— Select —</option><option value="all-ok">All Running OK</option><option value="partial">Partial — Some Down</option><option value="issue">Issue</option></select></div>
+        <div class="lsr-fg"><label>Total Fan Count</label><input type="number" id="lsr-fans-total" placeholder="0" min="0"></div>
+      </div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Fans Down (#)</label><input type="number" id="lsr-fan-down" placeholder="0" min="0"></div>
+        <div class="lsr-fg"><label>Inlet Position</label><input type="text" id="lsr-inlet-pos" placeholder="e.g. 50%"></div>
+      </div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Static Pressure (actual)</label><input type="number" id="lsr-static-pres" placeholder="0.10" step="0.01"></div>
+        <div class="lsr-fg"><label>Static Pressure (set)</label><input type="number" id="lsr-static-pres-set" placeholder="0.10" step="0.01"></div>
+      </div>
+    </div>
+
+    <!-- Feed & Water -->
+    <div class="lsr-card">
+      <div class="lsr-card-title">🌾 Feed &amp; Water</div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Feed Type</label><input type="text" id="lsr-feed-type" placeholder="e.g. Layer Mash"></div>
+        <div class="lsr-fg"><label>Feeding Times</label><input type="text" id="lsr-feeding-times" placeholder="e.g. 6am, 12pm, 5pm"></div>
+      </div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Feed Intake (lbs/day)</label><input type="number" id="lsr-feed-intake" placeholder="0" step="0.1"></div>
+        <div class="lsr-fg"><label>Feed Target (lbs/day)</label><input type="number" id="lsr-feed-target" placeholder="0" step="0.1"></div>
+      </div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Water Intake (gal/day)</label><input type="number" id="lsr-water-intake" placeholder="0" step="0.1"></div>
+        <div class="lsr-fg"><label>Water Target (gal/day)</label><input type="number" id="lsr-water-target" placeholder="0" step="0.1"></div>
+      </div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Feed Bin Level (%)</label><input type="number" id="lsr-feedbin-level" placeholder="100" min="0" max="100"></div>
+      </div>
+    </div>
+
+    <!-- Body Weight -->
+    <div class="lsr-card">
+      <div class="lsr-card-title">⚖️ Body Weight</div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Avg Body Wt (lbs)</label><input type="number" id="lsr-body-weight" placeholder="0.00" step="0.01"></div>
+        <div class="lsr-fg"><label>Target Body Wt (lbs)</label><input type="number" id="lsr-body-weight-tgt" placeholder="0.00" step="0.01"></div>
+      </div>
+    </div>
+
+    <!-- Egg Production -->
+    <div class="lsr-card">
+      <div class="lsr-card-title">🥚 Egg Production</div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Eggs Produced</label><input type="number" id="lsr-egg-production" placeholder="0"></div>
+        <div class="lsr-fg"><label>Production Target</label><input type="number" id="lsr-egg-target" placeholder="135000"></div>
+      </div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Floor Eggs (count)</label><input type="number" id="lsr-eggs-floor" placeholder="0" min="0"></div>
+        <div class="lsr-fg"><label>Egg Quality</label><select id="lsr-egg-quality"><option value="">— Select —</option><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option></select></div>
+      </div>
+    </div>
+
+    <!-- Environment -->
+    <div class="lsr-card">
+      <div class="lsr-card-title">🌿 Environment</div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Ammonia (ppm)</label><input type="number" id="lsr-ammonia" placeholder="0" step="0.1"></div>
+        <div class="lsr-fg"><label>Light Hours</label><input type="number" id="lsr-light-hours" placeholder="16" step="0.5"></div>
+      </div>
+      <div class="lsr-fg" style="margin-bottom:10px;"><label>Lighting Program</label><input type="text" id="lsr-lighting" placeholder="e.g. 16 on / 8 off"></div>
+    </div>
+
+    <!-- Equipment -->
+    <div class="lsr-card">
+      <div class="lsr-card-title">⚙️ Equipment</div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Egg Belt Status</label><select id="lsr-eggbelt-status"><option value="">— Select —</option><option value="ok">Running OK</option><option value="partial">Partial Issue</option><option value="down">Down</option></select></div>
+        <div class="lsr-fg"><label>Cooler Temp (°F)</label><input type="number" id="lsr-cooler-temp" placeholder="45" step="0.1"></div>
+      </div>
+    </div>
+
+    <!-- Biosecurity -->
+    <div class="lsr-card">
+      <div class="lsr-card-title">🔒 Biosecurity</div>
+      <div class="lsr-row">
+        <div class="lsr-fg"><label>Footbaths</label><select id="lsr-footbaths"><option value="">— Select —</option><option value="ok">OK / Filled</option><option value="low">Low — Needs Refill</option><option value="empty">Empty</option></select></div>
+        <div class="lsr-fg"><label>Visitors Today</label><select id="lsr-visitors"><option value="">— Select —</option><option value="none">None</option><option value="yes">Yes — Logged</option></select></div>
+      </div>
+      <div class="lsr-fg"><label>Biosecurity Notes</label><textarea id="lsr-biosec-notes" placeholder="Any biosecurity concerns..."></textarea></div>
+    </div>
+
+    <!-- Comments -->
+    <div class="lsr-card">
+      <div class="lsr-card-title">💬 Comments</div>
+      <div class="lsr-fg"><textarea id="lsr-comments" style="min-height:80px;" placeholder="General observations, equipment notes, follow-up items..."></textarea></div>
+    </div>
+
+    <div id="lsr-result" style="display:none;background:#0a2a0a;border:1px solid #2a5a2a;border-radius:8px;padding:12px 16px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#4caf50;margin-bottom:12px;"></div>
+    <button id="lsr-submit-btn" onclick="submitLayerServiceReport()" style="width:100%;padding:16px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:12px;color:#f0ead8;font-size:15px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;letter-spacing:0.5px;">💾 Save Layer Service Report</button>
+  </div>
+</div>
+
 <!-- ═══ MAINTENANCE PANEL ═══ -->
 <div class="panel" id="panel-maint">
   <div class="section-title" data-i18n="title.maint">🔧 Maintenance</div>
@@ -1873,6 +2087,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <button class="sub-btn"        data-section="assets"   onclick="goMaintSection('assets')"   data-i18n="sub.assets">🏭 Assets</button>
     <button class="sub-btn"        data-section="wi"       onclick="goMaintSection('wi')"       data-i18n="sub.wi">📖 Work Instructions</button>
     <button class="sub-btn"        data-section="log"      onclick="goMaintSection('log')"      data-i18n="sub.log">📁 Log</button>
+    <button class="sub-btn"        data-section="calendar" onclick="goMaintSection('calendar')">📅 Calendar</button>
   </div>
 
   <!-- Work Orders section -->
@@ -1899,6 +2114,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
           <button class="pill" data-wo="completed" onclick="woToggleStatus('completed',this)">✓ Completed Log</button>
         </div>
       </div>
+      <div id="wo-sla-banner" style="display:none;background:rgba(255,60,60,0.13);border:1px solid rgba(255,80,80,0.35);border-radius:8px;padding:9px 14px;margin-bottom:10px;font-size:12px;color:#ff6b6b;font-weight:600;letter-spacing:0.3px;"></div>
       <div class="card-list" id="wo-list"></div>
     </div>
     <div id="wo-submit-section" style="display:none;">
@@ -2152,6 +2368,17 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <button class="pill" onclick="logFilter('ops-exc',this)">⚠️ Exceptions</button>
     </div>
     <div id="log-container"></div>
+  </div>
+
+  <!-- Calendar section -->
+  <div class="maint-section" id="maint-calendar" style="display:none;">
+    <div class="section-sub">Upcoming PMs for the next 14 days — plan your week</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+      <button class="pill active" onclick="maintCalFarm('all',this)">All Farms</button>
+      <button class="pill" onclick="maintCalFarm('Hegins',this)">📍 Hegins</button>
+      <button class="pill" onclick="maintCalFarm('Danville',this)">📍 Danville</button>
+    </div>
+    <div id="maint-calendar-container"></div>
   </div>
 </div>
 
