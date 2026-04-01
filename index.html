@@ -830,6 +830,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <button class="nav-tab" id="tab-kpi" onclick="go('kpi')" data-i18n="nav.kpi">🥚 KPI</button>
       <button class="nav-tab" id="tab-reports" onclick="go('reports')" data-i18n="nav.reports">📊 Reports</button>
       <button class="nav-tab" id="tab-sched" onclick="go('sched')" data-i18n="nav.sched">📅 Schedule</button>
+      <button class="nav-tab" id="tab-staff" onclick="go('staff')">👥 Staff</button>
     </nav>
     <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
     <button id="lang-toggle-btn" onclick="toggleLang()" title="Switch Language / Cambiar Idioma" style="padding:7px 13px;background:#0a1a2a;border:1.5px solid #3b82f6;border-radius:9px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;flex-shrink:0;">🌐 ES</button>
@@ -1351,6 +1352,125 @@ body { min-height: 100dvh; overflow-x: hidden; }
   </div>
 </div>
 
+<!-- ═══ STAFF PANEL ═══ -->
+<div class="panel" id="panel-staff">
+  <div class="section-title">👥 Staff</div>
+  <div class="section-sub">Add and manage employees across all farms</div>
+
+  <!-- Stats -->
+  <div class="stats-grid g3" id="staff-stats" style="margin-bottom:18px;"></div>
+
+  <!-- Add Employee Form -->
+  <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:14px;padding:16px;margin-bottom:18px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#4a7a4a;text-transform:uppercase;margin-bottom:12px;">➕ Add Employee</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div style="grid-column:1/-1;">
+        <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Full Name *</label>
+        <input type="text" id="staff-new-name" placeholder="First Last" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Role</label>
+        <select id="staff-new-role" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+          <option value="Technician">Technician</option>
+          <option value="Lead">Lead</option>
+          <option value="WNO">WNO</option>
+          <option value="Director">Director</option>
+          <option value="Driver">Driver</option>
+          <option value="Feed Mill">Feed Mill</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Primary Farm</label>
+        <select id="staff-new-farm" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+          <option value="">— Select —</option>
+          <option value="Hegins">Hegins</option>
+          <option value="Danville">Danville</option>
+          <option value="Rushtown">Rushtown</option>
+          <option value="Turbotville">Turbotville</option>
+          <option value="W&M">W&amp;M</option>
+          <option value="Both">Both (Hegins + Danville)</option>
+          <option value="All">All Farms</option>
+          <option value="Feed Mill">Feed Mill</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Phone (optional)</label>
+        <input type="tel" id="staff-new-phone" placeholder="555-555-5555" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button id="staff-add-btn" onclick="addStaff()" style="padding:11px 24px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:10px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">+ Add</button>
+      <div id="staff-add-result" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#4caf50;">✓ Employee added!</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div id="staff-filter-bar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px;">
+    <button class="pill active" onclick="staffStatusFilter('active',this)">Active</button>
+    <button class="pill" onclick="staffStatusFilter('inactive',this)">Inactive</button>
+    <button class="pill" onclick="staffStatusFilter('all',this)">All</button>
+  </div>
+  <div id="staff-farm-bar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
+    <button class="pill active" onclick="staffFarmFilter('all',this)">All Farms</button>
+    <button class="pill" onclick="staffFarmFilter('Hegins',this)">📍 Hegins</button>
+    <button class="pill" onclick="staffFarmFilter('Danville',this)">📍 Danville</button>
+  </div>
+
+  <!-- Employee List -->
+  <div id="staff-list"></div>
+</div>
+
+<!-- Staff Edit Modal -->
+<div id="staff-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:800;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:16px;padding:24px;width:100%;max-width:400px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:#f0ead8;margin-bottom:18px;">✏️ Edit Employee</div>
+    <input type="hidden" id="edit-staff-id">
+    <div style="display:grid;gap:12px;margin-bottom:16px;">
+      <div>
+        <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Full Name *</label>
+        <input type="text" id="edit-staff-name" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Role</label>
+          <select id="edit-staff-role" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 8px;font-size:12px;font-family:inherit;box-sizing:border-box;">
+            <option value="Technician">Technician</option>
+            <option value="Lead">Lead</option>
+            <option value="WNO">WNO</option>
+            <option value="Director">Director</option>
+            <option value="Driver">Driver</option>
+            <option value="Feed Mill">Feed Mill</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Farm</label>
+          <select id="edit-staff-farm" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 8px;font-size:12px;font-family:inherit;box-sizing:border-box;">
+            <option value="">— Select —</option>
+            <option value="Hegins">Hegins</option>
+            <option value="Danville">Danville</option>
+            <option value="Rushtown">Rushtown</option>
+            <option value="Turbotville">Turbotville</option>
+            <option value="W&M">W&amp;M</option>
+            <option value="Both">Both</option>
+            <option value="All">All Farms</option>
+            <option value="Feed Mill">Feed Mill</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Phone</label>
+        <input type="tel" id="edit-staff-phone" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button id="staff-edit-save-btn" onclick="saveStaffEdit()" style="flex:1;padding:12px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:10px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">Save Changes</button>
+      <button onclick="closeStaffEdit()" style="padding:12px 18px;background:#1a1a1a;border:1px solid #3a3a3a;border-radius:10px;color:#888;font-size:14px;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ TEAM SCHEDULE PANEL ═══ -->
 <div class="panel" id="panel-sched">
   <div class="section-title" data-i18n="title.sched">📅 Team Schedule</div>
@@ -1512,7 +1632,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <!-- Employee -->
   <div class="bw-card">
     <div class="bw-card-title">👤 Employee Check-In</div>
-    <input type="text" id="bw-employee" class="bw-input" placeholder="Enter your name..." oninput="checkBWReady()">
+    <input type="text" id="bw-employee" class="bw-input" placeholder="Enter your name..." oninput="checkBWReady()" list="staff-datalist" autocomplete="off">
   </div>
 
   <!-- Mortality -->
@@ -1824,7 +1944,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <!-- Lead name + EE headcount -->
   <div style="background:#0d1f3a;border:1px solid #1e3a6a;border-radius:14px;padding:18px 16px;margin-bottom:14px;">
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6a90d9;margin-bottom:12px;">👤 Lead / WNO Name</div>
-    <input type="text" id="mw-employee" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter your name..." oninput="checkMWReady()">
+    <input type="text" id="mw-employee" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter your name..." oninput="checkMWReady()" list="staff-datalist" autocomplete="off">
     <div style="font-size:11px;color:#6a90d9;margin:14px 0 6px;">👥 Employees Present at This Barn</div>
     <input type="number" id="mw-ee-count" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Headcount" min="0" oninput="checkMWReady()">
   </div>
@@ -1950,7 +2070,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
       </div>
       <div class="lsr-row">
         <div class="lsr-fg"><label>Date *</label><input type="date" id="lsr-date"></div>
-        <div class="lsr-fg"><label>Tech Name</label><input type="text" id="lsr-tech" placeholder="Your name"></div>
+        <div class="lsr-fg"><label>Tech Name</label><input type="text" id="lsr-tech" placeholder="Your name" list="staff-datalist" autocomplete="off"></div>
       </div>
     </div>
 
@@ -2130,7 +2250,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
               <div class="fg"><label>Date <span class="req">*</span></label><input type="date" id="wo-date"></div>
             </div>
             <div class="form-row">
-              <div class="fg"><label>Your Name <span class="req">*</span></label><input type="text" id="wo-tech" placeholder="Your name"></div>
+              <div class="fg"><label>Your Name <span class="req">*</span></label><input type="text" id="wo-tech" placeholder="Your name" list="staff-datalist" autocomplete="off"></div>
               <div class="fg"><label>House / Area</label><select id="wo-house"><option value="">— Select Farm First —</option></select></div>
             </div>
             <div class="fg"><label>Problem / System <span class="req">*</span></label>
@@ -3660,8 +3780,6 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <label>Completed By <span class="req">*</span></label>
       <select id="bulk-tech">
         <option value="">— Select Tech —</option>
-        <option>Nathan</option><option>Adam</option><option>Carlos</option><option>Randy</option>
-        <option>Josh</option><option>Cain</option><option>Celia</option><option>Deb</option><option>Steve</option>
       </select>
     </div>
     <div class="modal-field">
@@ -3696,6 +3814,10 @@ body { min-height: 100dvh; overflow-x: hidden; }
 <script src="js/biosecurity.js"></script>
 <script src="js/scheduling.js"></script>
 <script src="js/tv-scoreboard.js"></script>
+<script src="js/staff.js"></script>
 <script src="js/enhancements.js"></script>
+
+<!-- Global staff name datalist — populated by updateStaffDropdowns() -->
+<datalist id="staff-datalist"></datalist>
 </body>
 </html>
