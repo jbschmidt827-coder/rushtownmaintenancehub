@@ -2014,6 +2014,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;">🔍</span>
         <input type="text" id="parts-search-input" placeholder="Search parts by name, number, system..." oninput="renderParts()" style="width:100%;padding:9px 12px 9px 34px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'IBM Plex Sans',sans-serif;box-sizing:border-box;">
       </div>
+      <button onclick="openReceiveStock()" style="padding:9px 18px;background:#1a3a6b;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.5px;">📦 Receive Stock</button>
       <button onclick="openPartForm()" style="padding:9px 18px;background:var(--green-mid);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.5px;">➕ Add Part</button>
     </div>
     <div class="pill-bar">
@@ -3361,6 +3362,46 @@ body { min-height: 100dvh; overflow-x: hidden; }
     </div>
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px;border-top:1px solid #eee;padding-top:10px;">Completion History (last 20)</div>
     <div id="pm-history-list"></div>
+  </div>
+</div>
+
+<!-- Receive Stock Modal -->
+<div class="overlay" id="receive-stock-modal">
+  <div class="modal" style="max-width:420px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h3 style="margin:0;">📦 Receive Stock</h3>
+      <button onclick="closeReceiveStock()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:0;">✕</button>
+    </div>
+    <p class="modal-sub" style="margin-bottom:14px;">Log parts received — inventory will be updated automatically.</p>
+    <div class="modal-field">
+      <label>Part <span class="req">*</span></label>
+      <select id="rs-part" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:8px;font-size:13px;">
+        <option value="">— Select Part —</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <div class="modal-field" style="flex:1;">
+        <label>Qty Received <span class="req">*</span></label>
+        <input type="number" id="rs-qty" min="1" value="1" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+      </div>
+      <div class="modal-field" style="flex:1;">
+        <label>Current Stock</label>
+        <input type="number" id="rs-current" readonly style="width:100%;padding:9px;border:1px solid #eee;border-radius:8px;font-size:13px;background:#f9f9f9;box-sizing:border-box;">
+      </div>
+    </div>
+    <div class="modal-field">
+      <label>PO / Invoice # (optional)</label>
+      <input type="text" id="rs-po" placeholder="e.g. PO-0012 or INV-4892" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+    </div>
+    <div class="modal-field">
+      <label>Notes (optional)</label>
+      <input type="text" id="rs-notes" placeholder="e.g. Received from RH Supply" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+    </div>
+    <div id="rs-result" style="display:none;background:#e6f4ea;border:1px solid #2e7d32;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#2e7d32;font-family:'IBM Plex Mono',monospace;"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeReceiveStock()">Cancel</button>
+      <button class="btn-confirm" id="rs-save-btn" onclick="saveReceiveStock()">📦 Receive</button>
+    </div>
   </div>
 </div>
 

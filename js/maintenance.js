@@ -933,8 +933,10 @@ function renderParts() {
 
   // Update badge
   const badge = document.getElementById('parts-alert-badge');
-  if (lowCount > 0) { badge.textContent=lowCount; badge.style.display='inline'; }
-  else badge.style.display='none';
+  if (badge) {
+    if (lowCount > 0) { badge.textContent=lowCount; badge.style.display='inline'; }
+    else badge.style.display='none';
+  }
 
   if (!list.length) {
     document.getElementById('parts-container').innerHTML='<div class="empty"><div class="ei">🔩</div><p>No parts match this filter.</p></div>';
@@ -1063,8 +1065,94 @@ function startPartsDefsListener() {
       }
     });
     assignRHNumbers();
-    if (document.getElementById('panel-parts').classList.contains('active')) renderParts();
+    if (document.getElementById('panel-parts')?.classList.contains('active') || window._maintSection==='parts') renderParts();
   });
+}
+
+// ═══════════════════════════════════════════
+// RECEIVE STOCK
+// ═══════════════════════════════════════════
+function openReceiveStock() {
+  // Populate part dropdown grouped by system
+  const sel = document.getElementById('rs-part');
+  sel.innerHTML = '<option value="">— Select Part —</option>';
+  const systems = [...new Set(PARTS_DEFS.map(p=>p.sys))].sort();
+  systems.forEach(sys => {
+    const grp = document.createElement('optgroup');
+    grp.label = (SYS_ICON[sys]||'🔩') + ' ' + sys;
+    PARTS_DEFS.filter(p=>p.sys===sys).forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.id;
+      const inv = partsInventory[p.id]||{qty:0};
+      o.textContent = `${p.rhNum||p.itemNo} — ${p.name} (in stock: ${inv.qty})`;
+      grp.appendChild(o);
+    });
+    sel.appendChild(grp);
+  });
+  document.getElementById('rs-qty').value = '1';
+  document.getElementById('rs-current').value = '';
+  document.getElementById('rs-po').value = '';
+  document.getElementById('rs-notes').value = '';
+  document.getElementById('rs-result').style.display = 'none';
+  document.getElementById('rs-save-btn').disabled = false;
+  document.getElementById('rs-save-btn').textContent = '📦 Receive';
+  document.getElementById('receive-stock-modal').classList.add('open');
+}
+
+document.getElementById('rs-part').addEventListener('change', function() {
+  const inv = partsInventory[this.value]||{qty:0};
+  document.getElementById('rs-current').value = this.value ? inv.qty : '';
+});
+
+function closeReceiveStock() {
+  document.getElementById('receive-stock-modal').classList.remove('open');
+}
+
+async function saveReceiveStock() {
+  const partId = document.getElementById('rs-part').value;
+  const qty = parseInt(document.getElementById('rs-qty').value)||0;
+  const po = document.getElementById('rs-po').value.trim();
+  const notes = document.getElementById('rs-notes').value.trim();
+
+  if (!partId) return alert('Please select a part.');
+  if (qty < 1) return alert('Quantity must be at least 1.');
+
+  const part = PARTS_DEFS.find(p=>p.id===partId);
+  const inv = partsInventory[partId]||{qty:0, min:1};
+  const newQty = inv.qty + qty;
+
+  const btn = document.getElementById('rs-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  setSyncDot('saving');
+
+  try {
+    partsInventory[partId] = {...inv, qty: newQty};
+    await db.collection('partsInventory').doc(partId).set(
+      {qty: newQty, min: inv.min||1, ts: firebase.firestore.FieldValue.serverTimestamp()},
+      {merge: true}
+    );
+    const desc = `Stock received: ${part.name} +${qty} (${inv.qty} → ${newQty})${po?' · '+po:''}${notes?' · '+notes:''}`;
+    await db.collection('activityLog').add({
+      type: 'parts', id: partId,
+      desc, tech: 'Receiving',
+      date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+      ts: Date.now()
+    });
+    setSyncDot('live');
+
+    const resultEl = document.getElementById('rs-result');
+    resultEl.textContent = `✅ ${part.name}: ${inv.qty} → ${newQty} in stock`;
+    resultEl.style.display = 'block';
+    document.getElementById('rs-current').value = newQty;
+    btn.textContent = 'Received!';
+    updatePartsAlerts();
+    renderParts();
+    setTimeout(closeReceiveStock, 1200);
+  } catch(e) {
+    setSyncDot('live');
+    btn.disabled = false; btn.textContent = '📦 Receive';
+    alert('Error saving: ' + e.message);
+  }
 }
 
 function openPartForm(partId) {
