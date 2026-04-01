@@ -108,6 +108,43 @@ function renderWO() {
     }
   }
 
+  // ── Action Rail ──────────────────────────────
+  const actionRailWOs = base.filter(w => w.actionRail && w.status !== 'completed');
+  const railEl = document.getElementById('wo-action-rail');
+  if (railEl) {
+    if (actionRailWOs.length > 0) {
+      railEl.style.display = 'block';
+      railEl.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#f59e0b;text-transform:uppercase;">⚡ Action Rail — ${actionRailWOs.length} item${actionRailWOs.length!==1?'s':''}</div>
+          <button onclick="openMeetingAgenda()" style="padding:4px 10px;background:#1a2a1a;border:1px solid #2a4a2a;border-radius:6px;color:#7ab07a;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">📋 Meeting Agenda</button>
+        </div>
+        ${actionRailWOs.map(wo => `
+          <div style="background:#1a1500;border:1.5px solid #856404;border-radius:10px;padding:10px 14px;margin-bottom:7px;display:flex;align-items:flex-start;gap:10px;">
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#f59e0b;">${wo.id}</span>
+                <span style="font-size:11px;color:#d0c8b8;">${wo.farm} · ${wo.house} · ${wo.problem}</span>
+                ${wo.meetingFlag?'<span style="background:#1a2a3a;border:1px solid #2a4a6a;border-radius:4px;padding:2px 6px;font-size:9px;color:#60a5fa;font-family:\'IBM Plex Mono\',monospace;font-weight:700;">MEETING</span>':''}
+              </div>
+              <div style="font-size:12px;color:#a09070;margin-top:4px;">${wo.desc}</div>
+              ${wo.updates&&wo.updates.length?`<div style="font-size:11px;color:#856404;margin-top:4px;">💬 ${wo.updates[wo.updates.length-1].text}</div>`:''}
+            </div>
+            <button onclick="event.stopPropagation();removeFromRail('${wo._fbId}')" style="padding:4px 8px;background:#2a1a00;border:1px solid #5a3a00;border-radius:6px;color:#856404;font-size:11px;cursor:pointer;flex-shrink:0;">✕</button>
+          </div>`).join('')}`;
+    } else {
+      railEl.style.display = 'none';
+    }
+  }
+
+  // Meeting flag badge on sub-nav
+  const meetingCount = base.filter(w => w.meetingFlag && w.status !== 'completed').length;
+  const meetingBadge = document.getElementById('wo-meeting-badge');
+  if (meetingBadge) {
+    meetingBadge.style.display = meetingCount > 0 ? 'inline' : 'none';
+    meetingBadge.textContent = meetingCount;
+  }
+
   document.getElementById('wo-list').innerHTML = list.length
     ? list.map(wo=>woCardHtml(wo)).join('')
     : `<div class="empty"><div class="ei">📋</div><p>${t('wo.empty')}</p></div>`;
@@ -208,6 +245,8 @@ function woCardHtml(wo) {
     <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
       ${actionBtns}
       <button onclick="event.stopPropagation();openWOUpdate('${wo._fbId}')" style="padding:9px 12px;background:#1a2a1a;border:1px solid #2a4a2a;border-radius:8px;color:#7ab07a;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">💬 Update</button>
+      <button onclick="event.stopPropagation();toggleWORail('${wo._fbId}',${!wo.actionRail})" title="${wo.actionRail?'Remove from Action Rail':'Add to Action Rail'}" style="padding:9px 10px;background:${wo.actionRail?'#2a1f00':'#1a1a1a'};border:1px solid ${wo.actionRail?'#856404':'#333'};border-radius:8px;color:${wo.actionRail?'#f59e0b':'#555'};font-size:13px;cursor:pointer;" >⚡</button>
+      <button onclick="event.stopPropagation();toggleWOMeeting('${wo._fbId}',${!wo.meetingFlag})" title="${wo.meetingFlag?'Remove from Meeting':'Flag for Meeting'}" style="padding:9px 10px;background:${wo.meetingFlag?'#0d1f3a':'#1a1a1a'};border:1px solid ${wo.meetingFlag?'#2a4a6a':'#333'};border-radius:8px;color:${wo.meetingFlag?'#60a5fa':'#555'};font-size:13px;cursor:pointer;">📋</button>
     </div>
   </div>`;
 }
@@ -268,6 +307,62 @@ async function saveWOUpdate(fbId) {
     alert('Save failed: ' + e.message);
     if (btn) btn.disabled = false;
   }
+}
+
+// ── Action Rail & Meeting Flag ────────────────
+async function toggleWORail(fbId, state) {
+  try { await db.collection('workOrders').doc(fbId).update({ actionRail: state }); } catch(e) { console.error(e); }
+}
+
+async function toggleWOMeeting(fbId, state) {
+  try { await db.collection('workOrders').doc(fbId).update({ meetingFlag: state }); } catch(e) { console.error(e); }
+}
+
+async function removeFromRail(fbId) {
+  try { await db.collection('workOrders').doc(fbId).update({ actionRail: false }); } catch(e) { console.error(e); }
+}
+
+function openMeetingAgenda() {
+  const existing = document.getElementById('meeting-agenda-modal');
+  if (existing) existing.remove();
+
+  const flagged = workOrders.filter(w => w.meetingFlag && w.status !== 'completed');
+  const modal = document.createElement('div');
+  modal.id = 'meeting-agenda-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.8);display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto;';
+
+  const items = flagged.length ? flagged.map(wo => {
+    const lastUpdate = wo.updates && wo.updates.length ? wo.updates[wo.updates.length-1] : null;
+    return `<div style="background:#0d1a2a;border:1px solid #1e3a5a;border-radius:12px;padding:14px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#60a5fa;">${wo.id}</span>
+        <span class="badge ${wo.priority}" style="font-size:10px;">${wo.priority}</span>
+        <span style="font-size:11px;color:#8aacca;">${wo.farm} · ${wo.house}</span>
+        ${wo.actionRail?'<span style="background:#2a1f00;border:1px solid #856404;border-radius:4px;padding:2px 6px;font-size:9px;color:#f59e0b;font-family:\'IBM Plex Mono\',monospace;">⚡ ACTION</span>':''}
+      </div>
+      <div style="font-size:12px;color:#60a5fa;font-weight:600;margin-bottom:4px;">${wo.problem}</div>
+      <div style="font-size:13px;color:#d0c8b8;margin-bottom:6px;">${wo.desc}</div>
+      ${lastUpdate?`<div style="background:#0a1520;border-left:3px solid #2a4a6a;padding:6px 10px;border-radius:4px;font-size:11px;color:#8aacca;"><strong>Last update:</strong> ${lastUpdate.text}${lastUpdate.by?' — '+lastUpdate.by:''}<span style="color:#4a6a8a;margin-left:6px;">${lastUpdate.time||''}</span></div>`:'<div style="font-size:11px;color:#3a5a7a;font-style:italic;">No updates yet</div>'}
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button onclick="document.getElementById('meeting-agenda-modal').remove();openWOUpdate('${wo._fbId}')" style="padding:6px 12px;background:#0f1a2a;border:1px solid #2a4a6a;border-radius:6px;color:#60a5fa;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">💬 Add Update</button>
+        <button onclick="toggleWOMeeting('${wo._fbId}',false)" style="padding:6px 10px;background:#0a0a0a;border:1px solid #2a2a2a;border-radius:6px;color:#555;font-size:11px;cursor:pointer;">Remove from Meeting</button>
+      </div>
+    </div>`;
+  }).join('') : '<div style="text-align:center;padding:30px;color:#3a5a7a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">No WOs flagged for meeting.<br><br>Tap 📋 on any work order to add it here.</div>';
+
+  modal.innerHTML = `
+    <div style="background:#080d14;border:1.5px solid #1e3a5a;border-radius:16px;width:100%;max-width:520px;padding:20px 18px 28px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #1e3a5a;">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;color:#f0ead8;letter-spacing:1px;">📋 Meeting Agenda</div>
+          <div style="font-size:11px;color:#4a6a8a;margin-top:2px;">${flagged.length} WO${flagged.length!==1?'s':''} flagged for discussion</div>
+        </div>
+        <button onclick="document.getElementById('meeting-agenda-modal').remove()" style="background:none;border:none;color:#4a6a8a;font-size:22px;cursor:pointer;">✕</button>
+      </div>
+      ${items}
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 }
 
 // Lightbox viewer for WO photos
