@@ -1596,7 +1596,7 @@ function opsInitForms() {
   sv('egg-filter-date',t);
   sv('pack-filter-date',t);
   sv('recon-date',t);
-  setupEnterChain('egg-form-grid',saveEggOps);
+  setupEnterChain('egg-form-grid',saveEggByBarn);
   setupEnterChain('pack-form-grid',savePacking);
 }
 
