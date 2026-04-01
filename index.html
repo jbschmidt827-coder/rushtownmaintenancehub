@@ -1885,13 +1885,19 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <button class="loc-pill" onclick="woLoc('Hegins',this)">📍 Hegins</button>
         <button class="loc-pill" onclick="woLoc('Danville',this)">📍 Danville</button>
       </div>
-      <div class="pill-bar" id="wo-filter-bar">
-        <button class="pill active" onclick="woStat('all',this)">All</button>
-        <button class="pill" onclick="woStat('urgent',this)">🔴 Urgent</button>
-        <button class="pill" onclick="woStat('high',this)">🟡 High</button>
-        <button class="pill" onclick="woStat('open',this)">Open</button>
-        <button class="pill" onclick="woStat('in-progress',this)">In Progress</button>
-        <button class="pill" onclick="woStat('completed',this)">Completed</button>
+      <div id="wo-filter-bar">
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:7px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1.5px;color:rgba(255,255,255,0.3);text-transform:uppercase;min-width:52px;">Priority</span>
+          <button class="pill active" data-wo="all" onclick="woResetFilters()">All Active</button>
+          <button class="pill" data-wo="urgent" onclick="woTogglePriority('urgent',this)">🔴 Urgent</button>
+          <button class="pill" data-wo="high" onclick="woTogglePriority('high',this)">🟡 High</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:14px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1.5px;color:rgba(255,255,255,0.3);text-transform:uppercase;min-width:52px;">Status</span>
+          <button class="pill" data-wo="open" onclick="woToggleStatus('open',this)">Open</button>
+          <button class="pill" data-wo="in-progress" onclick="woToggleStatus('in-progress',this)">In Progress</button>
+          <button class="pill" data-wo="completed" onclick="woToggleStatus('completed',this)">✓ Completed Log</button>
+        </div>
       </div>
       <div class="card-list" id="wo-list"></div>
     </div>
@@ -1934,12 +1940,21 @@ body { min-height: 100dvh; overflow-x: hidden; }
               </div>
             </div>
             <div class="fg"><label>Description <span class="req">*</span></label><textarea id="wo-desc" rows="3" placeholder="Describe the issue in detail..."></textarea></div>
+            <div class="fg">
+              <label>Photos <span style="font-size:11px;color:var(--muted);font-weight:400;">(optional — tap to take or upload)</span></label>
+              <input type="file" id="photo-input" accept="image/*" multiple style="display:none;" onchange="previewPhotos(this)">
+              <input type="file" id="photo-input-cam" accept="image/*" capture="environment" style="display:none;" onchange="previewPhotos(this)">
+              <div style="display:flex;gap:8px;margin-top:6px;">
+                <button type="button" onclick="document.getElementById('photo-input-cam').click()" style="flex:1;padding:11px;background:#1a2a1a;border:2px dashed #4caf50;border-radius:10px;color:#4caf50;font-size:13px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">📷 Take Photo</button>
+                <button type="button" onclick="document.getElementById('photo-input').click()" style="flex:1;padding:11px;background:#1a1a2a;border:2px dashed #3b82f6;border-radius:10px;color:#3b82f6;font-size:13px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">🖼 Choose File</button>
+              </div>
+              <div id="photo-preview" style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px;"></div>
+            </div>
             <div class="fg"><label>Additional Notes</label><textarea id="wo-notes" rows="2" placeholder="Any other details..."></textarea></div>
             <div class="form-row">
               <div class="fg"><label>Parts Needed</label><input type="text" id="wo-parts" placeholder="List any parts (optional)"></div>
               <div class="fg"><label>Est. Hours</label><input type="number" id="wo-hours" min="0.5" step="0.5" placeholder="e.g. 2"></div>
             </div>
-            <div class="fg" style="display:none;"><input type="file" id="photo-input" accept="image/*" multiple><div id="photo-preview"></div></div>
           </div>
           <div class="form-footer">
             <button class="btn-cancel" onclick="goMaintSection('wo')">✕ Cancel</button>
@@ -2913,9 +2928,19 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">What Was Done</label>
       <textarea id="closeout-notes" placeholder="Describe what was repaired, replaced, or adjusted..." style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;min-height:70px;resize:vertical;"></textarea>
     </div>
-    <div style="margin-bottom:14px;">
+    <div style="margin-bottom:10px;">
       <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Parts Used</label>
       <div id="closeout-parts-list" style="margin-top:6px;max-height:180px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:6px;"></div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">After Photos <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+      <input type="file" id="closeout-photo-cam" accept="image/*" capture="environment" style="display:none;" onchange="previewCloseoutPhotos(this)">
+      <input type="file" id="closeout-photo-file" accept="image/*" multiple style="display:none;" onchange="previewCloseoutPhotos(this)">
+      <div style="display:flex;gap:7px;margin-top:6px;">
+        <button type="button" onclick="document.getElementById('closeout-photo-cam').click()" style="flex:1;padding:9px;background:#1a2a1a;border:2px dashed #4caf50;border-radius:8px;color:#4caf50;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">📷 Take Photo</button>
+        <button type="button" onclick="document.getElementById('closeout-photo-file').click()" style="flex:1;padding:9px;background:#1a1a2a;border:2px dashed #3b82f6;border-radius:8px;color:#3b82f6;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">🖼 Choose File</button>
+      </div>
+      <div id="closeout-photo-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;"></div>
     </div>
     <div class="confirm-btns">
       <button class="confirm-no" onclick="closeCloseout()">✕ Cancel</button>
@@ -3328,7 +3353,9 @@ let workOrders = [];
 let pmComps    = {};
 let actLog     = [];
 let selPri     = 'normal';
-let woLocFilter = 'all', woStatFilter = 'all';
+let woLocFilter = 'all';
+let woPriorityFilters = new Set(); // empty = all priorities
+let woStatusFilters = new Set();   // empty = all non-completed statuses
 let pmLocFilter = 'all', pmStatFilter = 'all';
 let logFilterVal = 'all';
 let modalPMId   = null;
@@ -4059,6 +4086,11 @@ function pmStatus(id) {
   const t = ALL_PM.find(x => x.id === id);
   const c = pmComps[id];
   const days = FREQ[t.freq].days;
+  if (t.freq === 'monthly') {
+    if (!c) return 'overdue';
+    if (doneThisMonth(id)) return 'ok';
+    return 'overdue';
+  }
   if (!c) return 'overdue';
   const ago = daysAgo(c.date);
   if (ago >= days) return 'overdue';
@@ -4081,6 +4113,12 @@ function fmtDate(str) {
   return new Date(str).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 }
 function doneToday(id) { return pmComps[id] && pmComps[id].date === todayStr; }
+function doneThisMonth(id) {
+  const c = pmComps[id];
+  if (!c || !c.date) return false;
+  const d = new Date(c.date), now = new Date(TODAY);
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+}
 function sc(cls, num, lbl) {
   return `<div class="stat-card ${cls}"><div class="stat-num">${num}</div><div class="stat-label">${lbl}</div></div>`;
 }
@@ -4517,15 +4555,35 @@ function woLoc(v,btn) {
   document.querySelectorAll('#wo-loc-bar .loc-pill').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active'); renderWO();
 }
-function woStat(v,btn) {
-  woStatFilter=v;
+function woResetFilters() {
+  woPriorityFilters.clear();
+  woStatusFilters.clear();
   document.querySelectorAll('#wo-filter-bar .pill').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active'); renderWO();
+  document.querySelector('#wo-filter-bar .pill[data-wo="all"]').classList.add('active');
+  renderWO();
+}
+function woTogglePriority(v, btn) {
+  // Deactivate "All Active" when any specific filter is picked
+  document.querySelector('#wo-filter-bar .pill[data-wo="all"]').classList.remove('active');
+  if (woPriorityFilters.has(v)) { woPriorityFilters.delete(v); btn.classList.remove('active'); }
+  else { woPriorityFilters.add(v); btn.classList.add('active'); }
+  // If nothing at all is selected, revert to All Active
+  if (woPriorityFilters.size===0 && woStatusFilters.size===0) {
+    document.querySelector('#wo-filter-bar .pill[data-wo="all"]').classList.add('active');
+  }
+  renderWO();
+}
+function woToggleStatus(v, btn) {
+  document.querySelector('#wo-filter-bar .pill[data-wo="all"]').classList.remove('active');
+  if (woStatusFilters.has(v)) { woStatusFilters.delete(v); btn.classList.remove('active'); }
+  else { woStatusFilters.add(v); btn.classList.add('active'); }
+  if (woPriorityFilters.size===0 && woStatusFilters.size===0) {
+    document.querySelector('#wo-filter-bar .pill[data-wo="all"]').classList.add('active');
+  }
+  renderWO();
 }
 
 function renderWO() {
-  const now = Date.now();
-  const twentyFourHrs = 24 * 60 * 60 * 1000;
   let base = woLocFilter==='all' ? workOrders : workOrders.filter(w=>w.farm===woLocFilter);
   document.getElementById('wo-stats').innerHTML =
     sc('s-red',base.filter(w=>w.priority==='urgent'&&w.status!=='completed').length,t('wo.stat.urgent')) +
@@ -4535,18 +4593,22 @@ function renderWO() {
     sc('',base.length,t('wo.stat.total'));
 
   let list = [...base];
-  if (woStatFilter==='urgent') list=list.filter(w=>w.priority==='urgent');
-  else if (woStatFilter==='high') list=list.filter(w=>w.priority==='high');
-  else if (woStatFilter==='open') list=list.filter(w=>w.status==='open');
-  else if (woStatFilter==='in-progress') list=list.filter(w=>w.status==='in-progress');
-  else if (woStatFilter==='completed') list=list.filter(w=>w.status==='completed');
-  else {
-    // Default view: hide completed WOs older than 24 hours
-    list=list.filter(w=>{
-      if (w.status!=='completed') return true;
-      const ts = w.ts?.toMillis ? w.ts.toMillis() : (w.ts||0);
-      return (now - ts) < twentyFourHrs;
-    });
+  const hasPriority = woPriorityFilters.size > 0;
+  const hasStatus = woStatusFilters.size > 0;
+
+  if (!hasPriority && !hasStatus) {
+    // Default: all active (no completed)
+    list = list.filter(w => w.status !== 'completed');
+  } else {
+    // Priority filter: OR within group
+    if (hasPriority) list = list.filter(w => woPriorityFilters.has(w.priority));
+    // Status filter: OR within group (applied on top — AND across groups)
+    if (hasStatus) {
+      list = list.filter(w => woStatusFilters.has(w.status));
+    } else {
+      // Priority selected but no status — exclude completed by default
+      list = list.filter(w => w.status !== 'completed');
+    }
   }
 
   document.getElementById('wo-list').innerHTML = list.length
@@ -4596,8 +4658,11 @@ function woCardHtml(wo) {
       <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','open')" style="flex:1;padding:9px;background:#2a1a1a;border:1px solid #7f1d1d;border-radius:8px;color:#f87171;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">${t('wo.btn.reopen')}</button>`;
   }
 
+  const completionPhotoStrip = (wo.completionPhotos && wo.completionPhotos.length)
+    ? `<div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;">${wo.completionPhotos.map(p=>`<img src="${p}" style="height:55px;border-radius:6px;border:1px solid #2a5a2a;cursor:zoom-in;" onclick="event.stopPropagation();openCompletionPhotoViewer('${wo._fbId}')">`).join('')}</div>`
+    : '';
   const completedInfo = wo.status === 'completed' && wo.completedBy
-    ? `<div style="margin-top:6px;padding:6px 8px;background:#0a1f0a;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#4caf50;">${t('wo.completedby')} ${wo.completedBy}${wo.completedDate?' · '+wo.completedDate:''}${wo.completedNotes?'<br><span style="color:#7ab07a;">'+wo.completedNotes+'</span>':''}</div>` : '';
+    ? `<div style="margin-top:6px;padding:6px 8px;background:#0a1f0a;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#4caf50;">${t('wo.completedby')} ${wo.completedBy}${wo.completedDate?' · '+wo.completedDate:''}${wo.completedNotes?'<br><span style="color:#7ab07a;">'+wo.completedNotes+'</span>':''}${completionPhotoStrip}</div>` : '';
 
   return `<div class="wo-card ${wo.priority}${escalate?' wo-escalated':''}">
     <div class="wo-id">${wo.id}<div class="wo-pri" style="color:${pC[wo.priority]}">${pL[wo.priority]}</div></div>
@@ -4643,6 +4708,33 @@ function openPhotoViewer(fbId) {
   };
   window._lbPrev = () => { idx = (idx - 1 + wo.photos.length) % wo.photos.length; renderLB(); };
   window._lbNext = () => { idx = (idx + 1) % wo.photos.length; renderLB(); };
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  renderLB();
+  document.body.appendChild(overlay);
+}
+
+function openCompletionPhotoViewer(fbId) {
+  const wo = workOrders.find(w => w._fbId === fbId);
+  if (!wo || !wo.completionPhotos || !wo.completionPhotos.length) return;
+  let idx = 0;
+  const overlay = document.createElement('div');
+  overlay.id = 'photo-lightbox';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;flex-direction:column;';
+  const renderLB = () => {
+    overlay.innerHTML = `
+      <div style="text-align:center;color:#4caf50;font-size:11px;font-family:'IBM Plex Mono',monospace;margin-bottom:8px;">✓ AFTER REPAIR — ${wo.id}</div>
+      <div style="position:relative;max-width:90vw;max-height:80vh;">
+        <img src="${wo.completionPhotos[idx]}" style="max-width:90vw;max-height:72vh;border-radius:10px;display:block;">
+        <div style="text-align:center;color:#ccc;font-size:13px;margin-top:8px;">${idx+1} / ${wo.completionPhotos.length} · ${wo.farm} · ${wo.house}</div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:14px;">
+        ${wo.completionPhotos.length > 1 ? `<button onclick="event.stopPropagation();window._lbPrev()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">◀ Prev</button>` : ''}
+        ${wo.completionPhotos.length > 1 ? `<button onclick="event.stopPropagation();window._lbNext()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">Next ▶</button>` : ''}
+        <button onclick="document.getElementById('photo-lightbox').remove()" style="padding:10px 20px;background:#c0392b;border:none;color:white;border-radius:8px;cursor:pointer;font-size:14px;">✕ Close</button>
+      </div>`;
+  };
+  window._lbPrev = () => { idx = (idx - 1 + wo.completionPhotos.length) % wo.completionPhotos.length; renderLB(); };
+  window._lbNext = () => { idx = (idx + 1) % wo.completionPhotos.length; renderLB(); };
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   renderLB();
   document.body.appendChild(overlay);
@@ -4752,6 +4844,35 @@ function setPri(val, el) {
 
 // Stores compressed base64 data URIs for photos selected on the WO form
 let pendingPhotoData = [];
+// Stores compressed base64 data URIs for closeout (after-repair) photos
+let pendingCloseoutPhotos = [];
+
+function previewCloseoutPhotos(input) {
+  const pv = document.getElementById('closeout-photo-preview');
+  pv.innerHTML = '';
+  pendingCloseoutPhotos = [];
+  const files = [...input.files];
+  if (!files.length) return;
+  const info = document.createElement('div');
+  info.style.cssText = 'font-size:11px;color:var(--muted);margin-top:4px;width:100%;';
+  info.textContent = 'Processing…';
+  pv.appendChild(info);
+  let done = 0;
+  files.forEach((f, idx) => {
+    compressPhoto(f).then(uri => {
+      pendingCloseoutPhotos[idx] = uri;
+      const img = document.createElement('img');
+      img.src = uri;
+      img.style.cssText = 'height:60px;border-radius:6px;border:2px solid var(--border);';
+      pv.insertBefore(img, info);
+      done++;
+      if (done === files.length) {
+        info.style.color = 'var(--green-mid)';
+        info.textContent = done + ' photo' + (done !== 1 ? 's' : '') + ' ready';
+      }
+    }).catch(() => { done++; });
+  });
+}
 
 // Compress a File to a JPEG data URI, max 1200px on longest side, quality 0.72
 // Returns a Promise<string>
@@ -4973,6 +5094,9 @@ function renderPM() {
     filtered=tasks.filter(t=>t.freq===pmStatFilter);
   else if (pmStatFilter && pmStatFilter.startsWith('sys:'))
     filtered=tasks.filter(t=>t.sys===pmStatFilter.slice(4));
+
+  // Hide monthly PMs that are already completed this calendar month
+  filtered = filtered.filter(t => !(t.freq === 'monthly' && doneThisMonth(t.id)));
 
   filtered.sort((a,b)=>{
     const o=['overdue','due-soon','ok'];
@@ -5579,6 +5703,10 @@ function openCloseout(wo) {
   });
 
   document.getElementById('closeout-notes').value = '';
+  pendingCloseoutPhotos = [];
+  document.getElementById('closeout-photo-preview').innerHTML = '';
+  document.getElementById('closeout-photo-cam').value = '';
+  document.getElementById('closeout-photo-file').value = '';
 
   // Build parts checklist — filtered to WO problem type
   const relevantParts = getPartsForProblem(wo.problem);
@@ -5626,6 +5754,8 @@ function closeCloseout() {
   document.getElementById('wo-closeout').classList.remove('open');
   pendingCycleFbId = null;
   closeoutPartsSelected = {};
+  pendingCloseoutPhotos = [];
+  document.getElementById('closeout-photo-preview').innerHTML = '';
 }
 
 async function confirmCloseout() {
@@ -5663,6 +5793,7 @@ async function confirmCloseout() {
 
   const savedFbId = wo._fbId;
   const completedDate = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const completionPhotos = pendingCloseoutPhotos.filter(Boolean);
 
   closeCloseout();
 
@@ -5671,6 +5802,7 @@ async function confirmCloseout() {
   wo.completedBy = tech;
   wo.completedNotes = notes;
   wo.completedDate = completedDate;
+  if (completionPhotos.length) wo.completionPhotos = completionPhotos;
   renderWO();
 
   setSyncDot('saving');
@@ -5680,6 +5812,7 @@ async function confirmCloseout() {
       completedBy: tech,
       completedNotes: notes,
       completedDate,
+      ...(completionPhotos.length ? {completionPhotos} : {}),
       partsUsed,
       completedTs: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -6144,7 +6277,7 @@ function renderDowntime() {
         const dur = e.durationMins ? `${Math.floor(e.durationMins/60)}h ${e.durationMins%60}m` : '⏳ Ongoing';
         const col = e.ongoing ? '#e53e3e' : 'var(--green-mid)';
         const linkedWOHtml = e.linkedWO
-          ? `<span style="display:inline-block;margin-top:5px;background:#e8f4fd;border:1px solid #3b82f6;border-radius:5px;padding:2px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#1a3a6b;cursor:pointer;" onclick="go('wo');woStat('all',document.querySelector('#wo-filter-bar .pill'))">🔧 ${e.linkedWO}</span>`
+          ? `<span style="display:inline-block;margin-top:5px;background:#e8f4fd;border:1px solid #3b82f6;border-radius:5px;padding:2px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#1a3a6b;cursor:pointer;" onclick="go('wo');woResetFilters()">🔧 ${e.linkedWO}</span>`
           : '';
         return `<div style="background:white;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);padding:12px 14px;margin-bottom:8px;border-left:4px solid ${col};">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
@@ -9009,11 +9142,20 @@ function bwInitChecklist() {
 
 // items that auto-generate a WO on fail
 const _BW_WO_ITEMS = {
-  waterleaks:    { desc:'Water leak found',                   problem:'Watering System',       priority:'urgent' },
-  cagebirdcheck: { desc:'Injured/sick birds found in cages',  problem:'Building / Structure',  priority:'urgent' },
-  chutefull:     { desc:'Mortality chute getting full',        problem:'Building / Structure',  priority:'high'   },
-  damagedcages:  { desc:'Damaged cages or egg belts found',   problem:'Egg Collection',        priority:'high'   },
-  watertubes:    { desc:'Water tubes not cleaned / issue',    problem:'Watering System',       priority:'normal' },
+  waterleaks:    { desc:'Water leak found',                        problem:'Watering System',       priority:'urgent' },
+  cagebirdcheck: { desc:'Injured/sick birds found in cages',       problem:'Building / Structure',  priority:'urgent' },
+  mortchute:     { desc:'Mortality chute issue',                   problem:'Building / Structure',  priority:'high'   },
+  chutefull:     { desc:'Mortality chute getting full',            problem:'Building / Structure',  priority:'high'   },
+  damagedcages:  { desc:'Damaged cages or egg belts found',        problem:'Egg Collection',        priority:'high'   },
+  watertubes:    { desc:'Water tubes not cleaned / issue',         problem:'Watering System',       priority:'normal' },
+  dustblown:     { desc:'Dust blowing task incomplete',            problem:'Building / Structure',  priority:'normal' },
+  aislesblown:   { desc:'Aisles not blown / cleaned',              problem:'Building / Structure',  priority:'normal' },
+  eggcollblown:  { desc:'Egg collection area not blown',           problem:'Egg Collection',        priority:'normal' },
+  eggspills:     { desc:'Egg spills found',                        problem:'Egg Collection',        priority:'high'   },
+  wheelbarrow:   { desc:'Wheelbarrow not cleaned / stored',        problem:'Building / Structure',  priority:'normal' },
+  toolsback:     { desc:'Tools not returned to proper location',   problem:'Building / Structure',  priority:'normal' },
+  hallways:      { desc:'Hallways not clean',                      problem:'Building / Structure',  priority:'normal' },
+  backofhouse:   { desc:'Back of house not clean / secure',        problem:'Building / Structure',  priority:'normal' },
 };
 
 function bwSetCheck(key, val, btn) {
@@ -9211,6 +9353,8 @@ async function submitBarnWalk() {
     'Fly activity':               {problem:'Building / Structure',priority:'normal'},
   };
   for (const flag of flags) {
+    // Skip the combined checklist-failures summary — individual WOs are already created above
+    if (flag.startsWith('Checklist failures:')) continue;
     try {
       const mapKey = Object.keys(flagProblemMap).find(k => flag.startsWith(k)) || flag;
       const {problem, priority} = flagProblemMap[mapKey] || {problem:'Other',priority:'high'};
@@ -9303,17 +9447,30 @@ async function submitMorningWalk() {
   MORNING_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
 
   if (flags.length > 0) {
-    try {
-      const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
-      woCounter = (woCounter||900) + 1;
-      await db.collection('workOrders').add({
-        id: woId, farm: _mwFarm, house: String(_mwHouse), system: 'Production',
-        desc: 'Morning Walk Flag — ' + flags.join('; '), priority: 'high', status: 'open',
-        tech: employee, notes: 'Auto-created from morning walk by ' + employee,
-        submitted: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-        ts: Date.now(), date: new Date().toISOString().slice(0,10)
-      });
-    } catch(e) { console.error(e); }
+    const mwFlagProblemMap = {
+      'Feeders not running':         { problem: 'Feed System',        priority: 'urgent' },
+      'Fan issue':                   { problem: 'Ventilation / Fans', priority: 'urgent' },
+      'Blower issue':                { problem: 'Ventilation / Fans', priority: 'high'   },
+      'Water pressure out of range': { problem: 'Watering System',    priority: 'urgent' },
+    };
+    const submitted = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const woDate    = new Date().toISOString().slice(0,10);
+    for (const flag of flags) {
+      try {
+        const mapKey = Object.keys(mwFlagProblemMap).find(k => flag.startsWith(k)) || flag;
+        const {problem, priority} = mwFlagProblemMap[mapKey] || {problem:'Production',priority:'high'};
+        const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
+        woCounter = (woCounter || 900) + 1;
+        await db.collection('workOrders').add({
+          id: woId, farm: _mwFarm, house: String(_mwHouse),
+          problem, priority, status: 'open',
+          desc: flag,
+          tech: employee,
+          notes: 'Auto-created from morning walk — ' + _mwFarm + ' Barn ' + _mwHouse,
+          submitted, date: woDate, ts: Date.now()
+        });
+      } catch(e) { console.error(e); }
+    }
   }
 
   closeMorningWalk();
@@ -9835,7 +9992,7 @@ function renderFeedDashboard() {
                   ${daysLeft !== null ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:${daysColor};line-height:1;">${daysLeft}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a8a4a;">days left</div>` : ''}
                 </div>
               </div>
-              <div class="feed-bin-loc">${[b.feedType, farm].filter(Boolean).join(' · ')}</div>
+              <div class="feed-bin-loc">${[bins[0]?.feedType, farm].filter(Boolean).join(' · ')}</div>
               ${binRows}
               <div style="border-top:1px solid #2a5a2a;padding-top:8px;margin-top:4px;display:flex;justify-content:space-between;align-items:center;">
                 <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;">Total: ${fmtNum(totalLbsHouse)} lbs${dailyCons?` · ${fmtNum(Math.round(dailyCons))} lbs/day`:''}</div>
@@ -10700,7 +10857,6 @@ function opsInitForms() {
   sv('egg-filter-date',t);
   sv('pack-filter-date',t);
   sv('recon-date',t);
-  setupEnterChain('egg-form-grid',saveEggOps);
   setupEnterChain('pack-form-grid',savePacking);
 }
 
