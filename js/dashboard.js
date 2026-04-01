@@ -133,8 +133,9 @@ function renderDash() {
 
   // ── PRODUCTION card ──
   const allBarns = [...Array.from({length:8},(_,i)=>({farm:'Hegins',n:i+1})),...Array.from({length:5},(_,i)=>({farm:'Danville',n:i+1})),...Array.from({length:5},(_,i)=>({farm:'Rushtown',n:i+1})),...Array.from({length:4},(_,i)=>({farm:'Turbotville',n:i+1})),...Array.from({length:2},(_,i)=>({farm:'W&M',n:i+1}))];
-  const bs = typeof BARN_STATUS !== 'undefined' ? BARN_STATUS : {};
-  const barnsDone = allBarns.filter(b=>bs[b.farm+'-'+b.n]==='done'||bs[b.farm+'-'+b.n]==='issue').length;
+  const bs  = typeof BARN_STATUS    !== 'undefined' ? BARN_STATUS    : {};
+  const msd = typeof MORNING_STATUS !== 'undefined' ? MORNING_STATUS : {};
+  const barnsDone    = allBarns.filter(b => { const k=b.farm+'-'+b.n; return bs[k]==='done'||bs[k]==='issue'||msd[k]==='done'||msd[k]==='issue'; }).length;
   const flaggedBarns = allBarns.filter(b=>bs[b.farm+'-'+b.n]==='issue').length;
   const barnPct = Math.round(barnsDone/allBarns.length*100);
   const todayMortTotal = typeof _todayMortTotal !== 'undefined' ? _todayMortTotal : 0;

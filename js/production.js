@@ -10,8 +10,11 @@ function kpiCol(pct) {
 
 function renderProdPanel() {
   const bs = typeof BARN_STATUS !== 'undefined' ? BARN_STATUS : {};
+  const ms = typeof MORNING_STATUS !== 'undefined' ? MORNING_STATUS : {};
   const totalBarns = 13;
-  const done   = Object.values(bs).filter(s => s==='done'||s==='issue').length;
+  // A barn counts as checked if either a barn walk OR a morning walk was submitted
+  const allKeys = new Set([...Object.keys(bs), ...Object.keys(ms)]);
+  const done   = [...allKeys].filter(k => bs[k]==='done'||bs[k]==='issue'||ms[k]==='done'||ms[k]==='issue').length;
   const issues = Object.values(bs).filter(s => s==='issue').length;
   const pct    = Math.round(done / totalBarns * 100);
   const todayStr = new Date().toISOString().slice(0,10);
