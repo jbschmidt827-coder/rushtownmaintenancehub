@@ -30,7 +30,7 @@ async function saveBioEntry() {
   const type = document.getElementById('bio-type').value;
   const person = document.getElementById('bio-person').value.trim();
   const risk = document.getElementById('bio-risk').value;
-  if (!date || !farm || !type || !person) { alert('Date, Farm, Entry Type, and Person Name are required.'); return; }
+  if (!date || !farm || !type || !person) { alert(t('bio.required')); return; }
   const measures = {
     footbath: document.getElementById('bio-footbath').checked,
     coveralls: document.getElementById('bio-coveralls').checked,
@@ -52,15 +52,15 @@ async function saveBioEntry() {
   if (!statusEl) return;
   setSyncDot('saving');
   try {
-    statusEl.style.color = '#f87171'; statusEl.textContent = 'Saving...';
+    statusEl.style.color = '#f87171'; statusEl.textContent = t('bio.saving');
     const ref = await db.collection('biosecurityLog').add(rec);
     rec._fbId = ref.id;
     bioLog.unshift(rec);
-    statusEl.style.color = '#4caf50'; statusEl.textContent = '✓ Entry logged!';
+    statusEl.style.color = '#4caf50'; statusEl.textContent = t('bio.saved');
     setTimeout(() => statusEl.textContent = '', 2000);
     clearBioForm();
     renderBioLog();
-  } catch(e) { statusEl.style.color = '#e53e3e'; statusEl.textContent = 'Save failed: ' + e.message; }
+  } catch(e) { statusEl.style.color = '#e53e3e'; statusEl.textContent = t('bio.save_failed') + e.message; }
   setSyncDot('live');
 }
 
@@ -90,15 +90,15 @@ function renderBioLog() {
   if (statsEl) statsEl.innerHTML = `
     <div style="background:#0f1a0f;border:1px solid #7f1d1d;border-radius:10px;padding:12px;text-align:center;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:700;color:#f0ead8;">${rows.length}</div>
-      <div style="font-size:9px;color:#f87171;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">Entries Today</div>
+      <div style="font-size:9px;color:#f87171;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">${t('bio.entries_today')}</div>
     </div>
     <div style="background:#0f1a0f;border:1px solid ${highRisk>0?'#dc2626':'#7f1d1d'};border-radius:10px;padding:12px;text-align:center;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:700;color:${highRisk>0?'#f87171':'#f0ead8'};">${highRisk}</div>
-      <div style="font-size:9px;color:#f87171;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">🔴 High Risk</div>
+      <div style="font-size:9px;color:#f87171;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">${t('bio.high_risk')}</div>
     </div>
     <div style="background:#0f1a0f;border:1px solid #7f1d1d;border-radius:10px;padding:12px;text-align:center;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:700;color:${medRisk>0?'#d69e2e':'#f0ead8'};">${medRisk}</div>
-      <div style="font-size:9px;color:#f87171;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">🟡 Medium Risk</div>
+      <div style="font-size:9px;color:#f87171;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">🟡 ${t('bio.medium_risk')}</div>
     </div>`;
 
   const listEl = document.getElementById('bio-log-list');

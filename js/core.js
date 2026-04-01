@@ -443,6 +443,35 @@ const TRANSLATIONS = {
     'wo.unassigned':'Unassigned','wo.completedby':'✓ Completed by',
     'wo.photo.prev':'← Prev','wo.photo.next':'Next →','wo.photo.close':'✕ Close',
     'wo.hint':'Tap any card to update status — confirmation required',
+    // Production KPI bar
+    'prod.kpi.checks':'Checks Done','prod.kpi.eggs':'Eggs Today','prod.kpi.flagged':'Flagged',
+    'prod.barn':'Barn',
+    'prod.select_farm':'Select your farm to begin',
+    'prod.barns_checked':'barns checked today',
+    'prod.barns_walked':'barns walked today',
+    'prod.select_walk':'Select farm to walk',
+    'prod.no_eggs_yet':'No egg counts submitted yet today.',
+    'prod.egg_kpi_title':'🥚 Egg KPI — 90% Target',
+    // Shipping / Farm directory
+    'ship.select_farm':'— Select Farm —',
+    'ship.no_farms':'No farms match your search.',
+    'ship.farms':'FARMS','ship.independent':'INDEPENDENT',
+    'ship.owned_by':'Owned by',
+    'ship.address':'Address','ship.contacts':'Contacts',
+    'ship.ids_codes':'IDs & Codes',
+    'ship.state_id':'State ID','ship.federal_id':'Federal ID',
+    'ship.npip':'NPIP #','ship.door_code':'Door Code',
+    'ship.create_load':'🚛 CREATE LOAD FOR THIS FARM',
+    'ship.open_maps':'Open in Maps →',
+    // Biosecurity
+    'bio.required':'Date, Farm, Entry Type, and Person Name are required.',
+    'bio.saving':'Saving...','bio.saved':'✓ Entry logged!',
+    'bio.save_failed':'Save failed: ',
+    'bio.entries_today':'Entries Today',
+    'bio.high_risk':'🔴 High Risk','bio.medium_risk':'Medium Risk',
+    // Common UI
+    'btn.close':'✕ Close','btn.back_farms':'← Farms',
+    'common.saving':'Saving...','common.save_failed':'Save failed: ',
   },
   es: {
     // Nav
@@ -523,6 +552,35 @@ const TRANSLATIONS = {
     'wo.unassigned':'Sin Asignar','wo.completedby':'✓ Completado por',
     'wo.photo.prev':'← Ant','wo.photo.next':'Sig →','wo.photo.close':'✕ Cerrar',
     'wo.hint':'Toca una tarjeta para actualizar estado — confirmación requerida',
+    // Production KPI bar
+    'prod.kpi.checks':'Revisiones Hechas','prod.kpi.eggs':'Huevos Hoy','prod.kpi.flagged':'Con Alertas',
+    'prod.barn':'Galpón',
+    'prod.select_farm':'Seleccione su granja para comenzar',
+    'prod.barns_checked':'galpones revisados hoy',
+    'prod.barns_walked':'galpones recorridos hoy',
+    'prod.select_walk':'Seleccione granja para recorrer',
+    'prod.no_eggs_yet':'Sin conteos de huevos registrados hoy.',
+    'prod.egg_kpi_title':'🥚 KPI de Huevos — Meta 90%',
+    // Shipping / Farm directory
+    'ship.select_farm':'— Seleccionar Granja —',
+    'ship.no_farms':'Ninguna granja coincide con su búsqueda.',
+    'ship.farms':'GRANJAS','ship.independent':'INDEPENDIENTE',
+    'ship.owned_by':'Propiedad de',
+    'ship.address':'Dirección','ship.contacts':'Contactos',
+    'ship.ids_codes':'IDs y Códigos',
+    'ship.state_id':'ID Estatal','ship.federal_id':'ID Federal',
+    'ship.npip':'NPIP #','ship.door_code':'Código de Puerta',
+    'ship.create_load':'🚛 CREAR CARGA PARA ESTA GRANJA',
+    'ship.open_maps':'Abrir en Mapas →',
+    // Biosecurity
+    'bio.required':'Fecha, Granja, Tipo de Entrada y Nombre son requeridos.',
+    'bio.saving':'Guardando...','bio.saved':'✓ Entrada registrada!',
+    'bio.save_failed':'Error al guardar: ',
+    'bio.entries_today':'Entradas Hoy',
+    'bio.high_risk':'🔴 Alto Riesgo','bio.medium_risk':'Riesgo Medio',
+    // Common UI
+    'btn.close':'✕ Cerrar','btn.back_farms':'← Granjas',
+    'common.saving':'Guardando...','common.save_failed':'Error al guardar: ',
   }
 };
 
@@ -536,14 +594,19 @@ function toggleLang() {
   _lang = _lang === 'en' ? 'es' : 'en';
   localStorage.setItem('rushtown_lang', _lang);
   applyTranslations();
-  // Re-render active panel so dynamic content updates
-  const active = document.querySelector('.panel.active');
-  if (active) {
-    const id = active.id.replace('panel-','');
-    if (id === 'dash')    renderDash();
-    else if (id === 'maint') { try { renderWO(); } catch(e){} }
-    else if (id === 'kpi')   { try { renderKpiDashboard(); } catch(e){} }
-  }
+  // Re-render ALL panels so dynamic content updates on language switch
+  try { renderDash(); } catch(e){}
+  try { renderWO(); } catch(e){}
+  try { renderKpiDashboard(); } catch(e){}
+  try { renderProdPanel(); } catch(e){}
+  try { renderShipping(); } catch(e){}
+  try { renderFarms(); } catch(e){}
+  try { renderExceptions(); } catch(e){}
+  try { renderBioLog(); } catch(e){}
+  try { renderReconciliation(); } catch(e){}
+  // Re-render any open sub-sections
+  try { if (typeof _ecFarm !== 'undefined') renderECContent(); } catch(e){}
+  try { if (typeof _mwSectionFarm !== 'undefined') renderMWContent(); } catch(e){}
 }
 
 // ── Form-level text translations (labels, options, placeholders, buttons) ──

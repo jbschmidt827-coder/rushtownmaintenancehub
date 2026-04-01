@@ -23,7 +23,7 @@ function goShipSection(section) {
 function initShipFarmDropdown() {
   const sel = document.getElementById('sf-customer');
   if (!sel) return;
-  sel.innerHTML = '<option value="">— Select Farm —</option>' +
+  sel.innerHTML = `<option value="">${t('ship.select_farm')}</option>` +
     LAYER_FARMS.map(f => `<option value="${f.name}">${f.name}</option>`).join('');
 }
 
@@ -66,13 +66,13 @@ function renderFarms() {
   // Stats
   document.getElementById('farm-dir-stats').innerHTML = `
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
-      <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:6px 14px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:700;color:#2e7d32;">${farms.length} FARMS</div>
+      <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:6px 14px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:700;color:#2e7d32;">${farms.length} ${t('ship.farms')}</div>
       <div style="background:#f3e5f5;border:1px solid #ce93d8;border-radius:8px;padding:6px 14px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:700;color:#6a1b9a;">${farms.filter(f=>rlOwners.includes(f.owner)).length} R&L / RTP</div>
-      <div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:8px;padding:6px 14px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:700;color:#e65100;">${farms.filter(f=>!rlOwners.includes(f.owner)).length} INDEPENDENT</div>
+      <div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:8px;padding:6px 14px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:700;color:#e65100;">${farms.filter(f=>!rlOwners.includes(f.owner)).length} ${t('ship.independent')}</div>
     </div>`;
 
   if (!farms.length) {
-    document.getElementById('farm-dir-list').innerHTML = `<div style="text-align:center;padding:40px;color:#999;font-family:'IBM Plex Mono',monospace;">No farms match your search.</div>`;
+    document.getElementById('farm-dir-list').innerHTML = `<div style="text-align:center;padding:40px;color:#999;font-family:'IBM Plex Mono',monospace;">${t('ship.no_farms')}</div>`;
     return;
   }
 
@@ -119,27 +119,27 @@ function openFarmDetail(name) {
   document.getElementById('farm-detail-card').innerHTML = `
     <button onclick="closeFarmDetail()" style="position:absolute;top:14px;right:14px;background:#f5f5f5;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:700;color:#555;">✕</button>
     <div style="font-size:22px;font-weight:800;color:#111;margin-bottom:4px;">${f.name}</div>
-    <div style="font-size:12px;font-weight:700;color:${ownerColor};margin-bottom:16px;text-transform:uppercase;letter-spacing:1px;">Owned by ${f.owner}</div>
+    <div style="font-size:12px;font-weight:700;color:${ownerColor};margin-bottom:16px;text-transform:uppercase;letter-spacing:1px;">${t('ship.owned_by')} ${f.owner}</div>
     <div style="background:#f9f9f9;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Address</div>
+      <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">${t('ship.address')}</div>
       <div style="font-size:14px;color:#333;">📍 ${f.address}</div>
-      <a href="https://maps.google.com/?q=${encodeURIComponent(f.address)}" target="_blank" style="display:inline-block;margin-top:8px;font-size:12px;color:#1976d2;">Open in Maps →</a>
+      <a href="https://maps.google.com/?q=${encodeURIComponent(f.address)}" target="_blank" style="display:inline-block;margin-top:8px;font-size:12px;color:#1976d2;">${t('ship.open_maps')}</a>
     </div>
     <div style="background:#f9f9f9;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Contacts</div>
+      <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">${t('ship.contacts')}</div>
       ${contacts}
       ${f.email ? `<div style="padding:8px 0;"><a href="mailto:${f.email}" style="color:#555;font-size:12px;">✉️ ${f.email}</a></div>` : ''}
     </div>
     <div style="background:#f9f9f9;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">IDs & Codes</div>
+      <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">${t('ship.ids_codes')}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <div><div style="font-size:10px;color:#999;">State ID</div><div style="font-weight:700;">${f.stateId || '—'}</div></div>
-        <div><div style="font-size:10px;color:#999;">Federal ID</div><div style="font-weight:700;">${f.fedId || '—'}</div></div>
-        <div><div style="font-size:10px;color:#999;">NPIP #</div><div style="font-weight:700;">${f.npip || '—'}</div></div>
-        <div><div style="font-size:10px;color:#999;">Door Code</div><div style="font-weight:700;color:#6a1b9a;">${f.doorCode || '—'}</div></div>
+        <div><div style="font-size:10px;color:#999;">${t('ship.state_id')}</div><div style="font-weight:700;">${f.stateId || '—'}</div></div>
+        <div><div style="font-size:10px;color:#999;">${t('ship.federal_id')}</div><div style="font-weight:700;">${f.fedId || '—'}</div></div>
+        <div><div style="font-size:10px;color:#999;">${t('ship.npip')}</div><div style="font-weight:700;">${f.npip || '—'}</div></div>
+        <div><div style="font-size:10px;color:#999;">${t('ship.door_code')}</div><div style="font-weight:700;color:#6a1b9a;">${f.doorCode || '—'}</div></div>
       </div>
     </div>
-    <button onclick="startLoadFromFarm('${f.name.replace(/'/g,"\\'")}');closeFarmDetail();" style="width:100%;padding:14px;background:#4caf50;color:#fff;border:none;border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;">🚛 CREATE LOAD FOR THIS FARM</button>`;
+    <button onclick="startLoadFromFarm('${f.name.replace(/'/g,"\\'")}');closeFarmDetail();" style="width:100%;padding:14px;background:#4caf50;color:#fff;border:none;border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;">${t('ship.create_load')}</button>`;
 
   const overlay = document.getElementById('farm-detail-overlay');
   overlay.style.display = 'flex';

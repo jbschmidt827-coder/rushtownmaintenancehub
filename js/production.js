@@ -31,16 +31,16 @@ function renderProdPanel() {
   if (kpiBar) kpiBar.innerHTML = `
     <div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px 12px;text-align:center;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:${pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e'};line-height:1;">${done}/${totalBarns}</div>
-      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Checks Done</div>
+      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">${t('prod.kpi.checks')}</div>
       <div style="background:#163016;border-radius:3px;height:4px;overflow:hidden;margin-top:8px;"><div style="height:100%;background:${pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e'};width:${pct}%;border-radius:3px;"></div></div>
     </div>
     <div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px 12px;text-align:center;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:#f0ead8;line-height:1;">${fmtNum(todayEggs)}</div>
-      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Eggs Today</div>
+      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">${t('prod.kpi.eggs')}</div>
     </div>
     <div style="background:${issues>0?'#2a0f0f':'#0f2a0f'};border:1px solid ${issues>0?'#5a2a2a':'#2a5a2a'};border-radius:12px;padding:14px 12px;text-align:center;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:${issues>0?'#e53e3e':'#4caf50'};line-height:1;">${issues}</div>
-      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Flagged</div>
+      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">${t('prod.kpi.flagged')}</div>
     </div>`;
 
   // ── Per-barn Egg KPI ──────────────────────────────────────────────────────
@@ -58,14 +58,14 @@ function renderProdPanel() {
   if (farmsWithData.length === 0) {
     eggKpi.innerHTML = `
       <div style="background:#0f1a0f;border:1px solid #1e3a1e;border-radius:12px;padding:12px 14px;text-align:center;">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#3a6a3a;margin-bottom:4px;">🥚 Egg KPI — 90% Target (135,000 / barn)</div>
-        <div style="font-size:11px;color:#3a5a3a;font-family:'IBM Plex Mono',monospace;">No egg counts submitted yet today.</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#3a6a3a;margin-bottom:4px;">${t('prod.egg_kpi_title')} (135,000 / ${t('prod.barn').toLowerCase()})</div>
+        <div style="font-size:11px;color:#3a5a3a;font-family:'IBM Plex Mono',monospace;">${t('prod.no_eggs_yet')}</div>
       </div>`;
     return;
   }
 
   let html = `<div style="background:#0f1a0f;border:1px solid #1e3a1e;border-radius:12px;padding:12px 14px;">
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#5a8a5a;margin-bottom:12px;">🥚 Egg KPI — 90% Target (${fmtNum(EGG_TARGET)} / barn)</div>`;
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#5a8a5a;margin-bottom:12px;">${t('prod.egg_kpi_title')} (${fmtNum(EGG_TARGET)} / ${t('prod.barn').toLowerCase()})</div>`;
 
   farmsWithData.forEach(farm => {
     const houseCount = farmHouses[farm] || 0;
@@ -129,7 +129,7 @@ function renderECContent() {
   const btn = document.getElementById('ec-back-btn');
   if (_ecFarm) {
     if (hdr) hdr.textContent = '🐓 ' + _ecFarm;
-    if (btn) btn.textContent = '← Farms';
+    if (btn) btn.textContent = t('btn.back_farms');
     const cnt = _ecFarm === 'Hegins' ? 8 : 5;
     let html = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">`;
     for (let i = 1; i <= cnt; i++) {
@@ -142,7 +142,7 @@ function renderECContent() {
                   st==='issue'?'<div style="font-size:14px;color:#e53e3e;margin-top:4px;">⚠</div>':
                   '<div style="font-size:14px;color:#3a6a3a;margin-top:4px;">—</div>';
       html += `<div style="background:${bg};border:2px solid ${bc};border-radius:12px;padding:16px 4px;text-align:center;cursor:pointer;" onclick="openBarnWalk('${_ecFarm}',${i})">
-        <div style="font-size:9px;color:#5a8a5a;letter-spacing:1px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">Barn</div>
+        <div style="font-size:9px;color:#5a8a5a;letter-spacing:1px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">${t('prod.barn')}</div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:700;color:${nc};line-height:1.1;">${i}</div>
         ${ic}
       </div>`;
@@ -150,18 +150,18 @@ function renderECContent() {
     html += `</div>`;
     document.getElementById('ec-content').innerHTML = html;
   } else {
-    if (hdr) hdr.textContent = '🐓 Daily Employee Check';
-    if (btn) btn.textContent = '✕ Close';
+    if (hdr) hdr.textContent = '🐓 ' + t('prod.daily_check');
+    if (btn) btn.textContent = t('btn.close');
     const bsDone = f => Object.entries(bs).filter(([k,v])=>k.startsWith(f+'-')&&(v==='done'||v==='issue')).length;
     const bsCnt  = f => f==='Hegins'?8:5;
     document.getElementById('ec-content').innerHTML = `
-      <div style="font-size:13px;color:#5a8a5a;margin-bottom:20px;font-family:'IBM Plex Mono',monospace;">Select your farm to begin</div>
+      <div style="font-size:13px;color:#5a8a5a;margin-bottom:20px;font-family:'IBM Plex Mono',monospace;">${t('prod.select_farm')}</div>
       <div style="display:grid;gap:14px;">
         ${['Hegins','Danville'].map(f=>`
         <button onclick="_ecFarm='${f}';renderECContent()" style="width:100%;padding:28px 20px;background:#1a3a1a;border:2px solid #2a5a2a;border-radius:16px;color:#fff;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">📍 ${f}</div>
-            <div style="font-size:12px;color:#7ab07a;margin-top:6px;">${bsDone(f)}/${bsCnt(f)} barns checked today</div>
+            <div style="font-size:12px;color:#7ab07a;margin-top:6px;">${bsDone(f)}/${bsCnt(f)} ${t('prod.barns_checked')}</div>
           </div>
           <div style="font-size:28px;">→</div>
         </button>`).join('')}
@@ -190,7 +190,7 @@ function renderMWContent() {
   const btn = document.getElementById('mw-back-btn');
   if (_mwSectionFarm) {
     if (hdr) hdr.textContent = '☀️ ' + _mwSectionFarm;
-    if (btn) btn.textContent = '← Farms';
+    if (btn) btn.textContent = t('btn.back_farms');
     const cnt = _mwSectionFarm === 'Hegins' ? 8 : 5;
     let html = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">`;
     for (let i = 1; i <= cnt; i++) {
@@ -211,18 +211,18 @@ function renderMWContent() {
     html += `</div>`;
     document.getElementById('mw-content').innerHTML = html;
   } else {
-    if (hdr) hdr.textContent = '☀️ Morning Walk';
-    if (btn) btn.textContent = '✕ Close';
+    if (hdr) hdr.textContent = '☀️ ' + t('prod.morning_walk');
+    if (btn) btn.textContent = t('btn.close');
     const msDone = f => Object.entries(ms).filter(([k,v])=>k.startsWith(f+'-')&&(v==='done'||v==='issue')).length;
     const msCnt  = f => f==='Hegins'?8:5;
     document.getElementById('mw-content').innerHTML = `
-      <div style="font-size:13px;color:#3a5a8a;margin-bottom:20px;font-family:'IBM Plex Mono',monospace;">Select farm to walk</div>
+      <div style="font-size:13px;color:#3a5a8a;margin-bottom:20px;font-family:'IBM Plex Mono',monospace;">${t('prod.select_walk')}</div>
       <div style="display:grid;gap:14px;">
         ${['Hegins','Danville'].map(f=>`
         <button onclick="_mwSectionFarm='${f}';renderMWContent()" style="width:100%;padding:28px 20px;background:#0d1f3a;border:2px solid #1e3a6a;border-radius:16px;color:#fff;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">📍 ${f}</div>
-            <div style="font-size:12px;color:#6a90d9;margin-top:6px;">${msDone(f)}/${msCnt(f)} barns walked today</div>
+            <div style="font-size:12px;color:#6a90d9;margin-top:6px;">${msDone(f)}/${msCnt(f)} ${t('prod.barns_walked')}</div>
           </div>
           <div style="font-size:28px;">→</div>
         </button>`).join('')}
