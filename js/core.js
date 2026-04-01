@@ -1140,6 +1140,8 @@ function pmStatus(id) {
   const c = pmComps[id];
   const days = FREQ[t.freq].days;
   if (!c) return 'overdue';
+  // If completed today, always show as OK regardless of frequency
+  if (c.date === todayStr) return 'ok';
   const ago = daysAgo(c.date);
   if (ago >= days) return 'overdue';
   if (ago >= days * 0.75) return 'due-soon';
