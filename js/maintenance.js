@@ -5,15 +5,33 @@ function woLoc(v,btn) {
   document.querySelectorAll('#wo-loc-bar .loc-pill').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active'); renderWO();
 }
-function woStat(v,btn) {
-  woStatFilter=v;
+function woResetFilters() {
+  woPriorityFilters.clear();
+  woStatusFilters.clear();
   document.querySelectorAll('#wo-filter-bar .pill').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active'); renderWO();
+  document.querySelector('#wo-filter-bar .pill[data-wo="all"]').classList.add('active');
+  renderWO();
+}
+function woTogglePriority(v, btn) {
+  document.querySelector('#wo-filter-bar .pill[data-wo="all"]').classList.remove('active');
+  if (woPriorityFilters.has(v)) { woPriorityFilters.delete(v); btn.classList.remove('active'); }
+  else { woPriorityFilters.add(v); btn.classList.add('active'); }
+  if (woPriorityFilters.size===0 && woStatusFilters.size===0) {
+    document.querySelector('#wo-filter-bar .pill[data-wo="all"]').classList.add('active');
+  }
+  renderWO();
+}
+function woToggleStatus(v, btn) {
+  document.querySelector('#wo-filter-bar .pill[data-wo="all"]').classList.remove('active');
+  if (woStatusFilters.has(v)) { woStatusFilters.delete(v); btn.classList.remove('active'); }
+  else { woStatusFilters.add(v); btn.classList.add('active'); }
+  if (woPriorityFilters.size===0 && woStatusFilters.size===0) {
+    document.querySelector('#wo-filter-bar .pill[data-wo="all"]').classList.add('active');
+  }
+  renderWO();
 }
 
 function renderWO() {
-  const now = Date.now();
-  const twentyFourHrs = 24 * 60 * 60 * 1000;
   let base = woLocFilter==='all' ? workOrders : workOrders.filter(w=>w.farm===woLocFilter);
   document.getElementById('wo-stats').innerHTML =
     sc('s-red',base.filter(w=>w.priority==='urgent'&&w.status!=='completed').length,t('wo.stat.urgent')) +
@@ -23,18 +41,18 @@ function renderWO() {
     sc('',base.length,t('wo.stat.total'));
 
   let list = [...base];
-  if (woStatFilter==='urgent') list=list.filter(w=>w.priority==='urgent');
-  else if (woStatFilter==='high') list=list.filter(w=>w.priority==='high');
-  else if (woStatFilter==='open') list=list.filter(w=>w.status==='open');
-  else if (woStatFilter==='in-progress') list=list.filter(w=>w.status==='in-progress');
-  else if (woStatFilter==='completed') list=list.filter(w=>w.status==='completed');
-  else {
-    // Default view: hide completed WOs older than 24 hours
-    list=list.filter(w=>{
-      if (w.status!=='completed') return true;
-      const ts = w.ts?.toMillis ? w.ts.toMillis() : (w.ts||0);
-      return (now - ts) < twentyFourHrs;
-    });
+  const hasPriority = woPriorityFilters.size > 0;
+  const hasStatus = woStatusFilters.size > 0;
+
+  if (!hasPriority && !hasStatus) {
+    list = list.filter(w => w.status !== 'completed');
+  } else {
+    if (hasPriority) list = list.filter(w => woPriorityFilters.has(w.priority));
+    if (hasStatus) {
+      list = list.filter(w => woStatusFilters.has(w.status));
+    } else {
+      list = list.filter(w => w.status !== 'completed');
+    }
   }
 
   document.getElementById('wo-list').innerHTML = list.length
@@ -84,8 +102,11 @@ function woCardHtml(wo) {
       <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','open')" style="flex:1;padding:9px;background:#2a1a1a;border:1px solid #7f1d1d;border-radius:8px;color:#f87171;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">${t('wo.btn.reopen')}</button>`;
   }
 
+  const completionPhotoStrip = (wo.completionPhotos && wo.completionPhotos.length)
+    ? `<div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;">${wo.completionPhotos.map(p=>`<img src="${p}" style="height:55px;border-radius:6px;border:1px solid #2a5a2a;cursor:zoom-in;" onclick="event.stopPropagation();openCompletionPhotoViewer('${wo._fbId}')">`).join('')}</div>`
+    : '';
   const completedInfo = wo.status === 'completed' && wo.completedBy
-    ? `<div style="margin-top:6px;padding:6px 8px;background:#0a1f0a;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#4caf50;">${t('wo.completedby')} ${wo.completedBy}${wo.completedDate?' · '+wo.completedDate:''}${wo.completedNotes?'<br><span style="color:#7ab07a;">'+wo.completedNotes+'</span>':''}</div>` : '';
+    ? `<div style="margin-top:6px;padding:6px 8px;background:#0a1f0a;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#4caf50;">${t('wo.completedby')} ${wo.completedBy}${wo.completedDate?' · '+wo.completedDate:''}${wo.completedNotes?'<br><span style="color:#7ab07a;">'+wo.completedNotes+'</span>':''}${completionPhotoStrip}</div>` : '';
 
   return `<div class="wo-card ${wo.priority}${escalate?' wo-escalated':''}">
     <div class="wo-id">${wo.id}<div class="wo-pri" style="color:${pC[wo.priority]}">${pL[wo.priority]}</div></div>
@@ -131,6 +152,33 @@ function openPhotoViewer(fbId) {
   };
   window._lbPrev = () => { idx = (idx - 1 + wo.photos.length) % wo.photos.length; renderLB(); };
   window._lbNext = () => { idx = (idx + 1) % wo.photos.length; renderLB(); };
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  renderLB();
+  document.body.appendChild(overlay);
+}
+
+function openCompletionPhotoViewer(fbId) {
+  const wo = workOrders.find(w => w._fbId === fbId);
+  if (!wo || !wo.completionPhotos || !wo.completionPhotos.length) return;
+  let idx = 0;
+  const overlay = document.createElement('div');
+  overlay.id = 'photo-lightbox';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;flex-direction:column;';
+  const renderLB = () => {
+    overlay.innerHTML = `
+      <div style="text-align:center;color:#4caf50;font-size:11px;font-family:'IBM Plex Mono',monospace;margin-bottom:8px;">✓ AFTER REPAIR — ${wo.id}</div>
+      <div style="position:relative;max-width:90vw;max-height:80vh;">
+        <img src="${wo.completionPhotos[idx]}" style="max-width:90vw;max-height:72vh;border-radius:10px;display:block;">
+        <div style="text-align:center;color:#ccc;font-size:13px;margin-top:8px;">${idx+1} / ${wo.completionPhotos.length} · ${wo.farm} · ${wo.house}</div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:14px;">
+        ${wo.completionPhotos.length > 1 ? `<button onclick="event.stopPropagation();window._lbPrev()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">◀ Prev</button>` : ''}
+        ${wo.completionPhotos.length > 1 ? `<button onclick="event.stopPropagation();window._lbNext()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">Next ▶</button>` : ''}
+        <button onclick="document.getElementById('photo-lightbox').remove()" style="padding:10px 20px;background:#c0392b;border:none;color:white;border-radius:8px;cursor:pointer;font-size:14px;">✕ Close</button>
+      </div>`;
+  };
+  window._lbPrev = () => { idx = (idx - 1 + wo.completionPhotos.length) % wo.completionPhotos.length; renderLB(); };
+  window._lbNext = () => { idx = (idx + 1) % wo.completionPhotos.length; renderLB(); };
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   renderLB();
   document.body.appendChild(overlay);
@@ -240,6 +288,35 @@ function setPri(val, el) {
 
 // Stores compressed base64 data URIs for photos selected on the WO form
 let pendingPhotoData = [];
+// Stores compressed base64 data URIs for closeout (after-repair) photos
+let pendingCloseoutPhotos = [];
+
+function previewCloseoutPhotos(input) {
+  const pv = document.getElementById('closeout-photo-preview');
+  pv.innerHTML = '';
+  pendingCloseoutPhotos = [];
+  const files = [...input.files];
+  if (!files.length) return;
+  const info = document.createElement('div');
+  info.style.cssText = 'font-size:11px;color:var(--muted);margin-top:4px;width:100%;';
+  info.textContent = 'Processing…';
+  pv.appendChild(info);
+  let done = 0;
+  files.forEach((f, idx) => {
+    compressPhoto(f).then(uri => {
+      pendingCloseoutPhotos[idx] = uri;
+      const img = document.createElement('img');
+      img.src = uri;
+      img.style.cssText = 'height:60px;border-radius:6px;border:2px solid var(--border);';
+      pv.insertBefore(img, info);
+      done++;
+      if (done === files.length) {
+        info.style.color = 'var(--green-mid)';
+        info.textContent = done + ' photo' + (done !== 1 ? 's' : '') + ' ready';
+      }
+    }).catch(() => { done++; });
+  });
+}
 
 // Compress a File to a JPEG data URI, max 1200px on longest side, quality 0.72
 // Returns a Promise<string>
@@ -1067,6 +1144,10 @@ function openCloseout(wo) {
   });
 
   document.getElementById('closeout-notes').value = '';
+  pendingCloseoutPhotos = [];
+  document.getElementById('closeout-photo-preview').innerHTML = '';
+  document.getElementById('closeout-photo-cam').value = '';
+  document.getElementById('closeout-photo-file').value = '';
 
   // Build parts checklist — filtered to WO problem type
   const relevantParts = getPartsForProblem(wo.problem);
@@ -1114,6 +1195,8 @@ function closeCloseout() {
   document.getElementById('wo-closeout').classList.remove('open');
   pendingCycleFbId = null;
   closeoutPartsSelected = {};
+  pendingCloseoutPhotos = [];
+  document.getElementById('closeout-photo-preview').innerHTML = '';
 }
 
 async function confirmCloseout() {
@@ -1151,6 +1234,7 @@ async function confirmCloseout() {
 
   const savedFbId = wo._fbId;
   const completedDate = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const completionPhotos = pendingCloseoutPhotos.filter(Boolean);
 
   closeCloseout();
 
@@ -1159,6 +1243,7 @@ async function confirmCloseout() {
   wo.completedBy = tech;
   wo.completedNotes = notes;
   wo.completedDate = completedDate;
+  if (completionPhotos.length) wo.completionPhotos = completionPhotos;
   renderWO();
 
   setSyncDot('saving');
@@ -1168,6 +1253,7 @@ async function confirmCloseout() {
       completedBy: tech,
       completedNotes: notes,
       completedDate,
+      ...(completionPhotos.length ? {completionPhotos} : {}),
       partsUsed,
       completedTs: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -1632,7 +1718,7 @@ function renderDowntime() {
         const dur = e.durationMins ? `${Math.floor(e.durationMins/60)}h ${e.durationMins%60}m` : '⏳ Ongoing';
         const col = e.ongoing ? '#e53e3e' : 'var(--green-mid)';
         const linkedWOHtml = e.linkedWO
-          ? `<span style="display:inline-block;margin-top:5px;background:#e8f4fd;border:1px solid #3b82f6;border-radius:5px;padding:2px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#1a3a6b;cursor:pointer;" onclick="go('wo');woStat('all',document.querySelector('#wo-filter-bar .pill'))">🔧 ${e.linkedWO}</span>`
+          ? `<span style="display:inline-block;margin-top:5px;background:#e8f4fd;border:1px solid #3b82f6;border-radius:5px;padding:2px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#1a3a6b;cursor:pointer;" onclick="go('wo');woResetFilters()">🔧 ${e.linkedWO}</span>`
           : '';
         return `<div style="background:white;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);padding:12px 14px;margin-bottom:8px;border-left:4px solid ${col};">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
