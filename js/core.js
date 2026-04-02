@@ -1109,18 +1109,21 @@ function go(tab) {
   closeAssetForm();
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports', sched:'panel-sched', staff:'panel-staff'};
-  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports', sched:'tab-sched', staff:'tab-staff'};
+  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports', sched:'panel-sched', staff:'panel-staff', check:'panel-check', mw:'panel-mw', lsr:'panel-lsr'};
+  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports', sched:'tab-sched', staff:'tab-staff', check:'tab-check', mw:'tab-mw', lsr:'tab-lsr'};
   if (!pm[tab]) return;
   document.getElementById(pm[tab]).classList.add('active');
   const tabEl = document.getElementById(tm[tab]);
   if (tabEl) tabEl.classList.add('active');
-  if (tab === 'dash') renderDash();
-  if (tab === 'prod') renderProdPanel();
+  if (tab === 'dash')  renderDash();
+  if (tab === 'prod')  renderProdPanel();
   if (tab === 'maint') { goMaintSection(window._maintSection || 'wo'); }
   if (tab === 'pkg')   { goPkgSection(window._pkgSection || 'packing'); }
   if (tab === 'feed')  { goFeedSection(window._feedSection || 'dashboard'); }
   if (tab === 'ship')  { goShipSection(window._shipSection || 'shipping'); }
+  if (tab === 'check') renderProdCheck();
+  if (tab === 'mw')    renderProdMW();
+  if (tab === 'lsr')   renderProdLSR();
   if (tab === 'kpi')   { goKpiSection(window._kpiSection || 'dashboard'); }
   if (tab === 'reports') renderReports();
   if (tab === 'sched')   loadSchedule();

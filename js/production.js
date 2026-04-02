@@ -1103,15 +1103,15 @@ async function submitLayerServiceReport() {
 // ── Production Sub-Tab Switcher ─────────────
 
 function goProdSection(sec) {
-  ['overview','check','mw','lsr'].forEach(s => {
-    const el  = document.getElementById('prod-sec-' + s);
-    const btn = document.getElementById('prod-tab-' + s);
-    if (el)  el.style.display  = s === sec ? 'block' : 'none';
-    if (btn) btn.classList.toggle('active', s === sec);
-  });
-  if (sec === 'check') renderProdCheck();
-  if (sec === 'mw')    renderProdMW();
-  if (sec === 'lsr')   renderProdLSR();
+  // check/mw/lsr are now top-level tabs — redirect there
+  if (sec === 'check') { go('check'); return; }
+  if (sec === 'mw')    { go('mw');    return; }
+  if (sec === 'lsr')   { go('lsr');   return; }
+  // overview stays inside production
+  const el  = document.getElementById('prod-sec-overview');
+  const btn = document.getElementById('prod-tab-overview');
+  if (el)  el.style.display = 'block';
+  if (btn) btn.classList.add('active');
 }
 
 async function createMustFixWO(title, desc, farm, house, priority) {
@@ -1135,7 +1135,7 @@ async function createMustFixWO(title, desc, farm, house, priority) {
 var _prodCheckIssues = [];
 
 async function renderProdCheck() {
-  const el = document.getElementById('prod-sec-check');
+  const el = document.getElementById('panel-check-body') || document.getElementById('prod-sec-check');
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:40px;color:#5a8a5a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">Loading\u2026</div>';
   const todayStr = new Date().toISOString().slice(0,10);
@@ -1193,7 +1193,7 @@ async function prodCheckCreateWOs() {
 var _mwTabIssues = [];
 
 async function renderProdMW() {
-  const el = document.getElementById('prod-sec-mw');
+  const el = document.getElementById('panel-mw-body') || document.getElementById('prod-sec-mw');
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:40px;color:#3a5a8a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">Loading\u2026</div>';
   const todayStr = new Date().toISOString().slice(0,10);
@@ -1243,7 +1243,7 @@ async function mwTabCreateWOs() {
 // ── Layer Service Report Tab ─────────────────
 
 async function renderProdLSR() {
-  const el = document.getElementById('prod-sec-lsr');
+  const el = document.getElementById('panel-lsr-body') || document.getElementById('prod-sec-lsr');
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:40px;color:#7a6030;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">Loading\u2026</div>';
   const weekAgo = new Date(Date.now()-7*86400000).toISOString().slice(0,10);

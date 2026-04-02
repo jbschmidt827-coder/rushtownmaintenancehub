@@ -831,6 +831,9 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <button class="nav-tab" id="tab-reports" onclick="go('reports')" data-i18n="nav.reports">📊 Reports</button>
       <button class="nav-tab" id="tab-sched" onclick="go('sched')" data-i18n="nav.sched">📅 Schedule</button>
       <button class="nav-tab" id="tab-staff" onclick="go('staff')">👥 Staff</button>
+      <button class="nav-tab" id="tab-check" onclick="go('check')">🐓 Daily Check</button>
+      <button class="nav-tab" id="tab-mw" onclick="go('mw')">☀️ Morning Walk</button>
+      <button class="nav-tab" id="tab-lsr" onclick="go('lsr')">🐔 Layer Service</button>
     </nav>
     <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
     <button id="lang-toggle-btn" onclick="toggleLang()" title="Switch Language / Cambiar Idioma" style="padding:7px 13px;background:#0a1a2a;border:1.5px solid #3b82f6;border-radius:9px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;flex-shrink:0;">🌐 ES</button>
@@ -1350,6 +1353,24 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <div id="bio-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;"></div>
     <div id="bio-log-list"></div>
   </div>
+</div>
+
+<!-- ═══ DAILY CHECK PANEL ═══ -->
+<div class="panel" id="panel-check">
+  <div class="section-title">🐓 Daily Barn Check</div>
+  <div id="panel-check-body"></div>
+</div>
+
+<!-- ═══ MORNING WALK PANEL ═══ -->
+<div class="panel" id="panel-mw">
+  <div class="section-title">☀️ Morning Walk</div>
+  <div id="panel-mw-body"></div>
+</div>
+
+<!-- ═══ LAYER SERVICE PANEL ═══ -->
+<div class="panel" id="panel-lsr">
+  <div class="section-title">🐔 Layer Service Report</div>
+  <div id="panel-lsr-body"></div>
 </div>
 
 <!-- ═══ EC SECTION (Employee Daily Check) ═══ -->
