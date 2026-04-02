@@ -1108,13 +1108,29 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <div class="panel" id="panel-reports">
   <div class="section-title" data-i18n="title.reports">Reports</div>
-  <div class="section-sub">Summary of activity — updated in real time</div>
-  <div class="pill-bar">
-    <button class="pill active" onclick="reportRange(7,this)">Last 7 Days</button>
-    <button class="pill" onclick="reportRange(30,this)">Last 30 Days</button>
-    <button class="pill" onclick="reportRange(90,this)">Last 90 Days</button>
+
+  <!-- Reports Sub-Nav -->
+  <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px;">
+    <button class="prod-tab-btn active" id="rpt-tab-maint"   onclick="goRptSection('maint')">🔧 Maintenance</button>
+    <button class="prod-tab-btn"        id="rpt-tab-prod"    onclick="goRptSection('prod')">🏭 Production</button>
+    <button class="prod-tab-btn"        id="rpt-tab-pkg"     onclick="goRptSection('pkg')">📦 Packaging</button>
+    <button class="prod-tab-btn"        id="rpt-tab-ship"    onclick="goRptSection('ship')">🚚 Shipping</button>
+    <button class="prod-tab-btn"        id="rpt-tab-feed"    onclick="goRptSection('feed')">🌾 Feed Mill</button>
   </div>
-  <div id="reports-container"></div>
+
+  <!-- Date Range Pills -->
+  <div class="pill-bar" style="margin-bottom:14px;">
+    <button class="pill active" id="rpt-pill-7"  onclick="reportRange(7,this)">Last 7 Days</button>
+    <button class="pill"        id="rpt-pill-30" onclick="reportRange(30,this)">Last 30 Days</button>
+    <button class="pill"        id="rpt-pill-90" onclick="reportRange(90,this)">Last 90 Days</button>
+  </div>
+
+  <!-- Section Content -->
+  <div id="rpt-sec-maint"><div id="reports-container"></div></div>
+  <div id="rpt-sec-prod"  style="display:none;"></div>
+  <div id="rpt-sec-pkg"   style="display:none;"></div>
+  <div id="rpt-sec-ship"  style="display:none;"></div>
+  <div id="rpt-sec-feed"  style="display:none;"></div>
 </div>
 
 <!-- ═══ PRODUCTION PANEL ═══ -->
@@ -1424,70 +1440,88 @@ body { min-height: 100dvh; overflow-x: hidden; }
 <!-- ═══ STAFF PANEL ═══ -->
 <div class="panel" id="panel-staff">
   <div class="section-title">👥 Staff</div>
-  <div class="section-sub">Add and manage employees across all farms</div>
 
-  <!-- Stats -->
-  <div class="stats-grid g3" id="staff-stats" style="margin-bottom:18px;"></div>
+  <!-- Staff Sub-Nav -->
+  <div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;">
+    <button class="prod-tab-btn active" id="staff-tab-dir"   onclick="goStaffSection('dir')">👥 Directory</button>
+    <button class="prod-tab-btn"        id="staff-tab-add"   onclick="goStaffSection('add')">➕ Add Employee</button>
+    <button class="prod-tab-btn"        id="staff-tab-sched" onclick="goStaffSection('sched')">📅 Schedule</button>
+    <button class="prod-tab-btn"        id="staff-tab-certs" onclick="goStaffSection('certs')">🏆 Certifications</button>
+  </div>
 
-  <!-- Add Employee Form -->
-  <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:14px;padding:16px;margin-bottom:18px;">
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#4a7a4a;text-transform:uppercase;margin-bottom:12px;">➕ Add Employee</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-      <div style="grid-column:1/-1;">
-        <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Full Name *</label>
-        <input type="text" id="staff-new-name" placeholder="First Last" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">
+  <!-- Directory Tab -->
+  <div id="staff-sec-dir">
+    <div class="stats-grid g3" id="staff-stats" style="margin-bottom:18px;"></div>
+    <div id="staff-filter-bar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px;">
+      <button class="pill active" onclick="staffStatusFilter('active',this)">Active</button>
+      <button class="pill" onclick="staffStatusFilter('inactive',this)">Inactive</button>
+      <button class="pill" onclick="staffStatusFilter('all',this)">All</button>
+    </div>
+    <div id="staff-farm-bar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="pill active" onclick="staffFarmFilter('all',this)">All Farms</button>
+      <button class="pill" onclick="staffFarmFilter('Hegins',this)">📍 Hegins</button>
+      <button class="pill" onclick="staffFarmFilter('Danville',this)">📍 Danville</button>
+    </div>
+    <div id="staff-list"></div>
+  </div>
+
+  <!-- Add Employee Tab -->
+  <div id="staff-sec-add" style="display:none;">
+    <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:14px;padding:16px;margin-bottom:18px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#4a7a4a;text-transform:uppercase;margin-bottom:12px;">➕ Add Employee</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div style="grid-column:1/-1;">
+          <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Full Name *</label>
+          <input type="text" id="staff-new-name" placeholder="First Last" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:14px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Role</label>
+          <select id="staff-new-role" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+            <option value="Technician">Technician</option>
+            <option value="Lead">Lead</option>
+            <option value="WNO">WNO</option>
+            <option value="Director">Director</option>
+            <option value="Driver">Driver</option>
+            <option value="Feed Mill">Feed Mill</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Primary Farm</label>
+          <select id="staff-new-farm" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+            <option value="">— Select —</option>
+            <option value="Hegins">Hegins</option>
+            <option value="Danville">Danville</option>
+            <option value="Rushtown">Rushtown</option>
+            <option value="Turbotville">Turbotville</option>
+            <option value="W&M">W&amp;M</option>
+            <option value="Both">Both (Hegins + Danville)</option>
+            <option value="All">All Farms</option>
+            <option value="Feed Mill">Feed Mill</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Phone (optional)</label>
+          <input type="tel" id="staff-new-phone" placeholder="555-555-5555" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
       </div>
-      <div>
-        <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Role</label>
-        <select id="staff-new-role" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;">
-          <option value="Technician">Technician</option>
-          <option value="Lead">Lead</option>
-          <option value="WNO">WNO</option>
-          <option value="Director">Director</option>
-          <option value="Driver">Driver</option>
-          <option value="Feed Mill">Feed Mill</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Primary Farm</label>
-        <select id="staff-new-farm" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;">
-          <option value="">— Select —</option>
-          <option value="Hegins">Hegins</option>
-          <option value="Danville">Danville</option>
-          <option value="Rushtown">Rushtown</option>
-          <option value="Turbotville">Turbotville</option>
-          <option value="W&M">W&amp;M</option>
-          <option value="Both">Both (Hegins + Danville)</option>
-          <option value="All">All Farms</option>
-          <option value="Feed Mill">Feed Mill</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Phone (optional)</label>
-        <input type="tel" id="staff-new-phone" placeholder="555-555-5555" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button id="staff-add-btn" onclick="addStaff()" style="padding:11px 24px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:10px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">+ Add</button>
+        <div id="staff-add-result" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#4caf50;">✓ Employee added!</div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <button id="staff-add-btn" onclick="addStaff()" style="padding:11px 24px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:10px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">+ Add</button>
-      <div id="staff-add-result" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#4caf50;">✓ Employee added!</div>
-    </div>
   </div>
 
-  <!-- Filters -->
-  <div id="staff-filter-bar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px;">
-    <button class="pill active" onclick="staffStatusFilter('active',this)">Active</button>
-    <button class="pill" onclick="staffStatusFilter('inactive',this)">Inactive</button>
-    <button class="pill" onclick="staffStatusFilter('all',this)">All</button>
-  </div>
-  <div id="staff-farm-bar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
-    <button class="pill active" onclick="staffFarmFilter('all',this)">All Farms</button>
-    <button class="pill" onclick="staffFarmFilter('Hegins',this)">📍 Hegins</button>
-    <button class="pill" onclick="staffFarmFilter('Danville',this)">📍 Danville</button>
+  <!-- Schedule Tab -->
+  <div id="staff-sec-sched" style="display:none;">
+    <div style="padding:30px;text-align:center;color:#7ab07a;font-family:'IBM Plex Mono',monospace;">📅 Staff Schedule — coming soon</div>
   </div>
 
-  <!-- Employee List -->
-  <div id="staff-list"></div>
+  <!-- Certifications Tab -->
+  <div id="staff-sec-certs" style="display:none;">
+    <div style="padding:30px;text-align:center;color:#d69e2e;font-family:'IBM Plex Mono',monospace;">🏆 Certifications — coming soon</div>
+  </div>
+
 </div>
 
 <!-- Staff Edit Modal -->

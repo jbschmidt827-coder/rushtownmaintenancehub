@@ -1656,12 +1656,45 @@ async function confirmCloseout() {
 // REPORTS
 // ═══════════════════════════════════════════
 let reportDays = 7;
+let _rptSection = 'maint';
+
+function goRptSection(sec) {
+  _rptSection = sec;
+  ['maint','prod','pkg','ship','feed'].forEach(s => {
+    const el  = document.getElementById('rpt-sec-' + s);
+    const btn = document.getElementById('rpt-tab-' + s);
+    if (el)  el.style.display = s === sec ? 'block' : 'none';
+    if (btn) btn.classList.toggle('active', s === sec);
+  });
+  if (sec === 'maint') renderReports();
+  else {
+    const el = document.getElementById('rpt-sec-' + sec);
+    if (el && !el.dataset.loaded) {
+      el.innerHTML = '<div style="padding:30px;text-align:center;color:#aaa;font-family:\'IBM Plex Mono\',monospace;">' +
+        {prod:'🏭 Production Reports',pkg:'📦 Packaging Reports',ship:'🚚 Shipping Reports',feed:'🌾 Feed Mill Reports'}[sec] +
+        ' — coming soon</div>';
+      el.dataset.loaded = '1';
+    }
+  }
+}
 
 function reportRange(days, btn) {
   reportDays = days;
   document.querySelectorAll('#panel-reports .pill').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  renderReports();
+  if (_rptSection === 'maint') renderReports();
+}
+
+// ═══════════════════════════════════════════
+// STAFF SUB-TABS
+// ═══════════════════════════════════════════
+function goStaffSection(sec) {
+  ['dir','add','sched','certs'].forEach(s => {
+    const el  = document.getElementById('staff-sec-' + s);
+    const btn = document.getElementById('staff-tab-' + s);
+    if (el)  el.style.display = s === sec ? 'block' : 'none';
+    if (btn) btn.classList.toggle('active', s === sec);
+  });
 }
 
 async function renderReports() {
