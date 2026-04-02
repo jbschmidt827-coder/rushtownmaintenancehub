@@ -251,9 +251,9 @@ document.addEventListener('DOMContentLoaded', () => {
 let _staffSchedWeekOf = '';
 let _staffSchedFac = 'all';
 
-const SCHED_DAYS       = ['mon','tue','wed','thu','fri','sat','sun'];
-const SCHED_DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const SCHED_SHIFTS     = ['', 'AM', 'PM', 'EVE', 'OFF', 'VAC'];
+const STAFF_SCHED_DAYS       = ['mon','tue','wed','thu','fri','sat','sun'];
+const STAFF_SCHED_DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const STAFF_SCHED_SHIFTS     = ['', 'AM', 'PM', 'EVE', 'OFF', 'VAC'];
 
 const SHIFT_STYLES = {
   'AM':  'background:#1a3a1a;border:1px solid #2a5a2a;color:#7ac57a',
@@ -349,7 +349,7 @@ async function renderStaffSched() {
   // Header
   html += '<thead><tr>';
   html += '<th style="text-align:left;padding:8px 10px;font-size:9px;color:#4a6a4a;letter-spacing:1px;border-bottom:1px solid #1e3a1e;white-space:nowrap;">EMPLOYEE</th>';
-  SCHED_DAY_LABELS.forEach((label, i) => {
+  STAFF_SCHED_DAY_LABELS.forEach((label, i) => {
     const dd = new Date(weekStart);
     dd.setDate(dd.getDate() + i);
     const dateStr  = dd.toISOString().slice(0, 10);
@@ -364,7 +364,7 @@ async function renderStaffSched() {
     const row = schedData[s._fbId] || {};
     html += '<tr style="border-top:1px solid #121e12;">';
     html += `<td style="padding:6px 10px;color:#c0d8c0;white-space:nowrap;">${s.name}<br><span style="font-size:9px;color:#3a5a3a;">${s.role || ''}</span></td>`;
-    SCHED_DAYS.forEach(day => {
+    STAFF_SCHED_DAYS.forEach(day => {
       const shift = row[day] || '';
       const st    = SHIFT_STYLES[shift] || SHIFT_STYLES[''];
       const safeId = s._fbId.replace(/['"]/g, '');
@@ -379,8 +379,8 @@ async function renderStaffSched() {
 }
 
 async function cycleShift(staffId, staffName, day, currentShift) {
-  const idx       = SCHED_SHIFTS.indexOf(currentShift);
-  const nextShift = SCHED_SHIFTS[(idx + 1) % SCHED_SHIFTS.length];
+  const idx       = STAFF_SCHED_SHIFTS.indexOf(currentShift);
+  const nextShift = STAFF_SCHED_SHIFTS[(idx + 1) % STAFF_SCHED_SHIFTS.length];
   try {
     const docId = `${staffId}_${_staffSchedWeekOf}`;
     await db.collection('staffSchedule').doc(docId).set(
