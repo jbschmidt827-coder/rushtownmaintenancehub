@@ -538,34 +538,14 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <span style="margin-left:auto;font-size:20px;color:#4caf50;">→</span>
       </button>
 
-      <!-- Daily Barn Check -->
-      <button onclick="enterApp('check')" style="width:100%;padding:22px 20px;background:#1a3a1a;border:2px solid #4caf50;border-radius:14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
-        <span style="font-size:36px;line-height:1;">🐓</span>
+      <!-- Service Techs -->
+      <button onclick="enterApp('service')" style="width:100%;padding:22px 20px;background:#1a2a3a;border:2px solid #4a90d9;border-radius:14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+        <span style="font-size:36px;line-height:1;">🛠️</span>
         <div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">Daily Barn Check</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;letter-spacing:1px;margin-top:3px;">Checklist · Egg count · Water PSI · Flags</div>
-        </div>
-        <span style="margin-left:auto;font-size:20px;color:#4caf50;">→</span>
-      </button>
-
-      <!-- Morning Walk -->
-      <button onclick="enterApp('mw')" style="width:100%;padding:22px 20px;background:#0d1f3a;border:2px solid #4a90d9;border-radius:14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
-        <span style="font-size:36px;line-height:1;">☀️</span>
-        <div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">Morning Walk</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6a90d9;letter-spacing:1px;margin-top:3px;">Lead / WNO · Water · Temp · Feed · Fans</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">Service Techs</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6a90d9;letter-spacing:1px;margin-top:3px;">Daily check · Layer service · Morning walk</div>
         </div>
         <span style="margin-left:auto;font-size:20px;color:#4a90d9;">→</span>
-      </button>
-
-      <!-- Layer Service Report -->
-      <button onclick="enterApp('lsr')" style="width:100%;padding:22px 20px;background:#1a1400;border:2px solid #d69e2e;border-radius:14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
-        <span style="font-size:36px;line-height:1;">🐔</span>
-        <div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">Layer Service Report</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#d69e2e;letter-spacing:1px;margin-top:3px;">Weekly service check · Temps · Fans · Eggs</div>
-        </div>
-        <span style="margin-left:auto;font-size:20px;color:#d69e2e;">→</span>
       </button>
 
       <!-- Maintenance -->
@@ -861,6 +841,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <button class="nav-tab" id="tab-reports" onclick="go('reports')" data-i18n="nav.reports">📊 Reports</button>
       <button class="nav-tab" id="tab-sched" onclick="go('sched')" data-i18n="nav.sched">📅 Schedule</button>
       <button class="nav-tab" id="tab-staff" onclick="go('staff')">👥 Staff</button>
+      <button class="nav-tab" id="tab-service" onclick="go('service')">🛠️ Service Techs</button>
       <button class="nav-tab" id="tab-check" onclick="go('check')">🐓 Daily Check</button>
       <button class="nav-tab" id="tab-mw" onclick="go('mw')">☀️ Morning Walk</button>
       <button class="nav-tab" id="tab-lsr" onclick="go('lsr')">🐔 Layer Service</button>
@@ -1382,6 +1363,34 @@ body { min-height: 100dvh; overflow-x: hidden; }
     </div>
     <div id="bio-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;"></div>
     <div id="bio-log-list"></div>
+  </div>
+</div>
+
+<!-- ═══ SERVICE TECHS PANEL ═══ -->
+<div class="panel" id="panel-service">
+  <div class="section-title">🛠️ Service Techs</div>
+  <div style="display:grid;gap:14px;margin-top:4px;">
+    <button onclick="go('check')" style="width:100%;padding:24px 20px;background:#1a3a1a;border:2px solid #4caf50;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">🐓</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Daily Barn Check</div>
+        <div style="font-size:12px;color:#7ab07a;margin-top:4px;">Checklist · Egg count · Water PSI · Flags</div>
+      </div>
+    </button>
+    <button onclick="go('lsr')" style="width:100%;padding:24px 20px;background:#1a1400;border:2px solid #d69e2e;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">🐔</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Layer Service Report</div>
+        <div style="font-size:12px;color:#d69e2e;margin-top:4px;">Weekly service check · Temps · Fans · Eggs</div>
+      </div>
+    </button>
+    <button onclick="go('mw')" style="width:100%;padding:24px 20px;background:#080d1a;border:2px solid #4a90d9;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">☀️</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Morning Walk</div>
+        <div style="font-size:12px;color:#6a90d9;margin-top:4px;">Lead / WNO · Water · Temp · Feed · Fans</div>
+      </div>
+    </button>
   </div>
 </div>
 

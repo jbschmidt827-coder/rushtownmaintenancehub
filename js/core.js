@@ -1109,8 +1109,8 @@ function go(tab) {
   closeAssetForm();
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports', sched:'panel-sched', staff:'panel-staff', check:'panel-check', mw:'panel-mw', lsr:'panel-lsr'};
-  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports', sched:'tab-sched', staff:'tab-staff', check:'tab-check', mw:'tab-mw', lsr:'tab-lsr'};
+  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports', sched:'panel-sched', staff:'panel-staff', service:'panel-service', check:'panel-check', mw:'panel-mw', lsr:'panel-lsr'};
+  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports', sched:'tab-sched', staff:'tab-staff', service:'tab-service', check:'tab-check', mw:'tab-mw', lsr:'tab-lsr'};
   if (!pm[tab]) return;
   document.getElementById(pm[tab]).classList.add('active');
   const tabEl = document.getElementById(tm[tab]);
