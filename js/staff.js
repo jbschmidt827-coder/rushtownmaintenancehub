@@ -22,26 +22,31 @@ function startStaffListener() {
 function updateStaffDropdowns() {
   const active = staffList.filter(s => s.active !== false);
 
-  // Datalist for text inputs (bw-employee, mw-employee, wo-tech, lsr-tech)
+  // Datalist for text inputs with list="staff-datalist"
   const datalistOpts = active.map(s => `<option value="${s.name.replace(/"/g,'&quot;')}">`).join('');
   document.querySelectorAll('datalist#staff-datalist').forEach(dl => dl.innerHTML = datalistOpts);
 
-  // Select dropdowns that should list all active staff
-  const selectOpts = '<option value="">— Select Tech —</option>' +
+  // Select dropdowns — all get the same active staff list
+  const selectOpts = '<option value="">— Select —</option>' +
     active.map(s => `<option value="${s.name.replace(/"/g,'&quot;')}">${s.name}</option>`).join('');
-  const bulkTech = document.getElementById('bulk-tech');
-  if (bulkTech) {
-    const cur = bulkTech.value;
-    bulkTech.innerHTML = selectOpts;
-    if (cur) bulkTech.value = cur;
-  }
-  // WO closeout completed-by select (if it exists as a select element)
-  const woCloseoutTech = document.getElementById('wo-completed-by');
-  if (woCloseoutTech && woCloseoutTech.tagName === 'SELECT') {
-    const cur = woCloseoutTech.value;
-    woCloseoutTech.innerHTML = selectOpts;
-    if (cur) woCloseoutTech.value = cur;
-  }
+
+  const selectIds = [
+    'bulk-tech',        // Bulk PM Catch-Up: Completed By
+    'wo-assign',        // WO form: Assign To
+    'closeout-tech',    // WO Closeout modal: Completed By
+    'modal-tech',       // PM complete modal: Completed By
+    'wo-completed-by',  // legacy alias
+  ];
+
+  selectIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.tagName !== 'SELECT') return;
+    const cur = el.value;
+    el.innerHTML = id === 'wo-assign'
+      ? '<option value="">— Unassigned —</option>' + active.map(s => `<option value="${s.name.replace(/"/g,'&quot;')}">${s.name}</option>`).join('')
+      : selectOpts;
+    if (cur) el.value = cur;
+  });
 }
 
 // ── Render Staff Panel ──────────────────────

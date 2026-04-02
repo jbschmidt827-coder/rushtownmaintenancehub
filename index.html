@@ -413,7 +413,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 /* HEADER & NAV */
 .site-header { position: sticky; top: 0; z-index: 100; }
-.header-inner { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; padding: 8px 12px; }
+.header-inner { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important; gap: 8px; padding: 8px 12px; max-width: unset !important; margin: unset !important; }
 .nav-tabs { display: none; }
 .nav-tab { font-size: clamp(10px, 1.4vw, 13px) !important; padding: 7px 10px !important; white-space: nowrap; }
 
@@ -1077,7 +1077,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <div class="ops-qf-title" style="color:#7ab07a;">➕ Log Eggs by Barn</div>
       <div class="ops-form-grid">
         <div class="fg"><label style="color:#7ab07a;">Date *</label><input type="date" id="ke-date"></div>
-        <div class="fg"><label style="color:#7ab07a;">Entered By</label><input type="text" id="ke-by" placeholder="Name"></div>
+        <div class="fg"><label style="color:#7ab07a;">Entered By</label><input type="text" id="ke-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
         <div class="fg"><label style="color:#7ab07a;">Farm *</label>
           <select id="ke-farm" onchange="updateKeHouses()">
             <option value="">— select —</option>
@@ -1330,7 +1330,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
         </div>
         <div style="grid-column:1/-1;">
           <div style="font-size:11px;color:#f87171;margin-bottom:5px;">Person Name *</div>
-          <input type="text" id="bio-person" placeholder="Full name" style="width:100%;background:#0a1a0a;border:1px solid #7f1d1d;border-radius:8px;color:#f0ead8;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-sizing:border-box;">
+          <input type="text" id="bio-person" placeholder="Full name" list="staff-datalist" autocomplete="off" style="width:100%;background:#0a1a0a;border:1px solid #7f1d1d;border-radius:8px;color:#f0ead8;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;box-sizing:border-box;">
         </div>
         <div>
           <div style="font-size:11px;color:#f87171;margin-bottom:5px;">Company / Origin</div>
@@ -2617,7 +2617,6 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <button class="sub-btn" data-section="efficiency" onclick="goPkgSection('efficiency')">📈 Efficiency</button>
     <button class="sub-btn" data-section="downtime" onclick="goPkgSection('downtime')">⏱️ Downtime <span id="pkg-dt-badge" style="display:none;background:#e53e3e;color:#fff;border-radius:50%;font-size:10px;padding:1px 5px;margin-left:3px;vertical-align:middle;"></span></button>
     <button class="sub-btn" data-section="waste" onclick="goPkgSection('waste')">🗑️ Waste</button>
-    <button class="sub-btn" data-section="cooler" onclick="goPkgSection('cooler')">🧊 Cooler</button>
   </div>
   <!-- Packing -->
   <div class="pkg-section" id="pkg-packing" style="display:block;">
@@ -2636,7 +2635,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div class="fg"><label>Total Stops</label><input type="number" id="pf-stops" min="0" placeholder="0"></div>
         <div class="fg"><label>Line / Area</label><input type="text" id="pf-line" placeholder="e.g. Line 1"></div>
         <div class="fg"><label>Shift</label><select id="pf-shift"><option>AM</option><option>PM</option><option>Night</option></select></div>
-        <div class="fg"><label>Entered By</label><input type="text" id="pf-by" placeholder="Name"></div>
+        <div class="fg"><label>Entered By</label><input type="text" id="pf-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
         <div class="fg ops-form-full"><label>Notes</label><input type="text" id="pf-notes" placeholder="Optional notes"></div>
         <div class="fg ops-form-full" id="pf-calc-row" style="display:none;background:#0f1f0f;border:1.5px solid #2a5a2a;border-radius:10px;padding:12px 14px;">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;color:#4caf50;text-transform:uppercase;margin-bottom:10px;">⚡ Auto-Calculated</div>
@@ -2675,7 +2674,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <div class="ops-qf-title" style="color:#7ab07a;">🥚 Log Eggs by Barn</div>
       <div class="ops-form-grid">
         <div class="fg"><label style="color:#7ab07a;">Date *</label><input type="date" id="eb-date"></div>
-        <div class="fg"><label style="color:#7ab07a;">Entered By</label><input type="text" id="eb-by" placeholder="Name"></div>
+        <div class="fg"><label style="color:#7ab07a;">Entered By</label><input type="text" id="eb-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
         <div class="fg"><label style="color:#7ab07a;">Farm *</label>
           <select id="eb-farm" onchange="updateEbHouses()">
             <option value="">— select —</option>
@@ -2727,7 +2726,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <div class="ops-qf-title" style="color:#7ab0f0;">🏅 Log Egg Quality Grade-Out</div>
       <div class="ops-form-grid">
         <div class="fg"><label style="color:#7ab0f0;">Date *</label><input type="date" id="eq-date"></div>
-        <div class="fg"><label style="color:#7ab0f0;">Entered By</label><input type="text" id="eq-by" placeholder="Name"></div>
+        <div class="fg"><label style="color:#7ab0f0;">Entered By</label><input type="text" id="eq-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
         <div class="fg"><label style="color:#7ab0f0;">Farm *</label>
           <select id="eq-farm" onchange="updateEqHouses()">
             <option value="">— select —</option>
@@ -2831,7 +2830,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
           </select>
         </div>
         <div class="fg"><label>Line / Area</label><input type="text" id="dt-line" placeholder="e.g. Line 1, Grader"></div>
-        <div class="fg"><label>Logged By *</label><input type="text" id="dt-by" placeholder="Name"></div>
+        <div class="fg"><label>Logged By *</label><input type="text" id="dt-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
         <div class="fg"><label>Work Order #</label><input type="text" id="dt-wo" placeholder="Optional WO link"></div>
         <div class="fg ops-form-full"><label>Description</label><textarea id="dt-desc" placeholder="What happened, what was done to resolve it..." style="min-height:55px;resize:vertical;"></textarea></div>
         <div class="fg ops-form-full"><label>Resolution</label><input type="text" id="dt-resolution" placeholder="How was it resolved?"></div>
@@ -2890,7 +2889,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
         </div>
         <div class="fg"><label>Quantity (eggs) *</label><input type="number" id="wst-qty" min="0" placeholder="0"></div>
         <div class="fg"><label>Equivalent Dozens</label><input type="number" id="wst-dz" min="0" step="0.1" placeholder="auto" id="wst-dz" oninput="calcWasteDz()"></div>
-        <div class="fg"><label>Logged By *</label><input type="text" id="wst-by" placeholder="Name"></div>
+        <div class="fg"><label>Logged By *</label><input type="text" id="wst-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
         <div class="fg ops-form-full"><label>Notes</label><input type="text" id="wst-notes" placeholder="Optional details"></div>
       </div>
       <div class="ops-form-actions">
@@ -2918,63 +2917,6 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <div id="wst-category-chart" style="margin-bottom:18px;"></div>
     <div class="recent-hdr" style="margin-bottom:10px;">Waste Log</div>
     <div style="overflow-x:auto;"><table class="ops-table" id="wst-log-table"></table></div>
-  </div>
-
-  <!-- ── Cooler Inventory ── -->
-  <div class="pkg-section" id="pkg-cooler" style="display:none;">
-    <div class="ops-quick-form">
-      <div class="ops-qf-title">🧊 Log Cooler Inventory</div>
-      <div class="ops-form-grid">
-        <div class="fg"><label>Date *</label><input type="date" id="cool-date"></div>
-        <div class="fg"><label>Product *</label>
-          <select id="cool-product">
-            <option value="">— Select —</option>
-            <option>Jumbo</option><option>XL</option><option>Large</option>
-            <option>Medium</option><option>Small</option><option>Pullet</option><option>Nest Run</option>
-          </select>
-        </div>
-        <div class="fg"><label>Cases *</label><input type="number" id="cool-cases" min="0" placeholder="0"></div>
-        <div class="fg"><label>Dozens</label><input type="number" id="cool-dz" min="0" placeholder="0"></div>
-        <div class="fg"><label>Staging Location</label><input type="text" id="cool-location" placeholder="e.g. Cooler A, Dock 2"></div>
-        <div class="fg"><label>Status</label>
-          <select id="cool-status">
-            <option>Available</option>
-            <option>Reserved for Shipment</option>
-            <option>Quality Hold</option>
-            <option>Staging for Pickup</option>
-            <option>Shipped</option>
-          </select>
-        </div>
-        <div class="fg"><label>Pack Date</label><input type="date" id="cool-packdate"></div>
-        <div class="fg"><label>Days in Cooler</label><input type="number" id="cool-days" min="0" placeholder="0" readonly style="background:#f5f5f5;"></div>
-        <div class="fg"><label>Linked Load #</label><input type="text" id="cool-load" placeholder="Optional"></div>
-        <div class="fg"><label>Logged By *</label><input type="text" id="cool-by" placeholder="Name"></div>
-        <div class="fg ops-form-full"><label>Notes</label><input type="text" id="cool-notes" placeholder="Optional"></div>
-      </div>
-      <div class="ops-form-actions">
-        <button class="ops-save-btn" onclick="saveCooler()">✓ Add to Cooler</button>
-        <button class="ops-cancel-btn" onclick="clearCoolerForm()">Clear</button>
-      </div>
-    </div>
-    <div class="ops-filter-row" style="margin-top:16px;">
-      <select class="ops-date-input" id="cool-filter-status" onchange="renderCooler()" style="width:200px;">
-        <option value="">All Statuses</option>
-        <option>Available</option>
-        <option>Reserved for Shipment</option>
-        <option>Quality Hold</option>
-        <option>Staging for Pickup</option>
-        <option>Shipped</option>
-      </select>
-      <select class="ops-date-input" id="cool-filter-product" onchange="renderCooler()" style="margin-left:8px;width:150px;">
-        <option value="">All Products</option>
-        <option>Jumbo</option><option>XL</option><option>Large</option>
-        <option>Medium</option><option>Small</option><option>Pullet</option><option>Nest Run</option>
-      </select>
-    </div>
-    <div class="stats-grid g4" id="cool-stats" style="margin:14px 0;"></div>
-    <div id="cool-age-alerts" style="margin-bottom:14px;"></div>
-    <div class="recent-hdr" style="margin-bottom:10px;">Cooler Inventory</div>
-    <div style="overflow-x:auto;"><table class="ops-table" id="cool-log-table"></table></div>
   </div>
 
 <!-- ═══ FEED MILL PANEL ═══ -->
@@ -3013,7 +2955,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
           </select>
         </div>
         <div class="fg"><label>Date *</label><input type="date" id="fr-date"></div>
-        <div class="fg"><label>Entered By</label><input type="text" id="fr-by" placeholder="Name"></div>
+        <div class="fg"><label>Entered By</label><input type="text" id="fr-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
       </div>
       <div id="fr-house-inputs" style="margin-top:10px;"></div>
       <div class="ops-form-actions" id="fr-save-row" style="display:none;">
@@ -3046,7 +2988,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div class="fg"><label>Feed Type</label><input type="text" id="fd-type" placeholder="e.g. Layer Mash"></div>
         <div class="fg"><label>Destination Bin</label><select id="fd-bin"><option value="">— Select Bin —</option></select></div>
         <div class="fg"><label>Supplier / Truck</label><input type="text" id="fd-supplier" placeholder="Supplier name"></div>
-        <div class="fg"><label>Received By</label><input type="text" id="fd-by" placeholder="Name"></div>
+        <div class="fg"><label>Received By</label><input type="text" id="fd-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
         <div class="fg ops-form-full"><label>Notes</label><input type="text" id="fd-notes" placeholder="Optional"></div>
       </div>
       <div class="ops-form-actions">
@@ -3074,7 +3016,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
           </select>
         </div>
         <div class="fg"><label>Bin / Site</label><select id="fm-bin"><option value="">— Select —</option></select></div>
-        <div class="fg"><label>Made By</label><input type="text" id="fm-by" placeholder="Name"></div>
+        <div class="fg"><label>Made By</label><input type="text" id="fm-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
         <div class="fg ops-form-full"><label>Notes</label><input type="text" id="fm-notes" placeholder="Optional"></div>
       </div>
       <div class="ops-form-actions">
@@ -3171,7 +3113,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
           </select>
         </div>
         <div class="fg"><label>Date *</label><input type="date" id="fc-date"></div>
-        <div class="fg"><label>Entered By *</label><input type="text" id="fc-by" placeholder="Your name"></div>
+        <div class="fg"><label>Entered By *</label><input type="text" id="fc-by" placeholder="Your name" list="staff-datalist" autocomplete="off"></div>
         <div class="fg"><label>Flock Age (days)</label><input type="number" id="fc-age" min="0" placeholder="e.g. 45"></div>
       </div>
       <div id="fc-house-inputs" style="margin-top:12px;"></div>
@@ -3252,7 +3194,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div class="fg"><label>Duration (days)</label><input type="number" id="fmed-duration" min="1" placeholder="e.g. 5"></div>
         <div class="fg"><label>Withdrawal Period (days)</label><input type="number" id="fmed-withdrawal" min="0" placeholder="e.g. 14"></div>
         <div class="fg"><label>Flock Age at Treatment (days)</label><input type="number" id="fmed-flockage" min="0" placeholder="e.g. 28"></div>
-        <div class="fg"><label>Administered By *</label><input type="text" id="fmed-by" placeholder="Name"></div>
+        <div class="fg"><label>Administered By *</label><input type="text" id="fmed-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
         <div class="fg"><label>Veterinarian / Auth By</label><input type="text" id="fmed-vet" placeholder="Vet name or prescribing authority"></div>
         <div class="fg ops-form-full"><label>Reason / Diagnosis</label><input type="text" id="fmed-reason" placeholder="e.g. Respiratory outbreak, preventive treatment"></div>
         <div class="fg ops-form-full"><label>Notes</label><textarea id="fmed-notes" placeholder="Any additional observations, response to treatment, etc." style="min-height:55px;resize:vertical;"></textarea></div>
@@ -3485,7 +3427,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
     <div class="modal-field">
       <label>Author</label>
-      <input type="text" id="wif-author" placeholder="Your name">
+      <input type="text" id="wif-author" placeholder="Your name" list="staff-datalist" autocomplete="off">
     </div>
 
     <div class="modal-btns">
