@@ -130,6 +130,22 @@ function staffInitials(name) {
   return parts.length >= 2 ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase() : name.slice(0,2).toUpperCase();
 }
 
+// ── DB connectivity check shown on Add tab ──
+async function checkStaffDbStatus() {
+  const el = document.getElementById('staff-db-status');
+  if (!el) return;
+  try {
+    await db.collection('staff').limit(1).get();
+    el.style.display = 'none';
+  } catch(e) {
+    el.style.display = 'block';
+    el.style.background = '#2a0a0a';
+    el.style.border = '1px solid #5a1a1a';
+    el.style.color = '#e53e3e';
+    el.textContent = '⚠ Database error: ' + e.message + ' (code: ' + e.code + ')';
+  }
+}
+
 // ── Add Employee ────────────────────────────
 async function addStaff() {
   const name  = document.getElementById('staff-new-name').value.trim();

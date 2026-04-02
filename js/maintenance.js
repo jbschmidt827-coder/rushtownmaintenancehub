@@ -1880,6 +1880,7 @@ function goStaffSection(sec) {
     if (btn) btn.classList.toggle('active', s === sec);
   });
   if (sec === 'sched') renderStaffSched();
+  if (sec === 'add' && typeof checkStaffDbStatus === 'function') checkStaffDbStatus();
 }
 
 async function renderReports() {
