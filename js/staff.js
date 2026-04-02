@@ -18,17 +18,27 @@ function startStaffListener() {
   } catch(e) { console.error('Staff listener error:', e); }
 }
 
+// ── Fallback team list used until staff are added via the Staff panel ──
+const FALLBACK_TEAM = [
+  'Josh','Steve','Mike','Chris','Dave','Dan','Tom','Joe','Kyle','Brian',
+  'Ryan','Tyler','Jake','Zach','Derek','Adam','Kevin','Scott','Eric','Matt'
+];
+
 // ── Populate all name datalists and selects in the app ──
 function updateStaffDropdowns() {
   const active = staffList.filter(s => s.active !== false);
+  // If Firestore staff collection is empty, use the fallback list
+  const names = active.length
+    ? active.map(s => s.name)
+    : FALLBACK_TEAM;
 
   // Datalist for text inputs with list="staff-datalist"
-  const datalistOpts = active.map(s => `<option value="${s.name.replace(/"/g,'&quot;')}">`).join('');
+  const datalistOpts = names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">`).join('');
   document.querySelectorAll('datalist#staff-datalist').forEach(dl => dl.innerHTML = datalistOpts);
 
   // Select dropdowns — all get the same active staff list
   const selectOpts = '<option value="">— Select —</option>' +
-    active.map(s => `<option value="${s.name.replace(/"/g,'&quot;')}">${s.name}</option>`).join('');
+    names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
 
   const selectIds = [
     'bulk-tech',        // Bulk PM Catch-Up: Completed By
@@ -43,7 +53,7 @@ function updateStaffDropdowns() {
     if (!el || el.tagName !== 'SELECT') return;
     const cur = el.value;
     el.innerHTML = id === 'wo-assign'
-      ? '<option value="">— Unassigned —</option>' + active.map(s => `<option value="${s.name.replace(/"/g,'&quot;')}">${s.name}</option>`).join('')
+      ? '<option value="">— Unassigned —</option>' + names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('')
       : selectOpts;
     if (cur) el.value = cur;
   });

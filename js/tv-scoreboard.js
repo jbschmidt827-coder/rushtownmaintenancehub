@@ -671,6 +671,8 @@ function openBulkPM(preFilter) {
   if (preFilter) {
     document.getElementById('bulk-farm-filter').value = 'all';
   }
+  // Refresh staff dropdown every time modal opens
+  if (typeof updateStaffDropdowns === 'function') updateStaffDropdowns();
   bulkPMSelected = new Set();
   renderBulkPMList();
   if (preFilter === 'daily') {
