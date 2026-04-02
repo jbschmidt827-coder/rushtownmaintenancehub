@@ -830,22 +830,21 @@ body { min-height: 100dvh; overflow-x: hidden; }
       </div>
     </div>
     <nav class="nav-tabs">
-      <button class="nav-tab" id="tab-home" onclick="goHome()" data-i18n="nav.home" style="background:#163016;border-color:#4caf50;color:#4caf50;">🏠 Home</button>
-      <button class="nav-tab active" id="tab-dash" onclick="go('dash')" data-i18n="nav.dash">📊 Dashboard</button>
-      <button class="nav-tab" id="tab-prod" onclick="go('prod')" data-i18n="nav.prod">🏭 Production</button>
-      <button class="nav-tab" id="tab-maint" onclick="go('maint')" data-i18n="nav.maint">🔧 Maintenance</button>
-      <button class="nav-tab" id="tab-pkg" onclick="go('pkg')" data-i18n="nav.pkg">📦 Packaging</button>
-      <button class="nav-tab" id="tab-feed" onclick="go('feed')" data-i18n="nav.feed">🌾 Feed Mill</button>
-      <button class="nav-tab" id="tab-ship" onclick="go('ship')" data-i18n="nav.ship">🚚 Shipping</button>
-      <button class="nav-tab" id="tab-kpi" onclick="go('kpi')" data-i18n="nav.kpi">🥚 KPI</button>
-      <button class="nav-tab" id="tab-reports" onclick="go('reports')" data-i18n="nav.reports">📊 Reports</button>
-      <button class="nav-tab" id="tab-sched" onclick="go('sched')" data-i18n="nav.sched">📅 Schedule</button>
-      <button class="nav-tab" id="tab-staff" onclick="go('staff')">👥 Staff</button>
-      <button class="nav-tab" id="tab-service" onclick="go('service')">🛠️ Service Techs</button>
-      <button class="nav-tab" id="tab-check" onclick="go('check')">🐓 Daily Check</button>
-      <button class="nav-tab" id="tab-mw" onclick="go('mw')">☀️ Morning Walk</button>
-      <button class="nav-tab" id="tab-lsr" onclick="go('lsr')">🐔 Layer Service</button>
+      <button class="nav-tab" id="tab-dash" onclick="go('dash')" data-i18n="nav.dash" style="display:none;">📊 Dashboard</button>
+      <button class="nav-tab" id="tab-prod" onclick="go('prod')" data-i18n="nav.prod" style="display:none;">🏭 Production</button>
+      <button class="nav-tab" id="tab-maint" onclick="go('maint')" data-i18n="nav.maint" style="display:none;">🔧 Maintenance</button>
+      <button class="nav-tab" id="tab-pkg" onclick="go('pkg')" data-i18n="nav.pkg" style="display:none;">📦 Packaging</button>
+      <button class="nav-tab" id="tab-feed" onclick="go('feed')" data-i18n="nav.feed" style="display:none;">🌾 Feed Mill</button>
+      <button class="nav-tab" id="tab-ship" onclick="go('ship')" data-i18n="nav.ship" style="display:none;">🚚 Shipping</button>
+      <button class="nav-tab" id="tab-kpi" onclick="go('kpi')" data-i18n="nav.kpi" style="display:none;">🥚 KPI</button>
+      <button class="nav-tab" id="tab-reports" onclick="go('reports')" data-i18n="nav.reports" style="display:none;">📊 Reports</button>
+      <button class="nav-tab" id="tab-sched" onclick="go('sched')" data-i18n="nav.sched" style="display:none;">📅 Schedule</button>
+      <button class="nav-tab" id="tab-staff" onclick="go('staff')" style="display:none;">👥 Staff</button>
+      <button class="nav-tab" id="tab-service" onclick="go('service')" style="display:none;">🛠️ Service Techs</button>
+      <button class="nav-tab" id="tab-check" onclick="go('check')" style="display:none;">🐓 Daily Check</button>
+      <button class="nav-tab" id="tab-mw" onclick="go('mw')" style="display:none;">☀️ Morning Walk</button>
     </nav>
+    <button onclick="goHome()" style="padding:10px 20px;background:#163016;border:2px solid #4caf50;border-radius:10px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">⌂ HOME</button>
     <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
     <button id="lang-toggle-btn" onclick="toggleLang()" title="Switch Language / Cambiar Idioma" style="padding:7px 13px;background:#0a1a2a;border:1.5px solid #3b82f6;border-radius:9px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;flex-shrink:0;">🌐 ES</button>
   </div>
@@ -1377,7 +1376,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div style="font-size:12px;color:#7ab07a;margin-top:4px;">Checklist · Egg count · Water PSI · Flags</div>
       </div>
     </button>
-    <button onclick="go('lsr')" style="width:100%;padding:24px 20px;background:#1a1400;border:2px solid #d69e2e;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+    <button onclick="openLayerServiceReport('','')" style="width:100%;padding:24px 20px;background:#1a1400;border:2px solid #d69e2e;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
       <span style="font-size:40px;line-height:1;">🐔</span>
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Layer Service Report</div>
@@ -1397,12 +1396,6 @@ body { min-height: 100dvh; overflow-x: hidden; }
 <div class="panel" id="panel-mw">
   <div class="section-title">☀️ Morning Walk</div>
   <div id="panel-mw-body"></div>
-</div>
-
-<!-- ═══ LAYER SERVICE PANEL ═══ -->
-<div class="panel" id="panel-lsr">
-  <div class="section-title">🐔 Layer Service Report</div>
-  <div id="panel-lsr-body"></div>
 </div>
 
 <!-- ═══ EC SECTION (Employee Daily Check) ═══ -->
