@@ -3164,8 +3164,24 @@ function goHome() {
   document.getElementById('main-content').style.display = 'none';
   var fab = document.getElementById('fab-btn');
   if (fab) fab.style.display = 'none';
+  injectLandingStaffCard();
   updateHomeFeedStatus();
   if (typeof renderLandingStatus === 'function') renderLandingStatus();
+}
+
+function injectLandingStaffCard() {
+  if (document.getElementById('landing-staff-btn')) return; // already injected
+  // Find the Dashboard card button and insert Staff card after it
+  var buttons = document.querySelectorAll('#landing-screen button');
+  var dashBtn = null;
+  buttons.forEach(function(b) { if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("enterApp('dash')")) dashBtn = b; });
+  if (!dashBtn) return;
+  var staffBtn = document.createElement('button');
+  staffBtn.id = 'landing-staff-btn';
+  staffBtn.setAttribute('onclick', "enterApp('staff')");
+  staffBtn.style.cssText = 'width:100%;padding:22px 20px;background:#1a2a3a;border:2px solid #4a90d9;border-radius:14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;margin-top:0;';
+  staffBtn.innerHTML = '<span style="font-size:32px;line-height:1;">👥</span><div style="flex:1;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:14px;font-weight:700;color:#7ab0f6;letter-spacing:1.5px;text-transform:uppercase;">Staff</div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#5a90c9;letter-spacing:1px;margin-top:4px;">Team directory · Add employees</div></div><span style="margin-left:auto;font-size:20px;color:#4a90d9;">→</span>';
+  dashBtn.parentNode.insertBefore(staffBtn, dashBtn.nextSibling);
 }
 
 async function updateHomeFeedStatus() {

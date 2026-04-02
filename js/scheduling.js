@@ -259,5 +259,6 @@ async function copyLastWeek() {
 initApp().then(() => {
   applyTranslations();
   setupLangFab();
+  if (typeof injectLandingStaffCard === 'function') injectLandingStaffCard();
 });
 
