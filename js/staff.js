@@ -148,11 +148,14 @@ async function checkStaffDbStatus() {
 
 // ── Add Employee ────────────────────────────
 async function addStaff() {
-  const name  = document.getElementById('staff-new-name').value.trim();
+  const fname = document.getElementById('staff-new-fname').value.trim();
+  const lname = document.getElementById('staff-new-lname').value.trim();
+  const name  = (fname + ' ' + lname).trim();
   const role  = document.getElementById('staff-new-role').value;
   const farm  = document.getElementById('staff-new-farm').value;
   const phone = document.getElementById('staff-new-phone').value.trim();
-  if (!name) { document.getElementById('staff-new-name').focus(); return; }
+  if (!fname) { document.getElementById('staff-new-fname').focus(); return; }
+  if (!lname) { document.getElementById('staff-new-lname').focus(); return; }
 
   const btn = document.getElementById('staff-add-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
@@ -162,7 +165,8 @@ async function addStaff() {
 
   try {
     await db.collection('staff').add({ name, role: role||'Technician', farm: farm||'', phone, active: true, ts: Date.now() });
-    document.getElementById('staff-new-name').value  = '';
+    document.getElementById('staff-new-fname').value = '';
+    document.getElementById('staff-new-lname').value = '';
     document.getElementById('staff-new-phone').value = '';
     document.getElementById('staff-add-result').style.display = 'block';
     setTimeout(() => { document.getElementById('staff-add-result').style.display = 'none'; }, 2000);
@@ -235,10 +239,10 @@ function staffFarmFilter(val, btn) {
 
 // ── Allow Enter key on add form ─────────────
 document.addEventListener('DOMContentLoaded', () => {
-  const nameInput = document.getElementById('staff-new-name');
-  if (nameInput) nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') addStaff(); });
-  const phoneInput = document.getElementById('staff-new-phone');
-  if (phoneInput) phoneInput.addEventListener('keydown', e => { if (e.key === 'Enter') addStaff(); });
+  ['staff-new-fname','staff-new-lname','staff-new-phone'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') addStaff(); });
+  });
 });
 
 // ═══════════════════════════════════════════
@@ -394,10 +398,13 @@ let staffCertsList = [];
 
 function startStaffCertsListener() {
   try {
-    db.collection('staffCerts').orderBy('staffName', 'asc').onSnapshot(snap => {
-      staffCertsList = snap.docs.map(d => ({ ...d.data(), _fbId: d.id }));
-      renderStaffCerts();
-    });
+    db.collection('staffCerts').orderBy('staffName', 'asc').onSnapshot(
+      snap => {
+        staffCertsList = snap.docs.map(d => ({ ...d.data(), _fbId: d.id }));
+        renderStaffCerts();
+      },
+      err => { console.error('Certs listener error:', err); }
+    );
   } catch(e) { console.error('Certs listener error:', e); }
 }
 
