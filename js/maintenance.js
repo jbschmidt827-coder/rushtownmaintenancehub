@@ -1879,6 +1879,7 @@ function goStaffSection(sec) {
     if (el)  el.style.display = s === sec ? 'block' : 'none';
     if (btn) btn.classList.toggle('active', s === sec);
   });
+  if (sec === 'sched') renderStaffSched();
 }
 
 async function renderReports() {

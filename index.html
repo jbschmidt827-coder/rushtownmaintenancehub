@@ -1456,6 +1456,8 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;">
     <button class="prod-tab-btn active" id="staff-tab-dir"   onclick="goStaffSection('dir')">👥 Directory</button>
     <button class="prod-tab-btn"        id="staff-tab-add"   onclick="goStaffSection('add')">➕ Add Employee</button>
+    <button class="prod-tab-btn"        id="staff-tab-sched" onclick="goStaffSection('sched')">📅 Schedule</button>
+    <button class="prod-tab-btn"        id="staff-tab-certs" onclick="goStaffSection('certs')">🏆 Certifications</button>
   </div>
 
   <!-- Directory Tab -->
@@ -1523,12 +1525,64 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
   <!-- Schedule Tab -->
   <div id="staff-sec-sched" style="display:none;">
-    <div style="padding:30px;text-align:center;color:#7ab07a;font-family:'IBM Plex Mono',monospace;">📅 Staff Schedule — coming soon</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      <button onclick="staffSchedPrevWeek()" style="padding:6px 12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:13px;cursor:pointer;">◀</button>
+      <span id="sched-week-label" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#c0d8c0;font-weight:700;min-width:180px;text-align:center;"></span>
+      <button onclick="staffSchedNextWeek()" style="padding:6px 12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:13px;cursor:pointer;">▶</button>
+      <button onclick="staffSchedThisWeek()" style="padding:6px 12px;background:#1a3a1a;border:1px solid #2a5a2a;border-radius:6px;color:#7ac57a;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">This Week</button>
+    </div>
+    <div id="staff-sched-fac-bar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="pill active" onclick="staffSchedFacFilter('all',this)">All</button>
+      <button class="pill" onclick="staffSchedFacFilter('Hegins',this)">📍 Hegins</button>
+      <button class="pill" onclick="staffSchedFacFilter('Danville',this)">📍 Danville</button>
+      <button class="pill" onclick="staffSchedFacFilter('Rushtown',this)">📍 Rushtown</button>
+      <button class="pill" onclick="staffSchedFacFilter('Feed Mill',this)">🌾 Feed Mill</button>
+    </div>
+    <div id="staff-sched-grid" style="overflow-x:auto;"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6a4a;">
+      <span style="color:#888;">SHIFT KEY:</span>
+      <span style="background:#1a3a1a;border:1px solid #2a5a2a;padding:2px 8px;border-radius:4px;color:#7ac57a;">AM</span>
+      <span style="background:#1a2a3a;border:1px solid #1e3a5a;padding:2px 8px;border-radius:4px;color:#7aacd9;">PM</span>
+      <span style="background:#1a1a3a;border:1px solid #2a2a5a;padding:2px 8px;border-radius:4px;color:#9a9aff;">EVE</span>
+      <span style="background:#2a1a0a;border:1px solid #4a3a1a;padding:2px 8px;border-radius:4px;color:#c9963a;">OFF</span>
+      <span style="background:#1a0a0a;border:1px solid #3a1a1a;padding:2px 8px;border-radius:4px;color:#c96a6a;">VAC</span>
+      <span style="color:#555;margin-left:4px;">Click a cell to cycle through shifts</span>
+    </div>
   </div>
 
   <!-- Certifications Tab -->
   <div id="staff-sec-certs" style="display:none;">
-    <div style="padding:30px;text-align:center;color:#d69e2e;font-family:'IBM Plex Mono',monospace;">🏆 Certifications — coming soon</div>
+    <div class="stats-grid g3" id="cert-stats" style="margin-bottom:18px;"></div>
+    <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:14px;padding:16px;margin-bottom:18px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#4a7a4a;text-transform:uppercase;margin-bottom:12px;">➕ Log Certification</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Employee *</label>
+          <select id="cert-staff-select" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;"></select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Certification *</label>
+          <input type="text" id="cert-name" placeholder="e.g. OSHA 10, Forklift" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Issue Date</label>
+          <input type="date" id="cert-issued" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Expiry Date</label>
+          <input type="date" id="cert-expires" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Notes (optional)</label>
+          <input type="text" id="cert-notes" placeholder="Optional notes" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button id="cert-add-btn" onclick="addStaffCert()" style="padding:11px 24px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:10px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">+ Log Cert</button>
+        <div id="cert-add-result" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#4caf50;">✓ Certification logged!</div>
+      </div>
+    </div>
+    <div id="cert-list"></div>
   </div>
 
 </div>
