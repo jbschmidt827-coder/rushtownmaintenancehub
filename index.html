@@ -1107,6 +1107,17 @@ body { min-height: 100dvh; overflow-x: hidden; }
 <!-- ═══ PRODUCTION PANEL ═══ -->
 <div class="panel" id="panel-prod">
   <div class="section-title" data-i18n="title.prod">🏭 Production</div>
+
+  <!-- Production Sub-Nav -->
+  <div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;">
+    <button class="prod-tab-btn active" id="prod-tab-overview" onclick="goProdSection('overview')">📋 Overview</button>
+    <button class="prod-tab-btn" id="prod-tab-check" onclick="goProdSection('check')">🐓 Daily Check</button>
+    <button class="prod-tab-btn" id="prod-tab-mw" onclick="goProdSection('mw')">☀️ Morning Walk</button>
+    <button class="prod-tab-btn" id="prod-tab-lsr" onclick="goProdSection('lsr')">🐔 Layer Service</button>
+  </div>
+
+  <!-- Overview Section (existing content) -->
+  <div id="prod-sec-overview">
   <div id="prod-kpi-bar" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;"></div>
   <div id="prod-egg-kpi" style="margin-bottom:18px;"></div>
   <div style="display:grid;gap:14px;">
@@ -1167,6 +1178,17 @@ body { min-height: 100dvh; overflow-x: hidden; }
       </div>
     </button>
   </div>
+  </div><!-- /prod-sec-overview -->
+
+  <!-- Daily Check Tab -->
+  <div id="prod-sec-check" style="display:none;"></div>
+
+  <!-- Morning Walk Tab -->
+  <div id="prod-sec-mw" style="display:none;"></div>
+
+  <!-- Layer Service Report Tab -->
+  <div id="prod-sec-lsr" style="display:none;"></div>
+
 </div>
 
 <!-- ═══ FLOCK SECTION ═══ -->
@@ -1588,6 +1610,8 @@ body { min-height: 100dvh; overflow-x: hidden; }
 <style>
 .bw-card{background:#1a3a1a;border:1px solid #2a5a2a;border-radius:14px;padding:18px 16px;margin-bottom:14px;}
 .bw-card-title{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#7ab07a;margin-bottom:12px;}
+.prod-tab-btn{padding:8px 14px;background:#0f1a0f;border:1px solid #2a4a2a;border-radius:20px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;white-space:nowrap;}
+.prod-tab-btn.active{background:#1a3a1a;border-color:#4caf50;color:#4caf50;}
 .bw-input{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid #2a5a2a;background:#163016;color:#f0ead8;font-size:16px;font-family:'IBM Plex Sans',sans-serif;box-sizing:border-box;outline:none;}
 .bw-input:focus{border-color:#4caf50;}
 .bw-yn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}

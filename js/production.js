@@ -346,6 +346,15 @@ function openBarnWalk(farm, house) {
   document.getElementById('barn-walk-modal').style.display = 'block';
   document.getElementById('barn-walk-modal').scrollTop = 0;
   applyFormTextTranslation();
+  // Pre-populate employee from last submission for this barn
+  db.collection('barnWalks').where('farm','==',farm).where('house','==',String(house))
+    .orderBy('ts','desc').limit(1).get()
+    .then(snap => {
+      if (snap.empty) return;
+      const l = snap.docs[0].data();
+      const e = document.getElementById('bw-employee');
+      if (e && !e.value) { e.value = l.employee || ''; checkBWReady(); }
+    }).catch(()=>{});
 }
 
 function closeBarnWalk() {
@@ -536,6 +545,15 @@ function openMorningWalk(farm, house) {
   document.getElementById('mw-submit-btn').disabled = true;
   document.getElementById('morning-walk-modal').style.display = 'block';
   document.getElementById('morning-walk-modal').scrollTop = 0;
+  // Pre-populate employee from last submission for this barn
+  db.collection('morningWalks').where('farm','==',farm).where('house','==',String(house))
+    .orderBy('ts','desc').limit(1).get()
+    .then(snap => {
+      if (snap.empty) return;
+      const l = snap.docs[0].data();
+      const e = document.getElementById('mw-employee');
+      if (e && !e.value) { e.value = l.employee || ''; checkMWReady(); }
+    }).catch(()=>{});
 }
 
 function closeMorningWalk() {
@@ -1009,6 +1027,23 @@ function openLayerServiceReport(farm, house) {
     else el.value = '';
   });
   document.getElementById('lsr-result').style.display = 'none';
+  // Pre-populate benchmark fields from last submission for this farm/house
+  if (farm && house) {
+    db.collection('layerServiceReports').where('farm','==',farm).where('house','==',String(house))
+      .orderBy('ts','desc').limit(1).get()
+      .then(snap => {
+        if (snap.empty) return;
+        const l = snap.docs[0].data();
+        const si = (id, v) => { const el=document.getElementById(id); if (el && !el.value && v != null) el.value = v; };
+        si('lsr-tech', l.tech);       si('lsr-flock', l.flock);       si('lsr-birdcount', l.birdCount);
+        si('lsr-temp-set', l.tempSet); si('lsr-fans-total', l.fansTotal);
+        si('lsr-static-pres-set', l.staticPresSet); si('lsr-inlet-pos', l.inletPos);
+        si('lsr-feed-type', l.feedType); si('lsr-feed-target', l.feedTarget);
+        si('lsr-water-target', l.waterTarget); si('lsr-body-weight-tgt', l.bodyWeightTgt);
+        si('lsr-egg-target', l.eggTarget); si('lsr-light-hours', l.lightHours);
+        si('lsr-lighting', l.lighting); si('lsr-age', l.age ? l.age + 1 : null);
+      }).catch(()=>{});
+  }
 }
 
 function closeLayerServiceReport() {
@@ -1044,9 +1079,20 @@ async function submitLayerServiceReport() {
   if (btn) btn.disabled = true;
   try {
     await db.collection('layerServiceReports').add(record);
+    // Auto-create urgent WOs for critical LSR issues
+    const lsrFlags = [];
+    if (record.fanDown > 0)                                           lsrFlags.push({issue:'Fan down: '+record.fanDown+' of '+record.fansTotal, priority:'urgent'});
+    if (record.eggBeltStatus && record.eggBeltStatus !== 'running')   lsrFlags.push({issue:'Egg belt issue: '+record.eggBeltStatus, priority:'urgent'});
+    if (record.eggProduction != null && record.eggTarget > 0 && record.eggProduction < record.eggTarget * 0.5)
+                                                                       lsrFlags.push({issue:'Very low production: '+record.eggProduction+' vs target '+record.eggTarget, priority:'urgent'});
+    if (record.mortality != null && record.mortality > 30)            lsrFlags.push({issue:'High mortality: '+record.mortality+' birds', priority:'high'});
+    if (record.ammonia != null && record.ammonia > 25)                lsrFlags.push({issue:'High ammonia: '+record.ammonia+' ppm', priority:'urgent'});
+    for (const f of lsrFlags) {
+      try { await createMustFixWO('LSR — '+farm+' Barn '+house+': '+f.issue, f.issue, farm, house, f.priority); } catch(e) {}
+    }
     const res = document.getElementById('lsr-result');
-    if (res) { res.style.display = 'block'; res.textContent = '✓ Report saved successfully'; }
-    setTimeout(() => closeLayerServiceReport(), 1400);
+    if (res) { res.style.display = 'block'; res.textContent = '✓ Report saved' + (lsrFlags.length ? ' · ' + lsrFlags.length + ' WO(s) created' : ' successfully'); }
+    setTimeout(() => closeLayerServiceReport(), 1800);
   } catch(e) {
     alert('Save failed: ' + e.message);
     if (btn) btn.disabled = false;
@@ -1054,3 +1100,182 @@ async function submitLayerServiceReport() {
 }
 
 // ═══════════════════════════════════════════
+// ── Production Sub-Tab Switcher ─────────────
+
+function goProdSection(sec) {
+  ['overview','check','mw','lsr'].forEach(s => {
+    const el  = document.getElementById('prod-sec-' + s);
+    const btn = document.getElementById('prod-tab-' + s);
+    if (el)  el.style.display  = s === sec ? 'block' : 'none';
+    if (btn) btn.classList.toggle('active', s === sec);
+  });
+  if (sec === 'check') renderProdCheck();
+  if (sec === 'mw')    renderProdMW();
+  if (sec === 'lsr')   renderProdLSR();
+}
+
+async function createMustFixWO(title, desc, farm, house, priority) {
+  priority = priority || 'urgent';
+  const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
+  woCounter = (woCounter || 900) + 1;
+  const today = new Date();
+  await db.collection('workOrders').add({
+    id: woId, farm: farm || '', house: String(house || ''),
+    problem: 'Production', priority, status: 'open',
+    title, desc,
+    notes: desc + ' — Auto-flagged by production tab',
+    submitted: today.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+    date: today.toISOString().slice(0,10),
+    ts: Date.now()
+  });
+}
+
+// ── Daily Check Tab ─────────────────────────
+
+var _prodCheckIssues = [];
+
+async function renderProdCheck() {
+  const el = document.getElementById('prod-sec-check');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:#5a8a5a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">Loading\u2026</div>';
+  const todayStr = new Date().toISOString().slice(0,10);
+  let walks = [];
+  try {
+    const snap = await db.collection('barnWalks').where('date','==',todayStr).get();
+    walks = snap.docs.map(d => ({...d.data(), _id: d.id}));
+  } catch(e) { console.error(e); }
+  const walkMap = {};
+  walks.forEach(w => { const k=w.farm+'-'+w.house; if (!walkMap[k]||w.ts>walkMap[k].ts) walkMap[k]=w; });
+  const eggMap = {};
+  (typeof opsEggData!=='undefined'?opsEggData:[]).filter(r=>r.date===todayStr)
+    .forEach(r => { const k=r.farm+'-'+r.house; eggMap[k]=(eggMap[k]||0)+(Number(r.eggs)||0); });
+  const farms = [{name:'Hegins',houses:8},{name:'Danville',houses:5}];
+  const totalBarns = 13, checked = Object.keys(walkMap).length, flagged = walks.filter(w=>w.flags&&w.flags.length>0).length, pct = Math.round(checked/totalBarns*100);
+  const issues = [];
+  let farmsHtml = '';
+  farms.forEach(({name, houses}) => {
+    let cells = '';
+    for (let h=1; h<=houses; h++) {
+      const k=name+'-'+h, walk=walkMap[k], eggs=eggMap[k]||0, eggPct=eggs>0?Math.round((eggs/EGG_TARGET)*100):null, hasFlag=walk&&walk.flags&&walk.flags.length>0;
+      let bg,bc,icon,sub;
+      if (!walk)        { bg='#1a1a0a';bc='#4a4a00';icon='&mdash;';sub='pending'; issues.push({farm:name,house:h,issue:'No barn check submitted today'}); }
+      else if (hasFlag) { bg='#2a1a1a';bc='#e53e3e';icon='&#x26a0;';sub=walk.employee||'?'; }
+      else              { bg='#1a3a1a';bc='#4caf50';icon='&#x2713;';sub=walk.employee||'?'; }
+      if (eggs>0&&eggPct<50) issues.push({farm:name,house:h,issue:'Low eggs: '+eggs+' ('+eggPct+'% of target)'});
+      const eggLine = eggPct!==null ? '<div style="font-size:8px;color:'+(eggPct>=90?'#4caf50':eggPct>=70?'#d69e2e':'#e53e3e')+';margin-top:2px;">'+eggPct+'%</div>' : (walk?'<div style="font-size:8px;color:#3a5a3a;margin-top:2px;">no egg log</div>':'');
+      cells += '<div onclick="openBarnWalk(\''+name+'\','+h+')" style="background:'+bg+';border:2px solid '+bc+';border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;"><div style="font-size:8px;color:#5a8a5a;letter-spacing:1px;font-family:\'IBM Plex Mono\',monospace;">H'+h+'</div><div style="font-size:20px;font-weight:700;color:'+bc+';line-height:1.3;">'+icon+'</div><div style="font-size:8px;color:#7a9a7a;font-family:\'IBM Plex Mono\',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:54px;margin:1px auto 0;">'+sub+'</div>'+eggLine+'</div>';
+    }
+    farmsHtml += '<div style="margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;color:#a0c0a0;margin-bottom:8px;">&#x1f4cd; '+name+'</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'+cells+'</div></div>';
+  });
+  _prodCheckIssues = issues;
+  const issuesHtml = issues.length>0
+    ? '<div style="background:#1a0a0a;border:1px solid #5a2a2a;border-radius:12px;padding:14px;margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#e53e3e;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">&#x26a0; '+issues.length+' Issue'+(issues.length>1?'s':'')+' Found</div>'+issues.map(i=>'<div style="font-size:11px;color:#c0604a;font-family:\'IBM Plex Mono\',monospace;padding:4px 0;border-bottom:1px solid #2a1010;">'+i.farm+' Barn '+i.house+' &mdash; '+i.issue+'</div>').join('')+'<button onclick="prodCheckCreateWOs()" style="margin-top:12px;width:100%;padding:10px;background:#5a1010;border:1px solid #e53e3e;border-radius:8px;color:#e53e3e;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;">&#x1f527; Create Must-Fix WOs for All Issues</button></div>'
+    : '<div style="background:#0a1a0a;border:1px solid #2a5a2a;border-radius:12px;padding:12px;margin-bottom:16px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#4caf50;">&#x2705; No issues found for today</div>';
+  const recentHtml = walks.length>0
+    ? '<div style="background:#0f1a0f;border:1px solid #2a4a2a;border-radius:12px;padding:14px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#5a8a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Today\'s Submissions</div>'+walks.sort((a,b)=>b.ts-a.ts).map(w=>'<div style="padding:8px 0;border-bottom:1px solid #1a3a1a;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#f0ead8;">'+w.farm+' Barn '+w.house+' <span style="color:'+(w.flags&&w.flags.length?'#e53e3e':'#4caf50')+';font-size:10px;">'+(w.flags&&w.flags.length?'&#x26a0; '+w.flags.length+' flag(s)':'&#x2713; OK')+'</span></div><div style="font-size:10px;color:#5a8a5a;margin-top:2px;">'+(w.employee||'Unknown')+' &middot; '+(w.time||'')+'</div></div><div style="font-size:10px;color:#4a6a4a;font-family:\'IBM Plex Mono\',monospace;">PSI: '+(w.waterPSI||'&mdash;')+'</div></div>').join('')+'</div>'
+    : '';
+  el.innerHTML = '<div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e')+';">'+checked+'/'+totalBarns+'</div><div style="font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Checked</div></div><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(flagged>0?'#e53e3e':'#4caf50')+';">'+flagged+'</div><div style="font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Flagged</div></div><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e')+';">'+pct+'%</div><div style="font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Coverage</div></div></div>'+issuesHtml+farmsHtml+recentHtml;
+}
+
+async function prodCheckCreateWOs() {
+  if (!_prodCheckIssues.length) return;
+  const btn = document.querySelector('#prod-sec-check button[onclick="prodCheckCreateWOs()"]');
+  if (btn) { btn.disabled=true; btn.textContent='Creating WOs\u2026'; }
+  for (const iss of _prodCheckIssues) {
+    try { await createMustFixWO(iss.farm+' Barn '+iss.house+' \u2014 '+iss.issue, iss.issue, iss.farm, iss.house, 'urgent'); } catch(e) { console.error(e); }
+  }
+  if (btn) btn.textContent='\u2713 WOs Created';
+  setTimeout(()=>renderProdCheck(), 1500);
+}
+
+// ── Morning Walk Tab ────────────────────────
+
+var _mwTabIssues = [];
+
+async function renderProdMW() {
+  const el = document.getElementById('prod-sec-mw');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:#3a5a8a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">Loading\u2026</div>';
+  const todayStr = new Date().toISOString().slice(0,10);
+  let walks = [];
+  try {
+    const snap = await db.collection('morningWalks').where('date','==',todayStr).get();
+    walks = snap.docs.map(d => ({...d.data(), _id: d.id}));
+  } catch(e) { console.error(e); }
+  const walkMap = {};
+  walks.forEach(w => { const k=w.farm+'-'+w.house; if (!walkMap[k]||w.ts>walkMap[k].ts) walkMap[k]=w; });
+  const farms = [{name:'Hegins',houses:8},{name:'Danville',houses:5}];
+  const totalBarns = 13, checked = Object.keys(walkMap).length, flagged = walks.filter(w=>w.flags&&w.flags.length>0).length, pct = Math.round(checked/totalBarns*100);
+  const issues = [];
+  let farmsHtml = '';
+  farms.forEach(({name, houses}) => {
+    let cells = '';
+    for (let h=1; h<=houses; h++) {
+      const k=name+'-'+h, walk=walkMap[k], hasFlag=walk&&walk.flags&&walk.flags.length>0;
+      let bg,bc,icon,sub;
+      if (!walk)        { bg='#080d1a';bc='#1e3a6a';icon='&mdash;';sub=''; }
+      else if (hasFlag) { bg='#2a1a1a';bc='#e53e3e';icon='&#x26a0;';sub=walk.employee||'?'; issues.push({farm:name,house:h,issue:walk.flags.join('; ')}); }
+      else              { bg='#0d2a4a';bc='#4a90d9';icon='&#x2713;';sub=walk.employee||'?'; }
+      const psiBad = walk&&(walk.waterPSI<10||walk.waterPSI>60);
+      const psiLine = walk ? '<div style="font-size:8px;color:'+(psiBad?'#e53e3e':'#4a90d9')+';margin-top:2px;">'+walk.waterPSI+' PSI</div>' : '';
+      cells += '<div onclick="openMorningWalk(\''+name+'\','+h+')" style="background:'+bg+';border:2px solid '+bc+';border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;"><div style="font-size:8px;color:#3a5a8a;letter-spacing:1px;font-family:\'IBM Plex Mono\',monospace;">H'+h+'</div><div style="font-size:20px;font-weight:700;color:'+bc+';line-height:1.3;">'+icon+'</div><div style="font-size:8px;color:#5a7aaa;font-family:\'IBM Plex Mono\',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:54px;margin:1px auto 0;">'+sub+'</div>'+psiLine+'</div>';
+    }
+    farmsHtml += '<div style="margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;color:#6a90c0;margin-bottom:8px;">&#x1f4cd; '+name+'</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'+cells+'</div></div>';
+  });
+  _mwTabIssues = issues;
+  const issuesHtml = issues.length>0
+    ? '<div style="background:#1a0a0a;border:1px solid #5a2a2a;border-radius:12px;padding:14px;margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#e53e3e;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">&#x26a0; '+issues.length+' Issue'+(issues.length>1?'s':'')+' Found</div>'+issues.map(i=>'<div style="font-size:11px;color:#c0604a;font-family:\'IBM Plex Mono\',monospace;padding:4px 0;border-bottom:1px solid #2a1010;">'+i.farm+' Barn '+i.house+' &mdash; '+i.issue+'</div>').join('')+'<button onclick="mwTabCreateWOs()" style="margin-top:12px;width:100%;padding:10px;background:#5a1010;border:1px solid #e53e3e;border-radius:8px;color:#e53e3e;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;">&#x1f527; Create Must-Fix WOs</button></div>'
+    : '<div style="background:#080d1a;border:1px solid #1e3a6a;border-radius:12px;padding:12px;margin-bottom:16px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#4a90d9;">&#x2705; No issues found for today</div>';
+  const recentHtml = walks.length>0
+    ? '<div style="background:#080d1a;border:1px solid #1e3a6a;border-radius:12px;padding:14px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#3a6aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Today\'s Submissions</div>'+walks.sort((a,b)=>b.ts-a.ts).map(w=>'<div style="padding:8px 0;border-bottom:1px solid #0d1f3a;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#f0ead8;">'+w.farm+' Barn '+w.house+' <span style="color:'+(w.flags&&w.flags.length?'#e53e3e':'#4a90d9')+';font-size:10px;">'+(w.flags&&w.flags.length?'&#x26a0; '+w.flags.length+' flag(s)':'&#x2713; OK')+'</span></div><div style="font-size:10px;color:#3a5a8a;margin-top:2px;">'+(w.employee||'Unknown')+' &middot; '+(w.time||'')+' &middot; '+(w.temp||'&mdash;')+'&deg;F</div></div><div style="font-size:10px;color:#3a6aaa;font-family:\'IBM Plex Mono\',monospace;">PSI: '+(w.waterPSI||'&mdash;')+'</div></div>').join('')+'</div>'
+    : '';
+  el.innerHTML = '<div style="background:#080d1a;border:1px solid #1e3a6a;border-radius:12px;padding:14px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(pct>=80?'#4a90d9':pct>=50?'#d69e2e':'#e53e3e')+';">'+checked+'/'+totalBarns+'</div><div style="font-size:9px;color:#3a5a8a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Walked</div></div><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(flagged>0?'#e53e3e':'#4a90d9')+';">'+flagged+'</div><div style="font-size:9px;color:#3a5a8a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Flagged</div></div><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(pct>=80?'#4a90d9':pct>=50?'#d69e2e':'#e53e3e')+';">'+pct+'%</div><div style="font-size:9px;color:#3a5a8a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Coverage</div></div></div>'+issuesHtml+farmsHtml+recentHtml;
+}
+
+async function mwTabCreateWOs() {
+  if (!_mwTabIssues.length) return;
+  for (const iss of _mwTabIssues) {
+    try { await createMustFixWO('MW \u2014 '+iss.farm+' Barn '+iss.house, iss.issue, iss.farm, iss.house, 'urgent'); } catch(e) {}
+  }
+  renderProdMW();
+}
+
+// ── Layer Service Report Tab ─────────────────
+
+async function renderProdLSR() {
+  const el = document.getElementById('prod-sec-lsr');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:#7a6030;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">Loading\u2026</div>';
+  const weekAgo = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+  let reports = [];
+  try {
+    const snap = await db.collection('layerServiceReports').where('date','>=',weekAgo).orderBy('date','desc').get();
+    reports = snap.docs.map(d => ({...d.data(), _id: d.id}));
+  } catch(e) { console.error(e); }
+  const lsrMap = {};
+  reports.forEach(r => { const k=r.farm+'-'+r.house; if (!lsrMap[k]||r.ts>lsrMap[k].ts) lsrMap[k]=r; });
+  const farms = [{name:'Hegins',houses:8},{name:'Danville',houses:5}];
+  const lsrIssues = [];
+  let farmsHtml = '';
+  farms.forEach(({name, houses}) => {
+    let cells = '';
+    for (let h=1; h<=houses; h++) {
+      const k=name+'-'+h, rpt=lsrMap[k], daysOld=rpt?Math.floor((Date.now()-rpt.ts)/86400000):null;
+      const overdue = daysOld===null||daysOld>7;
+      const bc = !rpt?'#4a3800':daysOld<=3?'#4caf50':daysOld<=7?'#d69e2e':'#e53e3e';
+      const bg = !rpt?'#1a1200':daysOld<=3?'#0f2a0f':daysOld<=7?'#1a1200':'#1a0a0a';
+      const label = !rpt?'&mdash;':daysOld===0?'Today':daysOld+'d ago';
+      if (overdue) lsrIssues.push({farm:name,house:h,issue:rpt?'LSR overdue ('+daysOld+'d ago)':'No LSR this week'});
+      cells += '<div onclick="openLayerServiceReport(\''+name+'\',\''+h+'\')" style="background:'+bg+';border:2px solid '+bc+';border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;"><div style="font-size:8px;color:#7a6030;letter-spacing:1px;font-family:\'IBM Plex Mono\',monospace;">H'+h+'</div><div style="font-size:13px;font-weight:700;color:'+bc+';line-height:1.4;">'+label+'</div><div style="font-size:8px;color:#7a6030;font-family:\'IBM Plex Mono\',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:54px;margin:1px auto 0;">'+(rpt?(rpt.tech||'?'):'none')+'</div></div>';
+    }
+    farmsHtml += '<div style="margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;color:#b09040;margin-bottom:8px;">&#x1f4cd; '+name+'</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'+cells+'</div></div>';
+  });
+  const lsrIssuesHtml = lsrIssues.length>0
+    ? '<div style="background:#1a1000;border:1px solid #5a4000;border-radius:12px;padding:14px;margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#d69e2e;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">&#x26a0; '+lsrIssues.length+' LSR'+(lsrIssues.length>1?'s':'')+' Overdue</div>'+lsrIssues.slice(0,10).map(i=>'<div style="font-size:11px;color:#b07a20;font-family:\'IBM Plex Mono\',monospace;padding:4px 0;border-bottom:1px solid #2a1800;">'+i.farm+' Barn '+i.house+' &mdash; '+i.issue+'</div>').join('')+'</div>'
+    : '<div style="background:#0f1a00;border:1px solid #3a3000;border-radius:12px;padding:12px;margin-bottom:16px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#d69e2e;">&#x2705; All barns have a current LSR this week</div>';
+  const recentHtml = reports.length>0
+    ? '<div style="background:#0f1400;border:1px solid #3a3000;border-radius:12px;padding:14px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#8a7030;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Recent Reports (7 days)</div>'+reports.slice(0,10).map(r=>'<div style="padding:8px 0;border-bottom:1px solid #1a1800;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#f0ead8;">'+r.farm+' Barn '+r.house+'</div><div style="font-size:10px;color:#6a5820;margin-top:2px;">'+(r.tech||'Unknown')+' &middot; '+(r.date||'')+'</div></div><div style="font-size:10px;color:#8a7030;font-family:\'IBM Plex Mono\',monospace;">'+(r.eggProduction||'&mdash;')+' eggs</div></div>').join('')+'</div>'
+    : '';
+  el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#8a7030;letter-spacing:2px;text-transform:uppercase;">Layer Service Reports</div><button onclick="openLayerServiceReport()" style="padding:8px 14px;background:#1a1400;border:1px solid #d69e2e;border-radius:8px;color:#d69e2e;font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;cursor:pointer;">+ New Report</button></div>'+lsrIssuesHtml+farmsHtml+recentHtml;
+}
+
