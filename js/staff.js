@@ -141,13 +141,20 @@ async function addStaff() {
   const btn = document.getElementById('staff-add-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
 
+  const errEl = document.getElementById('staff-add-error');
+  if (errEl) errEl.style.display = 'none';
+
   try {
     await db.collection('staff').add({ name, role: role||'Technician', farm: farm||'', phone, active: true, ts: Date.now() });
     document.getElementById('staff-new-name').value  = '';
     document.getElementById('staff-new-phone').value = '';
     document.getElementById('staff-add-result').style.display = 'block';
     setTimeout(() => { document.getElementById('staff-add-result').style.display = 'none'; }, 2000);
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) {
+    console.error('addStaff error:', e);
+    if (errEl) { errEl.textContent = '⚠ ' + e.message; errEl.style.display = 'block'; }
+    else alert('Error: ' + e.message);
+  }
 
   btn.disabled = false; btn.textContent = '+ Add';
 }
