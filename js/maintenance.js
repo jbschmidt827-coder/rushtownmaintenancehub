@@ -1667,15 +1667,10 @@ function goRptSection(sec) {
     if (btn) btn.classList.toggle('active', s === sec);
   });
   if (sec === 'maint') renderReports();
-  else {
-    const el = document.getElementById('rpt-sec-' + sec);
-    if (el && !el.dataset.loaded) {
-      el.innerHTML = '<div style="padding:30px;text-align:center;color:#aaa;font-family:\'IBM Plex Mono\',monospace;">' +
-        {prod:'🏭 Production Reports',pkg:'📦 Packaging Reports',ship:'🚚 Shipping Reports',feed:'🌾 Feed Mill Reports'}[sec] +
-        ' — coming soon</div>';
-      el.dataset.loaded = '1';
-    }
-  }
+  else if (sec === 'prod')  renderRptProd();
+  else if (sec === 'pkg')   renderRptPkg();
+  else if (sec === 'ship')  renderRptShip();
+  else if (sec === 'feed')  renderRptFeed();
 }
 
 function reportRange(days, btn) {
@@ -1683,6 +1678,195 @@ function reportRange(days, btn) {
   document.querySelectorAll('#panel-reports .pill').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   if (_rptSection === 'maint') renderReports();
+}
+
+// ═══════════════════════════════════════════
+// REPORTS — PRODUCTION
+// ═══════════════════════════════════════════
+async function renderRptProd() {
+  const el = document.getElementById('rpt-sec-prod');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#aaa;font-size:12px;font-family:\'IBM Plex Mono\',monospace;padding:8px 0;">Loading…</div>';
+  const cutoff = new Date(Date.now() - reportDays * 86400000);
+  try {
+    const [walksSnap, eggSnap, lsrSnap] = await Promise.all([
+      db.collection('barnWalks').where('ts','>=',cutoff).get(),
+      db.collection('opsEggProduction').where('date','>=',cutoff.toISOString().slice(0,10)).get(),
+      db.collection('layerServiceReports').where('ts','>=',cutoff).get(),
+    ]);
+    const walks = walksSnap.docs.map(d=>d.data());
+    const eggs  = eggSnap.docs.map(d=>d.data());
+    const lsrs  = lsrSnap.docs.map(d=>d.data());
+    const totalEggs = eggs.reduce((s,r)=>s+(Number(r.eggs)||0),0);
+    const flagged   = walks.filter(w=>w.flags&&w.flags.length>0).length;
+    const farms = ['Hegins','Danville'];
+    const farmRows = farms.map(farm => {
+      const fw = walks.filter(w=>w.farm===farm).length;
+      const fe = eggs.filter(e=>e.farm===farm).reduce((s,r)=>s+(Number(r.eggs)||0),0);
+      const fl = lsrs.filter(l=>l.farm===farm).length;
+      return `<tr style="border-bottom:1px solid #1a2a1a;">
+        <td style="padding:8px 6px;color:#f0ead8;font-weight:700;">📍 ${farm}</td>
+        <td style="padding:8px 6px;color:#7ab07a;text-align:center;">${fw}</td>
+        <td style="padding:8px 6px;color:#d69e2e;text-align:center;">${fmtNum(fe)}</td>
+        <td style="padding:8px 6px;color:#a78bfa;text-align:center;">${fl}</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
+        <div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:26px;font-weight:700;color:#4caf50;font-family:'IBM Plex Mono',monospace;">${walks.length}</div>
+          <div style="font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Barn Walks</div>
+        </div>
+        <div style="background:#1a1400;border:1px solid #4a3000;border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:26px;font-weight:700;color:#d69e2e;font-family:'IBM Plex Mono',monospace;">${fmtNum(totalEggs)}</div>
+          <div style="font-size:9px;color:#7a6020;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Total Eggs</div>
+        </div>
+        <div style="background:${flagged>0?'#2a0a0a':'#0f2a0f'};border:1px solid ${flagged>0?'#5a1a1a':'#2a5a2a'};border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:26px;font-weight:700;color:${flagged>0?'#e53e3e':'#4caf50'};font-family:'IBM Plex Mono',monospace;">${flagged}</div>
+          <div style="font-size:9px;color:#5a5a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Flagged Walks</div>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+        <thead><tr style="border-bottom:1px solid #2a4a2a;">
+          <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Farm</th>
+          <th style="padding:8px 6px;color:#5a8a5a;text-align:center;">Walks</th>
+          <th style="padding:8px 6px;color:#5a8a5a;text-align:center;">Eggs</th>
+          <th style="padding:8px 6px;color:#5a8a5a;text-align:center;">LSRs</th>
+        </tr></thead>
+        <tbody>${farmRows}</tbody>
+      </table>`;
+  } catch(e) { el.innerHTML = '<div style="color:#e53e3e;padding:16px;">Error: '+e.message+'</div>'; }
+}
+
+// ═══════════════════════════════════════════
+// REPORTS — PACKAGING
+// ═══════════════════════════════════════════
+async function renderRptPkg() {
+  const el = document.getElementById('rpt-sec-pkg');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#aaa;font-size:12px;font-family:\'IBM Plex Mono\',monospace;padding:8px 0;">Loading…</div>';
+  const cutoff = new Date(Date.now() - reportDays * 86400000);
+  try {
+    const [packSnap, dtSnap, wasteSnap] = await Promise.all([
+      db.collection('opsPacking').where('ts','>=',cutoff).get().catch(()=>({docs:[]})),
+      db.collection('pkgDowntime').where('ts','>=',cutoff).get().catch(()=>({docs:[]})),
+      db.collection('pkgWaste').where('ts','>=',cutoff).get().catch(()=>({docs:[]})),
+    ]);
+    const packs  = packSnap.docs.map(d=>d.data());
+    const dts    = dtSnap.docs.map(d=>d.data());
+    const wastes = wasteSnap.docs.map(d=>d.data());
+    const totalCases   = packs.reduce((s,r)=>s+(Number(r.cases)||Number(r.totalCases)||0),0);
+    const totalDtMin   = dts.reduce((s,r)=>s+(Number(r.duration)||Number(r.durationMin)||0),0);
+    const totalWaste   = wastes.reduce((s,r)=>s+(Number(r.qty)||Number(r.count)||0),0);
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
+        <div style="background:#1a1a0a;border:1px solid #4a4a00;border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:26px;font-weight:700;color:#d69e2e;font-family:'IBM Plex Mono',monospace;">${fmtNum(totalCases)}</div>
+          <div style="font-size:9px;color:#7a7020;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Cases Packed</div>
+        </div>
+        <div style="background:${totalDtMin>120?'#2a0a0a':'#0f1a0f'};border:1px solid ${totalDtMin>120?'#5a1a1a':'#2a4a2a'};border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:26px;font-weight:700;color:${totalDtMin>120?'#e53e3e':'#4caf50'};font-family:'IBM Plex Mono',monospace;">${totalDtMin>=60?(totalDtMin/60).toFixed(1)+'h':totalDtMin+'m'}</div>
+          <div style="font-size:9px;color:#5a5a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Downtime</div>
+        </div>
+        <div style="background:#1a0a0a;border:1px solid #4a2a2a;border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:26px;font-weight:700;color:#f87171;font-family:'IBM Plex Mono',monospace;">${totalWaste}</div>
+          <div style="font-size:9px;color:#7a4040;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Waste Events</div>
+        </div>
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5a8a5a;margin-bottom:8px;">${packs.length} packing sessions · ${dts.length} downtime events · ${wastes.length} waste entries in last ${reportDays} days</div>`;
+  } catch(e) { el.innerHTML = '<div style="color:#e53e3e;padding:16px;">Error: '+e.message+'</div>'; }
+}
+
+// ═══════════════════════════════════════════
+// REPORTS — SHIPPING
+// ═══════════════════════════════════════════
+async function renderRptShip() {
+  const el = document.getElementById('rpt-sec-ship');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#aaa;font-size:12px;font-family:\'IBM Plex Mono\',monospace;padding:8px 0;">Loading…</div>';
+  const cutoff = new Date(Date.now() - reportDays * 86400000);
+  try {
+    const snap = await db.collection('opsShipping').where('ts','>=',cutoff).get().catch(()=>({docs:[]}));
+    const loads = snap.docs.map(d=>d.data());
+    const completed = loads.filter(l=>l.status==='completed'||l.status==='delivered').length;
+    const pending   = loads.filter(l=>l.status==='pending'||l.status==='in-transit').length;
+    const totalCases = loads.reduce((s,l)=>s+(Number(l.cases)||Number(l.totalCases)||0),0);
+    const rows = loads.slice(0,15).map(l => {
+      const ts = l.ts?.toMillis?l.ts.toMillis():(typeof l.ts==='number'?l.ts:null);
+      const date = ts ? new Date(ts).toLocaleDateString() : (l.date||'—');
+      const statusColor = l.status==='completed'||l.status==='delivered'?'#4caf50':l.status==='pending'?'#d69e2e':'#aaa';
+      return `<tr style="border-bottom:1px solid #1a1a2a;">
+        <td style="padding:8px 6px;color:#f0ead8;">${date}</td>
+        <td style="padding:8px 6px;color:#9b59b6;">${l.driver||l.carrier||'—'}</td>
+        <td style="padding:8px 6px;color:#aaa;">${l.destination||l.farm||'—'}</td>
+        <td style="padding:8px 6px;color:#d69e2e;">${l.cases||'—'}</td>
+        <td style="padding:8px 6px;color:${statusColor};font-weight:700;">${(l.status||'—').toUpperCase()}</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
+        <div style="background:#0a0a1a;border:1px solid #2a2a5a;border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:26px;font-weight:700;color:#9b59b6;font-family:'IBM Plex Mono',monospace;">${loads.length}</div>
+          <div style="font-size:9px;color:#5a5a8a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Total Loads</div>
+        </div>
+        <div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:26px;font-weight:700;color:#4caf50;font-family:'IBM Plex Mono',monospace;">${completed}</div>
+          <div style="font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Delivered</div>
+        </div>
+        <div style="background:#1a1400;border:1px solid #4a3000;border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:26px;font-weight:700;color:#d69e2e;font-family:'IBM Plex Mono',monospace;">${fmtNum(totalCases)}</div>
+          <div style="font-size:9px;color:#7a6020;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Cases Shipped</div>
+        </div>
+      </div>
+      ${rows ? `<table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+        <thead><tr style="border-bottom:1px solid #2a2a4a;">
+          <th style="padding:8px 6px;color:#7a7aaa;text-align:left;">Date</th>
+          <th style="padding:8px 6px;color:#7a7aaa;text-align:left;">Driver</th>
+          <th style="padding:8px 6px;color:#7a7aaa;text-align:left;">Destination</th>
+          <th style="padding:8px 6px;color:#7a7aaa;text-align:left;">Cases</th>
+          <th style="padding:8px 6px;color:#7a7aaa;text-align:left;">Status</th>
+        </tr></thead><tbody>${rows}</tbody></table>` :
+        '<div style="text-align:center;padding:20px;color:#888;font-family:\'IBM Plex Mono\',monospace;">No shipments in this period.</div>'}`;
+  } catch(e) { el.innerHTML = '<div style="color:#e53e3e;padding:16px;">Error: '+e.message+'</div>'; }
+}
+
+// ═══════════════════════════════════════════
+// REPORTS — FEED MILL
+// ═══════════════════════════════════════════
+async function renderRptFeed() {
+  const el = document.getElementById('rpt-sec-feed');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#aaa;font-size:12px;font-family:\'IBM Plex Mono\',monospace;padding:8px 0;">Loading…</div>';
+  const cutoff = new Date(Date.now() - reportDays * 86400000);
+  const cutoffStr = cutoff.toISOString().slice(0,10);
+  try {
+    const [delivSnap, madeSnap, medSnap] = await Promise.all([
+      db.collection('feedDeliveries').where('date','>=',cutoffStr).get().catch(()=>({docs:[]})),
+      db.collection('feedMade').where('date','>=',cutoffStr).get().catch(()=>({docs:[]})),
+      db.collection('feedMedications').where('date','>=',cutoffStr).get().catch(()=>({docs:[]})),
+    ]);
+    const deliveries = delivSnap.docs.map(d=>d.data());
+    const made       = madeSnap.docs.map(d=>d.data());
+    const meds       = medSnap.docs.map(d=>d.data());
+    const totalDelivTons = deliveries.reduce((s,r)=>s+(Number(r.tons)||Number(r.amount)||0),0);
+    const totalMadeTons  = made.reduce((s,r)=>s+(Number(r.tons)||Number(r.amount)||0),0);
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
+        <div style="background:#1a1205;border:1px solid #4a3a00;border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:26px;font-weight:700;color:#e67e22;font-family:'IBM Plex Mono',monospace;">${deliveries.length}</div>
+          <div style="font-size:9px;color:#7a5a20;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Deliveries</div>
+        </div>
+        <div style="background:#0f1a0f;border:1px solid #2a4a2a;border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:26px;font-weight:700;color:#4caf50;font-family:'IBM Plex Mono',monospace;">${totalMadeTons.toFixed(1)}t</div>
+          <div style="font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Feed Made</div>
+        </div>
+        <div style="background:#0a1020;border:1px solid #1a2a50;border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:26px;font-weight:700;color:#3b82f6;font-family:'IBM Plex Mono',monospace;">${meds.length}</div>
+          <div style="font-size:9px;color:#4a6a9a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Medication Events</div>
+        </div>
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5a8a5a;">${totalDelivTons.toFixed(1)}t delivered · ${made.length} production runs · ${meds.length} medication entries in last ${reportDays} days</div>`;
+  } catch(e) { el.innerHTML = '<div style="color:#e53e3e;padding:16px;">Error: '+e.message+'</div>'; }
 }
 
 // ═══════════════════════════════════════════
