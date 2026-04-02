@@ -1126,7 +1126,9 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <button class="prod-tab-btn active" id="prod-tab-overview" onclick="goProdSection('overview')">📋 Overview</button>
     <button class="prod-tab-btn" id="prod-tab-check" onclick="goProdSection('check')">🐓 Daily Check</button>
     <button class="prod-tab-btn" id="prod-tab-mw" onclick="goProdSection('mw')">☀️ Morning Walk</button>
-    <button class="prod-tab-btn" id="prod-tab-lsr" onclick="goProdSection('lsr')">🐔 Layer Service</button>
+    <button class="prod-tab-btn" id="prod-tab-trends" onclick="goProdSection('trends')">📈 Egg Trends</button>
+    <button class="prod-tab-btn" id="prod-tab-history" onclick="goProdSection('history')">📂 Walk History</button>
+    <button class="prod-tab-btn" id="prod-tab-biosec" onclick="goProdSection('biosec')">🦠 Biosecurity</button>
   </div>
 
   <!-- Overview Section (existing content) -->
@@ -1155,35 +1157,21 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div style="font-size:12px;color:#a0a05a;margin-top:4px;" data-i18n="prod.summary_sub">All barn checks, mortality, flags & morning walks</div>
       </div>
     </button>
-    <button onclick="openFlockSection()" style="width:100%;padding:24px 20px;background:#1a0d2e;border:2px solid #7c3aed;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
-      <span style="font-size:40px;line-height:1;">🐣</span>
-      <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;" data-i18n="prod.flock">Flock Ages</div>
-        <div style="font-size:12px;color:#a78bfa;margin-top:4px;" data-i18n="prod.flock_sub">Track placement dates, age in weeks & depop timeline</div>
-      </div>
-    </button>
-    <button onclick="openBioSection()" style="width:100%;padding:24px 20px;background:#0a1f0a;border:2px solid #dc2626;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+    <button onclick="goProdSection('biosec')" style="width:100%;padding:24px 20px;background:#0a1f0a;border:2px solid #dc2626;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
       <span style="font-size:40px;line-height:1;">🦠</span>
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;" data-i18n="prod.biosec">Biosecurity Log</div>
         <div style="font-size:12px;color:#f87171;margin-top:4px;" data-i18n="prod.biosec_sub">Visitor & entry log, sanitation records, risk tracking</div>
       </div>
     </button>
-    <button onclick="openLayerServiceReport()" style="width:100%;padding:24px 20px;background:#0d1a2a;border:2px solid #3a6aaa;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
-      <span style="font-size:40px;line-height:1;">🐔</span>
-      <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Layer Service Report</div>
-        <div style="font-size:12px;color:#6a90d9;margin-top:4px;">Weekly barn service check — temps, fans, feed, eggs, biosec</div>
-      </div>
-    </button>
-    <button onclick="openBarnWalkHistory()" style="width:100%;padding:24px 20px;background:#0f1a0f;border:2px solid #3a6a3a;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+    <button onclick="goProdSection('history')" style="width:100%;padding:24px 20px;background:#0f1a0f;border:2px solid #3a6a3a;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
       <span style="font-size:40px;line-height:1;">📂</span>
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Walk History</div>
         <div style="font-size:12px;color:#7ab07a;margin-top:4px;">Browse all past barn walks — filter by farm, see flags</div>
       </div>
     </button>
-    <button onclick="openEggTrends()" style="width:100%;padding:24px 20px;background:#1a2a0a;border:2px solid #5a8a2a;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+    <button onclick="goProdSection('trends')" style="width:100%;padding:24px 20px;background:#1a2a0a;border:2px solid #5a8a2a;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
       <span style="font-size:40px;line-height:1;">📈</span>
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Egg Trends</div>
@@ -1199,8 +1187,14 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <!-- Morning Walk Tab -->
   <div id="prod-sec-mw" style="display:none;"></div>
 
-  <!-- Layer Service Report Tab -->
-  <div id="prod-sec-lsr" style="display:none;"></div>
+  <!-- Egg Trends Tab -->
+  <div id="prod-sec-trends" style="display:none;"></div>
+
+  <!-- Walk History Tab -->
+  <div id="prod-sec-history" style="display:none;"></div>
+
+  <!-- Biosecurity Tab -->
+  <div id="prod-sec-biosec" style="display:none;"></div>
 
 </div>
 
@@ -1381,6 +1375,13 @@ body { min-height: 100dvh; overflow-x: hidden; }
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Layer Service Report</div>
         <div style="font-size:12px;color:#d69e2e;margin-top:4px;">Weekly service check · Temps · Fans · Eggs</div>
+      </div>
+    </button>
+    <button onclick="openFlockSection()" style="width:100%;padding:24px 20px;background:#1a0d2e;border:2px solid #7c3aed;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">🐣</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Flock Ages</div>
+        <div style="font-size:12px;color:#a78bfa;margin-top:4px;">Track placement dates, age in weeks & depop timeline</div>
       </div>
     </button>
   </div>

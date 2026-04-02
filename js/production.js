@@ -1103,15 +1103,84 @@ async function submitLayerServiceReport() {
 // ── Production Sub-Tab Switcher ─────────────
 
 function goProdSection(sec) {
-  // check/mw/lsr are now top-level tabs — redirect there
+  // check/mw are top-level panels
   if (sec === 'check') { go('check'); return; }
   if (sec === 'mw')    { go('mw');    return; }
-  if (sec === 'lsr')   { go('lsr');   return; }
-  // overview stays inside production
-  const el  = document.getElementById('prod-sec-overview');
-  const btn = document.getElementById('prod-tab-overview');
-  if (el)  el.style.display = 'block';
-  if (btn) btn.classList.add('active');
+
+  const sections = ['overview','check','mw','trends','history','biosec'];
+  sections.forEach(s => {
+    const el  = document.getElementById('prod-sec-' + s);
+    const btn = document.getElementById('prod-tab-' + s);
+    if (el)  el.style.display = s === sec ? 'block' : 'none';
+    if (btn) btn.classList.toggle('active', s === sec);
+  });
+
+  if (sec === 'trends')  renderProdEggTrends();
+  if (sec === 'history') renderProdWalkHistory();
+  if (sec === 'biosec')  renderProdBiosec();
+}
+
+function renderProdEggTrends() {
+  const el = document.getElementById('prod-sec-trends');
+  if (!el) return;
+  el.innerHTML = '<div style="padding:20px;text-align:center;color:#a0c060;font-family:\'IBM Plex Mono\',monospace;">📈 Egg Trends — coming soon</div>';
+}
+
+function renderProdWalkHistory() {
+  const el = document.getElementById('prod-sec-history');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#aaa;font-family:\'IBM Plex Mono\',monospace;font-size:12px;margin-bottom:12px;">Loading walk history…</div>';
+  const farms = [{name:'Hegins',houses:8},{name:'Danville',houses:5}];
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+  db.collection('barnWalks').where('ts','>=',cutoff).orderBy('ts','desc').get().then(snap => {
+    if (snap.empty) { el.innerHTML = '<div style="color:#888;padding:20px;text-align:center;">No walks in the last 30 days.</div>'; return; }
+    const rows = snap.docs.map(d => {
+      const r = d.data();
+      const date = r.ts ? new Date(r.ts.seconds*1000).toLocaleDateString() : '—';
+      const flags = r.flags && r.flags.length ? '<span style="color:#e53e3e;">⚑ '+r.flags.length+'</span>' : '<span style="color:#4caf50;">✓</span>';
+      return `<tr style="border-bottom:1px solid #1a2a1a;">
+        <td style="padding:8px 6px;color:#f0ead8;">${date}</td>
+        <td style="padding:8px 6px;color:#7ab07a;">${r.farm||'—'}</td>
+        <td style="padding:8px 6px;color:#aaa;">H${r.house||'—'}</td>
+        <td style="padding:8px 6px;">${flags}</td>
+        <td style="padding:8px 6px;color:#aaa;">${r.employee||'—'}</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+      <thead><tr style="border-bottom:1px solid #2a4a2a;">
+        <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Date</th>
+        <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Farm</th>
+        <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">House</th>
+        <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Flags</th>
+        <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Employee</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+  }).catch(e => { el.innerHTML = '<div style="color:#e53e3e;padding:20px;">Error: '+e.message+'</div>'; });
+}
+
+function renderProdBiosec() {
+  const el = document.getElementById('prod-sec-biosec');
+  if (!el) return;
+  el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f87171;">🦠 Biosecurity Log</span>
+    <button onclick="openBioSection()" style="padding:8px 16px;background:#1a0a0a;border:1px solid #dc2626;border-radius:8px;color:#f87171;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;">+ New Entry</button>
+  </div>
+  <div id="prod-biosec-list" style="color:#aaa;font-size:12px;font-family:'IBM Plex Mono',monospace;">Loading…</div>`;
+  db.collection('biosecLogs').orderBy('ts','desc').limit(20).get().then(snap => {
+    const listEl = document.getElementById('prod-biosec-list');
+    if (!listEl) return;
+    if (snap.empty) { listEl.innerHTML = '<div style="color:#888;padding:20px;text-align:center;">No biosecurity entries yet.</div>'; return; }
+    listEl.innerHTML = snap.docs.map(d => {
+      const r = d.data();
+      const date = r.ts ? new Date(r.ts.seconds*1000).toLocaleDateString() : '—';
+      return `<div style="background:#0a1f0a;border:1px solid #2a1a1a;border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;"><span style="color:#f0ead8;">${r.visitorName||r.type||'Entry'}</span><span style="color:#888;">${date}</span></div>
+        <div style="color:#f87171;font-size:11px;margin-top:4px;">${r.farm||''}${r.house?' H'+r.house:''} · ${r.notes||''}</div>
+      </div>`;
+    }).join('');
+  }).catch(() => {
+    const listEl = document.getElementById('prod-biosec-list');
+    if (listEl) listEl.innerHTML = '<div style="color:#888;padding:20px;text-align:center;">No entries yet.</div>';
+  });
 }
 
 async function createMustFixWO(title, desc, farm, house, priority) {
