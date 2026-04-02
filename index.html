@@ -3876,5 +3876,10 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- Global staff name datalist — populated by updateStaffDropdowns() -->
 <datalist id="staff-datalist"></datalist>
+
+<script>
+// Inject Staff card immediately — runs after all scripts load, before user interaction
+if (typeof injectLandingStaffCard === 'function') injectLandingStaffCard();
+</script>
 </body>
 </html>
