@@ -3165,6 +3165,7 @@ function goHome() {
   var fab = document.getElementById('fab-btn');
   if (fab) fab.style.display = 'none';
   updateHomeFeedStatus();
+  if (typeof renderLandingStatus === 'function') renderLandingStatus();
 }
 
 async function updateHomeFeedStatus() {

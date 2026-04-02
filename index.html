@@ -413,16 +413,15 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 /* HEADER & NAV */
 .site-header { position: sticky; top: 0; z-index: 100; }
-.header-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; }
-.nav-tabs { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; min-width: 0; }
+.header-inner { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; padding: 8px 12px; }
+.nav-tabs { display: none; }
 .nav-tab { font-size: clamp(10px, 1.4vw, 13px) !important; padding: 7px 10px !important; white-space: nowrap; }
 
-@media (max-width: 640px) {
-  .header-inner { flex-direction: column; align-items: flex-start; }
-  .nav-tabs { width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .nav-tabs::-webkit-scrollbar { display: none; }
-  .nav-tab { flex-shrink: 0; font-size: 11px !important; padding: 7px 9px !important; }
-}
+/* Sub-tab bars — scrollable on mobile */
+.prod-tab-btn { font-size: 11px !important; padding: 7px 11px !important; white-space: nowrap; flex-shrink: 0; }
+[id$="-sec-"] { overflow-x: auto; }
+#panel-reports .pill-bar, #panel-reports > div:nth-child(2) { overflow-x: auto; flex-wrap: nowrap !important; display: flex; gap: 6px; padding-bottom: 4px; scrollbar-width: none; }
+#panel-reports .pill-bar::-webkit-scrollbar { display: none; }
 
 /* MAIN CONTENT */
 .main { padding: clamp(10px, 3vw, 20px) !important; }
@@ -529,33 +528,36 @@ body { min-height: 100dvh; overflow-x: hidden; }
     <div style="display:flex;flex-direction:column;gap:12px;">
 
       <!-- Production -->
-      <button onclick="openProductionScreen()" style="width:100%;padding:22px 20px;background:#1a3a1a;border:2px solid #4caf50;border-radius:14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <button onclick="openProductionScreen()" style="width:100%;padding:18px 20px;background:#1a3a1a;border:2px solid #4caf50;border-radius:14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
         <span style="font-size:36px;line-height:1;">🏭</span>
-        <div>
+        <div style="flex:1;">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">Production</div>
           <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;letter-spacing:1px;margin-top:3px;">Barn walk · Daily checks · Feed &amp; water</div>
+          <div id="ls-prod" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:6px;"></div>
         </div>
-        <span style="margin-left:auto;font-size:20px;color:#4caf50;">→</span>
+        <span style="font-size:20px;color:#4caf50;">→</span>
       </button>
 
       <!-- Service Techs -->
-      <button onclick="enterApp('service')" style="width:100%;padding:22px 20px;background:#1a2a3a;border:2px solid #4a90d9;border-radius:14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <button onclick="enterApp('service')" style="width:100%;padding:18px 20px;background:#1a2a3a;border:2px solid #4a90d9;border-radius:14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
         <span style="font-size:36px;line-height:1;">🛠️</span>
-        <div>
+        <div style="flex:1;">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">Service Techs</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6a90d9;letter-spacing:1px;margin-top:3px;">Daily check · Layer service · Morning walk</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6a90d9;letter-spacing:1px;margin-top:3px;">Daily check · Layer service · Flock ages</div>
+          <div id="ls-service" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:6px;"></div>
         </div>
-        <span style="margin-left:auto;font-size:20px;color:#4a90d9;">→</span>
+        <span style="font-size:20px;color:#4a90d9;">→</span>
       </button>
 
       <!-- Maintenance -->
-      <button onclick="enterApp('maint')" style="width:100%;padding:22px 20px;background:#0d1f3a;border:2px solid #3b82f6;border-radius:14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <button onclick="enterApp('maint')" style="width:100%;padding:18px 20px;background:#0d1f3a;border:2px solid #3b82f6;border-radius:14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
         <span style="font-size:36px;line-height:1;">🔧</span>
-        <div>
+        <div style="flex:1;">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">Maintenance</div>
           <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;letter-spacing:1px;margin-top:3px;">Work orders · PM · Parts · Assets</div>
+          <div id="ls-maint" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:6px;"></div>
         </div>
-        <span style="margin-left:auto;font-size:20px;color:#3b82f6;">→</span>
+        <span style="font-size:20px;color:#3b82f6;">→</span>
       </button>
 
       <!-- Packaging -->
@@ -598,6 +600,17 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <span style="margin-left:auto;font-size:16px;color:#5a8a5a;">→</span>
       </button>
 
+    </div>
+
+    <!-- Quick Actions -->
+    <div style="margin-top:20px;border-top:1px solid #2a4a2a;padding-top:16px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a7a4a;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">⚡ Quick Actions</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button onclick="enterApp('maint');setTimeout(()=>openWOModal&&openWOModal(),300)" style="padding:12px 10px;background:#0d1f3a;border:1.5px solid #3b82f6;border-radius:10px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🔧 New Work Order</button>
+        <button onclick="enterApp('prod');setTimeout(()=>openECSection&&openECSection(),300)" style="padding:12px 10px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:10px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🐓 Log Barn Walk</button>
+        <button onclick="enterApp('kpi');setTimeout(()=>go('kpi'),100)" style="padding:12px 10px;background:#1a1400;border:1.5px solid #d69e2e;border-radius:10px;color:#d69e2e;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🥚 Enter Egg Data</button>
+        <button onclick="enterApp('service');setTimeout(()=>openLayerServiceReport&&openLayerServiceReport('',''),300)" style="padding:12px 10px;background:#1a0d2e;border:1.5px solid #7c3aed;border-radius:10px;color:#a78bfa;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🐔 Layer Service</button>
+      </div>
     </div>
 
   </div>

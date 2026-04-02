@@ -1,6 +1,46 @@
 // PRODUCTION PANEL RENDER
 // ═══════════════════════════════════════════
 const EGG_BIRDS_PER_BARN = 150000;
+
+// ── Landing page live status badges ──────────────────
+async function renderLandingStatus() {
+  const today = new Date().toISOString().slice(0,10);
+  const badge = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+
+  // Production: barn walk count today
+  try {
+    const snap = await db.collection('barnWalks')
+      .where('date','==',today).get().catch(() =>
+        db.collection('barnWalks').where('ts','>=', new Date(today)).get()
+      );
+    const done = snap.docs.length;
+    const total = 13;
+    const color = done >= total ? '#4caf50' : done > 0 ? '#d69e2e' : '#e53e3e';
+    badge('ls-prod', `<span style="color:${color};font-weight:700;">${done}/${total} barns checked today</span>`);
+  } catch(e) { badge('ls-prod',''); }
+
+  // Service Techs: LSRs this week
+  try {
+    const weekAgo = new Date(Date.now() - 7*86400000);
+    const snap = await db.collection('layerServiceReports').where('ts','>=',weekAgo).get();
+    const count = snap.docs.length;
+    const color = count > 0 ? '#a78bfa' : '#e53e3e';
+    badge('ls-service', `<span style="color:${color};font-weight:700;">${count} LSR${count!==1?'s':''} this week</span>`);
+  } catch(e) { badge('ls-service',''); }
+
+  // Maintenance: open work orders
+  try {
+    const snap = await db.collection('workOrders')
+      .where('status','in',['open','in-progress']).get();
+    const count = snap.docs.length;
+    const urgent = snap.docs.filter(d => d.data().priority === 'urgent').length;
+    const color = urgent > 0 ? '#e53e3e' : count > 0 ? '#d69e2e' : '#4caf50';
+    const txt = count === 0 ? '✓ No open work orders'
+      : urgent > 0 ? `${urgent} urgent · ${count} total open`
+      : `${count} open work order${count!==1?'s':''}`;
+    badge('ls-maint', `<span style="color:${color};font-weight:700;">${txt}</span>`);
+  } catch(e) { badge('ls-maint',''); }
+}
 const EGG_KPI_RATE       = 0.90;
 const EGG_TARGET         = Math.round(EGG_BIRDS_PER_BARN * EGG_KPI_RATE); // 135,000
 
