@@ -1456,8 +1456,9 @@ body { min-height: 100dvh; overflow-x: hidden; }
   <div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;">
     <button class="prod-tab-btn active" id="staff-tab-dir"   onclick="goStaffSection('dir')">👥 Directory</button>
     <button class="prod-tab-btn"        id="staff-tab-add"   onclick="goStaffSection('add')">➕ Add Employee</button>
-    <button class="prod-tab-btn"        id="staff-tab-sched" onclick="goStaffSection('sched')">📅 Schedule</button>
-    <button class="prod-tab-btn"        id="staff-tab-certs" onclick="goStaffSection('certs')">🏆 Certifications</button>
+    <button class="prod-tab-btn"        id="staff-tab-sched"   onclick="goStaffSection('sched')">📅 Schedule</button>
+    <button class="prod-tab-btn"        id="staff-tab-certs"   onclick="goStaffSection('certs')">🏆 Certifications</button>
+    <button class="prod-tab-btn"        id="staff-tab-onboard" onclick="goStaffSection('onboard')">📋 Onboarding</button>
   </div>
 
   <!-- Directory Tab -->
@@ -1527,6 +1528,17 @@ body { min-height: 100dvh; overflow-x: hidden; }
         <div id="staff-add-error" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#e53e3e;margin-top:8px;word-break:break-word;"></div>
       </div>
     </div>
+  </div>
+
+  <!-- Onboarding Tab -->
+  <div id="staff-sec-onboard" style="display:none;">
+    <div class="stats-grid g3" id="onboard-stats" style="margin-bottom:18px;"></div>
+    <div id="onboard-filter-bar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="pill active" onclick="onboardFilter('all',this)">All</button>
+      <button class="pill" onclick="onboardFilter('incomplete',this)">⏳ In Progress</button>
+      <button class="pill" onclick="onboardFilter('complete',this)">✅ Complete</button>
+    </div>
+    <div id="onboard-list"></div>
   </div>
 
   <!-- Schedule Tab -->
@@ -3920,19 +3932,19 @@ body { min-height: 100dvh; overflow-x: hidden; }
   </div>
 </div>
 
-<script src="js/core.js?v=20260402"></script>
-<script src="js/dashboard.js?v=20260402"></script>
-<script src="js/maintenance.js?v=20260402"></script>
-<script src="js/packaging.js?v=20260402"></script>
-<script src="js/shipping.js?v=20260402"></script>
-<script src="js/production.js?v=20260402"></script>
-<script src="js/feed-mill.js?v=20260402"></script>
-<script src="js/egg-quality.js?v=20260402"></script>
-<script src="js/biosecurity.js?v=20260402"></script>
-<script src="js/scheduling.js?v=20260402"></script>
-<script src="js/tv-scoreboard.js?v=20260402"></script>
-<script src="js/staff.js?v=20260402"></script>
-<script src="js/enhancements.js?v=20260402"></script>
+<script src="js/core.js?v=20260403"></script>
+<script src="js/dashboard.js?v=20260403"></script>
+<script src="js/maintenance.js?v=20260403"></script>
+<script src="js/packaging.js?v=20260403"></script>
+<script src="js/shipping.js?v=20260403"></script>
+<script src="js/production.js?v=20260403"></script>
+<script src="js/feed-mill.js?v=20260403"></script>
+<script src="js/egg-quality.js?v=20260403"></script>
+<script src="js/biosecurity.js?v=20260403"></script>
+<script src="js/scheduling.js?v=20260403"></script>
+<script src="js/tv-scoreboard.js?v=20260403"></script>
+<script src="js/staff.js?v=20260403"></script>
+<script src="js/enhancements.js?v=20260403"></script>
 
 <!-- Global staff name datalist — populated by updateStaffDropdowns() -->
 <datalist id="staff-datalist"></datalist>

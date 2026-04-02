@@ -1035,6 +1035,7 @@ async function initApp() {
     startPartsDefsListener();
     startStaffListener();
     startStaffCertsListener();
+    startStaffOnboardListener();
     await loadOpsData();
     startOpsListeners();
 

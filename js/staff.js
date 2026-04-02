@@ -164,7 +164,8 @@ async function addStaff() {
   if (errEl) errEl.style.display = 'none';
 
   try {
-    await db.collection('staff').add({ name, role: role||'Technician', farm: farm||'', phone, active: true, ts: Date.now() });
+    const ref = await db.collection('staff').add({ name, role: role||'Technician', farm: farm||'', phone, active: true, ts: Date.now() });
+    await createOnboarding(ref.id, name);
     document.getElementById('staff-new-fname').value = '';
     document.getElementById('staff-new-lname').value = '';
     document.getElementById('staff-new-phone').value = '';
@@ -244,6 +245,164 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') addStaff(); });
   });
 });
+
+// ═══════════════════════════════════════════
+// ONBOARDING CHECKLIST
+// ═══════════════════════════════════════════
+let staffOnboardList = [];
+let _onboardFilter = 'all';
+
+const DEFAULT_ONBOARD_ITEMS = [
+  { id: 'orientation',  label: 'Facility orientation walkthrough' },
+  { id: 'paperwork',    label: 'HR paperwork & forms completed' },
+  { id: 'biosecurity',  label: 'Biosecurity & safety training' },
+  { id: 'ppe',          label: 'Uniform / PPE issued' },
+  { id: 'access',       label: 'Keys / access card issued' },
+  { id: 'comms',        label: 'Added to team group chat' },
+  { id: 'duties',       label: 'Job duties & expectations reviewed' },
+  { id: 'emergency',    label: 'Emergency procedures reviewed' },
+  { id: 'equipment',    label: 'Equipment training completed' },
+  { id: 'checkin',      label: 'First week check-in with manager' },
+];
+
+function startStaffOnboardListener() {
+  try {
+    db.collection('staffOnboarding').onSnapshot(
+      snap => {
+        staffOnboardList = snap.docs.map(d => ({ ...d.data(), _fbId: d.id }));
+        renderStaffOnboard();
+      },
+      err => { console.error('Onboard listener error:', err); }
+    );
+  } catch(e) { console.error('Onboard listener error:', e); }
+}
+
+async function createOnboarding(staffId, staffName) {
+  const items = DEFAULT_ONBOARD_ITEMS.map(i => ({
+    ...i, done: false, doneBy: '', doneTs: null
+  }));
+  try {
+    await db.collection('staffOnboarding').doc(staffId).set({
+      staffId, staffName, items, createdTs: Date.now(), completedTs: null
+    });
+  } catch(e) { console.error('Create onboarding error:', e); }
+}
+
+function onboardFilter(val, btn) {
+  _onboardFilter = val;
+  document.querySelectorAll('#onboard-filter-bar .pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderStaffOnboard();
+}
+
+function renderStaffOnboard() {
+  const listEl  = document.getElementById('onboard-list');
+  const statsEl = document.getElementById('onboard-stats');
+  if (!listEl) return;
+
+  const complete   = staffOnboardList.filter(o => o.items && o.items.every(i => i.done));
+  const incomplete = staffOnboardList.filter(o => o.items && !o.items.every(i => i.done));
+
+  if (statsEl) statsEl.innerHTML = `
+    <div class="stat-card"><div class="stat-num">${staffOnboardList.length}</div><div class="stat-label">Total</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#d69e2e">${incomplete.length}</div><div class="stat-label">In Progress</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#4caf50">${complete.length}</div><div class="stat-label">Complete</div></div>`;
+
+  let list = staffOnboardList;
+  if (_onboardFilter === 'complete')   list = complete;
+  if (_onboardFilter === 'incomplete') list = incomplete;
+
+  if (!list.length) {
+    listEl.innerHTML = `<div class="empty"><div class="ei">📋</div><p>${staffOnboardList.length ? 'No results for this filter' : 'No onboarding checklists yet — add an employee to get started'}</p></div>`;
+    return;
+  }
+
+  // Sort: incomplete first, then by name
+  list = [...list].sort((a, b) => {
+    const aDone = a.items?.every(i => i.done) ? 1 : 0;
+    const bDone = b.items?.every(i => i.done) ? 1 : 0;
+    return aDone - bDone || (a.staffName || '').localeCompare(b.staffName || '');
+  });
+
+  let html = '';
+  list.forEach(o => {
+    const items    = o.items || [];
+    const doneCount= items.filter(i => i.done).length;
+    const total    = items.length;
+    const pct      = total ? Math.round((doneCount / total) * 100) : 0;
+    const allDone  = doneCount === total;
+    const safeId   = o.staffId.replace(/['"]/g, '');
+
+    html += `<div style="background:#0f1a0f;border:1px solid ${allDone ? '#2a5a2a' : '#1e3a1e'};border-radius:12px;margin-bottom:12px;overflow:hidden;">
+      <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="toggleOnboardExpand('${safeId}')">
+        <div style="width:38px;height:38px;border-radius:50%;background:${allDone ? '#1a3a1a' : '#1a1a2a'};border:2px solid ${allDone ? '#2a5a2a' : '#2a2a4a'};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${staffInitials(o.staffName)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;">${o.staffName}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:5px;">
+            <div style="flex:1;height:6px;background:#1a1a1a;border-radius:3px;overflow:hidden;">
+              <div style="width:${pct}%;height:100%;background:${allDone ? '#4caf50' : '#4a90d9'};border-radius:3px;transition:width 0.3s;"></div>
+            </div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:${allDone ? '#4caf50' : '#4a6a8a'};font-weight:700;white-space:nowrap;">${doneCount}/${total} ${allDone ? '✓ Done' : ''}</span>
+          </div>
+        </div>
+        <span style="color:#4a6a4a;font-size:12px;" id="onboard-chevron-${safeId}">▼</span>
+      </div>
+      <div id="onboard-items-${safeId}" style="display:none;border-top:1px solid #1e3a1e;padding:12px 16px;">
+        ${items.map(item => {
+          const safeItemId = item.id.replace(/['"]/g, '');
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #121e12;">
+            <button onclick="toggleOnboardItem('${safeId}','${safeItemId}',${!item.done})" style="width:22px;height:22px;border-radius:4px;border:2px solid ${item.done ? '#4caf50' : '#2a5a2a'};background:${item.done ? '#1a3a1a' : 'transparent'};cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;">${item.done ? '✓' : ''}</button>
+            <span style="flex:1;font-size:12px;color:${item.done ? '#4a6a4a' : '#c0d8c0'};${item.done ? 'text-decoration:line-through;' : ''}">${item.label}</span>
+            ${item.doneTs ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a5a3a;">${new Date(item.doneTs).toLocaleDateString()}</span>` : ''}
+          </div>`;
+        }).join('')}
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+          <input type="text" id="onboard-custom-${safeId}" placeholder="Add custom item..." style="flex:1;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:7px 10px;font-size:12px;font-family:inherit;">
+          <button onclick="addCustomOnboardItem('${safeId}')" style="padding:7px 14px;background:#1a3a1a;border:1px solid #2a5a2a;border-radius:6px;color:#7ac57a;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-weight:700;">+ Add</button>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  listEl.innerHTML = html;
+}
+
+function toggleOnboardExpand(staffId) {
+  const items   = document.getElementById('onboard-items-' + staffId);
+  const chevron = document.getElementById('onboard-chevron-' + staffId);
+  if (!items) return;
+  const open = items.style.display === 'none';
+  items.style.display   = open ? 'block' : 'none';
+  if (chevron) chevron.textContent = open ? '▲' : '▼';
+}
+
+async function toggleOnboardItem(staffId, itemId, done) {
+  const record = staffOnboardList.find(o => o.staffId === staffId);
+  if (!record) return;
+  const items = (record.items || []).map(i =>
+    i.id === itemId ? { ...i, done, doneTs: done ? Date.now() : null } : i
+  );
+  const allDone = items.every(i => i.done);
+  try {
+    await db.collection('staffOnboarding').doc(staffId).update({
+      items, completedTs: allDone ? Date.now() : null
+    });
+  } catch(e) { console.error('Onboard toggle error:', e); }
+}
+
+async function addCustomOnboardItem(staffId) {
+  const input = document.getElementById('onboard-custom-' + staffId);
+  const label = input?.value.trim();
+  if (!label) return;
+  const record = staffOnboardList.find(o => o.staffId === staffId);
+  if (!record) return;
+  const newItem = { id: 'custom_' + Date.now(), label, done: false, doneBy: '', doneTs: null };
+  const items   = [...(record.items || []), newItem];
+  try {
+    await db.collection('staffOnboarding').doc(staffId).update({ items });
+    input.value = '';
+  } catch(e) { console.error('Add custom item error:', e); }
+}
 
 // ═══════════════════════════════════════════
 // STAFF SCHEDULE

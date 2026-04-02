@@ -1873,7 +1873,7 @@ async function renderRptFeed() {
 // STAFF SUB-TABS
 // ═══════════════════════════════════════════
 function goStaffSection(sec) {
-  ['dir','add','sched','certs'].forEach(s => {
+  ['dir','add','sched','certs','onboard'].forEach(s => {
     const el  = document.getElementById('staff-sec-' + s);
     const btn = document.getElementById('staff-tab-' + s);
     if (el)  el.style.display = s === sec ? 'block' : 'none';
@@ -1881,6 +1881,7 @@ function goStaffSection(sec) {
   });
   if (sec === 'sched') renderStaffSched();
   if (sec === 'add' && typeof checkStaffDbStatus === 'function') checkStaffDbStatus();
+  if (sec === 'onboard' && typeof renderStaffOnboard === 'function') renderStaffOnboard();
 }
 
 async function renderReports() {
