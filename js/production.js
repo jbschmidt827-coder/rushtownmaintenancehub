@@ -1160,21 +1160,28 @@ function renderProdBiosec() {
     <button onclick="openBioSection()" style="padding:8px 16px;background:#1a0a0a;border:1px solid #dc2626;border-radius:8px;color:#f87171;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;">+ New Entry</button>
   </div>
   <div id="prod-biosec-list" style="color:#aaa;font-size:12px;font-family:'IBM Plex Mono',monospace;">Loading…</div>`;
-  db.collection('biosecLogs').orderBy('ts','desc').limit(20).get().then(snap => {
+  db.collection('biosecurityLog').orderBy('ts','desc').limit(20).get().then(snap => {
     const listEl = document.getElementById('prod-biosec-list');
     if (!listEl) return;
     if (snap.empty) { listEl.innerHTML = '<div style="color:#888;padding:20px;text-align:center;">No biosecurity entries yet.</div>'; return; }
+    const riskColors = { low:'#4caf50', medium:'#d69e2e', high:'#dc2626' };
+    const riskIcons  = { low:'🟢', medium:'🟡', high:'🔴' };
     listEl.innerHTML = snap.docs.map(d => {
       const r = d.data();
-      const date = r.ts ? new Date(r.ts.seconds*1000).toLocaleDateString() : '—';
-      return `<div style="background:#0a1f0a;border:1px solid #2a1a1a;border-radius:10px;padding:12px 14px;margin-bottom:8px;">
-        <div style="display:flex;justify-content:space-between;"><span style="color:#f0ead8;">${r.visitorName||r.type||'Entry'}</span><span style="color:#888;">${date}</span></div>
-        <div style="color:#f87171;font-size:11px;margin-top:4px;">${r.farm||''}${r.house?' H'+r.house:''} · ${r.notes||''}</div>
+      const tsMs = r.ts?.toMillis ? r.ts.toMillis() : (typeof r.ts === 'number' ? r.ts : null);
+      const date = tsMs ? new Date(tsMs).toLocaleDateString() : (r.date || '—');
+      return `<div style="background:#0a1f0a;border:1px solid ${riskColors[r.risk]||'#7f1d1d'};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:#f0ead8;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;">${r.person||r.visitorName||'Entry'}</span>
+          <span style="color:#888;font-size:11px;">${date}</span>
+        </div>
+        <div style="color:#aaa;font-size:11px;margin-top:4px;">${r.type||''} · ${r.farm||''}</div>
+        <div style="color:${riskColors[r.risk]||'#ccc'};font-size:11px;margin-top:2px;">${riskIcons[r.risk]||''} ${(r.risk||'').toUpperCase()}${r.notes?' · '+r.notes:''}</div>
       </div>`;
     }).join('');
-  }).catch(() => {
+  }).catch(e => {
     const listEl = document.getElementById('prod-biosec-list');
-    if (listEl) listEl.innerHTML = '<div style="color:#888;padding:20px;text-align:center;">No entries yet.</div>';
+    if (listEl) listEl.innerHTML = '<div style="color:#e53e3e;padding:20px;">Error loading: '+e.message+'</div>';
   });
 }
 
