@@ -1103,7 +1103,7 @@ async function submitLayerServiceReport() {
 // ── Production Sub-Tab Switcher ─────────────
 
 function goProdSection(sec) {
-  const sections = ['overview','check','mw','trends','history','biosec'];
+  const sections = ['overview','history','biosec'];
   sections.forEach(s => {
     const el  = document.getElementById('prod-sec-' + s);
     const btn = document.getElementById('prod-tab-' + s);
@@ -1111,9 +1111,6 @@ function goProdSection(sec) {
     if (btn) btn.classList.toggle('active', s === sec);
   });
 
-  if (sec === 'check')   renderProdCheck();
-  if (sec === 'mw')      renderProdMW();
-  if (sec === 'trends')  renderProdEggTrends();
   if (sec === 'history') renderProdWalkHistory();
   if (sec === 'biosec')  renderProdBiosec();
 }
