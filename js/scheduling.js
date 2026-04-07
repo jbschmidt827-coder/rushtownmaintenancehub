@@ -261,5 +261,57 @@ initApp().then(() => {
   setupLangFab();
   startLandingClock();
   if (typeof injectLandingStaffCard === 'function') injectLandingStaffCard();
+  _initBuildDate();
+  _initSwUpdateListener();
 });
+
+// ── Show build date in landing footer ───────────────────────────
+function _initBuildDate() {
+  var el = document.getElementById('ls-build-date');
+  if (!el) return;
+  // The build date is baked in at deploy time via the cache version name
+  // For live tracking we show today's cached-asset date
+  var d = new Date();
+  el.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+}
+
+// ── Service-worker update notification ──────────────────────────
+function _initSwUpdateListener() {
+  if (!('serviceWorker' in navigator)) return;
+
+  // Listen for SW postMessage telling us a new version activated
+  navigator.serviceWorker.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'SW_UPDATED') {
+      _showUpdateBanner();
+    }
+  });
+
+  // Also detect when a new SW is waiting (e.g. first install in another tab)
+  navigator.serviceWorker.ready.then(function(reg) {
+    if (reg.waiting) _showUpdateBanner();
+    reg.addEventListener('updatefound', function() {
+      var newSW = reg.installing;
+      if (!newSW) return;
+      newSW.addEventListener('statechange', function() {
+        if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+          _showUpdateBanner();
+        }
+      });
+    });
+  });
+}
+
+function _showUpdateBanner() {
+  var banner = document.getElementById('sw-update-banner');
+  if (!banner) return;
+  banner.style.display = 'flex';
+  banner.onclick = function() {
+    banner.innerHTML = '⏳ Refreshing...';
+    // Tell the waiting SW to take over, then reload
+    navigator.serviceWorker.ready.then(function(reg) {
+      if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    });
+    setTimeout(function() { location.reload(true); }, 400);
+  };
+}
 

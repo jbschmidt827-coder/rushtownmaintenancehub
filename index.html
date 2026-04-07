@@ -35,7 +35,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'IBM Plex Sans', sans-serif; background: var(--dark); min-height: 100vh; color: var(--ink); }
 
-.site-header { background: var(--green-dark); position: sticky; top: 0; z-index: 200; border-bottom: 3px solid var(--green-bright); }
+.site-header { background: var(--green-dark); position: sticky; top: 0; z-index: 200; border-bottom: 3px solid var(--green-bright); padding-top: env(safe-area-inset-top, 0px); }
 .header-inner { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; max-width: 1200px; margin: 0 auto; gap: 12px; flex-wrap: wrap; }
 .logo { display: flex; align-items: center; gap: 10px; transition: opacity .15s; }
 .logo:hover { opacity: 0.8; }
@@ -448,6 +448,56 @@ body { min-height: 100dvh; overflow-x: hidden; }
   padding: 8px 4px !important;
 }
 
+/* ══════════════════════════════════════════════
+   DEVICE-SPECIFIC RESPONSIVE RULES
+   iPhone · iPad · Desktop
+   ══════════════════════════════════════════════ */
+
+/* ── iPhone (≤480px) ── */
+@media(max-width:480px){
+  /* Safe area for notch & home indicator */
+  #landing-screen { padding-bottom: max(env(safe-area-inset-bottom,16px),16px) !important; }
+  .main { padding-bottom: max(env(safe-area-inset-bottom,80px),80px) !important; }
+  /* Smaller clock on small phone so it doesn't crowd */
+  #ls-clock { font-size: 18px !important; }
+  #ls-date  { font-size: 8px !important; }
+  /* Landing cards: 2-col on iPhone */
+  #landing-screen .grid-2col { grid-template-columns: 1fr 1fr !important; }
+  /* Shrink HOME button to fit narrow header */
+  .home-btn-wrap button { font-size: 11px !important; padding: 8px 12px !important; }
+}
+
+/* ── iPad (481–1024px) ── */
+@media(min-width:481px) and (max-width:1024px){
+  /* Landing: larger clock */
+  #ls-clock { font-size: 26px !important; }
+  /* More breathing room in panels */
+  .main { padding: 20px !important; }
+  /* Stats grids: 3-up on iPad */
+  .stats-grid.g4 { grid-template-columns: repeat(3, 1fr) !important; }
+  .stats-grid.g5 { grid-template-columns: repeat(3, 1fr) !important; }
+}
+
+/* ── Desktop (>1024px) ── */
+@media(min-width:1025px){
+  /* Landing: cap width and center */
+  #landing-screen > div:last-child { max-width: 800px !important; margin: 0 auto !important; }
+  #ls-clock { font-size: 28px !important; }
+  /* Show nav tabs on desktop */
+  .nav-tabs { display: flex !important; gap: 4px; }
+  /* Main content wider */
+  .main { padding: 24px 32px !important; }
+  /* Section overlays: wider on desktop */
+  #ec-section > div:first-of-type,
+  #mw-section > div:first-of-type,
+  #bio-section > div:first-of-type,
+  #barn-walk-modal > div:first-of-type,
+  #lsr-overlay > div:first-of-type { max-width: 860px !important; }
+}
+
+/* ── Safe area bottom for all devices (iOS home bar) ── */
+body { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
 /* HEADER & NAV */
 .site-header { position: sticky; top: 0; z-index: 100; }
 .header-inner { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important; gap: 8px; padding: 8px 12px; max-width: unset !important; margin: unset !important; }
@@ -554,7 +604,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 <div id="landing-screen" style="display:flex;flex-direction:column;min-height:100vh;height:100%;background:#0f1a0f;overflow-y:auto;">
 
   <!-- ── Top bar: clock left · lang right ── -->
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 0;flex-shrink:0;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:max(env(safe-area-inset-top,14px),14px) 18px 0;flex-shrink:0;">
     <div>
       <div id="ls-clock" style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:700;color:#f0ead8;letter-spacing:1px;line-height:1.1;"></div>
       <div id="ls-date"  style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a8a5a;letter-spacing:2px;text-transform:uppercase;margin-top:3px;"></div>
@@ -649,8 +699,20 @@ body { min-height: 100dvh; overflow-x: hidden; }
       </div>
 
     </div>
+
+      <!-- Version footer -->
+      <div style="text-align:center;padding:10px 0 max(env(safe-area-inset-bottom,12px),12px);font-family:'IBM Plex Mono',monospace;font-size:9px;color:#2a4a2a;letter-spacing:1.5px;">
+        v2.4 · <span id="ls-build-date"></span>
+      </div>
+
+    </div>
   </div>
 
+</div>
+
+<!-- ═══ UPDATE BANNER ═══ -->
+<div id="sw-update-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#4caf50;color:#0a1a0a;padding:14px 16px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;align-items:center;justify-content:center;gap:10px;box-shadow:0 2px 12px rgba(0,0,0,0.4);">
+  🔄 New version available! &nbsp;<span style="text-decoration:underline;">Tap here to update</span>
 </div>
 
 <!-- ═══ TECH MODE OVERLAY ═══ -->

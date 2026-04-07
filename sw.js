@@ -1,12 +1,12 @@
 // ═══════════════════════════════════════════
-// RUSHTOWN POULTRY — SERVICE WORKER
-// Enables "Add to Home Screen" / PWA install
-// and caches the app shell for fast loads
+// RUSHTOWN POULTRY — SERVICE WORKER v4
+// Network-first strategy: users always get
+// the latest version when online.
+// Falls back to cache when offline.
 // ═══════════════════════════════════════════
 
-const CACHE_NAME = 'rushtown-v1';
+const CACHE_NAME = 'rushtown-v4';
 
-// Files to cache for offline / fast load
 const SHELL_FILES = [
   '/',
   '/index.html',
@@ -26,54 +26,76 @@ const SHELL_FILES = [
   '/manifest.json'
 ];
 
-// ── Install: cache the app shell ──
+// ── Install: pre-cache the app shell ──
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(SHELL_FILES);
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(SHELL_FILES))
+      .then(() => self.skipWaiting())   // activate immediately, don't wait
   );
 });
 
-// ── Activate: clean up old caches ──
+// ── Activate: wipe old caches, take control ──
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+    caches.keys()
+      .then(keys =>
+        Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
       )
-    ).then(() => self.clients.claim())
+      .then(() => self.clients.claim())
+      .then(() => {
+        // Tell every open tab that a new version just took over
+        return self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+      })
+      .then(clients => {
+        clients.forEach(client => client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME }));
+      })
   );
 });
 
-// ── Fetch: network-first for Firebase, cache-first for app shell ──
+// ── Message: page can ask waiting SW to take over ──
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// ── Fetch: NETWORK-FIRST ──
+// Always try the network so updates are seen immediately.
+// Only fall back to cache when offline.
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Always go network-first for Firebase (live data)
-  if (url.hostname.includes('firestore.googleapis.com') ||
-      url.hostname.includes('firebase') ||
-      url.hostname.includes('googleapis.com')) {
-    return; // let browser handle it normally
+  // Pass Firebase / Google API calls straight through (live data, no cache)
+  if (
+    url.hostname.includes('firestore.googleapis.com') ||
+    url.hostname.includes('firebase') ||
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('gstatic.com')
+  ) {
+    return;
   }
 
-  // Cache-first for app shell files
+  // Network-first for everything else
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        // Cache fresh copies of shell files
+    fetch(event.request)
+      .then(response => {
+        // Stash a fresh copy in cache for offline use
         if (response && response.status === 200 && response.type === 'basic') {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
         return response;
-      }).catch(() => {
-        // If offline and not cached, return a simple offline page
-        if (event.request.destination === 'document') {
-          return caches.match('/index.html');
-        }
-      });
-    })
+      })
+      .catch(() => {
+        // Network failed — serve from cache
+        return caches.match(event.request).then(cached => {
+          if (cached) return cached;
+          // Last resort: serve index.html for navigation requests
+          if (event.request.destination === 'document') {
+            return caches.match('/index.html');
+          }
+        });
+      })
   );
 });

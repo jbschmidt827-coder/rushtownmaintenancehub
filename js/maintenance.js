@@ -3162,14 +3162,32 @@ function enterApp(tab) {
 }
 
 function goHome() {
+  // ── Close every full-screen overlay that might be open ──────────
+  var OVERLAYS = [
+    'ec-section','mw-section','bio-section','flock-section',
+    'prod-summary-section','barn-walk-modal','morning-walk-modal',
+    'bw-history-overlay','egg-trends-overlay','lsr-overlay',
+    'tech-mode-overlay','ops-overlay','staff-edit-modal',
+    'admin-pin-modal','briefing-modal'
+  ];
+  OVERLAYS.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  // Also close any generic .overlay modals
+  document.querySelectorAll('.overlay').forEach(function(el) {
+    el.style.display = 'none';
+  });
+
+  // ── Show landing, hide app chrome ───────────────────────────────
   document.getElementById('landing-screen').style.display = 'flex';
   document.getElementById('main-header').style.display = 'none';
   document.getElementById('main-content').style.display = 'none';
   var fab = document.getElementById('fab-btn');
   if (fab) fab.style.display = 'none';
-  // Hide the floating lang FAB on landing — the top-bar lang button is used instead
   var langFab = document.getElementById('lang-fab');
   if (langFab) langFab.style.display = 'none';
+
   injectLandingStaffCard();
   updateHomeFeedStatus();
   if (typeof renderLandingStatus === 'function') renderLandingStatus();
