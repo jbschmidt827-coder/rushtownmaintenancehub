@@ -389,6 +389,38 @@ body { min-height: 100dvh; overflow-x: hidden; }
 #landing-screen { padding: 16px 12px !important; }
 #landing-screen > div { width: 100% !important; max-width: 600px !important; }
 
+/* ── iPad / Tablet (600px+): widen narrow full-screen overlays ── */
+@media(min-width:600px){
+  #ec-section          > div:first-of-type,
+  #mw-section          > div:first-of-type,
+  #bio-section         > div:first-of-type,
+  #flock-section       > div:first-of-type,
+  #prod-summary-section> div:first-of-type,
+  #bw-history-overlay  > div:first-of-type,
+  #egg-trends-overlay  > div:first-of-type,
+  #morning-walk-modal  > div:first-of-type,
+  #barn-walk-modal     > div:first-of-type,
+  #lsr-overlay         > div:first-of-type { max-width: 720px !important; }
+  .tm-pad   { max-width: 720px !important; }
+  .modal    { max-width: 640px !important; }
+  .modal-card { max-width: 640px !important; }
+}
+/* ── Large tablet / desktop (920px+) ── */
+@media(min-width:920px){
+  #ec-section          > div:first-of-type,
+  #mw-section          > div:first-of-type,
+  #bio-section         > div:first-of-type,
+  #flock-section       > div:first-of-type,
+  #prod-summary-section> div:first-of-type,
+  #bw-history-overlay  > div:first-of-type,
+  #egg-trends-overlay  > div:first-of-type,
+  #morning-walk-modal  > div:first-of-type,
+  #barn-walk-modal     > div:first-of-type,
+  #lsr-overlay         > div:first-of-type { max-width: 880px !important; }
+  .modal    { max-width: 700px !important; }
+  .modal-card { max-width: 700px !important; }
+}
+
 #landing-cards-grid {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
@@ -532,7 +564,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
   <!-- ── Logo / Title ── -->
   <div style="text-align:center;padding:10px 18px 12px;flex-shrink:0;">
-    <div style="font-size:46px;line-height:1;margin-bottom:6px;">🐔</div>
+    <span onclick="chickenClick(event)" style="font-size:46px;line-height:1;margin-bottom:6px;cursor:pointer;user-select:none;display:block;">🐔</span>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#f0ead8;letter-spacing:4px;">RUSHTOWN POULTRY</div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a7a4a;letter-spacing:3px;text-transform:uppercase;margin-top:2px;">HEGINS &amp; DANVILLE OPERATIONS</div>
   </div>
@@ -1222,7 +1254,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ FLOCK SECTION ═══ -->
 <div id="flock-section" style="display:none;position:fixed;inset:0;background:#0a060f;z-index:500;overflow-y:auto;">
-  <div style="max-width:520px;margin:0 auto;padding:20px 16px 60px;">
+  <div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 60px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #3b1d6e;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">🐣 Flock Ages</div>
       <button onclick="closeFlockSection()" style="background:#1a0d2e;border:1px solid #7c3aed;color:#a78bfa;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">← Back</button>
@@ -1277,7 +1309,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ PROD SUMMARY SECTION ═══ -->
 <div id="prod-summary-section" style="display:none;position:fixed;inset:0;background:#0a0a0a;z-index:500;overflow-y:auto;">
-  <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+  <div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 40px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #2a2a1a;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">📋 Today's Summary</div>
       <button onclick="document.getElementById('prod-summary-section').style.display='none'" style="background:#2a2a00;border:1px solid #5a5a00;color:#d0d070;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Close</button>
@@ -1290,7 +1322,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ BIOSECURITY SECTION ═══ -->
 <div id="bio-section" style="display:none;position:fixed;inset:0;background:#080f08;z-index:500;overflow-y:auto;">
-  <div style="max-width:540px;margin:0 auto;padding:20px 16px 60px;">
+  <div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 60px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #7f1d1d;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">🦠 Biosecurity Log</div>
       <button onclick="closeBioSection()" style="background:#1a0a0a;border:1px solid #dc2626;color:#f87171;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">← Back</button>
@@ -1423,7 +1455,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ EC SECTION (Employee Daily Check) ═══ -->
 <div id="ec-section" style="display:none;position:fixed;inset:0;background:#0a1a0a;z-index:500;overflow-y:auto;">
-  <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+  <div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 40px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #2a5a2a;">
       <div id="ec-header" style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">🐓 Daily Employee Check</div>
       <button id="ec-back-btn" onclick="ecBack()" style="background:#3a1a1a;border:1px solid #5a2a2a;color:#f08080;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">← Back</button>
@@ -1434,7 +1466,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ MW SECTION (Morning Walk) ═══ -->
 <div id="mw-section" style="display:none;position:fixed;inset:0;background:#080d1a;z-index:500;overflow-y:auto;">
-  <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+  <div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 40px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #1e3a6a;">
       <div id="mw-header" style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">☀️ Morning Walk</div>
       <button id="mw-back-btn" onclick="mwBack()" style="background:#1a1a3a;border:1px solid #3a3a6a;color:#9090f0;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">← Back</button>
@@ -1801,7 +1833,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 .bw-weekly-step:last-child{border-bottom:none;}
 .bw-step-num{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4caf50;font-weight:700;min-width:18px;margin-top:2px;}
 </style>
-<div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+<div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 40px;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #2a5a2a;">
     <div>
       <div id="bw-title" style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;letter-spacing:2px;text-transform:uppercase;"></div>
@@ -2113,7 +2145,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ MORNING WALK MODAL ═══ -->
 <div id="morning-walk-modal" style="display:none;position:fixed;inset:0;background:#080d1a;z-index:600;overflow-y:auto;">
-<div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+<div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 40px;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #1e3a6a;">
     <div>
       <div id="mw-title" style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;letter-spacing:2px;text-transform:uppercase;"></div>
@@ -2188,7 +2220,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ BARN WALK HISTORY OVERLAY ═══ -->
 <div id="bw-history-overlay" style="display:none;position:fixed;inset:0;background:#0a1a0a;z-index:600;overflow-y:auto;">
-  <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+  <div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 40px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #2a5a2a;">
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">📋 Walk History</div>
@@ -2208,7 +2240,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 <!-- ═══ EGG TRENDS OVERLAY ═══ -->
 <div id="egg-trends-overlay" style="display:none;position:fixed;inset:0;background:#0a1a0a;z-index:600;overflow-y:auto;">
-  <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+  <div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 40px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #2a5a2a;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">📈 Egg Trends</div>
       <button onclick="closeEggTrends()" style="background:#1a3a1a;border:1px solid #2a5a2a;color:#7ab07a;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Close</button>
@@ -2233,7 +2265,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
 .lsr-fg input,.lsr-fg select,.lsr-fg textarea{width:100%;background:#0a1520;border:1px solid #1e3a5a;border-radius:6px;color:#f0ead8;padding:8px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;}
 .lsr-fg textarea{resize:vertical;min-height:60px;}
 </style>
-  <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+  <div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 40px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #1e3a5a;">
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">🐔 Layer Service Report</div>

@@ -262,7 +262,7 @@ function openWOUpdate(fbId) {
   modal.id = 'wo-update-modal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.75);display:flex;align-items:flex-end;justify-content:center;padding:0 0 0 0;';
   modal.innerHTML = `
-    <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:16px 16px 0 0;width:100%;max-width:520px;padding:20px 18px 32px;">
+    <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:16px 16px 0 0;width:100%;max-width:min(720px,96vw);padding:20px 18px 32px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
         <div>
           <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;">💬 Add Update — ${wo.id}</div>
