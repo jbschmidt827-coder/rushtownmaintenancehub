@@ -3167,6 +3167,9 @@ function goHome() {
   document.getElementById('main-content').style.display = 'none';
   var fab = document.getElementById('fab-btn');
   if (fab) fab.style.display = 'none';
+  // Hide the floating lang FAB on landing — the top-bar lang button is used instead
+  var langFab = document.getElementById('lang-fab');
+  if (langFab) langFab.style.display = 'none';
   injectLandingStaffCard();
   updateHomeFeedStatus();
   if (typeof renderLandingStatus === 'function') renderLandingStatus();

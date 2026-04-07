@@ -259,6 +259,7 @@ async function copyLastWeek() {
 initApp().then(() => {
   applyTranslations();
   setupLangFab();
+  startLandingClock();
   if (typeof injectLandingStaffCard === 'function') injectLandingStaffCard();
 });
 

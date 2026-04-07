@@ -922,14 +922,18 @@ function applyTranslations() {
     const val = t(key);
     if (val && val !== key) el.innerHTML = val;
   });
-  // Header toggle button
+  // Header toggle button (inside the app)
   const hdrBtn = document.getElementById('lang-toggle-btn');
   if (hdrBtn) hdrBtn.textContent = _lang === 'en' ? '🌐 ES' : '🌐 EN';
-  // Floating FAB
+  // Landing screen top-bar lang button
+  const landingLbl = document.getElementById('landing-lang-label');
+  if (landingLbl) landingLbl.textContent = _lang === 'en' ? 'ES' : 'EN';
+  // Floating FAB — only show when inside the app (main-header visible)
   const fab = document.getElementById('lang-fab');
   const fabLbl = document.getElementById('lang-fab-label');
   if (fabLbl) fabLbl.textContent = _lang === 'en' ? 'ES' : 'EN';
-  if (fab) fab.style.display = 'flex';
+  const mainHeader = document.getElementById('main-header');
+  if (fab && mainHeader && mainHeader.style.display !== 'none') fab.style.display = 'flex';
   // Translate all form labels, options, placeholders, buttons
   applyFormTextTranslation();
 }
@@ -940,9 +944,25 @@ function setupLangFab() {
   const hdrBtn = document.getElementById('lang-toggle-btn');
   if (!fab || !hdrBtn) return;
   const obs = new IntersectionObserver(entries => {
-    fab.style.display = entries[0].isIntersecting ? 'none' : 'flex';
+    // Only show FAB when inside the app (main-header is visible)
+    const mainHeader = document.getElementById('main-header');
+    const onLanding = !mainHeader || mainHeader.style.display === 'none';
+    fab.style.display = (!onLanding && !entries[0].isIntersecting) ? 'flex' : 'none';
   }, { threshold: 0.5 });
   obs.observe(hdrBtn);
+}
+
+// Live clock for landing screen
+function startLandingClock() {
+  function tick() {
+    const now = new Date();
+    const clockEl = document.getElementById('ls-clock');
+    const dateEl  = document.getElementById('ls-date');
+    if (clockEl) clockEl.textContent = now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    if (dateEl)  dateEl.textContent  = now.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'}).toUpperCase();
+  }
+  tick();
+  setInterval(tick, 1000);
 }
 
 async function initApp() {
