@@ -291,7 +291,7 @@ async function save5SAudit() {
   const scores = {};
   document.querySelectorAll('#5sf-scores .fives-score-row').forEach(row=>{
     const key = row.dataset.key;
-    const val = parseInt(row.querySelector('.5s-slider').value);
+    const val = parseInt(row.querySelector('.fives-slider').value);
     scores[key] = val;
   });
   const totalScore = Object.values(scores).reduce((s,v)=>s+v,0);
