@@ -928,6 +928,9 @@ function applyTranslations() {
   // Landing screen top-bar lang button
   const landingLbl = document.getElementById('landing-lang-label');
   if (landingLbl) landingLbl.textContent = _lang === 'en' ? 'ES' : 'EN';
+  // Bottom bar lang label (phones)
+  const bottomLbl = document.getElementById('bottom-lang-label');
+  if (bottomLbl) bottomLbl.textContent = _lang === 'en' ? 'ES' : 'EN';
   // Floating FAB — only show when inside the app (main-header visible)
   const fab = document.getElementById('lang-fab');
   const fabLbl = document.getElementById('lang-fab-label');

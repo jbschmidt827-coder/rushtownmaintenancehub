@@ -3157,6 +3157,9 @@ function enterApp(tab) {
   document.getElementById('landing-screen').style.display = 'none';
   document.getElementById('main-header').style.display = '';
   document.getElementById('main-content').style.display = '';
+  // Show bottom home bar on phones
+  var bbar = document.getElementById('mobile-bottom-bar');
+  if (bbar) bbar.style.display = 'flex';
   loadTodayStatus();
   if (tab) go(tab);
 }
@@ -3187,6 +3190,10 @@ function goHome() {
   if (fab) fab.style.display = 'none';
   var langFab = document.getElementById('lang-fab');
   if (langFab) langFab.style.display = 'none';
+
+  // Hide bottom home bar when back on landing
+  var bbar = document.getElementById('mobile-bottom-bar');
+  if (bbar) bbar.style.display = 'none';
 
   injectLandingStaffCard();
   updateHomeFeedStatus();

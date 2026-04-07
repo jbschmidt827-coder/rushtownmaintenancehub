@@ -453,18 +453,40 @@ body { min-height: 100dvh; overflow-x: hidden; }
    iPhone · iPad · Desktop
    ══════════════════════════════════════════════ */
 
+/* ── Mobile bottom bar (phones ≤600px) ── */
+#mobile-bottom-bar {
+  display: none;          /* shown by JS when inside the app */
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 300;
+  background: #0d1f0d;
+  border-top: 2px solid #2a5a2a;
+  padding: 10px 20px;
+  padding-bottom: max(env(safe-area-inset-bottom, 10px), 10px);
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+/* Only render the bar on phones — hide on iPad/desktop */
+@media(min-width:601px){
+  #mobile-bottom-bar { display: none !important; }
+  /* Keep header HOME button on tablet/desktop */
+  .header-home-btn { display: flex !important; }
+}
+/* On phones hide the header HOME button (bottom bar replaces it) */
+@media(max-width:600px){
+  .header-home-btn { display: none !important; }
+  /* Add padding to main content so bottom bar doesn't cover last row */
+  .main { padding-bottom: max(calc(env(safe-area-inset-bottom,0px) + 80px), 80px) !important; }
+}
+
 /* ── iPhone (≤480px) ── */
 @media(max-width:480px){
   /* Safe area for notch & home indicator */
   #landing-screen { padding-bottom: max(env(safe-area-inset-bottom,16px),16px) !important; }
-  .main { padding-bottom: max(env(safe-area-inset-bottom,80px),80px) !important; }
   /* Smaller clock on small phone so it doesn't crowd */
   #ls-clock { font-size: 18px !important; }
   #ls-date  { font-size: 8px !important; }
-  /* Landing cards: 2-col on iPhone */
-  #landing-screen .grid-2col { grid-template-columns: 1fr 1fr !important; }
-  /* Shrink HOME button to fit narrow header */
-  .home-btn-wrap button { font-size: 11px !important; padding: 8px 12px !important; }
 }
 
 /* ── iPad (481–1024px) ── */
@@ -956,7 +978,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="nav-tab" id="tab-check" onclick="go('check')" style="display:none;">🐓 Daily Check</button>
       <button class="nav-tab" id="tab-mw" onclick="go('mw')" style="display:none;">☀️ Morning Walk</button>
     </nav>
-    <button onclick="goHome()" style="padding:10px 20px;background:#163016;border:2px solid #4caf50;border-radius:10px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">⌂ HOME</button>
+    <button onclick="goHome()" class="header-home-btn" style="padding:10px 20px;background:#163016;border:2px solid #4caf50;border-radius:10px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">⌂ HOME</button>
     <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
     <button id="lang-toggle-btn" onclick="toggleLang()" title="Switch Language / Cambiar Idioma" style="padding:7px 13px;background:#0a1a2a;border:1.5px solid #3b82f6;border-radius:9px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;flex-shrink:0;">🌐 ES</button>
   </div>
@@ -4178,6 +4200,18 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script src="js/tv-scoreboard.js?v=20260403"></script>
 <script src="js/staff.js?v=20260403"></script>
 <script src="js/enhancements.js?v=20260403"></script>
+
+<!-- ═══ MOBILE BOTTOM BAR (phones only — replaces header HOME button) ═══ -->
+<div id="mobile-bottom-bar">
+  <!-- Home button — big, centred, easy thumb tap -->
+  <button onclick="goHome()" style="flex:1;padding:14px 0;background:#163016;border:2px solid #4caf50;border-radius:12px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;display:flex;align-items:center;justify-content:center;gap:8px;">
+    ⌂ HOME
+  </button>
+  <!-- Language toggle -->
+  <button onclick="toggleLang()" style="padding:14px 18px;background:#0a1a2a;border:2px solid #3b82f6;border-radius:12px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+    🌐 <span id="bottom-lang-label">ES</span>
+  </button>
+</div>
 
 <!-- Easter egg elements — chicken animation -->
 <div id="chicken-runner">🐔</div>
