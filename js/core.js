@@ -475,6 +475,18 @@ const TRANSLATIONS = {
     // Common UI
     'btn.close':'✕ Close','btn.back_farms':'← Farms',
     'common.saving':'Saving...','common.save_failed':'Save failed: ',
+    // Landing screen cards
+    'landing.prod':'Production','landing.prod_sub':'Barn walk · Daily checks · Feed & water',
+    'landing.service':'Service Techs','landing.service_sub':'Daily check · Layer service · Flock ages',
+    'landing.maint':'Maintenance','landing.maint_sub':'Work orders · PM · Parts · Assets',
+    'landing.pkg':'Packaging','landing.pkg_sub':'Egg ops · Packing log',
+    'landing.ship':'Shipping','landing.ship_sub':'Loads · Reconciliation · Exceptions',
+    'landing.feed':'Feed Mill','landing.feed_default':'Bin levels · Deliveries · Readings',
+    'landing.dash':'Dashboard','landing.dash_sub':'Directors & Owners overview',
+    'landing.staff':'Staff','landing.staff_sub':'Team directory · Add employees',
+    'landing.quick_actions':'⚡ QUICK ACTIONS',
+    'landing.new_wo':'🔧 New Work Order','landing.log_barn':'🐓 Log Barn Walk',
+    'landing.enter_egg':'🥚 Enter Egg Data','landing.layer_svc':'🐔 Layer Service',
   },
   es: {
     // Nav
@@ -584,6 +596,18 @@ const TRANSLATIONS = {
     // Common UI
     'btn.close':'✕ Cerrar','btn.back_farms':'← Granjas',
     'common.saving':'Guardando...','common.save_failed':'Error al guardar: ',
+    // Landing screen cards
+    'landing.prod':'Producción','landing.prod_sub':'Ronda · Revisiones diarias · Alimento y agua',
+    'landing.service':'Técnicos de Servicio','landing.service_sub':'Revisión diaria · Servicio ponedoras · Edades',
+    'landing.maint':'Mantenimiento','landing.maint_sub':'Órdenes · PM · Partes · Equipos',
+    'landing.pkg':'Empaque','landing.pkg_sub':'Ops de huevos · Registro',
+    'landing.ship':'Envíos','landing.ship_sub':'Cargas · Reconciliación · Excepciones',
+    'landing.feed':'Molino de Alimento','landing.feed_default':'Niveles · Entregas · Lecturas',
+    'landing.dash':'Panel','landing.dash_sub':'Vista para Directores y Dueños',
+    'landing.staff':'Personal','landing.staff_sub':'Directorio · Agregar empleados',
+    'landing.quick_actions':'⚡ ACCIONES RÁPIDAS',
+    'landing.new_wo':'🔧 Nueva Orden de Trabajo','landing.log_barn':'🐓 Registrar Ronda',
+    'landing.enter_egg':'🥚 Registrar Huevos','landing.layer_svc':'🐔 Servicio Ponedoras',
   }
 };
 
@@ -722,7 +746,7 @@ const FORM_TEXT = {
   '⚙️ Equipment':                      { es:'⚙️ Equipos' },
   '🌡️ Air & Environment':             { es:'🌡️ Aire y Ambiente' },
   '🍗 Feeding & Water':               { es:'🍗 Alimentación y Agua' },
-  '🥚 Belts & Egg Count':             { es:'🥚 Bandas y Conteo de Huevos' },
+  '🥚 Belts':                          { es:'🥚 Bandas' },
   '🐀 Pest Control':                  { es:'🐀 Control de Plagas' },
   '✅ Daily Checklist':               { es:'✅ Lista de Revisión Diaria' },
   '📝 Notes / Corrective Actions':    { es:'📝 Notas / Acciones Correctivas' },
@@ -744,7 +768,6 @@ const FORM_TEXT = {
   'Standpipes':                       { es:'Tuberías de Pie' },
   'Egg Belt Working?':                { es:'¿Banda de Huevos Funcionando?' },
   'Manure Belts':                     { es:'Bandas de Estiércol' },
-  'Egg Count — This Barn (total eggs)': { es:'Conteo de Huevos — Este Galpón (total)' },
   'Rodents present?':                 { es:'¿Roedores Presentes?' },
   'Rodents caught (count)':          { es:'Roedores Atrapados (cantidad)' },
   'Fly trap activity?':               { es:'¿Actividad en Trampa de Moscas?' },
@@ -928,31 +951,8 @@ function applyTranslations() {
   // Landing screen top-bar lang button
   const landingLbl = document.getElementById('landing-lang-label');
   if (landingLbl) landingLbl.textContent = _lang === 'en' ? 'ES' : 'EN';
-  // Bottom bar lang label (phones)
-  const bottomLbl = document.getElementById('bottom-lang-label');
-  if (bottomLbl) bottomLbl.textContent = _lang === 'en' ? 'ES' : 'EN';
-  // Floating FAB — only show when inside the app (main-header visible)
-  const fab = document.getElementById('lang-fab');
-  const fabLbl = document.getElementById('lang-fab-label');
-  if (fabLbl) fabLbl.textContent = _lang === 'en' ? 'ES' : 'EN';
-  const mainHeader = document.getElementById('main-header');
-  if (fab && mainHeader && mainHeader.style.display !== 'none') fab.style.display = 'flex';
   // Translate all form labels, options, placeholders, buttons
   applyFormTextTranslation();
-}
-
-// Show/hide FAB based on header visibility (mobile UX)
-function setupLangFab() {
-  const fab = document.getElementById('lang-fab');
-  const hdrBtn = document.getElementById('lang-toggle-btn');
-  if (!fab || !hdrBtn) return;
-  const obs = new IntersectionObserver(entries => {
-    // Only show FAB when inside the app (main-header is visible)
-    const mainHeader = document.getElementById('main-header');
-    const onLanding = !mainHeader || mainHeader.style.display === 'none';
-    fab.style.display = (!onLanding && !entries[0].isIntersecting) ? 'flex' : 'none';
-  }, { threshold: 0.5 });
-  obs.observe(hdrBtn);
 }
 
 // Live clock for landing screen

@@ -697,6 +697,9 @@ async function submitWO() {
     setSyncDot('saving');
     const ref = await db.collection('workOrders').add(wo);
     wo._fbId = ref.id;
+    woCounter++;
+    workOrders.unshift(wo);
+    renderWO();
 
     // Log write is best-effort — don't let it break the success screen
     try {
@@ -3157,9 +3160,6 @@ function enterApp(tab) {
   document.getElementById('landing-screen').style.display = 'none';
   document.getElementById('main-header').style.display = '';
   document.getElementById('main-content').style.display = '';
-  // Show bottom home bar on phones
-  var bbar = document.getElementById('mobile-bottom-bar');
-  if (bbar) bbar.style.display = 'flex';
   loadTodayStatus();
   if (tab) go(tab);
 }
@@ -3188,12 +3188,7 @@ function goHome() {
   document.getElementById('main-content').style.display = 'none';
   var fab = document.getElementById('fab-btn');
   if (fab) fab.style.display = 'none';
-  var langFab = document.getElementById('lang-fab');
-  if (langFab) langFab.style.display = 'none';
 
-  // Hide bottom home bar when back on landing
-  var bbar = document.getElementById('mobile-bottom-bar');
-  if (bbar) bbar.style.display = 'none';
 
   injectLandingStaffCard();
   updateHomeFeedStatus();

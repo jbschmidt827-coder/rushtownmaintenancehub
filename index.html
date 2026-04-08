@@ -453,31 +453,12 @@ body { min-height: 100dvh; overflow-x: hidden; }
    iPhone · iPad · Desktop
    ══════════════════════════════════════════════ */
 
-/* ── Mobile bottom bar (phones ≤600px) ── */
-#mobile-bottom-bar {
-  display: none;          /* shown by JS when inside the app */
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  z-index: 300;
-  background: #0d1f0d;
-  border-top: 2px solid #2a5a2a;
-  padding: 10px 20px;
-  padding-bottom: max(env(safe-area-inset-bottom, 10px), 10px);
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-/* Only render the bar on phones — hide on iPad/desktop */
-@media(min-width:601px){
-  #mobile-bottom-bar { display: none !important; }
-  /* Keep header HOME button on tablet/desktop */
-  .header-home-btn { display: flex !important; }
-}
-/* On phones hide the header HOME button (bottom bar replaces it) */
+/* ── Hide floating action buttons on phones — they block submit buttons ── */
+@media(max-width:600px){ .fab, .tm-fab { display: none !important; } }
+/* ── On phones: hide header HOME + lang buttons (logo taps home; lang on landing screen) ── */
 @media(max-width:600px){
   .header-home-btn { display: none !important; }
-  /* Add padding to main content so bottom bar doesn't cover last row */
-  .main { padding-bottom: max(calc(env(safe-area-inset-bottom,0px) + 80px), 80px) !important; }
+  #lang-toggle-btn { display: none !important; }
 }
 
 /* ── iPhone (≤480px) ── */
@@ -651,72 +632,72 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <!-- Production -->
         <button onclick="openProductionScreen()" style="padding:16px 14px;background:#1a3a1a;border:2px solid #4caf50;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
           <span style="font-size:28px;line-height:1;">🏭</span>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Production</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab07a;line-height:1.4;">Barn walk · Daily checks · Feed &amp; water</div>
+          <div data-i18n="landing.prod" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Production</div>
+          <div data-i18n="landing.prod_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab07a;line-height:1.4;">Barn walk · Daily checks · Feed &amp; water</div>
           <div id="ls-prod" style="font-family:'IBM Plex Mono',monospace;font-size:10px;min-height:14px;"></div>
         </button>
 
         <!-- Service Techs -->
         <button onclick="enterApp('service')" style="padding:16px 14px;background:#1a2a3a;border:2px solid #4a90d9;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
           <span style="font-size:28px;line-height:1;">🛠️</span>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Service Techs</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#6a90d9;line-height:1.4;">Daily check · Layer service · Flock ages</div>
+          <div data-i18n="landing.service" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Service Techs</div>
+          <div data-i18n="landing.service_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#6a90d9;line-height:1.4;">Daily check · Layer service · Flock ages</div>
           <div id="ls-service" style="font-family:'IBM Plex Mono',monospace;font-size:10px;min-height:14px;"></div>
         </button>
 
         <!-- Maintenance -->
         <button onclick="enterApp('maint')" style="padding:16px 14px;background:#0d1f3a;border:2px solid #3b82f6;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
           <span style="font-size:28px;line-height:1;">🔧</span>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Maintenance</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab0f6;line-height:1.4;">Work orders · PM · Parts · Assets</div>
+          <div data-i18n="landing.maint" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Maintenance</div>
+          <div data-i18n="landing.maint_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab0f6;line-height:1.4;">Work orders · PM · Parts · Assets</div>
           <div id="ls-maint" style="font-family:'IBM Plex Mono',monospace;font-size:10px;min-height:14px;"></div>
         </button>
 
         <!-- Packaging -->
         <button onclick="enterApp('pkg')" style="padding:16px 14px;background:#1a1a00;border:2px solid #d69e2e;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
           <span style="font-size:28px;line-height:1;">📦</span>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Packaging</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#d69e2e;line-height:1.4;">Egg ops · Packing log</div>
+          <div data-i18n="landing.pkg" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Packaging</div>
+          <div data-i18n="landing.pkg_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#d69e2e;line-height:1.4;">Egg ops · Packing log</div>
         </button>
 
         <!-- Shipping -->
         <button onclick="enterApp('ship')" style="padding:16px 14px;background:#1a1a2a;border:2px solid #9b59b6;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
           <span style="font-size:28px;line-height:1;">🚚</span>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Shipping</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#c39bd3;line-height:1.4;">Loads · Reconciliation · Exceptions</div>
+          <div data-i18n="landing.ship" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Shipping</div>
+          <div data-i18n="landing.ship_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#c39bd3;line-height:1.4;">Loads · Reconciliation · Exceptions</div>
         </button>
 
         <!-- Feed Mill -->
         <button onclick="enterApp('feed')" style="padding:16px 14px;background:#1a1000;border:2px solid #e67e22;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
           <span style="font-size:28px;line-height:1;">🌾</span>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Feed Mill</div>
+          <div data-i18n="landing.feed" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Feed Mill</div>
           <div id="home-feed-status" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#f0a060;line-height:1.4;">Bin levels · Deliveries · Readings</div>
         </button>
 
         <!-- Dashboard -->
         <button onclick="enterApp('dash')" style="padding:16px 14px;background:#0f1a0f;border:1px solid #2a5a2a;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
           <span style="font-size:28px;line-height:1;">📊</span>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#7ab07a;letter-spacing:1px;text-transform:uppercase;">Dashboard</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5a8a5a;line-height:1.4;">Directors &amp; Owners overview</div>
+          <div data-i18n="landing.dash" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#7ab07a;letter-spacing:1px;text-transform:uppercase;">Dashboard</div>
+          <div data-i18n="landing.dash_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5a8a5a;line-height:1.4;">Directors &amp; Owners overview</div>
         </button>
 
         <!-- Staff -->
         <button id="landing-staff-btn" onclick="enterApp('staff')" style="padding:16px 14px;background:#1a2a3a;border:2px solid #4a90d9;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
           <span style="font-size:28px;line-height:1;">👥</span>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#7ab0f6;letter-spacing:1px;text-transform:uppercase;">Staff</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5a90c9;line-height:1.4;">Team directory · Add employees</div>
+          <div data-i18n="landing.staff" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#7ab0f6;letter-spacing:1px;text-transform:uppercase;">Staff</div>
+          <div data-i18n="landing.staff_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5a90c9;line-height:1.4;">Team directory · Add employees</div>
         </button>
 
       </div>
 
       <!-- Quick Actions -->
       <div style="border-top:1px solid #1e3a1e;padding-top:12px;">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:8px;">⚡ QUICK ACTIONS</div>
+        <div data-i18n="landing.quick_actions" style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:8px;">⚡ QUICK ACTIONS</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button onclick="enterApp('wo-submit')" style="padding:13px 10px;background:#0d1f3a;border:1.5px solid #3b82f6;border-radius:10px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🔧 New Work Order</button>
-          <button onclick="enterApp('prod');setTimeout(function(){openECSection&&openECSection()},300)" style="padding:13px 10px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:10px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🐓 Log Barn Walk</button>
-          <button onclick="enterApp('kpi');setTimeout(function(){go('kpi')},100)" style="padding:13px 10px;background:#1a1400;border:1.5px solid #d69e2e;border-radius:10px;color:#d69e2e;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🥚 Enter Egg Data</button>
-          <button onclick="enterApp('service');setTimeout(function(){openLayerServiceReport&&openLayerServiceReport('','')},300)" style="padding:13px 10px;background:#1a0d2e;border:1.5px solid #7c3aed;border-radius:10px;color:#a78bfa;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🐔 Layer Service</button>
+          <button data-i18n="landing.new_wo" onclick="enterApp('maint');setTimeout(function(){openWOModal&&openWOModal()},300)" style="padding:13px 10px;background:#0d1f3a;border:1.5px solid #3b82f6;border-radius:10px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🔧 New Work Order</button>
+          <button data-i18n="landing.log_barn" onclick="enterApp('prod');setTimeout(function(){openECSection&&openECSection()},300)" style="padding:13px 10px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:10px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🐓 Log Barn Walk</button>
+          <button data-i18n="landing.enter_egg" onclick="enterApp('kpi');setTimeout(function(){go('kpi')},100)" style="padding:13px 10px;background:#1a1400;border:1.5px solid #d69e2e;border-radius:10px;color:#d69e2e;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🥚 Enter Egg Data</button>
+          <button data-i18n="landing.layer_svc" onclick="enterApp('service');setTimeout(function(){openLayerServiceReport&&openLayerServiceReport('','')},300)" style="padding:13px 10px;background:#1a0d2e;border:1.5px solid #7c3aed;border-radius:10px;color:#a78bfa;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🐔 Layer Service</button>
         </div>
       </div>
 
@@ -984,8 +965,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </header>
 
-<!-- Floating language button for phone/tablet (always visible) -->
-<button id="lang-fab" onclick="toggleLang()" title="Switch Language / Cambiar Idioma" style="position:fixed;bottom:20px;right:16px;z-index:9999;padding:10px 16px;background:#0a1a2a;border:2px solid #3b82f6;border-radius:50px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(59,130,246,.35);display:none;align-items:center;gap:6px;">🌐 <span id="lang-fab-label">ES</span></button>
 
 <main class="main" id="main-content" style="display:none;">
 
@@ -2027,9 +2006,19 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       </div>
     </div>
     <div style="margin-bottom:12px;">
-      <div class="bw-row-label">Feed Bin Reading (lbs) — record current bin level</div>
-      <input type="number" id="bw-feed-bin-reading" class="bw-input" placeholder="Enter reading in lbs" min="0" onchange="liveUpdateFeedBin('bw-feed-bin-reading','bw-feed-bin-status',_bwFarm,_bwHouse)">
-      <div id="bw-feed-bin-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:6px;min-height:18px;"></div>
+      <div class="bw-row-label">Feed Bin Readings (lbs)</div>
+      <div style="display:flex;gap:10px;">
+        <div style="flex:1;">
+          <div style="font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;margin-bottom:4px;">BIN A</div>
+          <input type="number" id="bw-feed-bin-a" class="bw-input" placeholder="Bin A lbs" min="0" onchange="liveUpdateFeedBin('bw-feed-bin-a','bw-feed-bin-a-status',_bwFarm,_bwHouse,'A')">
+          <div id="bw-feed-bin-a-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:4px;min-height:16px;"></div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;margin-bottom:4px;">BIN B</div>
+          <input type="number" id="bw-feed-bin-b" class="bw-input" placeholder="Bin B lbs" min="0" onchange="liveUpdateFeedBin('bw-feed-bin-b','bw-feed-bin-b-status',_bwFarm,_bwHouse,'B')">
+          <div id="bw-feed-bin-b-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:4px;min-height:16px;"></div>
+        </div>
+      </div>
     </div>
     <div style="margin-bottom:12px;">
       <div class="bw-row-label">Water Pressure (PSI) — Normal: 10–60</div>
@@ -2046,7 +2035,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
   <!-- Belts -->
   <div class="bw-card">
-    <div class="bw-card-title">🥚 Belts &amp; Egg Count</div>
+    <div class="bw-card-title">🥚 Belts</div>
     <div style="margin-bottom:12px;">
       <div class="bw-row-label">Egg Belt Working?</div>
       <div class="bw-yn-row">
@@ -2063,10 +2052,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <button class="bw-yn-btn" id="bw-manure-run"  onclick="bwSet('manure','run')">✅ Running</button>
         <button class="bw-yn-btn" id="bw-manure-stop" onclick="bwSet('manure','stop')">❌ Not Running</button>
       </div>
-    </div>
-    <div>
-      <div class="bw-row-label">Egg Count — This Barn (total eggs)</div>
-      <input type="number" id="bw-egg-count" class="bw-input" placeholder="Enter egg count" min="0">
     </div>
   </div>
 
@@ -4201,17 +4186,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script src="js/staff.js?v=20260403"></script>
 <script src="js/enhancements.js?v=20260403"></script>
 
-<!-- ═══ MOBILE BOTTOM BAR (phones only — replaces header HOME button) ═══ -->
-<div id="mobile-bottom-bar">
-  <!-- Home button — big, centred, easy thumb tap -->
-  <button onclick="goHome()" style="flex:1;padding:14px 0;background:#163016;border:2px solid #4caf50;border-radius:12px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;display:flex;align-items:center;justify-content:center;gap:8px;">
-    ⌂ HOME
-  </button>
-  <!-- Language toggle -->
-  <button onclick="toggleLang()" style="padding:14px 18px;background:#0a1a2a;border:2px solid #3b82f6;border-radius:12px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
-    🌐 <span id="bottom-lang-label">ES</span>
-  </button>
-</div>
 
 <!-- Easter egg elements — chicken animation -->
 <div id="chicken-runner">🐔</div>

@@ -1,11 +1,11 @@
 // ═══════════════════════════════════════════
-// RUSHTOWN POULTRY — SERVICE WORKER v4
+// RUSHTOWN POULTRY — SERVICE WORKER v6
 // Network-first strategy: users always get
 // the latest version when online.
 // Falls back to cache when offline.
 // ═══════════════════════════════════════════
 
-const CACHE_NAME = 'rushtown-v4';
+const CACHE_NAME = 'rushtown-v6';
 
 const SHELL_FILES = [
   '/',
