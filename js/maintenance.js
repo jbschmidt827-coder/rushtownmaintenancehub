@@ -641,7 +641,10 @@ function previewPhotos(input) {
 
 document.getElementById('wo-date').value = todayStr;
 
+let _woSubmitting = false;
+
 async function submitWO() {
+  if (_woSubmitting) return;
   const tech=document.getElementById('wo-tech').value;
   const farm=document.getElementById('wo-farm').value;
   const house=document.getElementById('wo-house').value;
@@ -654,8 +657,8 @@ async function submitWO() {
   if (!desc)    return alert('Please describe the problem.');
   if (!selPri)  return alert('Please select a priority level.');
 
-  // Disable submit button to prevent double-tap
-  const submitBtn = document.querySelector('.btn-submit');
+  _woSubmitting = true;
+  const submitBtn = document.querySelector('#wo-form-card .btn-confirm');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting…'; }
 
   try {
@@ -720,20 +723,22 @@ async function submitWO() {
     }
 
     // Only hide the form after everything succeeded
+    _woSubmitting = false;
     document.getElementById('wo-form-card').style.display='none';
     document.getElementById('wo-success').style.display='block';
     document.getElementById('wo-success-num').textContent = wo.id + ' · ' + wo.farm + ' · ' + wo.house;
 
   } catch(err) {
-    // Restore form so the user isn't left with a blank screen
+    _woSubmitting = false;
     setSyncDot('live');
     console.error('submitWO error:', err);
     alert('Something went wrong saving the work order. Please try again.\n\nError: ' + err.message);
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'SUBMIT WORK ORDER'; }
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '✓ SUBMIT WORK ORDER'; }
   }
 }
 
 function afterWOSubmit() {
+  _woSubmitting = false;
   document.getElementById('fab-btn').style.display = '';
   document.getElementById('wo-form-card').style.display='';
   document.getElementById('wo-success').style.display='none';
