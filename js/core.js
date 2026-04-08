@@ -477,7 +477,6 @@ const TRANSLATIONS = {
     'common.saving':'Saving...','common.save_failed':'Save failed: ',
     // Landing screen cards
     'landing.prod':'Production','landing.prod_sub':'Barn walk · Daily checks · Feed & water',
-    'landing.service':'Service Techs','landing.service_sub':'Daily check · Layer service · Flock ages',
     'landing.maint':'Maintenance','landing.maint_sub':'Work orders · PM · Parts · Assets',
     'landing.pkg':'Packaging','landing.pkg_sub':'Egg ops · Packing log',
     'landing.ship':'Shipping','landing.ship_sub':'Loads · Reconciliation · Exceptions',
@@ -486,7 +485,7 @@ const TRANSLATIONS = {
     'landing.staff':'Staff','landing.staff_sub':'Team directory · Add employees',
     'landing.quick_actions':'⚡ QUICK ACTIONS',
     'landing.new_wo':'🔧 New Work Order','landing.log_barn':'🐓 Log Barn Walk',
-    'landing.enter_egg':'🥚 Enter Egg Data','landing.layer_svc':'🐔 Layer Service',
+    'landing.enter_egg':'🥚 Enter Egg Data',
   },
   es: {
     // Nav
@@ -598,7 +597,6 @@ const TRANSLATIONS = {
     'common.saving':'Guardando...','common.save_failed':'Error al guardar: ',
     // Landing screen cards
     'landing.prod':'Producción','landing.prod_sub':'Ronda · Revisiones diarias · Alimento y agua',
-    'landing.service':'Técnicos de Servicio','landing.service_sub':'Revisión diaria · Servicio ponedoras · Edades',
     'landing.maint':'Mantenimiento','landing.maint_sub':'Órdenes · PM · Partes · Equipos',
     'landing.pkg':'Empaque','landing.pkg_sub':'Ops de huevos · Registro',
     'landing.ship':'Envíos','landing.ship_sub':'Cargas · Reconciliación · Excepciones',
@@ -607,7 +605,7 @@ const TRANSLATIONS = {
     'landing.staff':'Personal','landing.staff_sub':'Directorio · Agregar empleados',
     'landing.quick_actions':'⚡ ACCIONES RÁPIDAS',
     'landing.new_wo':'🔧 Nueva Orden de Trabajo','landing.log_barn':'🐓 Registrar Ronda',
-    'landing.enter_egg':'🥚 Registrar Huevos','landing.layer_svc':'🐔 Servicio Ponedoras',
+    'landing.enter_egg':'🥚 Registrar Huevos',
   }
 };
 
@@ -1134,8 +1132,8 @@ function go(tab) {
   closeAssetForm();
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports', sched:'panel-sched', staff:'panel-staff', service:'panel-service', check:'panel-check', mw:'panel-mw'};
-  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports', sched:'tab-sched', staff:'tab-staff', service:'tab-service', check:'tab-check', mw:'tab-mw'};
+  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports', sched:'panel-sched', staff:'panel-staff', check:'panel-check', mw:'panel-mw'};
+  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports', sched:'tab-sched', staff:'tab-staff', check:'tab-check', mw:'tab-mw'};
   if (!pm[tab]) return;
   document.getElementById(pm[tab]).classList.add('active');
   const tabEl = document.getElementById(tm[tab]);

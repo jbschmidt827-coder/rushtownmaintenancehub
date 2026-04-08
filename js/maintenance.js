@@ -1692,26 +1692,22 @@ async function renderRptProd() {
   el.innerHTML = '<div style="color:#aaa;font-size:12px;font-family:\'IBM Plex Mono\',monospace;padding:8px 0;">Loading…</div>';
   const cutoff = new Date(Date.now() - reportDays * 86400000);
   try {
-    const [walksSnap, eggSnap, lsrSnap] = await Promise.all([
+    const [walksSnap, eggSnap] = await Promise.all([
       db.collection('barnWalks').where('ts','>=',cutoff).get(),
       db.collection('opsEggProduction').where('date','>=',cutoff.toISOString().slice(0,10)).get(),
-      db.collection('layerServiceReports').where('ts','>=',cutoff).get(),
     ]);
     const walks = walksSnap.docs.map(d=>d.data());
     const eggs  = eggSnap.docs.map(d=>d.data());
-    const lsrs  = lsrSnap.docs.map(d=>d.data());
     const totalEggs = eggs.reduce((s,r)=>s+(Number(r.eggs)||0),0);
     const flagged   = walks.filter(w=>w.flags&&w.flags.length>0).length;
     const farms = ['Hegins','Danville'];
     const farmRows = farms.map(farm => {
       const fw = walks.filter(w=>w.farm===farm).length;
       const fe = eggs.filter(e=>e.farm===farm).reduce((s,r)=>s+(Number(r.eggs)||0),0);
-      const fl = lsrs.filter(l=>l.farm===farm).length;
       return `<tr style="border-bottom:1px solid #1a2a1a;">
         <td style="padding:8px 6px;color:#f0ead8;font-weight:700;">📍 ${farm}</td>
         <td style="padding:8px 6px;color:#7ab07a;text-align:center;">${fw}</td>
         <td style="padding:8px 6px;color:#d69e2e;text-align:center;">${fmtNum(fe)}</td>
-        <td style="padding:8px 6px;color:#a78bfa;text-align:center;">${fl}</td>
       </tr>`;
     }).join('');
     el.innerHTML = `
@@ -1734,7 +1730,6 @@ async function renderRptProd() {
           <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Farm</th>
           <th style="padding:8px 6px;color:#5a8a5a;text-align:center;">Walks</th>
           <th style="padding:8px 6px;color:#5a8a5a;text-align:center;">Eggs</th>
-          <th style="padding:8px 6px;color:#5a8a5a;text-align:center;">LSRs</th>
         </tr></thead>
         <tbody>${farmRows}</tbody>
       </table>`;
@@ -3169,8 +3164,8 @@ function goHome() {
   var OVERLAYS = [
     'ec-section','mw-section','bio-section','flock-section',
     'prod-summary-section','barn-walk-modal','morning-walk-modal',
-    'bw-history-overlay','egg-trends-overlay','lsr-overlay',
-    'tech-mode-overlay','ops-overlay','staff-edit-modal',
+    'bw-history-overlay','egg-trends-overlay',
+    'ops-overlay','staff-edit-modal',
     'admin-pin-modal','briefing-modal'
   ];
   OVERLAYS.forEach(function(id) {
@@ -3676,143 +3671,6 @@ function opsUpdateLandingCard() {
   e=document.getElementById('ops-psi-flags');  if(e){e.textContent=psiFlags; e.style.color=psiFlags?'#d69e2e':'#4caf50';}
 }
 
-// ═══════════════════════════════════════════
-// TECH MODE
-// ═══════════════════════════════════════════
-let tmFarm = 'Hegins';
-
-function openTechMode() {
-  document.getElementById('tech-mode-overlay').style.display = 'block';
-  document.getElementById('tm-date-lbl').textContent =
-    new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-  // Default to first farm alphabetically or whichever is set
-  tmRender();
-}
-
-function closeTechMode() {
-  document.getElementById('tech-mode-overlay').style.display = 'none';
-}
-
-function tmSetFarm(farm, btn) {
-  tmFarm = farm;
-  document.querySelectorAll('.tm-farm-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  tmRender();
-}
-
-function tmRender() {
-  // Stats
-  const farmWOs   = workOrders.filter(w => w.farm === tmFarm && w.status !== 'completed');
-  const urgentWOs = farmWOs.filter(w => w.priority === 'urgent');
-  const farmPMs   = ALL_PM.filter(t => t.farm === tmFarm);
-  const pmDue     = farmPMs.filter(t => pmStatus(t.id) === 'overdue' || pmStatus(t.id) === 'due-soon');
-  const pmDoneT   = farmPMs.filter(t => doneToday(t.id));
-
-  document.getElementById('tm-stats').innerHTML = `
-    <div class="tm-stat">
-      <div class="tm-stat-num" style="color:${urgentWOs.length ? '#e53e3e' : '#f0ead8'}">${urgentWOs.length}</div>
-      <div class="tm-stat-lbl">Urgent WOs</div>
-    </div>
-    <div class="tm-stat">
-      <div class="tm-stat-num" style="color:${farmWOs.length ? '#d69e2e' : '#f0ead8'}">${farmWOs.length}</div>
-      <div class="tm-stat-lbl">Open WOs</div>
-    </div>
-    <div class="tm-stat">
-      <div class="tm-stat-num" style="color:${pmDue.length ? '#d69e2e' : '#4caf50'}">${pmDoneT.length}/${farmPMs.length}</div>
-      <div class="tm-stat-lbl">PMs Done</div>
-    </div>`;
-
-  // WO list — show open/in-progress, sorted urgent first then by age
-  const sortedWOs = [...farmWOs].sort((a,b) => {
-    const po = {urgent:0,high:1,routine:2};
-    if (po[a.priority] !== po[b.priority]) return po[a.priority] - po[b.priority];
-    return (b.ts||0) - (a.ts||0);
-  });
-
-  const woEl = document.getElementById('tm-wo-list');
-  if (!sortedWOs.length) {
-    woEl.innerHTML = '<div class="tm-empty">✅ No open work orders at ' + tmFarm + '</div>';
-  } else {
-    const pC = {urgent:'#e53e3e', high:'#d69e2e', routine:'#4caf50'};
-    const pL = {urgent:'🔴 URGENT', high:'🟡 HIGH', routine:'🟢 ROUTINE'};
-    const dT = {yes:' — ⚠️ EQUIPMENT DOWN', partial:' — ⚡ DEGRADED', no:''};
-    woEl.innerHTML = sortedWOs.map(wo => {
-      const ts = wo.ts?.toMillis ? wo.ts.toMillis() : (wo.ts||0);
-      const days = ts ? Math.floor((Date.now()-ts)/86400000) : 0;
-      const ageStr = days === 0 ? 'TODAY' : days === 1 ? '1 DAY OLD' : days + ' DAYS OLD';
-      const ageCls = days >= 4 ? '#e53e3e' : days >= 2 ? '#d69e2e' : '#9b59b6';
-      return `<div class="tm-card" onclick="tmOpenWO('${wo._fbId}')">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#9b59b6;">${wo.id}</span>
-          <div style="display:flex;gap:5px;align-items:center;">
-            <span style="font-size:10px;font-weight:700;color:${ageCls};font-family:'IBM Plex Mono',monospace;">${ageStr}</span>
-            <span style="font-size:10px;font-weight:700;color:${pC[wo.priority]};font-family:'IBM Plex Mono',monospace;">${pL[wo.priority]}</span>
-          </div>
-        </div>
-        <h4>${wo.house}${dT[wo.down]||''}</h4>
-        <p style="margin-bottom:4px;">${wo.problem}</p>
-        <p style="color:#f0ead8;font-size:12px;font-family:inherit;">${wo.desc ? wo.desc.slice(0,100)+(wo.desc.length>100?'…':'') : ''}</p>
-        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
-          <span style="font-size:10px;color:#9b59b6;font-family:'IBM Plex Mono',monospace;">👤 ${wo.tech}</span>
-          <span style="font-size:10px;color:#9b59b6;font-family:'IBM Plex Mono',monospace;">📅 ${wo.submitted}</span>
-          <span style="font-size:10px;font-weight:700;color:#c39bd3;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;">${wo.status.replace('-',' ')}</span>
-        </div>
-        ${wo.parts ? `<div style="margin-top:4px;font-size:11px;color:#4caf50;font-family:'IBM Plex Mono',monospace;">🔩 ${wo.parts}</div>` : ''}
-      </div>`;
-    }).join('');
-  }
-
-  // PM list — overdue + due-soon, sorted overdue first
-  const pmSorted = [...pmDue].sort((a,b) => {
-    const o = ['overdue','due-soon'];
-    return o.indexOf(pmStatus(a.id)) - o.indexOf(pmStatus(b.id));
-  });
-
-  const pmEl = document.getElementById('tm-pm-list');
-  if (!pmSorted.length) {
-    pmEl.innerHTML = '<div class="tm-empty">✅ All PM tasks on track at ' + tmFarm + '</div>';
-  } else {
-    pmEl.innerHTML = pmSorted.map(t => {
-      const done   = doneToday(t.id);
-      const status = pmStatus(t.id);
-      const comp   = pmComps[t.id];
-      const badgeCol = done ? '#4caf50' : status === 'overdue' ? '#e53e3e' : '#d69e2e';
-      const badgeTxt = done ? '✓ Done Today' : nextDueLabel(t.id);
-      return `<div class="tm-pm-row">
-        <div style="flex:1;">
-          <h4>${SYS_ICON[t.sys]||'📋'} ${t.task}</h4>
-          <p>${FREQ[t.freq].label} · ${comp ? 'Last: '+fmtDate(comp.date) : 'Never done'}</p>
-          <p style="color:${badgeCol};font-weight:700;margin-top:2px;">${badgeTxt}</p>
-        </div>
-        <button class="tm-btn-done" ${done ? 'disabled' : `onclick="tmMarkPM('${t.id}')"`}>
-          ${done ? '✓ Done' : 'Mark Done'}
-        </button>
-      </div>`;
-    }).join('');
-  }
-}
-
-function tmOpenWO(fbId) {
-  // Switch to full app and open WO panel
-  closeTechMode();
-  enterApp('wo');
-}
-
-function tmNewWO() {
-  closeTechMode();
-  enterApp('wo-submit');
-  // Pre-fill farm
-  setTimeout(() => {
-    const farmSel = document.getElementById('wo-farm');
-    if (farmSel) { farmSel.value = tmFarm; loadHouses(); }
-  }, 300);
-}
-
-function tmMarkPM(pmId) {
-  closeTechMode();
-  enterApp('pm');
-  setTimeout(() => openPMModal(pmId), 300);
-}
 
 // ═══════════════════════════════════════════
 // WORK INSTRUCTIONS MODULE

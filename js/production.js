@@ -19,15 +19,6 @@ async function renderLandingStatus() {
     badge('ls-prod', `<span style="color:${color};font-weight:700;">${done}/${total} barns checked today</span>`);
   } catch(e) { badge('ls-prod',''); }
 
-  // Service Techs: LSRs this week
-  try {
-    const weekAgo = new Date(Date.now() - 7*86400000);
-    const snap = await db.collection('layerServiceReports').where('ts','>=',weekAgo).get();
-    const count = snap.docs.length;
-    const color = count > 0 ? '#a78bfa' : '#e53e3e';
-    badge('ls-service', `<span style="color:${color};font-weight:700;">${count} LSR${count!==1?'s':''} this week</span>`);
-  } catch(e) { badge('ls-service',''); }
-
   // Maintenance: open work orders
   try {
     const snap = await db.collection('workOrders')
@@ -1052,92 +1043,6 @@ function renderEggTrends(data) {
   el.innerHTML = html;
 }
 
-// ═══════════════════════════════════════════
-// ── Layer Service Report ───────────────────
-function openLayerServiceReport(farm, house) {
-  const overlay = document.getElementById('lsr-overlay');
-  if (!overlay) return;
-  overlay.style.display = 'block';
-  overlay.scrollTop = 0;
-  document.getElementById('lsr-farm').value = farm || '';
-  document.getElementById('lsr-house').value = house || '';
-  document.getElementById('lsr-date').value = new Date().toISOString().slice(0,10);
-  overlay.querySelectorAll('input:not(#lsr-farm):not(#lsr-house):not(#lsr-date), select, textarea').forEach(el => {
-    if (el.tagName === 'SELECT') el.selectedIndex = 0;
-    else el.value = '';
-  });
-  document.getElementById('lsr-result').style.display = 'none';
-  // Pre-populate benchmark fields from last submission for this farm/house
-  if (farm && house) {
-    db.collection('layerServiceReports').where('farm','==',farm).where('house','==',String(house))
-      .orderBy('ts','desc').limit(1).get()
-      .then(snap => {
-        if (snap.empty) return;
-        const l = snap.docs[0].data();
-        const si = (id, v) => { const el=document.getElementById(id); if (el && !el.value && v != null) el.value = v; };
-        si('lsr-tech', l.tech);       si('lsr-flock', l.flock);       si('lsr-birdcount', l.birdCount);
-        si('lsr-temp-set', l.tempSet); si('lsr-fans-total', l.fansTotal);
-        si('lsr-static-pres-set', l.staticPresSet); si('lsr-inlet-pos', l.inletPos);
-        si('lsr-feed-type', l.feedType); si('lsr-feed-target', l.feedTarget);
-        si('lsr-water-target', l.waterTarget); si('lsr-body-weight-tgt', l.bodyWeightTgt);
-        si('lsr-egg-target', l.eggTarget); si('lsr-light-hours', l.lightHours);
-        si('lsr-lighting', l.lighting); si('lsr-age', l.age ? l.age + 1 : null);
-      }).catch(()=>{});
-  }
-}
-
-function closeLayerServiceReport() {
-  document.getElementById('lsr-overlay').style.display = 'none';
-}
-
-async function submitLayerServiceReport() {
-  const farm  = document.getElementById('lsr-farm').value.trim();
-  const house = document.getElementById('lsr-house').value.trim();
-  const date  = document.getElementById('lsr-date').value;
-  if (!farm || !house || !date) { alert('Farm, House, and Date are required.'); return; }
-  const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-  const n = id => { const v = g(id); return v !== '' ? Number(v) : null; };
-  const record = {
-    farm, house, date,
-    tech: g('lsr-tech'), flock: g('lsr-flock'), age: n('lsr-age'), birdCount: n('lsr-birdcount'), mortality: n('lsr-mortality'),
-    tempInside: n('lsr-temp-inside'), tempOutside: n('lsr-temp-outside'), tempSet: n('lsr-temp-set'),
-    fansRunning: g('lsr-fans-running'), fansTotal: n('lsr-fans-total'), fanDown: n('lsr-fan-down'),
-    staticPres: n('lsr-static-pres'), staticPresSet: n('lsr-static-pres-set'), inletPos: g('lsr-inlet-pos'),
-    feedType: g('lsr-feed-type'), feedIntake: n('lsr-feed-intake'), feedTarget: n('lsr-feed-target'),
-    waterIntake: n('lsr-water-intake'), waterTarget: n('lsr-water-target'),
-    feedingTimes: g('lsr-feeding-times'), feedBinLevel: n('lsr-feedbin-level'),
-    bodyWeight: n('lsr-body-weight'), bodyWeightTgt: n('lsr-body-weight-tgt'),
-    eggProduction: n('lsr-egg-production'), eggTarget: n('lsr-egg-target'),
-    eggsFloor: n('lsr-eggs-floor'), eggQuality: g('lsr-egg-quality'),
-    ammonia: n('lsr-ammonia'), lighting: g('lsr-lighting'), lightHours: n('lsr-light-hours'),
-    eggBeltStatus: g('lsr-eggbelt-status'), coolerTemp: n('lsr-cooler-temp'),
-    footbaths: g('lsr-footbaths'), visitors: g('lsr-visitors'),
-    biosecNotes: g('lsr-biosec-notes'), comments: g('lsr-comments'),
-    ts: Date.now()
-  };
-  const btn = document.getElementById('lsr-submit-btn');
-  if (btn) btn.disabled = true;
-  try {
-    await db.collection('layerServiceReports').add(record);
-    // Auto-create urgent WOs for critical LSR issues
-    const lsrFlags = [];
-    if (record.fanDown > 0)                                           lsrFlags.push({issue:'Fan down: '+record.fanDown+' of '+record.fansTotal, priority:'urgent'});
-    if (record.eggBeltStatus && record.eggBeltStatus !== 'running')   lsrFlags.push({issue:'Egg belt issue: '+record.eggBeltStatus, priority:'urgent'});
-    if (record.eggProduction != null && record.eggTarget > 0 && record.eggProduction < record.eggTarget * 0.5)
-                                                                       lsrFlags.push({issue:'Very low production: '+record.eggProduction+' vs target '+record.eggTarget, priority:'urgent'});
-    if (record.mortality != null && record.mortality > 30)            lsrFlags.push({issue:'High mortality: '+record.mortality+' birds', priority:'high'});
-    if (record.ammonia != null && record.ammonia > 25)                lsrFlags.push({issue:'High ammonia: '+record.ammonia+' ppm', priority:'urgent'});
-    for (const f of lsrFlags) {
-      try { await createMustFixWO('LSR — '+farm+' Barn '+house+': '+f.issue, f.issue, farm, house, f.priority); } catch(e) {}
-    }
-    const res = document.getElementById('lsr-result');
-    if (res) { res.style.display = 'block'; res.textContent = '✓ Report saved' + (lsrFlags.length ? ' · ' + lsrFlags.length + ' WO(s) created' : ' successfully'); }
-    setTimeout(() => closeLayerServiceReport(), 1800);
-  } catch(e) {
-    alert('Save failed: ' + e.message);
-    if (btn) btn.disabled = false;
-  }
-}
 
 // ═══════════════════════════════════════════
 // ── Production Sub-Tab Switcher ─────────────
@@ -1349,44 +1254,5 @@ async function mwTabCreateWOs() {
     try { await createMustFixWO('MW \u2014 '+iss.farm+' Barn '+iss.house, iss.issue, iss.farm, iss.house, 'urgent'); } catch(e) {}
   }
   renderProdMW();
-}
-
-// ── Layer Service Report Tab ─────────────────
-
-async function renderProdLSR() {
-  const el = document.getElementById('panel-lsr-body') || document.getElementById('prod-sec-lsr');
-  if (!el) return;
-  el.innerHTML = '<div style="text-align:center;padding:40px;color:#7a6030;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">Loading\u2026</div>';
-  const weekAgo = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
-  let reports = [];
-  try {
-    const snap = await db.collection('layerServiceReports').where('date','>=',weekAgo).orderBy('date','desc').get();
-    reports = snap.docs.map(d => ({...d.data(), _id: d.id}));
-  } catch(e) { console.error(e); }
-  const lsrMap = {};
-  reports.forEach(r => { const k=r.farm+'-'+r.house; if (!lsrMap[k]||r.ts>lsrMap[k].ts) lsrMap[k]=r; });
-  const farms = [{name:'Hegins',houses:8},{name:'Danville',houses:5}];
-  const lsrIssues = [];
-  let farmsHtml = '';
-  farms.forEach(({name, houses}) => {
-    let cells = '';
-    for (let h=1; h<=houses; h++) {
-      const k=name+'-'+h, rpt=lsrMap[k], daysOld=rpt?Math.floor((Date.now()-rpt.ts)/86400000):null;
-      const overdue = daysOld===null||daysOld>7;
-      const bc = !rpt?'#4a3800':daysOld<=3?'#4caf50':daysOld<=7?'#d69e2e':'#e53e3e';
-      const bg = !rpt?'#1a1200':daysOld<=3?'#0f2a0f':daysOld<=7?'#1a1200':'#1a0a0a';
-      const label = !rpt?'&mdash;':daysOld===0?'Today':daysOld+'d ago';
-      if (overdue) lsrIssues.push({farm:name,house:h,issue:rpt?'LSR overdue ('+daysOld+'d ago)':'No LSR this week'});
-      cells += '<div onclick="openLayerServiceReport(\''+name+'\',\''+h+'\')" style="background:'+bg+';border:2px solid '+bc+';border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;"><div style="font-size:8px;color:#7a6030;letter-spacing:1px;font-family:\'IBM Plex Mono\',monospace;">H'+h+'</div><div style="font-size:13px;font-weight:700;color:'+bc+';line-height:1.4;">'+label+'</div><div style="font-size:8px;color:#7a6030;font-family:\'IBM Plex Mono\',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:54px;margin:1px auto 0;">'+(rpt?(rpt.tech||'?'):'none')+'</div></div>';
-    }
-    farmsHtml += '<div style="margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;color:#b09040;margin-bottom:8px;">&#x1f4cd; '+name+'</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'+cells+'</div></div>';
-  });
-  const lsrIssuesHtml = lsrIssues.length>0
-    ? '<div style="background:#1a1000;border:1px solid #5a4000;border-radius:12px;padding:14px;margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#d69e2e;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">&#x26a0; '+lsrIssues.length+' LSR'+(lsrIssues.length>1?'s':'')+' Overdue</div>'+lsrIssues.slice(0,10).map(i=>'<div style="font-size:11px;color:#b07a20;font-family:\'IBM Plex Mono\',monospace;padding:4px 0;border-bottom:1px solid #2a1800;">'+i.farm+' Barn '+i.house+' &mdash; '+i.issue+'</div>').join('')+'</div>'
-    : '<div style="background:#0f1a00;border:1px solid #3a3000;border-radius:12px;padding:12px;margin-bottom:16px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#d69e2e;">&#x2705; All barns have a current LSR this week</div>';
-  const recentHtml = reports.length>0
-    ? '<div style="background:#0f1400;border:1px solid #3a3000;border-radius:12px;padding:14px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#8a7030;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Recent Reports (7 days)</div>'+reports.slice(0,10).map(r=>'<div style="padding:8px 0;border-bottom:1px solid #1a1800;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#f0ead8;">'+r.farm+' Barn '+r.house+'</div><div style="font-size:10px;color:#6a5820;margin-top:2px;">'+(r.tech||'Unknown')+' &middot; '+(r.date||'')+'</div></div><div style="font-size:10px;color:#8a7030;font-family:\'IBM Plex Mono\',monospace;">'+(r.eggProduction||'&mdash;')+' eggs</div></div>').join('')+'</div>'
-    : '';
-  el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#8a7030;letter-spacing:2px;text-transform:uppercase;">Layer Service Reports</div><button onclick="openLayerServiceReport()" style="padding:8px 14px;background:#1a1400;border:1px solid #d69e2e;border-radius:8px;color:#d69e2e;font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;cursor:pointer;">+ New Report</button></div>'+lsrIssuesHtml+farmsHtml+recentHtml;
 }
 

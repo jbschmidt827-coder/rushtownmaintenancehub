@@ -399,8 +399,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
   #bw-history-overlay  > div:first-of-type,
   #egg-trends-overlay  > div:first-of-type,
   #morning-walk-modal  > div:first-of-type,
-  #barn-walk-modal     > div:first-of-type,
-  #lsr-overlay         > div:first-of-type { max-width: 720px !important; }
+  #barn-walk-modal     > div:first-of-type { max-width: 720px !important; }
   .tm-pad   { max-width: 720px !important; }
   .modal    { max-width: 640px !important; }
   .modal-card { max-width: 640px !important; }
@@ -415,8 +414,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
   #bw-history-overlay  > div:first-of-type,
   #egg-trends-overlay  > div:first-of-type,
   #morning-walk-modal  > div:first-of-type,
-  #barn-walk-modal     > div:first-of-type,
-  #lsr-overlay         > div:first-of-type { max-width: 880px !important; }
+  #barn-walk-modal     > div:first-of-type { max-width: 880px !important; }
   .modal    { max-width: 700px !important; }
   .modal-card { max-width: 700px !important; }
 }
@@ -454,7 +452,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
    ══════════════════════════════════════════════ */
 
 /* ── Hide floating action buttons on phones — they block submit buttons ── */
-@media(max-width:600px){ .fab, .tm-fab { display: none !important; } }
+@media(max-width:600px){ .fab { display: none !important; } }
 /* ── On phones: hide header HOME + lang buttons (logo taps home; lang on landing screen) ── */
 @media(max-width:600px){
   .header-home-btn { display: none !important; }
@@ -494,8 +492,7 @@ body { min-height: 100dvh; overflow-x: hidden; }
   #ec-section > div:first-of-type,
   #mw-section > div:first-of-type,
   #bio-section > div:first-of-type,
-  #barn-walk-modal > div:first-of-type,
-  #lsr-overlay > div:first-of-type { max-width: 860px !important; }
+  #barn-walk-modal > div:first-of-type { max-width: 860px !important; }
 }
 
 /* ── Safe area bottom for all devices (iOS home bar) ── */
@@ -637,14 +634,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
           <div id="ls-prod" style="font-family:'IBM Plex Mono',monospace;font-size:10px;min-height:14px;"></div>
         </button>
 
-        <!-- Service Techs -->
-        <button onclick="enterApp('service')" style="padding:16px 14px;background:#1a2a3a;border:2px solid #4a90d9;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
-          <span style="font-size:28px;line-height:1;">🛠️</span>
-          <div data-i18n="landing.service" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Service Techs</div>
-          <div data-i18n="landing.service_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#6a90d9;line-height:1.4;">Daily check · Layer service · Flock ages</div>
-          <div id="ls-service" style="font-family:'IBM Plex Mono',monospace;font-size:10px;min-height:14px;"></div>
-        </button>
-
         <!-- Maintenance -->
         <button onclick="enterApp('maint')" style="padding:16px 14px;background:#0d1f3a;border:2px solid #3b82f6;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
           <span style="font-size:28px;line-height:1;">🔧</span>
@@ -697,7 +686,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
           <button data-i18n="landing.new_wo" onclick="enterApp('wo-submit')" style="padding:13px 10px;background:#0d1f3a;border:1.5px solid #3b82f6;border-radius:10px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🔧 New Work Order</button>
           <button data-i18n="landing.log_barn" onclick="enterApp('prod');setTimeout(function(){openECSection&&openECSection()},300)" style="padding:13px 10px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:10px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🐓 Log Barn Walk</button>
           <button data-i18n="landing.enter_egg" onclick="enterApp('kpi');setTimeout(function(){go('kpi')},100)" style="padding:13px 10px;background:#1a1400;border:1.5px solid #d69e2e;border-radius:10px;color:#d69e2e;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🥚 Enter Egg Data</button>
-          <button data-i18n="landing.layer_svc" onclick="enterApp('service');setTimeout(function(){openLayerServiceReport&&openLayerServiceReport('','')},300)" style="padding:13px 10px;background:#1a0d2e;border:1.5px solid #7c3aed;border-radius:10px;color:#a78bfa;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🐔 Layer Service</button>
         </div>
       </div>
 
@@ -718,34 +706,9 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   🔄 New version available! &nbsp;<span style="text-decoration:underline;">Tap here to update</span>
 </div>
 
-<!-- ═══ TECH MODE OVERLAY ═══ -->
-<div id="tech-mode-overlay" style="display:none;position:fixed;inset:0;background:#163016;z-index:600;overflow-y:auto;">
-<style>
-#tech-mode-overlay *{box-sizing:border-box}
-.tm-hdr{background:#1a0a3a;padding:14px 16px;border-bottom:2px solid #9b59b6;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;}
-.tm-pad{padding:16px;max-width:560px;margin:0 auto;}
-.tm-section{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#c39bd3;letter-spacing:2.5px;text-transform:uppercase;margin:20px 0 10px;padding-bottom:5px;border-bottom:1px solid #3a1a5a;}
-.tm-card{background:#1a0a3a;border-radius:12px;border:1px solid #3a1a5a;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s;}
-.tm-card:hover{border-color:#9b59b6;}
-.tm-card h4{font-size:14px;font-weight:700;color:#f0ead8;margin-bottom:3px;}
-.tm-card p{font-size:12px;color:#c39bd3;font-family:'IBM Plex Mono',monospace;}
-.tm-card .tm-age{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;font-family:'IBM Plex Mono',monospace;margin-left:6px;}
-.tm-pm-row{background:#1a0a3a;border-radius:10px;border:1px solid #3a1a5a;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
-.tm-pm-row h4{font-size:13px;font-weight:700;color:#f0ead8;margin-bottom:2px;}
-.tm-pm-row p{font-size:11px;color:#c39bd3;font-family:'IBM Plex Mono',monospace;}
-.tm-btn-done{padding:8px 14px;background:#4caf50;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'IBM Plex Mono',monospace;}
-.tm-btn-done:disabled{background:#2a5a2a;color:#5a8a5a;cursor:not-allowed;}
-.tm-farm-sel{display:flex;gap:8px;margin-bottom:16px;}
-.tm-farm-btn{flex:1;padding:12px 8px;border-radius:10px;border:2px solid #3a1a5a;background:#1a0a3a;color:#c39bd3;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;text-align:center;letter-spacing:1px;text-transform:uppercase;transition:all .15s;}
-.tm-farm-btn.active{background:#3a1a6a;border-color:#9b59b6;color:#f0ead8;}
-.tm-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
-.tm-stat{background:#1a0a3a;border:1px solid #3a1a5a;border-radius:10px;padding:12px 8px;text-align:center;}
-.tm-stat-num{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#f0ead8;}
-.tm-stat-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;color:#c39bd3;letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
-.tm-empty{text-align:center;padding:28px 16px;color:#5a3a7a;font-family:'IBM Plex Mono',monospace;font-size:13px;}
-.tm-fab{position:fixed;bottom:24px;right:24px;z-index:650;background:#9b59b6;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;padding:15px 22px;border-radius:50px;border:none;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,0.5);transition:all .2s;display:flex;align-items:center;gap:8px;}
-.tm-fab:hover{background:#8e44ad;transform:translateY(-2px);}
 
+
+<style>
 /* ═══ OPERATIONS MODULE ═══ */
 .ops-subnav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid var(--green-mid);}
 .ops-sub-btn{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:8px 14px;border-radius:6px;border:1px solid var(--border);background:var(--cream);color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;}
@@ -806,41 +769,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .ops-insight.green{background:var(--green-pale);border-color:var(--green-bright);}
 </style>
 
-<div class="tm-hdr">
-  <span style="font-size:22px;">👷</span>
-  <div style="flex:1;">
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">Tech Mode</div>
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#9b59b6;letter-spacing:2px;text-transform:uppercase;" id="tm-date-lbl"></div>
-  </div>
-  <button onclick="closeTechMode()" style="background:#c0392b;border:none;color:white;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px;font-family:'IBM Plex Mono',monospace;">✕ EXIT</button>
-</div>
-
-<div class="tm-pad">
-
-  <!-- Farm picker -->
-  <div class="tm-farm-sel">
-    <button class="tm-farm-btn active" id="tm-farm-hegins" onclick="tmSetFarm('Hegins',this)">📍 Hegins</button>
-    <button class="tm-farm-btn" id="tm-farm-danville" onclick="tmSetFarm('Danville',this)">📍 Danville</button>
-  </div>
-
-  <!-- My stats today -->
-  <div class="tm-stat-row" id="tm-stats"></div>
-
-  <!-- Open + Urgent WOs -->
-  <div class="tm-section">🔴 Open Work Orders</div>
-  <div id="tm-wo-list"></div>
-
-  <!-- PM tasks due -->
-  <div class="tm-section">📋 PM Tasks Due Today</div>
-  <div id="tm-pm-list"></div>
-
-  <div style="height:80px;"></div>
-</div>
-
-<!-- FAB — quick WO submit -->
-<button class="tm-fab" onclick="tmNewWO()">➕ NEW WO</button>
-
-</div>
 <div id="ops-overlay" style="display:none;position:fixed;inset:0;background:#163016;z-index:500;overflow-y:auto;">
 <style>
 #ops-overlay *{box-sizing:border-box}
@@ -955,8 +883,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="nav-tab" id="tab-reports" onclick="go('reports')" data-i18n="nav.reports" style="display:none;">📊 Reports</button>
       <button class="nav-tab" id="tab-sched" onclick="go('sched')" data-i18n="nav.sched" style="display:none;">📅 Schedule</button>
       <button class="nav-tab" id="tab-staff" onclick="go('staff')" style="display:none;">👥 Staff</button>
-      <button class="nav-tab" id="tab-service" onclick="go('service')" style="display:none;">🛠️ Service Techs</button>
-      <button class="nav-tab" id="tab-check" onclick="go('check')" style="display:none;">🐓 Daily Check</button>
+<button class="nav-tab" id="tab-check" onclick="go('check')" style="display:none;">🐓 Daily Check</button>
       <button class="nav-tab" id="tab-mw" onclick="go('mw')" style="display:none;">☀️ Morning Walk</button>
     </nav>
     <button onclick="goHome()" class="header-home-btn" style="padding:10px 20px;background:#163016;border:2px solid #4caf50;border-radius:10px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">⌂ HOME</button>
@@ -1473,34 +1400,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     </div>
     <div id="bio-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;"></div>
     <div id="bio-log-list"></div>
-  </div>
-</div>
-
-<!-- ═══ SERVICE TECHS PANEL ═══ -->
-<div class="panel" id="panel-service">
-  <div class="section-title">🛠️ Service Techs</div>
-  <div style="display:grid;gap:14px;margin-top:4px;">
-    <button onclick="go('check')" style="width:100%;padding:24px 20px;background:#1a3a1a;border:2px solid #4caf50;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
-      <span style="font-size:40px;line-height:1;">🐓</span>
-      <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Daily Barn Check</div>
-        <div style="font-size:12px;color:#7ab07a;margin-top:4px;">Checklist · Egg count · Water PSI · Flags</div>
-      </div>
-    </button>
-    <button onclick="openLayerServiceReport('','')" style="width:100%;padding:24px 20px;background:#1a1400;border:2px solid #d69e2e;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
-      <span style="font-size:40px;line-height:1;">🐔</span>
-      <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Layer Service Report</div>
-        <div style="font-size:12px;color:#d69e2e;margin-top:4px;">Weekly service check · Temps · Fans · Eggs</div>
-      </div>
-    </button>
-    <button onclick="openFlockSection()" style="width:100%;padding:24px 20px;background:#1a0d2e;border:2px solid #7c3aed;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
-      <span style="font-size:40px;line-height:1;">🐣</span>
-      <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Flock Ages</div>
-        <div style="font-size:12px;color:#a78bfa;margin-top:4px;">Track placement dates, age in weeks & depop timeline</div>
-      </div>
-    </button>
   </div>
 </div>
 
@@ -2323,160 +2222,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<!-- ═══ LAYER SERVICE REPORT OVERLAY ═══ -->
-<div id="lsr-overlay" style="display:none;position:fixed;inset:0;background:#080d14;z-index:600;overflow-y:auto;">
-<style>
-.lsr-card{background:#0d1a2a;border:1px solid #1e3a5a;border-radius:14px;padding:16px;margin-bottom:14px;}
-.lsr-card-title{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#4a7aaa;text-transform:uppercase;margin-bottom:12px;}
-.lsr-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
-.lsr-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
-.lsr-fg label{font-size:11px;color:#4a6a8a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;}
-.lsr-fg input,.lsr-fg select,.lsr-fg textarea{width:100%;background:#0a1520;border:1px solid #1e3a5a;border-radius:6px;color:#f0ead8;padding:8px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;}
-.lsr-fg textarea{resize:vertical;min-height:60px;}
-</style>
-  <div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 40px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #1e3a5a;">
-      <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">🐔 Layer Service Report</div>
-        <div style="font-size:11px;color:#4a6a8a;font-family:'IBM Plex Mono',monospace;margin-top:2px;">Weekly barn service check</div>
-      </div>
-      <button onclick="closeLayerServiceReport()" style="background:#0d1a2a;border:1px solid #1e3a5a;color:#4a90d9;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Close</button>
-    </div>
 
-    <!-- Identification -->
-    <div class="lsr-card">
-      <div class="lsr-card-title">📍 Identification</div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Farm *</label><select id="lsr-farm"><option value="">— Select —</option><option>Hegins</option><option>Danville</option><option>Rushtown</option><option>Turbotville</option><option>W&M</option></select></div>
-        <div class="lsr-fg"><label>House *</label><input type="number" id="lsr-house" placeholder="1" min="1" max="8"></div>
-      </div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Date *</label><input type="date" id="lsr-date"></div>
-        <div class="lsr-fg"><label>Tech Name</label><input type="text" id="lsr-tech" placeholder="Your name" list="staff-datalist" autocomplete="off"></div>
-      </div>
-    </div>
-
-    <!-- Flock -->
-    <div class="lsr-card">
-      <div class="lsr-card-title">🐓 Flock Data</div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Flock ID</label><input type="text" id="lsr-flock" placeholder="e.g. H2-2024A"></div>
-        <div class="lsr-fg"><label>Flock Age (wks)</label><input type="number" id="lsr-age" placeholder="0" min="0"></div>
-      </div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Bird Count</label><input type="number" id="lsr-birdcount" placeholder="150000"></div>
-        <div class="lsr-fg"><label>Mortality (today)</label><input type="number" id="lsr-mortality" placeholder="0" min="0"></div>
-      </div>
-    </div>
-
-    <!-- Temperature -->
-    <div class="lsr-card">
-      <div class="lsr-card-title">🌡️ Temperature</div>
-      <div class="lsr-row3">
-        <div class="lsr-fg"><label>Inside (°F)</label><input type="number" id="lsr-temp-inside" placeholder="72" step="0.1"></div>
-        <div class="lsr-fg"><label>Outside (°F)</label><input type="number" id="lsr-temp-outside" placeholder="55" step="0.1"></div>
-        <div class="lsr-fg"><label>Set Point</label><input type="number" id="lsr-temp-set" placeholder="72" step="0.1"></div>
-      </div>
-    </div>
-
-    <!-- Ventilation / Fans -->
-    <div class="lsr-card">
-      <div class="lsr-card-title">💨 Ventilation &amp; Fans</div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Fans Status</label><select id="lsr-fans-running"><option value="">— Select —</option><option value="all-ok">All Running OK</option><option value="partial">Partial — Some Down</option><option value="issue">Issue</option></select></div>
-        <div class="lsr-fg"><label>Total Fan Count</label><input type="number" id="lsr-fans-total" placeholder="0" min="0"></div>
-      </div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Fans Down (#)</label><input type="number" id="lsr-fan-down" placeholder="0" min="0"></div>
-        <div class="lsr-fg"><label>Inlet Position</label><input type="text" id="lsr-inlet-pos" placeholder="e.g. 50%"></div>
-      </div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Static Pressure (actual)</label><input type="number" id="lsr-static-pres" placeholder="0.10" step="0.01"></div>
-        <div class="lsr-fg"><label>Static Pressure (set)</label><input type="number" id="lsr-static-pres-set" placeholder="0.10" step="0.01"></div>
-      </div>
-    </div>
-
-    <!-- Feed & Water -->
-    <div class="lsr-card">
-      <div class="lsr-card-title">🌾 Feed &amp; Water</div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Feed Type</label><input type="text" id="lsr-feed-type" placeholder="e.g. Layer Mash"></div>
-        <div class="lsr-fg"><label>Feeding Times</label><input type="text" id="lsr-feeding-times" placeholder="e.g. 6am, 12pm, 5pm"></div>
-      </div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Feed Intake (lbs/day)</label><input type="number" id="lsr-feed-intake" placeholder="0" step="0.1"></div>
-        <div class="lsr-fg"><label>Feed Target (lbs/day)</label><input type="number" id="lsr-feed-target" placeholder="0" step="0.1"></div>
-      </div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Water Intake (gal/day)</label><input type="number" id="lsr-water-intake" placeholder="0" step="0.1"></div>
-        <div class="lsr-fg"><label>Water Target (gal/day)</label><input type="number" id="lsr-water-target" placeholder="0" step="0.1"></div>
-      </div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Feed Bin Level (%)</label><input type="number" id="lsr-feedbin-level" placeholder="100" min="0" max="100"></div>
-      </div>
-    </div>
-
-    <!-- Body Weight -->
-    <div class="lsr-card">
-      <div class="lsr-card-title">⚖️ Body Weight</div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Avg Body Wt (lbs)</label><input type="number" id="lsr-body-weight" placeholder="0.00" step="0.01"></div>
-        <div class="lsr-fg"><label>Target Body Wt (lbs)</label><input type="number" id="lsr-body-weight-tgt" placeholder="0.00" step="0.01"></div>
-      </div>
-    </div>
-
-    <!-- Egg Production -->
-    <div class="lsr-card">
-      <div class="lsr-card-title">🥚 Egg Production</div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Eggs Produced</label><input type="number" id="lsr-egg-production" placeholder="0"></div>
-        <div class="lsr-fg"><label>Production Target</label><input type="number" id="lsr-egg-target" placeholder="135000"></div>
-      </div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Floor Eggs (count)</label><input type="number" id="lsr-eggs-floor" placeholder="0" min="0"></div>
-        <div class="lsr-fg"><label>Egg Quality</label><select id="lsr-egg-quality"><option value="">— Select —</option><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option></select></div>
-      </div>
-    </div>
-
-    <!-- Environment -->
-    <div class="lsr-card">
-      <div class="lsr-card-title">🌿 Environment</div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Ammonia (ppm)</label><input type="number" id="lsr-ammonia" placeholder="0" step="0.1"></div>
-        <div class="lsr-fg"><label>Light Hours</label><input type="number" id="lsr-light-hours" placeholder="16" step="0.5"></div>
-      </div>
-      <div class="lsr-fg" style="margin-bottom:10px;"><label>Lighting Program</label><input type="text" id="lsr-lighting" placeholder="e.g. 16 on / 8 off"></div>
-    </div>
-
-    <!-- Equipment -->
-    <div class="lsr-card">
-      <div class="lsr-card-title">⚙️ Equipment</div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Egg Belt Status</label><select id="lsr-eggbelt-status"><option value="">— Select —</option><option value="ok">Running OK</option><option value="partial">Partial Issue</option><option value="down">Down</option></select></div>
-        <div class="lsr-fg"><label>Cooler Temp (°F)</label><input type="number" id="lsr-cooler-temp" placeholder="45" step="0.1"></div>
-      </div>
-    </div>
-
-    <!-- Biosecurity -->
-    <div class="lsr-card">
-      <div class="lsr-card-title">🔒 Biosecurity</div>
-      <div class="lsr-row">
-        <div class="lsr-fg"><label>Footbaths</label><select id="lsr-footbaths"><option value="">— Select —</option><option value="ok">OK / Filled</option><option value="low">Low — Needs Refill</option><option value="empty">Empty</option></select></div>
-        <div class="lsr-fg"><label>Visitors Today</label><select id="lsr-visitors"><option value="">— Select —</option><option value="none">None</option><option value="yes">Yes — Logged</option></select></div>
-      </div>
-      <div class="lsr-fg"><label>Biosecurity Notes</label><textarea id="lsr-biosec-notes" placeholder="Any biosecurity concerns..."></textarea></div>
-    </div>
-
-    <!-- Comments -->
-    <div class="lsr-card">
-      <div class="lsr-card-title">💬 Comments</div>
-      <div class="lsr-fg"><textarea id="lsr-comments" style="min-height:80px;" placeholder="General observations, equipment notes, follow-up items..."></textarea></div>
-    </div>
-
-    <div id="lsr-result" style="display:none;background:#0a2a0a;border:1px solid #2a5a2a;border-radius:8px;padding:12px 16px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#4caf50;margin-bottom:12px;"></div>
-    <button id="lsr-submit-btn" onclick="submitLayerServiceReport()" style="width:100%;padding:16px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:12px;color:#f0ead8;font-size:15px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;letter-spacing:0.5px;">💾 Save Layer Service Report</button>
-  </div>
-</div>
 
 <!-- ═══ MAINTENANCE PANEL ═══ -->
 <div class="panel" id="panel-maint">
