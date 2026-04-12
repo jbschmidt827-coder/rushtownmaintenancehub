@@ -1881,10 +1881,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <button class="bw-yn-btn" id="bw-air-poor" onclick="bwSet('air','poor')">❌ Anomaly</button>
       </div>
     </div>
-    <div>
-      <div class="bw-row-label">House Temp (°F)</div>
-      <input type="number" id="bw-temp" class="bw-input" placeholder="e.g. 72">
-    </div>
   </div>
 
   <!-- Feeding & Water -->
@@ -1903,25 +1899,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <button class="bw-yn-btn" id="bw-waste-yes" onclick="bwSet('waste','yes')">⚠️ YES</button>
         <button class="bw-yn-btn" id="bw-waste-no"  onclick="bwSet('waste','no')">✅ NO</button>
       </div>
-    </div>
-    <div style="margin-bottom:12px;">
-      <div class="bw-row-label">Feed Bin Readings (lbs)</div>
-      <div style="display:flex;gap:10px;">
-        <div style="flex:1;">
-          <div style="font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;margin-bottom:4px;">BIN A</div>
-          <input type="number" id="bw-feed-bin-a" class="bw-input" placeholder="Bin A lbs" min="0" onchange="liveUpdateFeedBin('bw-feed-bin-a','bw-feed-bin-a-status',_bwFarm,_bwHouse,'A')">
-          <div id="bw-feed-bin-a-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:4px;min-height:16px;"></div>
-        </div>
-        <div style="flex:1;">
-          <div style="font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;margin-bottom:4px;">BIN B</div>
-          <input type="number" id="bw-feed-bin-b" class="bw-input" placeholder="Bin B lbs" min="0" onchange="liveUpdateFeedBin('bw-feed-bin-b','bw-feed-bin-b-status',_bwFarm,_bwHouse,'B')">
-          <div id="bw-feed-bin-b-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:4px;min-height:16px;"></div>
-        </div>
-      </div>
-    </div>
-    <div style="margin-bottom:12px;">
-      <div class="bw-row-label">Water Pressure (PSI) — Normal: 10–60</div>
-      <input type="number" id="bw-water-psi" class="bw-input" placeholder="Enter PSI reading" oninput="checkBWReady()">
     </div>
     <div>
       <div class="bw-row-label">Standpipes</div>

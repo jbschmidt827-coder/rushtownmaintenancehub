@@ -7,6 +7,9 @@ function newWorkOrder() {
   document.getElementById('maint-wo').querySelector('#wo-dash-section').style.display = 'none';
   document.getElementById('wo-submit-section').style.display = 'block';
   document.getElementById('wo-date').value = todayStr;
+  // Ensure submit button is enabled when opening a fresh form
+  const submitBtn = document.querySelector('#wo-form-card .btn-confirm');
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '✓ SUBMIT WORK ORDER'; }
 }
 
 function goMaintSection(section) {

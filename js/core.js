@@ -1125,6 +1125,8 @@ function go(tab) {
       document.getElementById('wo-dash-section').style.display = 'none';
       document.getElementById('wo-submit-section').style.display = 'block';
       if(fab) fab.style.display = 'none';
+      const woSubmitBtn = document.querySelector('#wo-form-card .btn-confirm');
+      if (woSubmitBtn) { woSubmitBtn.disabled = false; woSubmitBtn.textContent = '✓ SUBMIT WORK ORDER'; }
     }, 50);
     return;
   }

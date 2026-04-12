@@ -756,8 +756,8 @@ function afterWOSubmit() {
   selPri='';
   document.getElementById('wo-date').value=todayStr;
   // Re-enable submit button in case it was left disabled by an error
-  const submitBtn = document.querySelector('.btn-submit');
-  if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'SUBMIT WORK ORDER'; }
+  const submitBtn = document.querySelector('#wo-form-card .btn-confirm');
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '✓ SUBMIT WORK ORDER'; }
   window.scrollTo(0,0);
 }
 
