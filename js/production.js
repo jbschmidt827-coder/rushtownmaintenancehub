@@ -424,17 +424,16 @@ function bwSet(key, val) {
 
 function checkBWReady() {
   const emp  = (document.getElementById('bw-employee')?.value || '').trim();
-  const psi  = (document.getElementById('bw-water-psi')?.value || '').trim();
   const mort = _bwData.mort !== undefined;
   const feed = _bwData.feed !== undefined;
-  document.getElementById('bw-submit-btn').disabled = !(emp && psi && mort && feed);
+  document.getElementById('bw-submit-btn').disabled = !(emp && mort && feed);
 }
 
 async function submitBarnWalk() {
   const employee   = document.getElementById('bw-employee').value.trim();
   const notes      = document.getElementById('bw-notes').value.trim();
-  const waterPSI   = Number(document.getElementById('bw-water-psi').value) || 0;
-  const temp       = document.getElementById('bw-temp').value ? Number(document.getElementById('bw-temp').value) : null;
+  const waterPSI   = null; // field removed from Daily Employee Check
+  const temp       = null; // field removed from Daily Employee Check
   const mortCount  = document.getElementById('bw-mort-count').value ? Number(document.getElementById('bw-mort-count').value) : null;
   const looseCount  = document.getElementById('bw-loose-count').value  ? Number(document.getElementById('bw-loose-count').value)  : null;
   const rodentCount = document.getElementById('bw-rodent-count').value ? Number(document.getElementById('bw-rodent-count').value) : null;
@@ -450,9 +449,9 @@ async function submitBarnWalk() {
   if (_bwData.loose === 'yes')          flags.push('Loose birds' + (looseCount ? ' (' + looseCount + ')' : ''));
   if (_bwData.air === 'poor')           flags.push('Air quality anomaly');
   if (_bwData.feed === 'empty')         flags.push('Feeders empty');
-  if (waterPSI < 10 || waterPSI > 60)  flags.push('Water pressure out of range (' + waterPSI + ' PSI)');
   if (_bwData.eggbelt === 'down')       flags.push('Egg belt not working');
   if (_bwData.manure === 'stop')        flags.push('Manure belts not running');
+  // Water PSI and House Temp fields removed from Daily Employee Check form
   // Pest observations are saved to pestLog — not added to flags/WO queue
   // (WO is only created below if rodentCount >= threshold)
   if (_bwData.doors === 'open')         flags.push('House doors open');
@@ -569,7 +568,6 @@ async function submitBarnWalk() {
     'Loose birds':                {problem:'Building / Structure',priority:'high'},
     'Air quality anomaly':        {problem:'Ventilation / Fans', priority:'urgent'},
     'Feeders empty':              {problem:'Feed System',        priority:'urgent'},
-    'Water pressure out of range':{problem:'Watering System',    priority:'urgent'},
     'Egg belt not working':       {problem:'Egg Collection',     priority:'urgent'},
     // Rodents and Fly activity are handled by the Pest Log — not auto-WO
   };
