@@ -1182,6 +1182,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button class="prod-tab-btn active" id="prod-tab-overview" onclick="goProdSection('overview')">📋 Overview</button>
     <button class="prod-tab-btn" id="prod-tab-history" onclick="goProdSection('history')">📂 Walk History</button>
     <button class="prod-tab-btn" id="prod-tab-biosec" onclick="goProdSection('biosec')">🦠 Biosecurity</button>
+    <button class="prod-tab-btn" id="prod-tab-pest" onclick="openPestLog()">🐀 Pest Log</button>
   </div>
 
   <!-- Overview Section (existing content) -->
@@ -1229,6 +1230,13 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Egg Trends</div>
         <div style="font-size:12px;color:#a0c060;margin-top:4px;">7, 14, 30-day production charts vs target by farm</div>
+      </div>
+    </button>
+    <button onclick="openPestLog()" style="width:100%;padding:24px 20px;background:#1a1200;border:2px solid #7a5a1a;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">🐀</span>
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Pest Log</div>
+        <div style="font-size:12px;color:#c8a05a;margin-top:4px;">Rodent &amp; fly sightings by barn — trends &amp; WO thresholds</div>
       </div>
     </button>
   </div>
@@ -2180,6 +2188,36 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="pill" onclick="bwHistFarmFilter('Danville',this)">📍 Danville</button>
     </div>
     <div id="bw-history-list"></div>
+  </div>
+</div>
+
+<!-- ═══ PEST LOG OVERLAY ═══ -->
+<div id="pest-log-overlay" style="display:none;position:fixed;inset:0;background:#0a0d0a;z-index:600;overflow-y:auto;">
+  <div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 60px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #3a2a1a;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">🐀 Pest Log</div>
+        <div id="pest-log-count" style="font-size:11px;color:#8a7a5a;font-family:'IBM Plex Mono',monospace;margin-top:2px;"></div>
+      </div>
+      <button onclick="closePestLog()" style="background:#1a1a0a;border:1px solid #3a2a1a;color:#c8a05a;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Close</button>
+    </div>
+
+    <!-- Summary stats -->
+    <div id="pest-log-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;"></div>
+
+    <!-- Filters -->
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;">
+      <button class="pill active" onclick="pestLogFilter('all',this)">All Farms</button>
+      <button class="pill" onclick="pestLogFilter('Hegins',this)">📍 Hegins</button>
+      <button class="pill" onclick="pestLogFilter('Danville',this)">📍 Danville</button>
+    </div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="pill active" onclick="pestLogTypeFilter('all',this)">🐀 & 🪰 All</button>
+      <button class="pill" onclick="pestLogTypeFilter('rodent',this)">🐀 Rodents</button>
+      <button class="pill" onclick="pestLogTypeFilter('fly',this)">🪰 Flies</button>
+    </div>
+
+    <div id="pest-log-list"></div>
   </div>
 </div>
 
