@@ -3886,6 +3886,41 @@ async function seedAugerRollerWI() {
   console.log('✅ Auger Roller WI seeded.');
 }
 
+async function seedCounterCardWI() {
+  const SEED_ID = 'WI-COUNTER-CARD-H5-8-PMSI';
+  try {
+    const check = await db.collection('workInstructions').where('wiId','==', SEED_ID).get();
+    if (!check.empty) return;
+  } catch(e) { return; }
+
+  const today = new Date().toISOString().slice(0,10);
+  await db.collection('workInstructions').add({
+    wiId: SEED_ID,
+    title: 'Counter Card Reset — Houses 5–8 (PMSI Controls)',
+    dept: 'Maintenance',
+    farm: 'Hegins',
+    type: 'repair',
+    system: 'Egg Collectors',
+    time: 15,
+    author: 'Adam',
+    date: today,
+    purpose: 'Resetting the counter card after replacement if the card is still not counting correctly. This step is crucial in helping further diagnose counter issues.',
+    tools: '#2 Phillips head screwdriver (×1), Small flat head screwdriver / Tweeker (×1)',
+    ppe: '',
+    warnings: 'Power down the card before cycling dip switches to avoid incorrect address settings.',
+    steps: [
+      'POWER DOWN — Pull the power block out of the card. The power block is located at the top center of the card.',
+      'CYCLE DIP SWITCHES — Cycle dip switches 1, 4, 5, 6, 7, and 8 from ON to OFF three times, ending in the OFF position. These switches are located on the right side of the card.',
+      'SET DIP SWITCHES FROM OLD CARD — Using the old card (removed from the box), set the dip switches on the new card to match the old card exactly. This sets the correct address for that card and row.',
+      'RESTORE POWER — Plug the power block back into the card and check for proper egg counting.',
+      'VERIFY OR ESCALATE — If everything is working correctly, close everything up — job complete. If issues persist, notify supervisor to proceed with further diagnosing from PMSI controls.',
+    ],
+    verification: 'The egg counter on the REF screen in the head packer\'s office should show eggs being counted and not display in red. Alternatively, verify on the CIII command screen located in the corridor between House 5 and House 6.',
+    ts: Date.now()
+  });
+  console.log('✅ Counter Card Reset WI seeded.');
+}
+
 function startWIListener() {
   db.collection('workInstructions').orderBy('ts','desc').onSnapshot(snap => {
     allWI = [];
@@ -4111,6 +4146,20 @@ function openWIView(wiId) {
   if (wi.warnings) { warnEl.style.display = ''; document.getElementById('wiv-warn-text').textContent = wi.warnings; }
   else warnEl.style.display = 'none';
 
+  // Tools strip
+  const toolsEl = document.getElementById('wiv-tools-strip');
+  if (toolsEl) {
+    if (wi.tools) { toolsEl.style.display = ''; document.getElementById('wiv-tools-text').textContent = wi.tools; }
+    else toolsEl.style.display = 'none';
+  }
+
+  // Purpose strip
+  const purposeEl = document.getElementById('wiv-purpose-strip');
+  if (purposeEl) {
+    if (wi.purpose) { purposeEl.style.display = ''; document.getElementById('wiv-purpose-text').textContent = wi.purpose; }
+    else purposeEl.style.display = 'none';
+  }
+
   // Steps — interactive checklist
   const steps = wi.steps || [];
   document.getElementById('wiv-steps').innerHTML = steps.map((step, i) => `
@@ -4118,6 +4167,13 @@ function openWIView(wiId) {
       <div class="wiv-step-num" id="wiv-step-num-${i}">${i+1}</div>
       <div class="wiv-step-text" id="wiv-step-text-${i}">${step}</div>
     </div>`).join('');
+
+  // Verification / "What Good Looks Like" strip
+  const verifEl = document.getElementById('wiv-verif-strip');
+  if (verifEl) {
+    if (wi.verification) { verifEl.style.display = ''; document.getElementById('wiv-verif-text').textContent = wi.verification; }
+    else verifEl.style.display = 'none';
+  }
 
   document.getElementById('wiv-footer').textContent = `#${wi.wiId} · ${steps.length} steps`;
   document.getElementById('wi-view-modal').classList.add('open');

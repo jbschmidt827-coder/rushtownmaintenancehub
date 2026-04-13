@@ -1017,6 +1017,7 @@ async function initApp() {
     await seedMortalityCompostingWI();
     await seedWaterRegulatorWI();
     await seedAugerRollerWI();
+    await seedCounterCardWI();
     assignRHNumbers();
 
     // Real-time listeners
