@@ -161,10 +161,15 @@ async function saveFeedBin() {
 async function deleteFeedBin(binId) {
   if (!confirm('Delete this bin? All readings for it will remain in the log.')) return;
   const b = feedBins.find(x => x.binId === binId);
-  if (b?._fbId) await db.collection('feedBins').doc(b._fbId).delete();
-  await loadFeedBins();
-  renderFeedBinsList();
-  renderFeedDashboard();
+  try {
+    if (b?._fbId) await db.collection('feedBins').doc(b._fbId).delete();
+    await loadFeedBins();
+    renderFeedBinsList();
+    renderFeedDashboard();
+  } catch(err) {
+    console.error('deleteFeedBin error:', err);
+    alert('Error deleting bin: ' + err.message);
+  }
 }
 
 function renderFeedBinsList() {
@@ -428,26 +433,43 @@ function renderBulkReadingInputs() {
   if(saveRow) saveRow.style.display='flex';
 }
 
+let _savingBulkReadings = false;
 async function saveBulkFeedReadings() {
+  if (_savingBulkReadings) return;
   const farm = document.getElementById('fr-farm')?.value;
   const date = document.getElementById('fr-date')?.value;
   const by   = document.getElementById('fr-by')?.value?.trim() || '';
   if (!farm || !date) return alert('Farm and Date are required.');
   const farmBins = feedBins.filter(b => b.farm === farm);
-  let saved = 0;
-  for (const b of farmBins) {
-    const el = document.getElementById('fr-input-' + b.binId);
-    if (!el || el.value === '') continue;
-    const readingLbs = parseInt(el.value) || 0;
-    const ref = await db.collection('feedReadings').add({ date, binId: b.binId, binName: b.name, farm, readingLbs, by, ts: Date.now() });
-    feedReadings.unshift({ date, binId: b.binId, binName: b.name, farm, readingLbs, by, ts: Date.now(), _fbId: ref.id });
-    saved++;
+  const saveBtn = document.getElementById('fr-save-btn');
+  _savingBulkReadings = true;
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+  try {
+    let saved = 0;
+    for (const b of farmBins) {
+      const el = document.getElementById('fr-input-' + b.binId);
+      if (!el || el.value === '') continue;
+      const readingLbs = parseInt(el.value) || 0;
+      const ref = await db.collection('feedReadings').add({ date, binId: b.binId, binName: b.name, farm, readingLbs, by, ts: Date.now() });
+      feedReadings.unshift({ date, binId: b.binId, binName: b.name, farm, readingLbs, by, ts: Date.now(), _fbId: ref.id });
+      saved++;
+    }
+    if (!saved) {
+      _savingBulkReadings = false;
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '✓ Save All Readings'; }
+      return alert('Enter at least one reading.');
+    }
+    alert(`✅ ${saved} readings saved for ${farm}.`);
+    clearBulkReadingForm();
+    renderFeedReadings();
+    renderFeedDashboard();
+  } catch(err) {
+    console.error('saveBulkFeedReadings error:', err);
+    alert('Something went wrong saving readings. Please try again.\n\nError: ' + err.message);
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '✓ Save All Readings'; }
+  } finally {
+    _savingBulkReadings = false;
   }
-  if (!saved) return alert('Enter at least one reading.');
-  alert(`✅ ${saved} readings saved for ${farm}.`);
-  clearBulkReadingForm();
-  renderFeedReadings();
-  renderFeedDashboard();
 }
 
 function clearBulkReadingForm() {
@@ -537,9 +559,14 @@ function renderFeedDeliveries() {
 
 async function deleteFeedDelivery(fbId) {
   if (!fbId || !confirm('Delete this delivery record?')) return;
-  await db.collection('feedDeliveries').doc(fbId).delete();
-  feedDeliveries = feedDeliveries.filter(r => r._fbId !== fbId);
-  renderFeedDeliveries();
+  try {
+    await db.collection('feedDeliveries').doc(fbId).delete();
+    feedDeliveries = feedDeliveries.filter(r => r._fbId !== fbId);
+    renderFeedDeliveries();
+  } catch(err) {
+    console.error('deleteFeedDelivery error:', err);
+    alert('Error deleting record: ' + err.message);
+  }
 }
 
 // ── Feed Made ──

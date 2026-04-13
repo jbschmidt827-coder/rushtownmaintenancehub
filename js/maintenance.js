@@ -739,18 +739,17 @@ async function submitWO() {
 
 function afterWOSubmit() {
   _woSubmitting = false;
-  document.getElementById('fab-btn').style.display = '';
-  document.getElementById('wo-form-card').style.display='';
-  document.getElementById('wo-success').style.display='none';
+  const fabBtn = document.getElementById('fab-btn');
+  const woFormCard = document.getElementById('wo-form-card');
+  if (fabBtn) fabBtn.style.display = '';
+  if (woFormCard) woFormCard.style.display='';
+  const woSuccess = document.getElementById('wo-success');
+  if (woSuccess) woSuccess.style.display='none';
   ['wo-farm','wo-problem','wo-tech','wo-assign','wo-desc','wo-parts','wo-notes'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-  document.getElementById('wo-down').value='no';
-  document.getElementById('wo-down').value='no';
-  document.getElementById('wo-house').innerHTML='<option value="">— Select Farm First —</option>';
-  document.getElementById('wo-desc').value='';
-  document.getElementById('wo-parts').value='';
-  document.getElementById('wo-notes').value='';
-  document.getElementById('photo-preview').innerHTML='';
-  document.getElementById('photo-input').value='';
+  const woDown = document.getElementById('wo-down'); if (woDown) woDown.value='no';
+  const woHouse = document.getElementById('wo-house'); if (woHouse) woHouse.innerHTML='<option value="">— Select Farm First —</option>';
+  const photoPreview = document.getElementById('photo-preview'); if (photoPreview) photoPreview.innerHTML='';
+  const photoInput = document.getElementById('photo-input'); if (photoInput) photoInput.value='';
   pendingPhotoData = [];
   document.querySelectorAll('.pri-pill').forEach(p=>p.classList.remove('sel'));
   selPri='';
@@ -2298,18 +2297,25 @@ async function submitDowntime() {
     loggedAt: Date.now()
   };
   setSyncDot('saving');
-  await db.collection('downtimeEvents').add(event);
-  await db.collection('activityLog').add({
-    type:'downtime', id:'DT',
-    desc: `Downtime logged: ${farm} · ${system} — ${desc}`,
-    tech: 'System', date: event.date, ts: Date.now()
-  });
-  setSyncDot('live');
-  // Reset form
-  ['dt-farm','dt-system','dt-start','dt-end','dt-desc','dt-linked-wo'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = '';
-  });
-  renderDowntime();
+  try {
+    await db.collection('downtimeEvents').add(event);
+    try {
+      await db.collection('activityLog').add({
+        type:'downtime', id:'DT',
+        desc: `Downtime logged: ${farm} · ${system} — ${desc}`,
+        tech: 'System', date: event.date, ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
+    setSyncDot('live');
+    ['dt-farm','dt-system','dt-start','dt-end','dt-desc','dt-linked-wo'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    renderDowntime();
+  } catch(err) {
+    setSyncDot('live');
+    console.error('submitDowntime error:', err);
+    alert('Something went wrong saving the downtime event. Please try again.\n\nError: ' + err.message);
+  }
 }
 
 function renderDowntime() {
