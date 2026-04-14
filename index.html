@@ -623,6 +623,30 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <div style="flex:1;padding:0 12px 16px;">
     <div style="max-width:700px;margin:0 auto;">
 
+      <!-- Director's Brief — full-width top card -->
+      <div style="margin-bottom:10px;">
+        <button onclick="enterApp('brief')" style="width:100%;padding:14px 18px;background:#1a0505;border:2px solid #ef4444;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;gap:16px;">
+          <span style="font-size:32px;line-height:1;flex-shrink:0;">🚨</span>
+          <div style="flex:1;">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#fca5a5;letter-spacing:1px;text-transform:uppercase;">Director's Daily Brief</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7a3a3a;line-height:1.4;margin-top:3px;">Real-time status · Alerts · Both farms · One screen</div>
+          </div>
+          <div id="ls-brief-badge" style="font-family:'IBM Plex Mono',monospace;font-size:10px;min-width:36px;text-align:right;"></div>
+        </button>
+      </div>
+
+      <!-- LOG BARN WALK — hero action for barn leaders -->
+      <div style="margin-bottom:14px;">
+        <button onclick="openBarnEntry()" style="width:100%;padding:18px 20px;background:#0d2a14;border:2.5px solid #4ade80;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;gap:16px;transition:background .15s;">
+          <span style="font-size:36px;line-height:1;flex-shrink:0;">🐓</span>
+          <div style="flex:1;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:#4ade80;">LOG BARN WALK</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#2a8a4a;line-height:1.4;margin-top:2px;">Morning walk · Barn walk · Dead birds · PSI</div>
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:20px;color:#4ade80;flex-shrink:0;">→</span>
+        </button>
+      </div>
+
       <!-- 2-column card grid -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
 
@@ -677,6 +701,13 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
           <div data-i18n="landing.staff_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5a90c9;line-height:1.4;">Team directory · Add employees</div>
         </button>
 
+        <!-- Daily Report -->
+        <button onclick="enterApp('daily')" style="padding:16px 14px;background:#0a1f1a;border:2px solid #2a7a5a;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:28px;line-height:1;">📋</span>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#4ade80;letter-spacing:1px;text-transform:uppercase;">Daily Report</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#2a8a5a;line-height:1.4;">Barns · Dead birds · Safe days · Projects</div>
+        </button>
+
       </div>
 
       <!-- Quick Actions -->
@@ -684,7 +715,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <div data-i18n="landing.quick_actions" style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:8px;">⚡ QUICK ACTIONS</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <button data-i18n="landing.new_wo" onclick="enterApp('wo-submit')" style="padding:13px 10px;background:#0d1f3a;border:1.5px solid #3b82f6;border-radius:10px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🔧 New Work Order</button>
-          <button data-i18n="landing.log_barn" onclick="enterApp('prod');setTimeout(function(){openECSection&&openECSection()},300)" style="padding:13px 10px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:10px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🐓 Log Barn Walk</button>
           <button data-i18n="landing.enter_egg" onclick="enterApp('kpi');setTimeout(function(){go('kpi')},100)" style="padding:13px 10px;background:#1a1400;border:1.5px solid #d69e2e;border-radius:10px;color:#d69e2e;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🥚 Enter Egg Data</button>
         </div>
       </div>
@@ -885,6 +915,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="nav-tab" id="tab-staff" onclick="go('staff')" style="display:none;">👥 Staff</button>
 <button class="nav-tab" id="tab-check" onclick="go('check')" style="display:none;">🐓 Daily Check</button>
       <button class="nav-tab" id="tab-mw" onclick="go('mw')" style="display:none;">☀️ Morning Walk</button>
+      <button class="nav-tab" id="tab-daily" onclick="go('daily')" style="display:none;">📋 Daily Report</button>
+      <button class="nav-tab" id="tab-brief" onclick="go('brief')" style="display:none;">🚨 Brief</button>
     </nav>
     <button onclick="goHome()" class="header-home-btn" style="padding:10px 20px;background:#163016;border:2px solid #4caf50;border-radius:10px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">⌂ HOME</button>
     <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
@@ -1428,6 +1460,12 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <div class="section-title">☀️ Morning Walk</div>
   <div id="panel-mw-body"></div>
 </div>
+
+<!-- ═══ DAILY REPORT PANEL ═══ -->
+<div class="panel" id="panel-daily"></div>
+
+<!-- ═══ DIRECTOR'S BRIEF PANEL ═══ -->
+<div class="panel" id="panel-brief"></div>
 
 <!-- ═══ EC SECTION (Employee Daily Check) ═══ -->
 <div id="ec-section" style="display:none;position:fixed;inset:0;background:#0a1a0a;z-index:500;overflow-y:auto;">
@@ -2139,6 +2177,19 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <input type="number" id="mw-feed-meter" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter total lbs remaining" min="0" onchange="liveUpdateFeedBin('mw-feed-meter','mw-feed-meter-status',_mwFarm,_mwHouse)">
       <div id="mw-feed-meter-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:6px;min-height:18px;"></div>
     </div>
+    <!-- Bin A / Bin B -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+      <div>
+        <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">🌾 Bin A (tons)</div>
+        <input type="number" id="mw-bin-a" class="bw-input" style="border-color:#1e3a6a;background:#091529;text-align:center;font-size:18px;" placeholder="0.0" min="0" step="0.1" oninput="mwCheckBinLevel('mw-bin-a','mw-bin-a-status')">
+        <div id="mw-bin-a-status" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:4px;min-height:14px;text-align:center;"></div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">🌾 Bin B (tons)</div>
+        <input type="number" id="mw-bin-b" class="bw-input" style="border-color:#1e3a6a;background:#091529;text-align:center;font-size:18px;" placeholder="0.0" min="0" step="0.1" oninput="mwCheckBinLevel('mw-bin-b','mw-bin-b-status')">
+        <div id="mw-bin-b-status" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:4px;min-height:14px;text-align:center;"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Systems -->
@@ -2256,7 +2307,11 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button class="sub-btn"        data-section="assets"   onclick="goMaintSection('assets')"   data-i18n="sub.assets">🏭 Assets</button>
     <button class="sub-btn"        data-section="wi"       onclick="goMaintSection('wi')"       data-i18n="sub.wi">📖 Work Instructions</button>
     <button class="sub-btn"        data-section="log"      onclick="goMaintSection('log')"      data-i18n="sub.log">📁 Log</button>
-    <button class="sub-btn"        data-section="calendar" onclick="goMaintSection('calendar')">📅 Calendar</button>
+    <button class="sub-btn"        data-section="calendar"    onclick="goMaintSection('calendar')">📅 Calendar</button>
+    <button class="sub-btn"        data-section="contractor"    onclick="goMaintSection('contractor')">🏗️ Contractors</button>
+    <button class="sub-btn"        data-section="cost"          onclick="goMaintSection('cost')">💰 Cost Dashboard</button>
+    <button class="sub-btn"        data-section="weekly-agenda" onclick="goMaintSection('weekly-agenda')">📅 Weekly Agenda</button>
+    <button class="sub-btn"        data-section="redtags"       onclick="goMaintSection('redtags')">🏷️ Red Tags</button>
   </div>
 
   <!-- Work Orders section -->
@@ -2554,6 +2609,18 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     </div>
     <div id="maint-calendar-container"></div>
   </div>
+
+  <!-- Contractor Tracker section -->
+  <div class="maint-section" id="maint-contractor" style="display:none;"></div>
+
+  <!-- Cost Dashboard section -->
+  <div class="maint-section" id="maint-cost" style="display:none;"></div>
+
+  <!-- Weekly Agenda section -->
+  <div class="maint-section" id="maint-weekly-agenda" style="display:none;"></div>
+
+  <!-- Red Tags section -->
+  <div class="maint-section" id="maint-redtags" style="display:none;padding:14px;"></div>
 </div>
 
 <!-- ═══ PACKAGING PANEL ═══ -->
@@ -4050,7 +4117,31 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script src="js/tv-scoreboard.js?v=20260403"></script>
 <script src="js/staff.js?v=20260403"></script>
 <script src="js/enhancements.js?v=20260403"></script>
+<script src="js/daily-report.js"></script>
+<script src="js/contractor.js"></script>
+<script src="js/cost-dashboard.js"></script>
+<script src="js/weekly-agenda.js"></script>
+<script src="js/shift-signoff.js"></script>
+<script src="js/red-tags.js"></script>
+<script src="js/director-brief.js"></script>
+<script src="js/barn-entry.js"></script>
 
+
+<!-- ═══ BARN ENTRY OVERLAY ═══ -->
+<div id="barn-entry-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0f1a0f;flex-direction:column;overflow:hidden;">
+  <div id="barn-entry-body" style="display:flex;flex-direction:column;height:100%;max-width:520px;margin:0 auto;width:100%;"></div>
+</div>
+
+<!-- ── Barn entry shake animation ── -->
+<style>
+@keyframes beShake {
+  0%,100% { transform: translateX(0); }
+  20%     { transform: translateX(-8px); }
+  40%     { transform: translateX(8px); }
+  60%     { transform: translateX(-6px); }
+  80%     { transform: translateX(6px); }
+}
+</style>
 
 <!-- Easter egg elements — chicken animation -->
 <div id="chicken-runner">🐔</div>
