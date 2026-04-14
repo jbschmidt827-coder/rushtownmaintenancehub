@@ -896,7 +896,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <main class="main" id="main-content" style="display:none;">
 
 <div class="panel active" id="panel-dash">
-  <div class="section-title" data-i18n="title.dash">📊 Operations Dashboard</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+    <div class="section-title" data-i18n="title.dash" style="margin-bottom:0;">📊 Operations Dashboard</div>
+    <button onclick="generateWeeklySummary()" style="background:#1a1a3a;border:1.5px solid #4a4aaa;color:#9090e0;border-radius:8px;padding:7px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">📧 Weekly Summary</button>
+  </div>
   <div class="section-sub" id="dash-date"></div>
 
   <!-- 6am Executive Brief -->
@@ -915,7 +918,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 
   <!-- Quick action -->
-  <button onclick="newWorkOrder()" data-i18n="btn.new_wo" style="width:100%;padding:14px;margin-bottom:16px;background:#1a3a6a;border:2px solid #3b82f6;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">🔧 New Work Order</button>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+    <button onclick="openQuickWO()" style="padding:14px 8px;background:#1a3a1a;border:2px solid #4caf50;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">⚡ Quick WO</button>
+    <button onclick="newWorkOrder()" data-i18n="btn.new_wo" style="padding:14px 8px;background:#0d1f3a;border:2px solid #3b82f6;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">🔧 Full WO</button>
+  </div>
 
   <!-- Department summary cards -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
@@ -2256,6 +2262,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <!-- Work Orders section -->
   <div class="maint-section" id="maint-wo" style="display:block;">
     <div id="wo-dash-section">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+        <button onclick="openQuickWO()" style="padding:12px 8px;background:#1a3a1a;border:2px solid #4caf50;border-radius:10px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px;cursor:pointer;">⚡ Quick WO</button>
+        <button onclick="newWorkOrder()" style="padding:12px 8px;background:#0d1f3a;border:2px solid #3b82f6;border-radius:10px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px;cursor:pointer;">🔧 Full WO</button>
+      </div>
       <div class="section-sub" data-i18n="wo.hint">Tap any card to update status — confirmation required</div>
       <div class="stats-grid g5" id="wo-stats"></div>
       <div class="pill-bar" id="wo-loc-bar">
@@ -3840,7 +3850,86 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 </div>
 
 <!-- Floating Submit Button -->
-<button class="fab" id="fab-btn" onclick="enterApp('wo-submit')" style="display:none;">➕ NEW WORK ORDER</button>
+<button class="fab" id="fab-btn" onclick="openQuickWO()" style="display:none;">⚡ QUICK WO</button>
+
+<!-- ═══ QUICK WORK ORDER MODAL ═══ -->
+<div class="confirm-modal" id="quick-wo-modal" style="display:none;z-index:2000;">
+  <div class="confirm-box" style="max-width:420px;width:94vw;padding:0;border-radius:16px;overflow:hidden;background:#0d1a0d;border:1.5px solid #2a5a2a;">
+
+    <!-- Header -->
+    <div style="background:#1a3a1a;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:#f0ead8;">⚡ QUICK WORK ORDER</div>
+        <div style="font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;margin-top:1px;">Fast track — fill in what matters</div>
+      </div>
+      <button onclick="closeQuickWO()" style="background:none;border:none;color:#5a8a5a;font-size:22px;cursor:pointer;padding:4px;">✕</button>
+    </div>
+
+    <div style="padding:18px 20px 20px;">
+
+      <!-- Your Name -->
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:6px;">Your Name *</label>
+        <input type="text" id="qwo-name" placeholder="Who are you?" style="width:100%;box-sizing:border-box;background:#0a140a;border:1px solid #2a5a2a;border-radius:8px;padding:11px 14px;color:#f0ead8;font-size:14px;font-family:'IBM Plex Mono',monospace;">
+      </div>
+
+      <!-- Farm + House row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div>
+          <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:6px;">Farm *</label>
+          <select id="qwo-farm" onchange="qwoLoadHouses()" style="width:100%;box-sizing:border-box;background:#0a140a;border:1px solid #2a5a2a;border-radius:8px;padding:11px 10px;color:#f0ead8;font-size:13px;font-family:'IBM Plex Mono',monospace;">
+            <option value="">— Farm —</option>
+            <option>Hegins</option>
+            <option>Danville</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:6px;">House</label>
+          <select id="qwo-house" style="width:100%;box-sizing:border-box;background:#0a140a;border:1px solid #2a5a2a;border-radius:8px;padding:11px 10px;color:#f0ead8;font-size:13px;font-family:'IBM Plex Mono',monospace;">
+            <option value="">— House —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Problem -->
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:6px;">Problem / System *</label>
+        <select id="qwo-problem" style="width:100%;box-sizing:border-box;background:#0a140a;border:1px solid #2a5a2a;border-radius:8px;padding:11px 14px;color:#f0ead8;font-size:13px;font-family:'IBM Plex Mono',monospace;">
+          <option value="">— What system? —</option>
+          <option>Ventilation / Fans</option>
+          <option>Watering System</option>
+          <option>Feed System</option>
+          <option>Heating / Brooders</option>
+          <option>Manure System</option>
+          <option>Egg Collection</option>
+          <option>Electrical</option>
+          <option>Generator</option>
+          <option>Building / Structure</option>
+          <option>Other</option>
+        </select>
+      </div>
+
+      <!-- Brief description -->
+      <div style="margin-bottom:16px;">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:6px;">What's wrong? *</label>
+        <textarea id="qwo-desc" rows="2" placeholder="Brief description of the issue…" style="width:100%;box-sizing:border-box;background:#0a140a;border:1px solid #2a5a2a;border-radius:8px;padding:11px 14px;color:#f0ead8;font-size:13px;font-family:'IBM Plex Mono',monospace;resize:none;"></textarea>
+      </div>
+
+      <!-- Priority pills -->
+      <div style="margin-bottom:20px;">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:8px;">Priority *</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <button onclick="qwoSetPri('urgent',this)" class="qwo-pri-btn" style="padding:10px 4px;border-radius:8px;border:2px solid #e53e3e;background:#1a0505;color:#e53e3e;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;cursor:pointer;">🚨 URGENT</button>
+          <button onclick="qwoSetPri('high',this)"   class="qwo-pri-btn" style="padding:10px 4px;border-radius:8px;border:2px solid #d69e2e;background:#1a1005;color:#d69e2e;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;cursor:pointer;">⚠️ HIGH</button>
+          <button onclick="qwoSetPri('routine',this)"class="qwo-pri-btn" style="padding:10px 4px;border-radius:8px;border:2px solid #4caf50;background:#051a05;color:#4caf50;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;cursor:pointer;">✅ ROUTINE</button>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <button id="qwo-submit-btn" onclick="submitQuickWO()" style="width:100%;padding:16px;background:#2e7d32;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;border:none;border-radius:10px;cursor:pointer;">⚡ SUBMIT WORK ORDER</button>
+    </div>
+  </div>
+</div>
 
 <!-- PM History Modal -->
 <div class="confirm-modal" id="pm-history-modal">

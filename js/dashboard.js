@@ -423,3 +423,93 @@ function renderDashEggKPI(todayStr) {
 }
 
 // ═══════════════════════════════════════════
+// WEEKLY EMAIL SUMMARY
+// ═══════════════════════════════════════════
+async function generateWeeklySummary() {
+  const btn = document.querySelector('[onclick="generateWeeklySummary()"]');
+  if (btn) { btn.textContent = '⏳ Building…'; btn.disabled = true; }
+
+  try {
+    const today   = new Date();
+    const weekAgo = new Date(today - 7 * 24 * 60 * 60 * 1000);
+    const weekAgoTs   = weekAgo.getTime();
+    const weekAgoDate = weekAgo.toISOString().slice(0,10);
+
+    const [woSnap, barnSnap, pestSnap, pmSnap] = await Promise.all([
+      db.collection('workOrders').where('ts','>=',weekAgoTs).get().catch(()=>({docs:[]})),
+      db.collection('barnWalks').where('date','>=',weekAgoDate).get().catch(()=>({docs:[]})),
+      db.collection('pestLog').where('date','>=',weekAgoDate).get().catch(()=>({docs:[]})),
+      db.collection('pmHistory').where('ts','>=',weekAgoTs).get().catch(()=>({docs:[]})),
+    ]);
+
+    const wos    = woSnap.docs.map(d=>d.data());
+    const walks  = barnSnap.docs.map(d=>d.data());
+    const pests  = pestSnap.docs.map(d=>d.data());
+    const pmDone = pmSnap.docs.map(d=>d.data());
+
+    const woOpen   = wos.filter(w=>w.status==='open').length;
+    const woInProg = wos.filter(w=>w.status==='in-progress').length;
+    const woDone   = wos.filter(w=>w.status==='completed').length;
+    const woUrgent = wos.filter(w=>w.priority==='urgent'&&w.status!=='completed').length;
+    const woByFarm = {};
+    wos.forEach(w=>{ woByFarm[w.farm]=(woByFarm[w.farm]||0)+1; });
+
+    const flaggedWalks = walks.filter(w=>w.flags&&w.flags.length>0).length;
+    const totalMort    = walks.reduce((s,w)=>s+(w.mortCount||0),0);
+    const uniqueBarns  = new Set(walks.map(w=>w.farm+'-'+w.house)).size;
+
+    const rodentSightings = pests.filter(p=>p.rodent==='yes').length;
+    const totalRodents    = pests.reduce((s,p)=>s+(p.rodentCount||0),0);
+    const flySightings    = pests.filter(p=>p.fly==='yes').length;
+
+    const fmt   = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const range = fmt(weekAgo) + ' \u2013 ' + fmt(today);
+
+    const lines = [
+      'RUSHTOWN POULTRY \u2014 WEEKLY OPERATIONS SUMMARY',
+      range + ' | Generated ' + today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}),
+      '',
+      '\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501',
+      '\uD83D\uDD27 WORK ORDERS',
+      '\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501',
+      'New this week:    ' + wos.length,
+      'Completed:        ' + woDone,
+      'Open:             ' + woOpen,
+      'In Progress:      ' + woInProg,
+      woUrgent > 0 ? '\uD83D\uDEA8 Urgent open:   ' + woUrgent + '  <- NEEDS ATTENTION' : '\u2705 No urgent open WOs',
+      Object.keys(woByFarm).length ? 'By farm:          ' + Object.entries(woByFarm).map(([f,n])=>f+' ('+n+')').join(', ') : '',
+      '',
+      '\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501',
+      '\uD83D\uDC13 BARN WALKS',
+      '\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501',
+      'Total walks logged:  ' + walks.length,
+      'Unique barns walked: ' + uniqueBarns + ' / 13',
+      'Walks with flags:    ' + flaggedWalks,
+      'Total mortality:     ' + totalMort,
+      '',
+      '\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501',
+      '\uD83D\uDC00 PEST LOG',
+      '\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501',
+      'Rodent sightings:  ' + rodentSightings,
+      'Total rodents:     ' + totalRodents,
+      'Fly sightings:     ' + flySightings,
+      '',
+      '\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501',
+      '\uD83D\uDCCB PREVENTIVE MAINTENANCE',
+      '\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501',
+      'PM tasks completed:  ' + pmDone.length,
+      '',
+      'Generated by Rushtown Poultry Operations Hub',
+    ];
+
+    const subject = encodeURIComponent('Rushtown Poultry \u2014 Weekly Summary ' + range);
+    const body    = encodeURIComponent(lines.join('\n'));
+    window.open('mailto:?subject=' + subject + '&body=' + body);
+
+  } catch(err) {
+    console.error('generateWeeklySummary error:', err);
+    alert('Error building summary: ' + err.message);
+  } finally {
+    if (btn) { btn.textContent = '\uD83D\uDCE7 Weekly Summary'; btn.disabled = false; }
+  }
+}

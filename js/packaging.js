@@ -1,3 +1,100 @@
+// ═══════════════════════════════════════════
+// QUICK WORK ORDER
+// ═══════════════════════════════════════════
+var _qwoPri = '';
+var _qwoSubmitting = false;
+
+function openQuickWO() {
+  _qwoPri = '';
+  _qwoSubmitting = false;
+  document.getElementById('quick-wo-modal').style.display = 'flex';
+  document.getElementById('quick-wo-modal').style.alignItems = 'center';
+  document.getElementById('quick-wo-modal').style.justifyContent = 'center';
+  ['qwo-name','qwo-desc'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('qwo-farm').value = '';
+  document.getElementById('qwo-problem').value = '';
+  document.getElementById('qwo-house').innerHTML = '<option value="">— House —</option>';
+  document.querySelectorAll('.qwo-pri-btn').forEach(b => b.style.opacity = '0.5');
+  const btn = document.getElementById('qwo-submit-btn');
+  if (btn) { btn.disabled = false; btn.textContent = '⚡ SUBMIT WORK ORDER'; }
+}
+
+function closeQuickWO() {
+  document.getElementById('quick-wo-modal').style.display = 'none';
+  _qwoPri = '';
+  _qwoSubmitting = false;
+}
+
+function qwoLoadHouses() {
+  const farm = document.getElementById('qwo-farm').value;
+  const sel = document.getElementById('qwo-house');
+  sel.innerHTML = '<option value="">— House —</option>';
+  const counts = { Hegins: 8, Danville: 5 };
+  const count = counts[farm] || 0;
+  for (let i = 1; i <= count; i++) {
+    const o = document.createElement('option');
+    o.value = String(i); o.textContent = 'House ' + i;
+    sel.appendChild(o);
+  }
+}
+
+function qwoSetPri(pri, btn) {
+  _qwoPri = pri;
+  document.querySelectorAll('.qwo-pri-btn').forEach(b => b.style.opacity = '0.5');
+  if (btn) btn.style.opacity = '1';
+}
+
+async function submitQuickWO() {
+  if (_qwoSubmitting) return;
+  const name    = (document.getElementById('qwo-name')?.value || '').trim();
+  const farm    = document.getElementById('qwo-farm')?.value || '';
+  const house   = document.getElementById('qwo-house')?.value || '';
+  const problem = document.getElementById('qwo-problem')?.value || '';
+  const desc    = (document.getElementById('qwo-desc')?.value || '').trim();
+  if (!name)    return alert('Please enter your name.');
+  if (!farm)    return alert('Please select a farm.');
+  if (!problem) return alert('Please select a problem / system.');
+  if (!desc)    return alert('Please describe what\'s wrong.');
+  if (!_qwoPri) return alert('Please select a priority.');
+
+  _qwoSubmitting = true;
+  const btn = document.getElementById('qwo-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+
+  try {
+    const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
+    woCounter = (woCounter || 900) + 1;
+    const submitted = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const wo = {
+      id: woId, farm, house: house || 'N/A', problem,
+      priority: _qwoPri, status: 'open',
+      desc, tech: name, assignedTo: '',
+      parts: '', down: 'no', notes: '',
+      photos: [],
+      submitted, date: new Date().toISOString().slice(0,10),
+      ts: Date.now()
+    };
+    setSyncDot('saving');
+    await db.collection('workOrders').add(wo);
+    try {
+      await db.collection('activityLog').add({
+        type:'wo', id: woId,
+        desc: 'Quick WO: ' + farm + (house ? ' · H' + house : '') + ' — ' + problem + ' — ' + desc.slice(0,60),
+        tech: name, date: submitted, ts: Date.now()
+      });
+    } catch(e) {}
+    setSyncDot('live');
+    closeQuickWO();
+    alert('✅ Work Order ' + woId + ' submitted!');
+    if (typeof renderWO === 'function') renderWO();
+  } catch(err) {
+    _qwoSubmitting = false;
+    setSyncDot('live');
+    if (btn) { btn.disabled = false; btn.textContent = '⚡ SUBMIT WORK ORDER'; }
+    alert('Error submitting work order: ' + err.message);
+  }
+}
+
 // MAINTENANCE SUB-NAV
 // ═══════════════════════════════════════════
 window._maintSection = 'wo';
