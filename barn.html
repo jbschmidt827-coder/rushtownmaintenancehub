@@ -203,6 +203,7 @@ input[type=number]::-webkit-inner-spin-button { opacity: 1; }
 
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="homeTab('log')">🐓 Log Walk</button>
+    <button class="nav-tab" onclick="homeTab('eos')">📋 EOS</button>
     <button class="nav-tab" onclick="homeTab('signoff')">✅ Sign Off</button>
     <button class="nav-tab" onclick="homeTab('today')">📊 Today</button>
   </div>
@@ -216,6 +217,13 @@ input[type=number]::-webkit-inner-spin-button { opacity: 1; }
     <button class="btn-primary" style="margin-bottom:12px;font-size:18px;padding:22px;"
       onclick="startWalk()">🐓 START WALK ENTRY</button>
     <button class="btn-secondary" onclick="showScreen('screen-signoff')">✅ End-of-Shift Sign-Off →</button>
+  </div>
+
+  <!-- Tab: EOS Report -->
+  <div id="home-tab-eos" class="barn-body" style="display:none;">
+    <div id="eos-content">
+      <div style="text-align:center;padding:30px;color:#2a5a2a;font-size:12px;">Loading report…</div>
+    </div>
   </div>
 
   <!-- Tab: Sign Off -->
@@ -531,14 +539,15 @@ function updateNameBadge() {
 // HOME TABS
 // ═══════════════════════════════════════════
 function homeTab(tab) {
-  ['log','signoff','today'].forEach(t => {
+  ['log','eos','signoff','today'].forEach(t => {
     const body = document.getElementById('home-tab-' + t);
     if (body) body.style.display = t === tab ? 'block' : 'none';
   });
   document.querySelectorAll('.nav-tab').forEach((btn, i) => {
-    btn.classList.toggle('active', ['log','signoff','today'][i] === tab);
+    btn.classList.toggle('active', ['log','eos','signoff','today'][i] === tab);
   });
   if (tab === 'today') renderTodaySummary();
+  if (tab === 'eos')   renderEOS();
 }
 
 function refreshHomeTabs() {
@@ -782,10 +791,15 @@ function logAnother() {
 // ═══════════════════════════════════════════
 // TODAY SUMMARY
 // ═══════════════════════════════════════════
+let _todayMW = [];
 async function loadTodayWalks() {
   try {
-    const snap = await db.collection('barnWalks').where('date','==',today).get();
-    _todayWalks = snap.docs.map(d => d.data());
+    const [bwSnap, mwSnap] = await Promise.all([
+      db.collection('barnWalks').where('date','==',today).get(),
+      db.collection('morningWalks').where('date','==',today).get()
+    ]);
+    _todayWalks = bwSnap.docs.map(d => d.data());
+    _todayMW    = mwSnap.docs.map(d => d.data());
   } catch(e) {}
 }
 
@@ -1086,6 +1100,242 @@ function soUndo() {
   _signoffChecks=[false,false,false,false,false];
   _signoffIssues=[]; _signoffLaborRows=[]; _signoffParts=[];
   renderSignoff();
+}
+
+// ═══════════════════════════════════════════
+// EOS REPORT
+// ═══════════════════════════════════════════
+async function renderEOS() {
+  const el = document.getElementById('eos-content');
+  if (!el) return;
+  el.innerHTML = `<div style="text-align:center;padding:30px;color:#2a5a2a;font-size:12px;">🔄 Loading report…</div>`;
+
+  // Always pull fresh data
+  try {
+    const [bwSnap, mwSnap] = await Promise.all([
+      db.collection('barnWalks').where('date','==',today).get(),
+      db.collection('morningWalks').where('date','==',today).get()
+    ]);
+    _todayWalks = bwSnap.docs.map(d => d.data());
+    _todayMW    = mwSnap.docs.map(d => d.data());
+  } catch(e) {
+    el.innerHTML = `<div style="text-align:center;padding:30px;color:#f87171;font-size:12px;">⚠ Could not load data<br/><span style="color:#4a8a4a;">${e.message}</span></div>`;
+    return;
+  }
+
+  const farm   = _farm || 'Danville';
+  const houses = FARMS[farm];
+
+  // Filter to this farm
+  const bws = _todayWalks.filter(w => w.farm === farm);
+  const mws = _todayMW.filter(w => w.farm === farm);
+
+  // No walks yet
+  if (bws.length === 0 && mws.length === 0) {
+    el.innerHTML = `
+      <div style="text-align:center;padding:40px 20px;">
+        <div style="font-size:48px;margin-bottom:12px;">📋</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:#2a5a2a;">NO WALKS LOGGED YET</div>
+        <div style="font-size:11px;color:#2a5a2a;margin-top:8px;">Check back after the shift has started</div>
+        <button class="btn-secondary" style="margin-top:24px;" onclick="homeTab('log')">← Go Log a Walk</button>
+      </div>`;
+    return;
+  }
+
+  // Build per-house lookup (most recent entry per house)
+  const bwByHouse = {};
+  bws.forEach(w => {
+    const h = String(w.house);
+    if (!bwByHouse[h] || (w.ts > bwByHouse[h].ts)) bwByHouse[h] = w;
+  });
+  const mwByHouse = {};
+  mws.forEach(w => {
+    const h = String(w.house);
+    if (!mwByHouse[h] || (w.ts > mwByHouse[h].ts)) mwByHouse[h] = w;
+  });
+
+  // Summary stats
+  const walkedHouses  = new Set([...Object.keys(bwByHouse), ...Object.keys(mwByHouse)]);
+  const walkedCount   = walkedHouses.size;
+  const totalDead     = bws.reduce((s,w) => s + Number(w.mortCount||0), 0);
+  const allFlags      = [];
+  walkedHouses.forEach(h => {
+    const bw = bwByHouse[h]; const mw = mwByHouse[h];
+    if (bw?.flags?.length) allFlags.push(...bw.flags.map(f=>`H${h}: ${f}`));
+    if (mw?.flags?.length) allFlags.push(...mw.flags.map(f=>`H${h}: ${f}`));
+  });
+  const flagCount     = [...walkedHouses].filter(h => (bwByHouse[h]?.flags?.length||0)+(mwByHouse[h]?.flags?.length||0) > 0).length;
+  const binLow        = [...walkedHouses].filter(h => {
+    const mw = mwByHouse[h];
+    return (mw?.binA !== null && mw?.binA < 2) || (mw?.binB !== null && mw?.binB < 2);
+  });
+
+  const pctDone = Math.round((walkedCount / houses) * 100);
+
+  // Build HTML
+  let html = `
+    <!-- EOS Header -->
+    <div style="margin-bottom:16px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:#4ade80;">
+        EOS REPORT
+      </div>
+      <div style="font-size:10px;color:#4a8a4a;letter-spacing:1px;">${farm.toUpperCase()} · ${new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="prog-bar-wrap" style="margin-bottom:16px;">
+      <div class="prog-bar-row">
+        <span>Shift Progress</span><span>${walkedCount}/${houses} houses · ${pctDone}%</span>
+      </div>
+      <div class="prog-bar-track">
+        <div class="prog-bar-fill" style="width:${pctDone}%;background:${pctDone===100?'#4ade80':'#fbbf24'};"></div>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+      ${eosCard('🏠','Walked',walkedCount+'/'+houses, walkedCount===houses?'#4ade80':'#fbbf24')}
+      ${eosCard('💀','Dead Birds',totalDead, totalDead===0?'#4ade80':totalDead>20?'#f87171':'#fbbf24')}
+      ${eosCard('⚑','Flagged',flagCount, flagCount===0?'#4ade80':'#f87171')}
+      ${eosCard('🌾','Bins Low',binLow.length, binLow.length===0?'#4ade80':'#ef4444')}
+    </div>
+  `;
+
+  // Bin alert bar
+  if (binLow.length > 0) {
+    html += `
+    <div style="background:#1a0505;border:1.5px solid #7f1d1d;border-radius:10px;padding:10px 12px;margin-bottom:14px;">
+      <div style="font-size:9px;color:#f87171;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">⚠ Feed Order Needed</div>
+      ${binLow.map(h => {
+        const mw = mwByHouse[h];
+        const parts = [];
+        if (mw?.binA !== null && mw?.binA < 2) parts.push(`Bin A: ${mw.binA}t`);
+        if (mw?.binB !== null && mw?.binB < 2) parts.push(`Bin B: ${mw.binB}t`);
+        return `<div style="font-size:11px;color:#fca5a5;padding:2px 0;">🏚 House ${h} — ${parts.join(' · ')}</div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // Per-house cards
+  html += `<div style="font-size:9px;color:#4a8a4a;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">House-by-House Breakdown</div>`;
+
+  const sortedHouses = Array.from({length:houses},(_,i)=>String(i+1));
+  sortedHouses.forEach(h => {
+    const bw = bwByHouse[h];
+    const mw = mwByHouse[h];
+    if (!bw && !mw) {
+      html += `
+        <div style="background:#080f08;border:1.5px dashed #1a3a1a;border-radius:10px;padding:10px 12px;margin-bottom:7px;
+                    display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:12px;color:#2a5a2a;font-weight:700;">House ${h}</div>
+          <div style="font-size:10px;color:#2a5a2a;">Not walked yet</div>
+        </div>`;
+      return;
+    }
+
+    const hFlags = [...(mw?.flags||[]), ...(bw?.flags||[])];
+    const hasFlag = hFlags.length > 0;
+    const dead = bw ? Number(bw.mortCount||0) : null;
+    const psi  = mw ? Number(mw.waterPSI||0) : null;
+    const temp = mw?.temp ?? null;
+    const binA = mw?.binA ?? null;
+    const binB = mw?.binB ?? null;
+    const ee   = mw?.eeCount ?? null;
+
+    // Status color
+    const borderColor = hasFlag ? '#854d0e' : '#1a4a2a';
+    const bgColor     = hasFlag ? '#140800' : '#0a1a0a';
+
+    html += `
+      <div style="background:${bgColor};border:1.5px solid ${borderColor};border-radius:12px;padding:12px 14px;margin-bottom:8px;">
+        <!-- House header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div>
+            <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:${hasFlag?'#fbbf24':'#4ade80'};">
+              House ${h}
+            </span>
+            ${mw?.employee ? `<span style="font-size:9px;color:#4a8a4a;margin-left:8px;">· ${mw.employee} · ${mw.time||bw?.time||''}</span>` : ''}
+          </div>
+          <div style="font-size:11px;color:${hasFlag?'#fbbf24':'#4ade80'};font-weight:700;">
+            ${hasFlag ? '⚠ '+hFlags.length+' flag'+(hFlags.length!==1?'s':'') : '✓ Clear'}
+          </div>
+        </div>
+
+        <!-- Stats grid -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:${hasFlag?'10px':'0'};">
+          ${psi !== null ? eosStat('💧','PSI', psi, (psi<10||psi>60)?'#f87171':'#4ade80') : ''}
+          ${temp !== null ? eosStat('🌡','Temp', temp+'°', '') : ''}
+          ${ee !== null ? eosStat('👥','Birds', ee, '') : ''}
+          ${dead !== null ? eosStat('💀','Dead', dead, dead===0?'#4ade80':dead>10?'#f87171':'#fbbf24') : ''}
+          ${binA !== null ? eosStat('🌾','Bin A', binA+'t', binA<2?'#f87171':binA<5?'#fbbf24':'#4ade80') : ''}
+          ${binB !== null ? eosStat('🌾','Bin B', binB+'t', binB<2?'#f87171':binB<5?'#fbbf24':'#4ade80') : ''}
+        </div>
+
+        <!-- Equipment row -->
+        ${(mw?.feed || mw?.fans || mw?.blowers || bw?.water || bw?.rodent) ? `
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:${hasFlag?'8px':'0'};">
+          ${mw?.feed ? eosEquip('Feeders', mw.feed==='yes') : ''}
+          ${mw?.fans ? eosEquip('Fans', mw.fans==='yes') : ''}
+          ${mw?.blowers ? eosEquip('Blowers', mw.blowers==='yes') : ''}
+          ${bw?.water ? eosEquip('Water', bw.water==='yes') : ''}
+          ${bw?.rodent ? eosEquip('Rodent-Free', bw.rodent==='no') : ''}
+        </div>` : ''}
+
+        <!-- Flags -->
+        ${hasFlag ? `
+        <div style="border-top:1px solid #2a2000;padding-top:8px;">
+          ${hFlags.map(f=>`<div style="font-size:10px;color:#fca5a5;padding:1px 0;">⚑ ${f}</div>`).join('')}
+        </div>` : ''}
+
+        <!-- Notes -->
+        ${bw?.notes ? `
+        <div style="border-top:1px solid #1a3a1a;margin-top:8px;padding-top:6px;font-size:10px;color:#7ab07a;">
+          📝 ${bw.notes}
+        </div>` : ''}
+      </div>`;
+  });
+
+  // All flags summary
+  if (allFlags.length > 0) {
+    html += `
+    <div style="background:#1a0505;border:1.5px solid #7f1d1d;border-radius:10px;padding:12px;margin-bottom:16px;margin-top:4px;">
+      <div style="font-size:9px;color:#f87171;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">📋 All Flags This Shift</div>
+      ${allFlags.map(f=>`<div style="font-size:10px;color:#fca5a5;padding:2px 0;">⚑ ${f}</div>`).join('')}
+    </div>`;
+  }
+
+  // Proceed to sign-off
+  html += `
+    <div style="margin-top:8px;margin-bottom:16px;">
+      <button class="btn-primary" style="font-size:16px;padding:18px;" onclick="homeTab('signoff')">
+        ✅ PROCEED TO SIGN-OFF →
+      </button>
+      <button class="btn-secondary" onclick="renderEOS()">🔄 Refresh Report</button>
+    </div>`;
+
+  el.innerHTML = html;
+}
+
+function eosCard(icon, label, val, color) {
+  return `<div style="background:#0a1a0a;border:1.5px solid #1a3a1a;border-radius:10px;padding:12px;text-align:center;">
+    <div style="font-size:20px;margin-bottom:3px;">${icon}</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:${color||'#c8e6c9'};line-height:1.1;">${val}</div>
+    <div style="font-size:8px;color:#4a8a4a;margin-top:2px;text-transform:uppercase;">${label}</div>
+  </div>`;
+}
+
+function eosStat(icon, label, val, color) {
+  return `<div style="background:#060d06;border:1px solid #1a2a1a;border-radius:8px;padding:7px 6px;text-align:center;">
+    <div style="font-size:14px;">${icon}</div>
+    <div style="font-size:${String(val).length>4?'13px':'15px'};font-weight:700;color:${color||'#c8e6c9'};line-height:1.2;">${val}</div>
+    <div style="font-size:7px;color:#3a6a3a;text-transform:uppercase;margin-top:1px;">${label}</div>
+  </div>`;
+}
+
+function eosEquip(label, isOk) {
+  return `<span style="font-size:9px;padding:3px 8px;border-radius:12px;font-weight:700;
+    background:${isOk?'#0a2a14':'#2a0a0a'};border:1px solid ${isOk?'#166534':'#7f1d1d'};
+    color:${isOk?'#4ade80':'#f87171'};">${isOk?'✓':'✗'} ${label}</span>`;
 }
 </script>
 </body>
