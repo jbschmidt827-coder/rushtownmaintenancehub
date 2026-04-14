@@ -61,13 +61,49 @@ function renderProdPanel() {
 
   const todayEggs = Object.values(eggMap).reduce((s,v) => s + v, 0);
 
+  // Per-location progress
+  const FARM_BARNS = { Hegins: 8, Danville: 5 };
+  function farmDone(farm) {
+    let d = 0;
+    const n = FARM_BARNS[farm] || 0;
+    for (let i = 1; i <= n; i++) {
+      const k = farm + '-' + i;
+      if (bs[k]==='done'||bs[k]==='issue'||ms[k]==='done'||ms[k]==='issue') d++;
+    }
+    return d;
+  }
+  function farmIssues(farm) {
+    let d = 0;
+    const n = FARM_BARNS[farm] || 0;
+    for (let i = 1; i <= n; i++) {
+      const k = farm + '-' + i;
+      if (bs[k]==='issue') d++;
+    }
+    return d;
+  }
+  function locationTile(farm) {
+    const total = FARM_BARNS[farm];
+    const d     = farmDone(farm);
+    const iss   = farmIssues(farm);
+    const p     = Math.round(d / total * 100);
+    const col   = p >= 80 ? '#4caf50' : p >= 40 ? '#d69e2e' : '#e53e3e';
+    return `<div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:12px 14px;">
+      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">📍 ${farm}</div>
+      <div style="display:flex;align-items:baseline;gap:6px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:${col};line-height:1;">${d}/${total}</div>
+        <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;">barns</div>
+      </div>
+      <div style="background:#163016;border-radius:3px;height:5px;overflow:hidden;margin-top:8px;">
+        <div style="height:100%;background:${col};width:${p}%;border-radius:3px;transition:width 0.4s;"></div>
+      </div>
+      ${iss > 0 ? `<div style="font-size:10px;color:#e53e3e;font-family:'IBM Plex Mono',monospace;margin-top:5px;">⚠ ${iss} flagged</div>` : `<div style="font-size:10px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;margin-top:5px;">${d===total?'✅ All checked':'—'}</div>`}
+    </div>`;
+  }
+
   const kpiBar = document.getElementById('prod-kpi-bar');
   if (kpiBar) kpiBar.innerHTML = `
-    <div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px 12px;text-align:center;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:${pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e'};line-height:1;">${done}/${totalBarns}</div>
-      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">${t('prod.kpi.checks')}</div>
-      <div style="background:#163016;border-radius:3px;height:4px;overflow:hidden;margin-top:8px;"><div style="height:100%;background:${pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e'};width:${pct}%;border-radius:3px;"></div></div>
-    </div>
+    ${locationTile('Hegins')}
+    ${locationTile('Danville')}
     <div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px 12px;text-align:center;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:#f0ead8;line-height:1;">${fmtNum(todayEggs)}</div>
       <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">${t('prod.kpi.eggs')}</div>
