@@ -3691,6 +3691,7 @@ let wiTypeFilterVal = 'all';
 let wiDeptFilterVal = 'all';
 let wiSearchVal = '';
 let wiStepCount = 0;
+let wiStepImages = {};
 let editingWIId = null;
 let currentWIId = null;
 
@@ -3921,6 +3922,185 @@ async function seedCounterCardWI() {
   console.log('✅ Counter Card Reset WI seeded.');
 }
 
+async function seedSideVentResetWI() {
+  const SEED_ID = 'WI-SIDE-VENT-RESET-MAXIMUS';
+  try {
+    const check = await db.collection('workInstructions').where('wiId','==', SEED_ID).get();
+    if (!check.empty) return;
+  } catch(e) { return; }
+
+  const today = new Date().toISOString().slice(0,10);
+  await db.collection('workInstructions').add({
+    wiId: SEED_ID,
+    title: 'Reset Side Vents to 0% — Maximus System',
+    dept: 'Maintenance',
+    type: 'repair',
+    system: 'Ventilation',
+    time: 10,
+    author: 'Rushtown Maintenance',
+    date: today,
+    purpose: 'Safely reset side vent openings to 0% and return the Maximus ventilation system to automatic control. Use this procedure any time a side vent needs to be fully closed and control handed back to the controller.',
+    tools: 'Access to Maximus controller',
+    ppe: '',
+    warnings: 'Do not leave the system in Manual mode after completing this procedure. Always confirm Automatic mode is restored before leaving the controller.',
+    steps: [
+      'SWITCH TO MANUAL — On the Maximus controller, navigate to the side vent control and switch the mode from Auto to Manual.',
+      'SET OUTPUT TO 0% — While in Manual mode, set the vent output value to 0%. Confirm the vent position reads 0% before continuing.',
+      'MOVE TO OFF / "SET TO THE DOT" — Move the control to the Off position, or "set to the dot" per Maximus controller convention, to fully park the vent output.',
+      'RETURN TO AUTOMATIC — Switch the side vent control back from Manual to Automatic. The Maximus controller will now resume normal automated management of the side vents.',
+      'VERIFY NORMAL OPERATION — Observe the controller for 1–2 minutes. Confirm the vent position is holding at 0% (or adjusting correctly per the current setpoints) and that no alarms are active.',
+      'RECORD IN MAINTENANCE LOG — Log the completed reset in the maintenance log: include date, time, house/zone, reason for the manual reset, and technician name.',
+    ],
+    verification: 'Maximus controller shows side vent control in Automatic mode. Vent position reads 0% (or is adjusting to setpoint). No active alarms related to side vent control.',
+    ts: Date.now()
+  });
+  console.log('✅ Side Vent Reset WI seeded.');
+}
+
+async function seedManureBeltSpliceWI() {
+  const SEED_ID = 'WI-MANURE-BELT-SPLICE-WELD';
+  try {
+    const check = await db.collection('workInstructions').where('wiId','==', SEED_ID).get();
+    if (!check.empty) return;
+  } catch(e) { return; }
+
+  const today = new Date().toISOString().slice(0,10);
+  await db.collection('workInstructions').add({
+    wiId: SEED_ID,
+    title: 'Manure Belt Plastic Weld / Splice',
+    dept: 'Maintenance',
+    type: 'repair',
+    system: 'Manure',
+    time: 60,
+    author: 'Rushtown Maintenance',
+    date: today,
+    purpose: 'Properly splice and heat-weld thermoplastic manure belts for maximum belt life and tracking. Use this procedure any time a belt section is damaged, frayed, or stretched and requires removal and re-joining.',
+    tools: 'Belt Welder / Splice Press, Belt Squaring Tool / Straight Edge, Razor / Belt Knife, Clamps / Alignment Bars, Heat Resistant Gloves, Infrared Temp Gun, Cleaning Solvent / Rags',
+    ppe: 'Heat resistant gloves required during weld steps. Safety glasses recommended.',
+    warnings: 'LOTO must be in place before any belt work begins. DO NOT rush the cooling process — disturbing the splice while hot will cause a weak joint and future belt failures. Uneven or non-square belt ends will cause tracking issues.',
+    steps: [
+      'LOCKOUT / TAGOUT — Apply LOTO to the manure belt drive. Verify zero movement before proceeding.',
+      'REMOVE DAMAGED SECTION — Cut the damaged belt section square using a razor or belt knife. Remove all frayed, stretched, or damaged material. Both cut ends must be perfectly straight — use a squaring tool or straight edge to verify.',
+      'PREPARE BELT ENDS — Clean both belt ends thoroughly with cleaning solvent and rags. Remove all manure, grease, and contamination. Allow ends to dry completely before welding.',
+      'ALIGN BELT — Pull both belt ends tight and clamp into the splice jig or welder. Verify that edges are flush, centered, and properly aligned before applying heat.',
+      'HEAT WELD — Heat the welder to manufacturer specification (typically 375–425°F depending on belt material — confirm with IR temp gun). Apply heat evenly to both belt ends until the material softens uniformly. Remove the heater plate and immediately press the ends together.',
+      'HOLD PRESSURE / COOL — Maintain full clamp pressure throughout the cool cycle. DO NOT disturb, flex, or unclamp the splice while it is cooling. Allow the full manufacturer-recommended cool time.',
+      'TRIM WELD BEAD — Once fully cooled, trim excess flash evenly along both faces of the splice. Do not gouge or undercut the splice joint.',
+      'TEST RUN — Remove LOTO and jog the belt slowly. Observe the splice through at least one full cycle. Verify no tracking deviation, lifting, or peeling at the splice.',
+    ],
+    verification: 'Splice is smooth and flush on both faces with no raised bead. Belt tracks straight through the splice zone. No separation, bubbling, or flex-cracking visible after test run.',
+    ts: Date.now()
+  });
+  console.log('✅ Manure Belt Splice WI seeded.');
+}
+
+async function seedBeltTrackingWI() {
+  const SEED_ID = 'WI-BELT-TRACKING-PINCH-TENSION';
+  try {
+    const check = await db.collection('workInstructions').where('wiId','==', SEED_ID).get();
+    if (!check.empty) return;
+  } catch(e) { return; }
+
+  const today = new Date().toISOString().slice(0,10);
+  await db.collection('workInstructions').add({
+    wiId: SEED_ID,
+    title: 'Belt Tracking / Pinch / Tension Adjustment',
+    dept: 'Maintenance',
+    type: 'repair',
+    system: 'Manure',
+    time: 30,
+    author: 'Rushtown Maintenance',
+    date: today,
+    purpose: 'Diagnose and correct manure belt drift, pinch roller pressure, and tension to restore proper belt tracking and prevent premature belt wear.',
+    tools: 'Wrench / Adjustment Tool for tracking bolts',
+    ppe: 'Keep hands clear of all moving rollers and belt edges during jog runs.',
+    warnings: 'NEVER over-adjust. Make only 1/4 turn increments and re-evaluate after each adjustment. Note: 90% of belt tracking issues originate at the splice — inspect the splice first before making tension or tracking adjustments.',
+    steps: [
+      'INSPECT TRACKING — Run the belt empty and observe which direction the belt is drifting. Note the drift side before making any adjustments.',
+      'IDENTIFY DRIFT CAUSE — Inspect the belt system for the root cause before adjusting. Check for: dirty rollers, frozen or seized rollers, uneven tension side-to-side, a crooked or misaligned splice, and general belt stretch.',
+      'ADJUST TRACKING — Tighten the tracking adjustment on the side opposite the drift direction. Adjust in 1/4 turn increments maximum. Run the belt after each adjustment and re-observe before making another change.',
+      'SET PINCH ROLLERS — Verify equal pinch roller pressure on both sides of the belt. The belt should not slip under normal load. Adjust as needed to equalize.',
+      'FINAL VERIFY — Run the belt both empty and loaded. Confirm belt tracks straight through a full cycle in both conditions with no drift or edge contact.',
+    ],
+    verification: 'Belt runs straight with no side drift when empty and under load. Pinch rollers show equal pressure both sides. No edge wear or roller contact visible after full cycle.',
+    ts: Date.now()
+  });
+  console.log('✅ Belt Tracking WI seeded.');
+}
+
+async function seedFeedAugerReplacementWI() {
+  const SEED_ID = 'WI-FEED-AUGER-REPLACEMENT';
+  try {
+    const check = await db.collection('workInstructions').where('wiId','==', SEED_ID).get();
+    if (!check.empty) return;
+  } catch(e) { return; }
+
+  const today = new Date().toISOString().slice(0,10);
+  await db.collection('workInstructions').add({
+    wiId: SEED_ID,
+    title: 'Feed Auger Replacement',
+    dept: 'Maintenance',
+    type: 'repair',
+    system: 'Feed',
+    time: 60,
+    author: 'Rushtown Maintenance',
+    date: today,
+    purpose: 'Replace a worn or damaged feed auger while inspecting and replacing worn boots, elbows, and tube sections to restore proper feed delivery.',
+    tools: 'Standard hand tools for boot/power head removal and drive reconnection',
+    ppe: 'Safety glasses. Keep hands clear during test run.',
+    warnings: 'DO NOT kink the auger during feeding — kinks cause binding, premature wear, and drive failure. Always inspect and replace worn boots and elbows during auger replacement; skipping this leads to repeat failures.',
+    steps: [
+      'LOCKOUT FEED SYSTEM — Apply LOTO to the feed system drive. Verify zero movement before proceeding.',
+      'EMPTY FEED FROM SYSTEM — Run or clear all remaining feed from the tube and boot before disassembly. Do not work on a tube under feed load.',
+      'REMOVE BOOT / POWER HEAD — Disconnect and remove the boot and power head from the auger tube. Set aside for inspection.',
+      'PULL OLD AUGER — Pull the old auger out slowly. Watch for resistance that may indicate tube damage or obstructions. Note any sections that show unusual wear.',
+      'INSPECT TUBE / ELBOWS — Inspect the full length of the auger tube and all elbows for cracks, wear, or deformation. Replace any worn or damaged sections before installing the new auger.',
+      'FEED NEW AUGER — Feed the new auger into the tube slowly, rotating it as you go to prevent kinks. Never force the auger — if resistance is felt, back out and check tube alignment.',
+      'RECONNECT DRIVE — Reinstall the boot and power head. Reconnect the drive to the auger and verify all fasteners are secure.',
+      'TEST RUN / LISTEN FOR BINDING — Remove LOTO and run the feed system. Listen for any binding, grinding, or irregular noise through a full cycle. Confirm feed is moving freely and drive load is normal.',
+    ],
+    verification: 'Feed auger runs smoothly with no binding or irregular noise. Feed delivery confirmed through full cycle. No kinks, tight bends, or loose connections at boot or drive.',
+    ts: Date.now()
+  });
+  console.log('✅ Feed Auger Replacement WI seeded.');
+}
+
+async function seedWaterLineReplacementWI() {
+  const SEED_ID = 'WI-WATER-LINE-REPLACEMENT';
+  try {
+    const check = await db.collection('workInstructions').where('wiId','==', SEED_ID).get();
+    if (!check.empty) return;
+  } catch(e) { return; }
+
+  const today = new Date().toISOString().slice(0,10);
+  await db.collection('workInstructions').add({
+    wiId: SEED_ID,
+    title: 'Water Line Replacement',
+    dept: 'Maintenance',
+    type: 'repair',
+    system: 'Watering System',
+    time: 45,
+    author: 'Rushtown Maintenance',
+    date: today,
+    purpose: 'Replace damaged water line sections, nipples, or couplers and restore full water delivery with proper level and pressure.',
+    tools: 'Pipe wrenches / pliers, pipe nipples, couplers, level, pressure test equipment',
+    ppe: 'Safety glasses. Have rags or a bucket ready for residual water during disassembly.',
+    warnings: 'Water line must remain level after installation — an unlevel line causes uneven drinker pressure and wet/dry zones. Always flush the entire line after any repair to clear debris before birds drink.',
+    steps: [
+      'SHUT WATER OFF / DRAIN — Close the water supply valve for the affected line. Open a drinker or end cap to drain all pressure and residual water from the line.',
+      'RAISE / SUPPORT EXISTING LINE — Support the water line on both sides of the damaged section before removal. Use hangers or temporary supports to prevent the line from shifting during repair.',
+      'REMOVE DAMAGED SECTION — Remove the damaged pipe, nipples, or couplers. Inspect adjacent fittings for wear or cracking and replace any that are suspect.',
+      'INSTALL NEW PIPE / NIPPLES / COUPLERS — Install the replacement components. Hand-tighten first, then snug with a wrench — do not overtighten plastic fittings.',
+      'LEVEL WATER LINE — Use a level to verify the repaired section is level with the rest of the line. Adjust hangers as needed. An unlevel line will cause uneven pressure and drinker flow.',
+      'PRESSURE TEST — Slowly restore water supply and inspect all new connections for leaks. Hold pressure for at least 2 minutes. Tighten or re-do any leaking fittings before proceeding.',
+      'FLUSH ENTIRE LINE — Open the far end of the line and flush until water runs clear. Close and verify all drinkers are flowing normally before returning the line to service.',
+    ],
+    verification: 'No leaks at any connection. Water line is level throughout repaired section. All drinkers flowing at normal pressure. Line flushed and water runs clear.',
+    ts: Date.now()
+  });
+  console.log('✅ Water Line Replacement WI seeded.');
+}
+
 function startWIListener() {
   db.collection('workInstructions').orderBy('ts','desc').onSnapshot(snap => {
     allWI = [];
@@ -4025,7 +4205,7 @@ function _openWIForm(wiId) {
     document.getElementById('wif-ppe').value     = wi.ppe || '';
     document.getElementById('wif-warnings').value = wi.warnings || '';
     document.getElementById('wif-author').value  = wi.author || '';
-    (wi.steps || []).forEach(step => wiAddStep(step));
+    (wi.steps || []).forEach((step, i) => wiAddStep(step, (wi.stepImages || {})[i] || []));
   } else {
     document.getElementById('wi-form-title').textContent = 'Add Work Instruction';
     ['wif-title','wif-time','wif-ppe','wif-warnings','wif-author'].forEach(id => document.getElementById(id).value = '');
@@ -4040,24 +4220,107 @@ function _openWIForm(wiId) {
 function closeWIForm() {
   document.getElementById('wi-form-modal').classList.remove('open');
   editingWIId = null;
+  wiStepImages = {};
 }
 
-function wiAddStep(text) {
+function wiAddStep(text, images) {
   wiStepCount++;
   const idx = wiStepCount;
+  wiStepImages[idx] = (images || []).map(u => ({ url: u, file: null }));
   const row = document.createElement('div');
-  row.style.cssText = 'display:flex;gap:8px;align-items:flex-start;margin-bottom:7px;';
+  row.style.cssText = 'display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;';
   row.id = 'wi-step-row-' + idx;
   row.innerHTML = `
     <div style="width:24px;height:24px;min-width:24px;border-radius:50%;background:var(--green-mid);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:8px;">${idx}</div>
-    <textarea id="wi-step-${idx}" placeholder="Describe step ${idx}..." style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;min-height:42px;resize:vertical;font-family:'IBM Plex Sans',sans-serif;">${text || ''}</textarea>
+    <div style="flex:1;">
+      <textarea id="wi-step-${idx}" placeholder="Describe step ${idx}..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;min-height:42px;resize:vertical;font-family:'IBM Plex Sans',sans-serif;">${text || ''}</textarea>
+      <div id="wi-step-photos-${idx}" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;"></div>
+      <button type="button" id="wi-step-add-photo-${idx}" onclick="wiAddStepPhoto(${idx})" style="margin-top:4px;padding:3px 9px;background:#f0f4f0;border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;color:var(--green-mid);">📷 Add Photo</button>
+      <input type="file" id="wi-step-file-${idx}" accept="image/*" style="display:none;" onchange="wiStepPhotoSelected(${idx}, this)">
+    </div>
     <button type="button" onclick="wiRemoveStep(${idx})" style="margin-top:8px;background:none;border:none;font-size:16px;cursor:pointer;color:#aaa;padding:0 2px;">✕</button>`;
   document.getElementById('wif-steps-list').appendChild(row);
+  wiRenderStepPhotos(idx);
 }
 
 function wiRemoveStep(idx) {
   const row = document.getElementById('wi-step-row-' + idx);
   if (row) row.remove();
+  delete wiStepImages[idx];
+}
+
+function wiAddStepPhoto(idx) {
+  if ((wiStepImages[idx] || []).length >= 3) return;
+  document.getElementById('wi-step-file-' + idx).click();
+}
+
+function wiStepPhotoSelected(idx, input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  if (!wiStepImages[idx]) wiStepImages[idx] = [];
+  if (wiStepImages[idx].length >= 3) return;
+  wiStepImages[idx].push({ url: null, file });
+  wiRenderStepPhotos(idx);
+}
+
+function wiRemoveStepPhoto(idx, pi) {
+  if (wiStepImages[idx]) {
+    wiStepImages[idx].splice(pi, 1);
+    wiRenderStepPhotos(idx);
+  }
+}
+
+function wiRenderStepPhotos(idx) {
+  const items = wiStepImages[idx] || [];
+  const container = document.getElementById('wi-step-photos-' + idx);
+  const addBtn = document.getElementById('wi-step-add-photo-' + idx);
+  if (!container) return;
+  container.innerHTML = items.map((item, pi) => {
+    const src = item.url || (item.file ? URL.createObjectURL(item.file) : '');
+    return src ? `<div style="position:relative;width:64px;height:52px;flex-shrink:0;">
+      <img src="${src}" style="width:64px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
+      <button type="button" onclick="wiRemoveStepPhoto(${idx},${pi})" style="position:absolute;top:-5px;right:-5px;width:17px;height:17px;border-radius:50%;background:#d94f3d;border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">✕</button>
+    </div>` : '';
+  }).join('');
+  if (addBtn) addBtn.style.display = items.length >= 3 ? 'none' : '';
+}
+
+function wiOpenPhoto(url) {
+  let lb = document.getElementById('wi-photo-lightbox');
+  if (!lb) {
+    lb = document.createElement('div');
+    lb.id = 'wi-photo-lightbox';
+    lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    lb.onclick = e => { if (e.target === lb) lb.remove(); };
+    document.body.appendChild(lb);
+  }
+  lb.innerHTML = `<img src="${url}" style="max-width:90vw;max-height:85vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6);">
+    <button onclick="document.getElementById('wi-photo-lightbox').remove()" style="position:fixed;top:18px;right:18px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:20px;cursor:pointer;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;">✕</button>`;
+  lb.style.display = 'flex';
+}
+
+async function wiCollectAndUploadStepImages(wiId) {
+  const rows = document.querySelectorAll('#wif-steps-list [id^="wi-step-row-"]');
+  const stepImages = {};
+  let posIdx = 0;
+  for (const row of rows) {
+    const rowIdx = parseInt(row.id.replace('wi-step-row-', ''), 10);
+    const items = wiStepImages[rowIdx] || [];
+    const urls = [];
+    for (const item of items) {
+      if (item.url) {
+        urls.push(item.url);
+      } else if (item.file) {
+        const ref = storage.ref(`wi-images/${wiId}/step-${posIdx}/${Date.now()}-${item.file.name}`);
+        await ref.put(item.file);
+        urls.push(await ref.getDownloadURL());
+      }
+    }
+    if (urls.length) stepImages[posIdx] = urls;
+    posIdx++;
+  }
+  return stepImages;
 }
 
 function wiCollectSteps() {
@@ -4092,15 +4355,17 @@ async function saveWI() {
     if (editingWIId) {
       const existing = allWI.find(w => w.wiId === editingWIId);
       if (existing && existing._fbId) {
+        const stepImages = await wiCollectAndUploadStepImages(editingWIId);
         await db.collection('workInstructions').doc(existing._fbId).update({
-          title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, updatedTs: Date.now()
+          title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, stepImages, updatedTs: Date.now()
         });
       }
     } else {
       const wiId = 'WI-' + Date.now().toString(36).toUpperCase();
+      const stepImages = await wiCollectAndUploadStepImages(wiId);
       await db.collection('workInstructions').add({
         wiId, title, type, dept, system, time: parseInt(time)||0,
-        ppe, warnings, author, steps, date, ts: Date.now()
+        ppe, warnings, author, steps, stepImages, date, ts: Date.now()
       });
       await db.collection('activityLog').add({
         type:'wi', id: wiId,
@@ -4162,11 +4427,19 @@ function openWIView(wiId) {
 
   // Steps — interactive checklist
   const steps = wi.steps || [];
-  document.getElementById('wiv-steps').innerHTML = steps.map((step, i) => `
-    <div class="wiv-step" id="wiv-step-${i}" onclick="wiToggleStep(${i})">
+  const stepImgs = wi.stepImages || {};
+  document.getElementById('wiv-steps').innerHTML = steps.map((step, i) => {
+    const imgs = stepImgs[i] || [];
+    const imgHtml = imgs.length
+      ? `<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${
+          imgs.map(url => `<img src="${url}" onclick="event.stopPropagation();wiOpenPhoto('${url}')" style="width:80px;height:60px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border);">`).join('')
+        }</div>`
+      : '';
+    return `<div class="wiv-step" id="wiv-step-${i}" onclick="wiToggleStep(${i})">
       <div class="wiv-step-num" id="wiv-step-num-${i}">${i+1}</div>
-      <div class="wiv-step-text" id="wiv-step-text-${i}">${step}</div>
-    </div>`).join('');
+      <div class="wiv-step-text" id="wiv-step-text-${i}">${step}${imgHtml}</div>
+    </div>`;
+  }).join('');
 
   // Verification / "What Good Looks Like" strip
   const verifEl = document.getElementById('wiv-verif-strip');

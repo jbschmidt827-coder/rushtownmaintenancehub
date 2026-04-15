@@ -11,6 +11,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const storage = firebase.storage();
 
 // ═══════════════════════════════════════════
 // ADMIN PIN SYSTEM
@@ -1018,6 +1019,11 @@ async function initApp() {
     await seedWaterRegulatorWI();
     await seedAugerRollerWI();
     await seedCounterCardWI();
+    await seedSideVentResetWI();
+    await seedManureBeltSpliceWI();
+    await seedBeltTrackingWI();
+    await seedFeedAugerReplacementWI();
+    await seedWaterLineReplacementWI();
     assignRHNumbers();
 
     // Real-time listeners
