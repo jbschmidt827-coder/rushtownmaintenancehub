@@ -3820,11 +3820,17 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div class="modal-field" style="margin-top:12px;">
       <label>📷 Reference Photos (optional)</label>
       <div id="wif-photo-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;min-height:0;"></div>
-      <label for="wif-photo-input" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f0f4ff;border:1.5px dashed #3b82f6;border-radius:8px;cursor:pointer;font-size:12px;color:#1e40af;font-weight:600;">
-        📷 Add Photo
-        <input type="file" id="wif-photo-input" accept="image/*" multiple style="display:none;" onchange="wiHandlePhotoSelect(this)">
-      </label>
-      <div style="font-size:10px;color:var(--muted);margin-top:4px;">Photos help techs understand the procedure. Max 5 photos.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <label for="wif-photo-input" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f0f4ff;border:1.5px dashed #3b82f6;border-radius:8px;cursor:pointer;font-size:12px;color:#1e40af;font-weight:600;">
+          🖼 Choose Photo
+          <input type="file" id="wif-photo-input" accept="image/*" multiple style="display:none;" onchange="wiHandlePhotoSelect(this)">
+        </label>
+        <label for="wif-camera-input" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f0fff4;border:1.5px dashed #16a34a;border-radius:8px;cursor:pointer;font-size:12px;color:#15803d;font-weight:600;">
+          📷 Take Photo
+          <input type="file" id="wif-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="wiHandlePhotoSelect(this)">
+        </label>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px;">Add reference photos or take one live with your camera. Max 5 photos.</div>
     </div>
 
     <div class="modal-btns">
