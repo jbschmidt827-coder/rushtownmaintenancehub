@@ -6197,6 +6197,156 @@ function toggleWIExpand(id) {
   if (arrow) arrow.textContent = collapsed ? '▲' : '▼';
 }
 
+// ── Pivot View ────────────────────────────────────────────────────────────────
+let _wiView = 'list';
+
+function wiSetView(view) {
+  _wiView = view;
+  document.getElementById('wi-list').style.display  = view === 'list'  ? 'block' : 'none';
+  document.getElementById('wi-pivot').style.display = view === 'pivot' ? 'block' : 'none';
+  const lb = document.getElementById('wi-view-list-btn');
+  const pb = document.getElementById('wi-view-pivot-btn');
+  if (lb) { lb.style.background = view==='list' ? '#1a3a1a' : 'transparent'; lb.style.color = view==='list' ? '#4ade80' : '#4a8a4a'; }
+  if (pb) { pb.style.background = view==='pivot' ? '#1a3a1a' : 'transparent'; pb.style.color = view==='pivot' ? '#4ade80' : '#4a8a4a'; }
+  if (view === 'pivot') renderWIPivot();
+}
+
+function renderWIPivot() {
+  const el = document.getElementById('wi-pivot');
+  if (!el) return;
+
+  const DEPTS   = ['Maintenance','Barn / Layer','Egg Ops','Shipping','Management','General'];
+  const SYSTEMS = ['General','Manure','Ventilation','Water','Feed','Egg Collectors','Electrical','Building'];
+  const TYPES   = ['repair','startup','emergency','safety','onboarding'];
+  const TYPE_LABEL = { repair:'🔧 Repair', startup:'▶️ Startup', emergency:'🚨 Emergency', safety:'🦺 Safety', onboarding:'🆕 Onboard' };
+  const TYPE_COLOR = { repair:'#3b82f6', startup:'#059669', emergency:'#e53e3e', safety:'#d69e2e', onboarding:'#9b59b6' };
+
+  // ── Matrix: Dept × System ─────────────────────────────────────────────────
+  // Build cell data: matrix[dept][system] = [{type, title, wiId}, ...]
+  const matrix = {};
+  const deptCounts = {}; const sysCounts = {};
+  DEPTS.forEach(d => { matrix[d] = {}; deptCounts[d] = 0; SYSTEMS.forEach(s => matrix[d][s] = []); });
+  SYSTEMS.forEach(s => sysCounts[s] = 0);
+
+  allWI.forEach(wi => {
+    const dept = wi.dept || wi.department || 'General';
+    const sys  = wi.system || 'General';
+    const normDept = DEPTS.includes(dept) ? dept : 'General';
+    const normSys  = SYSTEMS.includes(sys)  ? sys  : 'General';
+    if (!matrix[normDept]) { matrix[normDept] = {}; SYSTEMS.forEach(s => matrix[normDept][s] = []); }
+    if (!matrix[normDept][normSys]) matrix[normDept][normSys] = [];
+    matrix[normDept][normSys].push(wi);
+    deptCounts[normDept] = (deptCounts[normDept]||0) + 1;
+    sysCounts[normSys]   = (sysCounts[normSys]||0) + 1;
+  });
+
+  // ── Type breakdown bar ─────────────────────────────────────────────────────
+  const typeTotals = {};
+  TYPES.forEach(t => typeTotals[t] = allWI.filter(w => w.type === t).length);
+  const grandTotal = allWI.length;
+
+  const typeBar = TYPES.map(t => {
+    const pct = grandTotal > 0 ? Math.round(typeTotals[t]/grandTotal*100) : 0;
+    return `<div style="flex:${typeTotals[t]||0.1};background:${TYPE_COLOR[t]};height:100%;border-radius:3px;cursor:pointer;position:relative;" title="${TYPE_LABEL[t]}: ${typeTotals[t]}" onclick="wiTypeFilterFromPivot('${t}')">
+      <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;color:#fff;font-weight:700;white-space:nowrap;">${pct>5?pct+'%':''}</span>
+    </div>`;
+  }).join('');
+
+  // ── Matrix table ──────────────────────────────────────────────────────────
+  const usedDepts = DEPTS.filter(d => deptCounts[d] > 0);
+  const usedSys   = SYSTEMS.filter(s => sysCounts[s] > 0);
+
+  const headerRow = `<tr>
+    <th style="padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;text-align:left;border-bottom:1px solid #2a5a2a;white-space:nowrap;">DEPT \\ SYSTEM</th>
+    ${usedSys.map(s => `<th style="padding:8px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a8a4a;text-align:center;border-bottom:1px solid #2a5a2a;white-space:nowrap;">${s}</th>`).join('')}
+    <th style="padding:8px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4ade80;text-align:center;border-bottom:1px solid #2a5a2a;">TOTAL</th>
+  </tr>`;
+
+  const bodyRows = usedDepts.map(dept => {
+    const cells = usedSys.map(sys => {
+      const items = matrix[dept][sys] || [];
+      if (!items.length) return `<td style="padding:6px 8px;text-align:center;color:#2a5a2a;font-family:'IBM Plex Mono',monospace;font-size:10px;border-bottom:1px solid #1a3a1a;">—</td>`;
+      const dots = items.map(wi => {
+        const c = TYPE_COLOR[wi.type] || '#4a8a4a';
+        return `<span title="${wi.title}" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin:1px;cursor:pointer;" onclick="wiFilterFromPivot('${dept}','${sys}')"></span>`;
+      }).join('');
+      return `<td style="padding:6px 8px;text-align:center;border-bottom:1px solid #1a3a1a;cursor:pointer;" onclick="wiFilterFromPivot('${dept}','${sys}')">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#4ade80;margin-bottom:2px;">${items.length}</div>
+        <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:1px;">${dots}</div>
+      </td>`;
+    });
+    return `<tr>
+      <td style="padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#e8f5ec;font-weight:700;border-bottom:1px solid #1a3a1a;white-space:nowrap;">${dept}</td>
+      ${cells.join('')}
+      <td style="padding:6px 8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#4ade80;border-bottom:1px solid #1a3a1a;">${deptCounts[dept]||0}</td>
+    </tr>`;
+  }).join('');
+
+  const totalRow = `<tr>
+    <td style="padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;font-weight:700;">TOTAL</td>
+    ${usedSys.map(s => `<td style="padding:6px 8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#4ade80;">${sysCounts[s]||0}</td>`).join('')}
+    <td style="padding:6px 8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#4ade80;">${grandTotal}</td>
+  </tr>`;
+
+  // ── Gaps list ─────────────────────────────────────────────────────────────
+  const gaps = [];
+  usedDepts.forEach(d => usedSys.forEach(s => { if (!matrix[d][s].length) gaps.push(`${d} / ${s}`); }));
+
+  el.innerHTML = `
+    <!-- Type breakdown bar -->
+    <div style="background:#0a1f0a;border:1.5px solid #1a3a1a;border-radius:10px;padding:14px;margin-bottom:14px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">PROCEDURE TYPE BREAKDOWN — ${grandTotal} TOTAL</div>
+      <div style="display:flex;height:28px;gap:2px;border-radius:5px;overflow:hidden;margin-bottom:8px;">${typeBar}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;">
+        ${TYPES.map(t => `<div style="display:flex;align-items:center;gap:5px;cursor:pointer;" onclick="wiTypeFilterFromPivot('${t}')">
+          <span style="width:10px;height:10px;border-radius:2px;background:${TYPE_COLOR[t]};display:inline-block;"></span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;">${TYPE_LABEL[t]} <strong style="color:#e8f5ec;">${typeTotals[t]}</strong></span>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Dept × System matrix -->
+    <div style="background:#0a1f0a;border:1.5px solid #1a3a1a;border-radius:10px;padding:14px;margin-bottom:14px;overflow-x:auto;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">DEPT × SYSTEM COVERAGE — tap a cell to filter</div>
+      <table style="border-collapse:collapse;width:100%;min-width:500px;">
+        <thead>${headerRow}</thead>
+        <tbody>${bodyRows}${totalRow}</tbody>
+      </table>
+    </div>
+
+    <!-- Legend -->
+    <div style="background:#0a1f0a;border:1.5px solid #1a3a1a;border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a8a4a;text-transform:uppercase;letter-spacing:1px;margin-right:4px;">DOT KEY:</span>
+      ${TYPES.map(t => `<span style="display:flex;align-items:center;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;">
+        <span style="width:9px;height:9px;border-radius:50%;background:${TYPE_COLOR[t]};display:inline-block;"></span>${TYPE_LABEL[t]}
+      </span>`).join('')}
+    </div>
+  `;
+}
+
+function wiFilterFromPivot(dept, sys) {
+  // Switch to list view with dept + system pre-filtered
+  wiSetView('list');
+  wiDeptFilterVal = dept;
+  wiSystemFilterVal = sys;
+  document.querySelectorAll('#wi-dept-bar .pill').forEach(b => {
+    b.classList.toggle('active', b.textContent.includes(dept));
+  });
+  document.querySelectorAll('#wi-system-bar .pill').forEach(b => {
+    b.classList.toggle('active', b.textContent.includes(sys));
+  });
+  renderWI();
+}
+
+function wiTypeFilterFromPivot(type) {
+  wiSetView('list');
+  wiTypeFilterVal = type;
+  document.querySelectorAll('#wi-type-bar .pill').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+type+"'"));
+  });
+  renderWI();
+}
+
 // ── Form ──
 function openWIForm(wiId) {
   requireAdmin(() => _openWIForm(wiId));

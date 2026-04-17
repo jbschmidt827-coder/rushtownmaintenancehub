@@ -2918,10 +2918,19 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
     <!-- Stats + result count -->
     <div class="stats-grid g4" id="wi-stats" style="margin-bottom:10px;"></div>
-    <div id="wi-result-count" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:10px;padding-left:2px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div id="wi-result-count" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#4a8a4a;padding-left:2px;"></div>
+      <div style="display:flex;gap:6px;">
+        <button id="wi-view-list-btn" onclick="wiSetView('list')" style="padding:5px 14px;border-radius:7px;border:1.5px solid #2a5a2a;background:#1a3a1a;color:#4ade80;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;">≡ LIST</button>
+        <button id="wi-view-pivot-btn" onclick="wiSetView('pivot')" style="padding:5px 14px;border-radius:7px;border:1.5px solid #2a5a2a;background:transparent;color:#4a8a4a;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;">⊞ PIVOT</button>
+      </div>
+    </div>
 
-    <!-- List (grouped by dept) -->
+    <!-- List view -->
     <div id="wi-list"></div>
+
+    <!-- Pivot view -->
+    <div id="wi-pivot" style="display:none;"></div>
   </div>
 
   <!-- 5S section -->
