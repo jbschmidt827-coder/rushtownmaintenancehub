@@ -3949,7 +3949,10 @@ async function seedRushtownOpsWI() {
     'WI-INVENTORY-REVIEW','WI-CONTRACTOR-APPROVAL','WI-SHIFT-HANDOFF-NOTES',
     'WI-WEEKLY-PROJECT-REVIEW','WI-ROOT-CAUSE','WI-SHOP-CLEANUP',
     'WI-TOOL-RETURN','WI-SCRAP-REMOVAL','WI-RED-TAG-PROC',
-    'WI-BARN-5S-AUDIT','WI-WASTE-WALK','WI-LOTO-MOTOR'
+    'WI-BARN-5S-AUDIT','WI-WASTE-WALK','WI-LOTO-MOTOR',
+    'WI-LADDER-SAFETY','WI-CONFINED-SPACE','WI-PPE-BARN',
+    'WI-CHEM-SPILL','WI-ELEC-SAFETY','WI-DIAMOND-STARTUP',
+    'WI-MECH-TIMING','WI-BRUSH-WASHER','WI-EGG-BACKUP'
   ];
   try {
     const check = await db.collection('workInstructions').where('wiId','in',SEED_IDS).get();
@@ -5183,6 +5186,205 @@ async function seedRushtownOpsWI() {
         'Notify affected people and restart safely.'
       ],
       ts: base + 45000
+    },
+    {
+      wiId: 'WI-LADDER-SAFETY',
+      title: 'Ladder Safety Standard',
+      type: 'safety',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: 'Non-slip footwear.',
+      warnings: 'Purpose: prevent falls. Remove any damaged ladder from service immediately — tag it out.',
+      steps: [
+        'Inspect ladder before use — no bent rails, broken rungs, or damaged feet.',
+        'Confirm feet are stable and level on the surface.',
+        'Use the correct ladder height and type for the task.',
+        'Maintain 3 points of contact at all times while climbing.',
+        'Face the ladder when climbing up or down.',
+        'Do not overreach — move the ladder instead.',
+        'Keep the area below the ladder clear.',
+        'Remove any damaged ladder from service immediately.'
+      ],
+      ts: base + 46000
+    },
+    {
+      wiId: 'WI-CONFINED-SPACE',
+      title: 'Confined Space Awareness',
+      type: 'safety',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Per permit — air monitor, harness, rescue equipment as required.',
+      warnings: 'Rule: if unsure whether a space is permit-required, do not enter — notify supervisor first.',
+      steps: [
+        'Identify all permit-required confined spaces in your work area.',
+        'Never enter an unauthorized confined space.',
+        'Notify supervisor if access to a confined space is needed.',
+        'Verify air testing, permit, and rescue plan are in place before entry.',
+        'Use trained attendants only — no lone entry.',
+        'Follow the company confined space program for all entry.'
+      ],
+      ts: base + 47000
+    },
+    {
+      wiId: 'WI-PPE-BARN',
+      title: 'PPE for Barn Entry',
+      type: 'safety',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: 'Boots, gloves, eye/hearing protection as required, coveralls if required.',
+      warnings: 'Purpose: protect people and flock biosecurity. Follow hand sanitation rules at all times.',
+      steps: [
+        'Wear required boots for the barn.',
+        'Use gloves when handling birds, chemicals, or equipment.',
+        'Wear eye and hearing protection based on the specific task.',
+        'Wear coveralls if required for the zone.',
+        'Follow hand sanitation rules on entry and exit.',
+        'Change PPE between zones when required.'
+      ],
+      ts: base + 48000
+    },
+    {
+      wiId: 'WI-CHEM-SPILL',
+      title: 'Chemical Spill Response',
+      type: 'emergency',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Chemical-resistant gloves, eye protection, appropriate respirator per SDS.',
+      warnings: 'Safety critical. Consult the SDS for the specific chemical. Never attempt to clean up an unknown chemical without proper PPE.',
+      steps: [
+        'Identify the material if it is safe to do so.',
+        'Keep all people away from the spill area.',
+        'Put on proper PPE before approaching.',
+        'Stop the source of the spill if it is safe to do so.',
+        'Contain the spill using absorbent material.',
+        'Notify management immediately.',
+        'Dispose of materials per SDS and company rules.',
+        'Document the incident in the app.'
+      ],
+      ts: base + 49000
+    },
+    {
+      wiId: 'WI-ELEC-SAFETY',
+      title: 'Electrical Safety Check',
+      type: 'safety',
+      dept: 'Maintenance',
+      system: 'Electrical',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Safety glasses, insulated gloves if near energized components.',
+      warnings: 'Purpose: prevent shock and fire. Lockout before any repair. Report all findings — do not self-repair energized components.',
+      steps: [
+        'Inspect all cords and plugs for damage or fraying.',
+        'Check that panel access is clear — no storage within 36 inches.',
+        'Look for exposed or bare wires.',
+        'Check for burnt smell or heat signs near panels or motors.',
+        'Verify all covers and knockouts are installed.',
+        'Report any damaged components — do not use until repaired.',
+        'Lockout before any repair work.'
+      ],
+      ts: base + 50000
+    },
+    {
+      wiId: 'WI-DIAMOND-STARTUP',
+      title: 'Diamond Systems 8200 Startup',
+      type: 'startup',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Safety glasses, hearing protection.',
+      warnings: 'Purpose: safe startup and stable production flow. Monitor closely for first 10 minutes.',
+      steps: [
+        'Walk the entire machine before startup — check for tools, debris, or obstructions.',
+        'Verify all guards are in place.',
+        'Confirm belts and chains are clear.',
+        'Turn on utilities and power in correct sequence.',
+        'Start machine per the proper startup sequence.',
+        'Feed a small product flow first before full rate.',
+        'Check lane movement and packing heads for correct operation.',
+        'Monitor machine for the first 10 minutes before leaving unattended.'
+      ],
+      ts: base + 51000
+    },
+    {
+      wiId: 'WI-MECH-TIMING',
+      title: 'Mechanical Timing Check',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Egg Collectors',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, safety glasses.',
+      warnings: 'Purpose: maintain synchronization and prevent jams. Lockout before opening guarded areas.',
+      steps: [
+        'Lockout if opening any guarded areas.',
+        'Observe timing marks and chains for correct position.',
+        'Check lane-to-packer timing alignment.',
+        'Look for skipped teeth or loose chain.',
+        'Adjust per standard timing marks.',
+        'Hand-rotate machine through one full cycle if possible.',
+        'Test run slowly and observe.'
+      ],
+      ts: base + 52000
+    },
+    {
+      wiId: 'WI-BRUSH-WASHER',
+      title: 'Brush Washer Inspection',
+      type: 'startup',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves, eye protection near spray nozzles.',
+      warnings: 'Purpose: maintain wash quality and reduce rejects. Replace worn brushes before quality is affected.',
+      steps: [
+        'Stop and lockout if needed for safe access.',
+        'Inspect brush wear — replace if worn below spec.',
+        'Verify correct brush rotation direction.',
+        'Check spray nozzle flow — clear any clogged nozzles.',
+        'Remove any buildup from the wash area.',
+        'Inspect custom parts for looseness.',
+        'Restart and verify cleaning action is effective.'
+      ],
+      ts: base + 53000
+    },
+    {
+      wiId: 'WI-EGG-BACKUP',
+      title: 'Egg Backup Response',
+      type: 'repair',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Production critical — act immediately. Record cause to prevent recurrence.',
+      steps: [
+        'Identify where the backup starts on the line.',
+        'Reduce upstream flow if possible to reduce pressure.',
+        'Clear the jam safely.',
+        'Inspect guides, plates, and speeds at the backup point.',
+        'Restart the line gradually.',
+        'Watch for recurring buildup over the next 5 minutes.',
+        'Record the cause in the app.'
+      ],
+      ts: base + 54000
     }
   ];
 
@@ -5190,7 +5392,7 @@ async function seedRushtownOpsWI() {
     for (const wi of instructions) {
       await db.collection('workInstructions').add(wi);
     }
-    console.log('✅ Rushtown Ops WIs seeded (55 procedures).');
+    console.log('✅ Rushtown Ops WIs seeded (64 procedures).');
   } catch(e) {
     console.error('seedRushtownOpsWI error:', e);
   }
