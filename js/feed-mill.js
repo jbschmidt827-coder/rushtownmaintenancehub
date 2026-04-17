@@ -155,6 +155,14 @@ async function saveFeedBin() {
     closeFeedBinForm();
     renderFeedBinsList();
     renderFeedDashboard();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'FBIN',
+        desc: (_editFeedBinId ? 'Feed bin updated: ' : 'Feed bin added: ') + name + ' — ' + farm + (barn ? ' Barn ' + barn : '') + ' (' + cap + ' lb cap)',
+        tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Error: ' + e.message); }
 }
 
@@ -463,6 +471,14 @@ async function saveBulkFeedReadings() {
     clearBulkReadingForm();
     renderFeedReadings();
     renderFeedDashboard();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'FEED',
+        desc: 'Feed bin readings: ' + farm + ' — ' + saved + ' bin' + (saved !== 1 ? 's' : '') + ' recorded',
+        tech: by || 'System', date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(err) {
     console.error('saveBulkFeedReadings error:', err);
     alert('Something went wrong saving readings. Please try again.\n\nError: ' + err.message);
@@ -530,6 +546,14 @@ async function saveFeedDelivery() {
     feedDeliveries.unshift({ date, tons, type, binId, binName: bin?.name||'', supplier, by, notes, ts: Date.now(), _fbId: ref.id });
     clearFeedDeliveryForm();
     renderFeedDeliveries();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'FDEL',
+        desc: 'Feed delivery: ' + tons + ' T ' + (type || '') + (bin ? ' → ' + bin.name : '') + (supplier ? ' from ' + supplier : ''),
+        tech: by || 'System', date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Error: ' + e.message); }
 }
 
@@ -597,6 +621,14 @@ async function saveFeedMade() {
     feedMadeLog.unshift({ date, tons, type, dest, binId, binName: bin?.name||binId||'', by, notes, ts: Date.now(), _fbId: ref.id });
     clearFeedMadeForm();
     renderFeedMade();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'FMIX',
+        desc: 'Feed made: ' + tons + ' T ' + (type || '') + (bin ? ' → ' + bin.name : '') + (dest === 'own' ? ' (own barns)' : dest === 'external' ? ' (external)' : ''),
+        tech: by || 'System', date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Error: ' + e.message); }
 }
 
@@ -800,6 +832,14 @@ async function saveConsumptionLog() {
   alert(`✅ Saved consumption for ${saved} house(s) on ${date}.`);
   clearConsumptionForm();
   renderConsumptionLog();
+  try {
+    await db.collection('activityLog').add({
+      type: 'wo', id: 'FCON',
+      desc: 'Feed consumption: ' + farm + ' — ' + saved + ' house' + (saved !== 1 ? 's' : '') + ' logged for ' + date,
+      tech: by || 'System', date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+      ts: Date.now()
+    });
+  } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
 }
 
 function clearConsumptionForm() {
@@ -928,6 +968,14 @@ async function saveMedication() {
     renderMedicationLog();
     renderWithdrawalAlerts();
     updateMedBadge();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'MED',
+        desc: 'Medication logged: ' + product + ' — ' + farm + ' ' + barn + (withdrawal ? ' (' + withdrawal + '-day withdrawal)' : ''),
+        tech: by || 'System', date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Error saving: ' + e.message); }
 }
 
@@ -1742,6 +1790,14 @@ async function saveKpiEntry() {
     renderKpiDashboard();
     renderKpiLog();
     if (document.getElementById('panel-dash')?.classList.contains('active')) renderDash();
+    try {
+      await db.collection('activityLog').add({
+        type: 'ops-egg', id: 'EGG',
+        desc: 'Egg count (KPI): ' + farm + ' Barn ' + house + ' — ' + collected + ' collected, ' + packedDz + ' dz packed',
+        tech: by, date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Save failed: ' + e.message); }
 }
 

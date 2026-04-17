@@ -60,6 +60,14 @@ async function saveBioEntry() {
     setTimeout(() => statusEl.textContent = '', 2000);
     clearBioForm();
     renderBioLog();
+    try {
+      await db.collection('activityLog').add({
+        type: 'biosec', id: 'BIO',
+        desc: 'Biosecurity log: ' + farm + ' — ' + type + ' (' + person + ') · Risk: ' + risk,
+        tech: person, date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { statusEl.style.color = '#e53e3e'; statusEl.textContent = t('bio.save_failed') + e.message; }
   setSyncDot('live');
 }

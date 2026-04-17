@@ -415,10 +415,11 @@ function openBarnWalk(farm, house) {
   applyFormTextTranslation();
   // Pre-populate employee from last submission for this barn
   db.collection('barnWalks').where('farm','==',farm).where('house','==',String(house))
-    .orderBy('ts','desc').limit(1).get()
+    .limit(20).get()
     .then(snap => {
       if (snap.empty) return;
-      const l = snap.docs[0].data();
+      const docs = snap.docs.map(d => d.data()).sort((a,b) => (b.ts||0) - (a.ts||0));
+      const l = docs[0];
       const e = document.getElementById('bw-employee');
       if (e && !e.value) { e.value = l.employee || ''; checkBWReady(); }
     }).catch(()=>{});
@@ -520,9 +521,37 @@ async function submitBarnWalk() {
 
   try { await db.collection('barnWalks').add(record); } catch(e) { console.error(e); }
 
+  // ── Activity Log ──
+  try {
+    const statusDesc = flags.length > 0
+      ? flags.length + ' flag' + (flags.length !== 1 ? 's' : '')
+      : 'All Clear';
+    await db.collection('activityLog').add({
+      type: 'barnwalk', id: 'BW',
+      desc: 'Daily barn check: ' + _bwFarm + ' Barn ' + _bwHouse + ' — ' + statusDesc,
+      tech: employee,
+      date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+      ts: Date.now()
+    });
+  } catch(e) { console.warn('activityLog write failed:', e); }
+
+  // ── Mortality Log ──
+  // Always log mortality — never creates a WO
+  if (_bwData.mort === 'yes') {
+    const mortEntry = {
+      farm: _bwFarm, house: String(_bwHouse), employee,
+      date: new Date().toISOString().slice(0,10),
+      time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+      mortCount: mortCount || 0,
+      mortrem: _bwData.mortrem || 'yes',
+      notes: notes || '',
+      ts: Date.now()
+    };
+    try { await db.collection('mortalityLog').add(mortEntry); } catch(e) { console.error('mortalityLog write failed:', e); }
+  }
+
   // ── Pest Log ──
-  // Always save a pest log entry if rodents or flies were observed
-  const RODENT_WO_THRESHOLD = 3; // create a WO only if rodent count >= this
+  // Always log pest observations — never creates a WO
   const hasPest = _bwData.rodent === 'yes' || _bwData.fly === 'yes';
   if (hasPest) {
     const pestEntry = {
@@ -535,23 +564,6 @@ async function submitBarnWalk() {
       ts: Date.now()
     };
     try { await db.collection('pestLog').add(pestEntry); } catch(e) { console.error('pestLog write failed:', e); }
-
-    // Only create a WO if rodent count hits the threshold
-    if (_bwData.rodent === 'yes' && rodentCount >= RODENT_WO_THRESHOLD) {
-      try {
-        const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
-        woCounter = (woCounter || 900) + 1;
-        await db.collection('workOrders').add({
-          id: woId, farm: _bwFarm, house: String(_bwHouse),
-          problem: 'Building / Structure', priority: 'high', status: 'open',
-          desc: 'High rodent count during daily check — ' + rodentCount + ' rodents observed.',
-          tech: employee,
-          notes: 'Auto-created from pest log — ' + _bwFarm + ' Barn ' + _bwHouse + '. Count: ' + rodentCount + '. Threshold: ' + RODENT_WO_THRESHOLD + '+.',
-          submitted: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-          date: new Date().toISOString().slice(0,10), ts: Date.now()
-        });
-      } catch(e) { console.error('Pest WO create failed:', e); }
-    }
   }
 
   // Feed bin reading is saved live via liveUpdateFeedBin (onchange) — no duplicate save needed here.
@@ -594,9 +606,8 @@ async function submitBarnWalk() {
   if (mortCount) _todayMortTotal += mortCount;
 
   // Map each flag to a problem category and priority
+  // Mortality and Pest are logged separately — not auto-WO
   const flagProblemMap = {
-    'Mortality found':            {problem:'Manure System',      priority:'high'},
-    'Mortality not removed':      {problem:'Manure System',      priority:'urgent'},
     'Manure dryers off':          {problem:'Manure System',      priority:'high'},
     'Manure belts not running':   {problem:'Manure System',      priority:'high'},
     'Poor feathering':            {problem:'Building / Structure',priority:'normal'},
@@ -605,7 +616,6 @@ async function submitBarnWalk() {
     'Air quality anomaly':        {problem:'Ventilation / Fans', priority:'urgent'},
     'Feeders empty':              {problem:'Feed System',        priority:'urgent'},
     'Egg belt not working':       {problem:'Egg Collection',     priority:'urgent'},
-    // Rodents and Fly activity are handled by the Pest Log — not auto-WO
   };
   for (const flag of flags) {
     try {
@@ -645,10 +655,11 @@ function openMorningWalk(farm, house) {
   document.getElementById('morning-walk-modal').scrollTop = 0;
   // Pre-populate employee from last submission for this barn
   db.collection('morningWalks').where('farm','==',farm).where('house','==',String(house))
-    .orderBy('ts','desc').limit(1).get()
+    .limit(20).get()
     .then(snap => {
       if (snap.empty) return;
-      const l = snap.docs[0].data();
+      const docs = snap.docs.map(d => d.data()).sort((a,b) => (b.ts||0) - (a.ts||0));
+      const l = docs[0];
       const e = document.getElementById('mw-employee');
       if (e && !e.value) { e.value = l.employee || ''; checkMWReady(); }
     }).catch(()=>{});
@@ -704,6 +715,20 @@ async function submitMorningWalk() {
   };
 
   try { await db.collection('morningWalks').add(record); } catch(e) { console.error(e); }
+
+  // ── Activity Log ──
+  try {
+    const statusDesc = flags.length > 0
+      ? flags.length + ' flag' + (flags.length !== 1 ? 's' : '')
+      : 'All Clear';
+    await db.collection('activityLog').add({
+      type: 'barnwalk', id: 'BW',
+      desc: 'Morning walk: ' + _mwFarm + ' Barn ' + _mwHouse + ' — ' + statusDesc,
+      tech: employee,
+      date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+      ts: Date.now()
+    });
+  } catch(e) { console.warn('activityLog write failed:', e); }
 
   const key = _mwFarm + '-' + _mwHouse;
   MORNING_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
@@ -1138,12 +1163,12 @@ function renderProdWalkHistory() {
   if (!el) return;
   el.innerHTML = '<div style="color:#aaa;font-family:\'IBM Plex Mono\',monospace;font-size:12px;margin-bottom:12px;">Loading walk history…</div>';
   const farms = [{name:'Hegins',houses:8},{name:'Danville',houses:5}];
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+  const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
   db.collection('barnWalks').where('ts','>=',cutoff).orderBy('ts','desc').get().then(snap => {
     if (snap.empty) { el.innerHTML = '<div style="color:#888;padding:20px;text-align:center;">No walks in the last 30 days.</div>'; return; }
     const rows = snap.docs.map(d => {
       const r = d.data();
-      const date = r.ts ? new Date(r.ts.seconds*1000).toLocaleDateString() : '—';
+      const date = r.ts ? new Date(r.ts).toLocaleDateString() : '—';
       const flags = r.flags && r.flags.length ? '<span style="color:#e53e3e;">⚑ '+r.flags.length+'</span>' : '<span style="color:#4caf50;">✓</span>';
       return `<tr style="border-bottom:1px solid #1a2a1a;">
         <td style="padding:8px 6px;color:#f0ead8;">${date}</td>
@@ -1328,18 +1353,25 @@ async function mwTabCreateWOs() {
 // PEST LOG
 // ═══════════════════════════════════════════
 var _pestLogData = [];
+var _mortLogData = [];
 var _pestFarmFilter = 'all';
 var _pestTypeFilter = 'all';
 
 async function openPestLog() {
   document.getElementById('pest-log-overlay').style.display = 'block';
   document.getElementById('pest-log-count').textContent = 'Loading…';
+  const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
   try {
-    const snap = await db.collection('pestLog').orderBy('ts','desc').limit(200).get();
+    const [pestSnap, mortSnap] = await Promise.all([
+      db.collection('pestLog').where('ts','>=',cutoff).orderBy('ts','desc').get(),
+      db.collection('mortalityLog').where('ts','>=',cutoff).orderBy('ts','desc').get()
+    ]);
     _pestLogData = [];
-    snap.forEach(d => _pestLogData.push({...d.data(), _fbId: d.id}));
+    _mortLogData = [];
+    pestSnap.forEach(d => _pestLogData.push({...d.data(), _type:'pest', _fbId: d.id}));
+    mortSnap.forEach(d => _mortLogData.push({...d.data(), _type:'mort', _fbId: d.id}));
   } catch(e) {
-    console.error('pestLog load error:', e);
+    console.error('pest/mortality log load error:', e);
   }
   renderPestLog();
 }
@@ -1352,53 +1384,76 @@ function closePestLog() {
 
 function pestLogFilter(farm, btn) {
   _pestFarmFilter = farm;
-  document.querySelectorAll('#pest-log-overlay .pill').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#pest-log-overlay .pill[data-farm]').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   renderPestLog();
 }
 
 function pestLogTypeFilter(type, btn) {
   _pestTypeFilter = type;
-  // Only toggle the type pills (2nd row)
-  const allPills = document.querySelectorAll('#pest-log-overlay .pill');
-  // Farm pills are first 3, type pills are next 3
-  allPills.forEach((b, i) => { if (i >= 3) b.classList.remove('active'); });
+  document.querySelectorAll('#pest-log-overlay .pill[data-type]').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   renderPestLog();
 }
 
 function renderPestLog() {
-  const RODENT_WO_THRESHOLD = 3;
-  let data = _pestLogData.slice();
-  if (_pestFarmFilter !== 'all') data = data.filter(r => r.farm === _pestFarmFilter);
-  if (_pestTypeFilter === 'rodent') data = data.filter(r => r.rodent === 'yes');
-  if (_pestTypeFilter === 'fly')    data = data.filter(r => r.fly === 'yes');
+  // Merge pest + mortality, sorted newest first
+  let pestData = _pestLogData.slice();
+  let mortData = _mortLogData.slice();
 
-  document.getElementById('pest-log-count').textContent = data.length + ' records';
+  if (_pestFarmFilter !== 'all') {
+    pestData = pestData.filter(r => r.farm === _pestFarmFilter);
+    mortData = mortData.filter(r => r.farm === _pestFarmFilter);
+  }
+  if (_pestTypeFilter === 'rodent') { mortData = []; pestData = pestData.filter(r => r.rodent === 'yes'); }
+  if (_pestTypeFilter === 'fly')    { mortData = []; pestData = pestData.filter(r => r.fly === 'yes'); }
+  if (_pestTypeFilter === 'mort')   { pestData = []; }
+
+  const combined = [...pestData, ...mortData].sort((a,b) => (b.ts||0) - (a.ts||0));
+  document.getElementById('pest-log-count').textContent = combined.length + ' records · last 30 days';
 
   // Summary stats
-  const totalRodent = data.filter(r => r.rodent === 'yes').length;
-  const totalFly    = data.filter(r => r.fly === 'yes').length;
-  const totalRodentCount = data.reduce((s,r) => s + (r.rodentCount||0), 0);
-  const statStyle = 'background:#1a1200;border:1px solid #3a2a0a;border-radius:10px;padding:12px;text-align:center;';
+  const totalRodent   = pestData.filter(r => r.rodent === 'yes').length;
+  const totalFly      = pestData.filter(r => r.fly === 'yes').length;
+  const totalMortDays = mortData.length;
+  const totalMortBirds = mortData.reduce((s,r) => s + (r.mortCount||0), 0);
+  const statStyle = 'background:#1a0a0a;border:1px solid #3a1a0a;border-radius:10px;padding:12px;text-align:center;';
   document.getElementById('pest-log-stats').innerHTML =
-    '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#e07070;">'+totalRodent+'</div><div style="font-size:10px;color:#8a7a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">🐀 Rodent Sightings</div></div>' +
-    '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#c8a05a;">'+totalRodentCount+'</div><div style="font-size:10px;color:#8a7a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Total Caught</div></div>' +
+    '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#e07070;">'+totalMortBirds+'</div><div style="font-size:10px;color:#8a5a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">💀 Mortality (30d)</div></div>' +
+    '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#c8a05a;">'+totalRodent+'</div><div style="font-size:10px;color:#8a7a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">🐀 Rodent Sightings</div></div>' +
     '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#d69e2e;">'+totalFly+'</div><div style="font-size:10px;color:#8a7a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">🪰 Fly Sightings</div></div>';
 
-  if (!data.length) {
+  if (!combined.length) {
     document.getElementById('pest-log-list').innerHTML =
-      '<div style="text-align:center;padding:40px 20px;color:#5a4a2a;font-family:\'IBM Plex Mono\',monospace;font-size:13px;">No pest records found.</div>';
+      '<div style="text-align:center;padding:40px 20px;color:#5a4a2a;font-family:\'IBM Plex Mono\',monospace;font-size:13px;">No records in the last 30 days.</div>';
     return;
   }
 
-  document.getElementById('pest-log-list').innerHTML = data.map(r => {
+  document.getElementById('pest-log-list').innerHTML = combined.map(r => {
+    if (r._type === 'mort') {
+      const notRemoved = r.mortrem === 'no';
+      const borderColor = notRemoved ? '#e53e3e' : '#7a3a3a';
+      return '<div style="background:#130808;border:1px solid '+borderColor+';border-radius:10px;padding:14px 16px;margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
+          '<div>' +
+            '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:#f0ead8;">'+r.farm+' — Barn '+r.house+'</div>' +
+            '<div style="font-size:11px;color:#8a6a6a;margin-top:2px;">'+r.date+' · '+r.time+' · '+r.employee+'</div>' +
+          '</div>' +
+          '<span style="background:#3a0a0a;color:#f87171;border:1px solid #7a2a2a;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;font-family:\'IBM Plex Mono\',monospace;">💀 Mortality</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">' +
+          (r.mortCount ? '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;color:#f87171;font-weight:700;">'+r.mortCount+' bird'+(r.mortCount!==1?'s':'')+'</span>' : '') +
+          (notRemoved ? '<span style="background:#4a0a0a;color:#fca5a5;border:1px solid #e53e3e;border-radius:8px;padding:1px 8px;font-size:11px;">⚠ Not Removed</span>' : '') +
+        '</div>' +
+        (r.notes ? '<div style="margin-top:8px;font-size:12px;color:#8a6a6a;font-style:italic;">'+r.notes+'</div>' : '') +
+      '</div>';
+    }
+    // Pest entry
     const rodentFlag = r.rodent === 'yes';
     const flyFlag    = r.fly === 'yes';
-    const highRodent = rodentFlag && (r.rodentCount||0) >= RODENT_WO_THRESHOLD;
-    const borderColor = highRodent ? '#e53e3e' : rodentFlag ? '#c8a05a' : '#3a6a3a';
+    const borderColor = rodentFlag ? '#c8a05a' : '#3a6a3a';
     const badges = [];
-    if (rodentFlag) badges.push('<span style="background:'+(highRodent?'#c0392b':'#3a2800')+';color:'+(highRodent?'#fff':'#c8a05a')+';border:1px solid '+(highRodent?'#e53e3e':'#7a5a1a')+';border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;font-family:\'IBM Plex Mono\',monospace;">🐀 Rodents'+(r.rodentCount?' × '+r.rodentCount:'')+(highRodent?' ⚠ WO':' ')+'</span>');
+    if (rodentFlag) badges.push('<span style="background:#3a2800;color:#c8a05a;border:1px solid #7a5a1a;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;font-family:\'IBM Plex Mono\',monospace;">🐀 Rodents'+(r.rodentCount?' × '+r.rodentCount:'')+'</span>');
     if (flyFlag)    badges.push('<span style="background:#2a2000;color:#d69e2e;border:1px solid #5a4a10;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;font-family:\'IBM Plex Mono\',monospace;">🪰 Fly Activity'+(r.flyCount?' × '+r.flyCount:'')+'</span>');
     return '<div style="background:#111008;border:1px solid '+borderColor+';border-radius:10px;padding:14px 16px;margin-bottom:10px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +

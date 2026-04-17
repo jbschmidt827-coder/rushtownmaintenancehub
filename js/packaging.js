@@ -119,7 +119,15 @@ function goMaintSection(section) {
     if (b.dataset.section === section) b.classList.add('active');
   });
   const renders = {wo:renderWO, pm:renderPM, parts:renderParts, downtime:renderDowntime, log:renderLog, assets:renderAssets, wi:renderWI, calendar:renderMaintCalendar};
-  if (renders[section]) renders[section]();
+  if (section === 'wi') {
+    // If the real-time listener hasn't populated allWI yet (e.g. index error), force a fetch
+    if (typeof allWI !== 'undefined' && allWI.length === 0) {
+      if (typeof loadWIFallback === 'function') { loadWIFallback(); return; }
+    }
+    renderWI();
+  } else if (renders[section]) {
+    renders[section]();
+  }
   // Handle WO form state
   if (section === 'wo') {
     const d = document.getElementById('wo-dash-section');
@@ -367,6 +375,14 @@ async function saveDowntime() {
     renderDowntime();
     updateDtBadge();
     alert('✅ Downtime logged.');
+    try {
+      await db.collection('activityLog').add({
+        type: 'downtime', id: 'DT',
+        desc: 'Downtime: ' + reason + (line ? ' — Line ' + line : '') + ' — ' + duration + ' min' + (wo ? ' (WO: ' + wo + ')' : ''),
+        tech: by, date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Error: '+e.message); }
 }
 
@@ -474,6 +490,14 @@ async function saveWaste() {
     clearWasteForm();
     renderWaste();
     alert('✅ Waste logged.');
+    try {
+      await db.collection('activityLog').add({
+        type: 'ops-exc', id: 'WSTE',
+        desc: 'Waste logged: ' + farm + (house ? ' Barn ' + house : '') + ' — ' + qty + ' eggs (' + category + ')',
+        tech: by, date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Error: '+e.message); }
 }
 
@@ -557,6 +581,14 @@ async function saveCooler() {
     clearCoolerForm();
     renderCooler();
     alert('✅ Cooler entry saved.');
+    try {
+      await db.collection('activityLog').add({
+        type: 'ops-pack', id: 'COOL',
+        desc: 'Cooler: ' + cases + ' cases ' + product + (location ? ' @ ' + location : '') + ' — Status: ' + status,
+        tech: by, date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Error: '+e.message); }
 }
 

@@ -300,6 +300,14 @@ async function saveEggByBarn() {
     renderEggByBarn();
     // Refresh dashboard KPI if visible
     if (document.getElementById('panel-dash')?.classList.contains('active')) renderDash();
+    try {
+      await db.collection('activityLog').add({
+        type: 'ops-egg', id: 'EGG',
+        desc: 'Egg count: ' + farm + ' Barn ' + house + ' — ' + fmtNum(collected) + ' collected, ' + packedDz + ' dz packed',
+        tech: by, date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { console.error('saveEggByBarn:', e); alert('Save failed: ' + e.message); }
 }
 
@@ -462,6 +470,14 @@ async function saveFlock() {
     document.getElementById('fl-notes').value = '';
     renderFlockList();
     setTimeout(() => { statusEl.textContent = ''; }, 3000);
+    try {
+      await db.collection('activityLog').add({
+        type: 'barnwalk', id: 'FLOCK',
+        desc: 'Flock placed: ' + farm + ' Barn ' + house + ' — ' + fmtNum(birds) + ' birds placed ' + date,
+        tech: 'System', date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) {
     console.error('flock save:', e);
     statusEl.innerHTML = '<span style="color:#e53e3e;">⚠ Save failed — check connection.</span>';
@@ -634,6 +650,14 @@ async function saveEggQuality() {
     opsEggQuality.unshift(rec);
     clearEqForm();
     renderEggQuality();
+    try {
+      await db.collection('activityLog').add({
+        type: 'ops-egg', id: 'EQ',
+        desc: 'Egg quality: ' + farm + ' Barn ' + house + ' — ' + fmtNum(total) + ' graded, ' + gradeAPct + '% Grade A',
+        tech: by, date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Save failed: ' + e.message); }
   setSyncDot('live');
 }

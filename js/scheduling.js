@@ -212,6 +212,13 @@ async function saveSchedEntry() {
     }
     closeSchedModal();
     renderSchedule();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'SCHED',
+        desc: (_schedEditId ? 'Schedule updated: ' : 'Schedule assigned: ') + person + ' — ' + _schedFacility + ' ' + _schedModalDept + ' (' + _schedModalDay + ', wk ' + _schedWeekOf + ')',
+        tech: person, date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) {
     console.error('Schedule save error:', e);
     alert('Error saving: ' + e.message);
@@ -226,6 +233,13 @@ async function deleteSchedEntry() {
     _schedData = _schedData.filter(r => r._id !== _schedEditId);
     closeSchedModal();
     renderSchedule();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'SCHED',
+        desc: 'Schedule entry removed — ' + _schedFacility + ' ' + _schedModalDept + ' (' + _schedModalDay + ', wk ' + _schedWeekOf + ')',
+        tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) {
     console.error('Schedule delete error:', e);
     alert('Error deleting: ' + e.message);
@@ -248,6 +262,13 @@ async function copyLastWeek() {
     });
     await batch.commit();
     await loadSchedule();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'SCHED',
+        desc: 'Schedule copied from wk ' + prevWeekOf + ' → wk ' + _schedWeekOf + ' (' + _schedFacility + ')',
+        tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) {
     console.error('Copy last week error:', e);
     alert('Error copying: ' + e.message);

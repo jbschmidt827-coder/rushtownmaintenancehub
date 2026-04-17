@@ -3707,7 +3707,15 @@ async function loadWI() {
     const snap = await db.collection('workInstructions').orderBy('ts','desc').get();
     allWI = [];
     snap.forEach(d => allWI.push({...d.data(), _fbId: d.id}));
-  } catch(e) { console.error('loadWI:', e); }
+  } catch(e) {
+    console.error('loadWI (ordered) failed, trying unordered fallback:', e);
+    try {
+      const snap2 = await db.collection('workInstructions').get();
+      allWI = [];
+      snap2.forEach(d => allWI.push({...d.data(), _fbId: d.id}));
+      allWI.sort((a,b) => (b.ts||0) - (a.ts||0));
+    } catch(e2) { console.error('loadWI fallback also failed:', e2); }
+  }
 }
 
 // ── Seed Rushtown Poultry mortality composting instructions ──
@@ -3926,7 +3934,24 @@ function startWIListener() {
     allWI = [];
     snap.forEach(d => allWI.push({...d.data(), _fbId: d.id}));
     if (window._maintSection==='wi') renderWI();
+  }, err => {
+    console.error('WI listener error:', err);
+    // Fallback: load without orderBy (avoids missing-index errors)
+    loadWIFallback();
   });
+}
+
+async function loadWIFallback() {
+  try {
+    const snap = await db.collection('workInstructions').get();
+    allWI = [];
+    snap.forEach(d => allWI.push({...d.data(), _fbId: d.id}));
+    allWI.sort((a,b) => (b.ts||0) - (a.ts||0));
+    if (window._maintSection==='wi') renderWI();
+    console.log('WI fallback load succeeded, count:', allWI.length);
+  } catch(e) {
+    console.error('WI fallback load also failed:', e);
+  }
 }
 
 function wiTypeFilter(val, btn) {
@@ -4102,16 +4127,22 @@ async function saveWI() {
         wiId, title, type, dept, system, time: parseInt(time)||0,
         ppe, warnings, author, steps, date, ts: Date.now()
       });
-      await db.collection('activityLog').add({
-        type:'wi', id: wiId,
-        desc: `Work instruction added: ${title}`,
-        tech: author || 'Unknown', date: fmtDate(date), ts: Date.now()
-      });
+      // activityLog is non-blocking — never let it prevent the WI from saving
+      try {
+        await db.collection('activityLog').add({
+          type:'wi', id: wiId,
+          desc: 'Work instruction added: ' + title,
+          tech: author || 'Unknown', date: fmtDate(date), ts: Date.now()
+        });
+      } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
     }
     setSyncDot('live');
     closeWIForm();
+    // Force re-render so new entry appears immediately
+    await loadWIFallback();
   } catch(e) {
-    alert('Error saving: ' + e.message);
+    console.error('saveWI error:', e);
+    alert('Error saving work instruction: ' + e.message);
   } finally {
     btn.textContent = '✓ SAVE'; btn.disabled = false;
   }

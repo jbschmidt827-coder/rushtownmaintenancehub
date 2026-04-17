@@ -166,6 +166,13 @@ async function addStaff() {
   try {
     const ref = await db.collection('staff').add({ name, role: role||'Technician', farm: farm||'', phone, active: true, ts: Date.now() });
     await createOnboarding(ref.id, name);
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'STAFF',
+        desc: 'Staff added: ' + name + ' (' + (role||'Technician') + ')' + (farm ? ' — ' + farm : ''),
+        tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
     document.getElementById('staff-new-fname').value = '';
     document.getElementById('staff-new-lname').value = '';
     document.getElementById('staff-new-phone').value = '';
@@ -188,7 +195,16 @@ async function toggleStaff(id, active) {
 // ── Delete Employee ─────────────────────────
 async function deleteStaff(id, name) {
   if (!confirm(`Remove ${name} from the staff list?`)) return;
-  try { await db.collection('staff').doc(id).delete(); } catch(e) { alert('Error: ' + e.message); }
+  try {
+    await db.collection('staff').doc(id).delete();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'STAFF',
+        desc: 'Staff removed: ' + name,
+        tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 // ── Edit Employee ───────────────────────────
@@ -219,6 +235,13 @@ async function saveStaffEdit() {
   try {
     await db.collection('staff').doc(id).update({ name, role, farm, phone });
     closeStaffEdit();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'STAFF',
+        desc: 'Staff updated: ' + name + ' (' + role + ')' + (farm ? ' — ' + farm : ''),
+        tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Error: ' + e.message); }
   btn.disabled = false; btn.textContent = 'Save Changes';
 }
