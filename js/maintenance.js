@@ -3937,7 +3937,10 @@ async function seedRushtownOpsWI() {
     'WI-5S-CLOSEOUT','WI-PM-COMPLETE','WI-EMERGENCY-BREAKDOWN','WI-WEEKLY-REVIEW',
     'WI-HEAD-ROLLER','WI-DRIVE-ROLLER','WI-GEARBOX-OIL',
     'WI-CHAIN-SPROCKET','WI-BELT-FLIP','WI-FROZEN-BELT',
-    'WI-PIT-BELT-CHANGEOUT','WI-ORANGE-BELT-PM','WI-MANURE-CLEANOUT'
+    'WI-PIT-BELT-CHANGEOUT','WI-ORANGE-BELT-PM','WI-MANURE-CLEANOUT',
+    'WI-MANURE-WEEKLY-PM','WI-ROD-CONV-INSPECT','WI-EGG-JAM-PROD',
+    'WI-CONV-SPEED-ADJ','WI-BROKEN-ROD','WI-CONV-CHAIN-TENSION',
+    'WI-EGG-FLOW-AUDIT','WI-FAN-BELT-VENT','WI-BLOWER-MOTOR'
   ];
   try {
     const check = await db.collection('workInstructions').where('wiId','in',SEED_IDS).get();
@@ -4370,6 +4373,211 @@ async function seedRushtownOpsWI() {
         'Note any abnormal accumulation and record source in the app.'
       ],
       ts: base + 9000
+    },
+    {
+      wiId: 'WI-MANURE-WEEKLY-PM',
+      title: 'Weekly Manure System PM',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 45,
+      author,
+      date: today,
+      ppe: 'Gloves, boots.',
+      warnings: 'Purpose: reduce emergency breakdowns. Pass Check: running clean, aligned, no abnormal wear.',
+      steps: [
+        'Inspect all belts for wear, cracks, or tears.',
+        'Check tracking on each belt run — adjust if off-center.',
+        'Inspect all rollers turning freely.',
+        'Check chains and sprockets for wear and slack.',
+        'Tighten any loose hardware.',
+        'Remove buildup under the system.',
+        'Check motor and gearbox condition — leaks, noise, heat.',
+        'Record any issues found for planned repair.'
+      ],
+      ts: base + 10000
+    },
+    {
+      wiId: 'WI-ROD-CONV-INSPECT',
+      title: 'Lubing Rod Conveyor Daily Inspection',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Egg Collectors',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Report any issues found — do not run a damaged rod conveyor.',
+      steps: [
+        'Walk the full conveyor path from end to end.',
+        'Check rod movement for smoothness — no hesitation or jerking.',
+        'Look for bent or missing rods.',
+        'Check chain tension.',
+        'Inspect egg buildup points along the path.',
+        'Listen for clicking or grinding sounds.',
+        'Verify all guards are in place.',
+        'Report any issues found in the app.'
+      ],
+      ts: base + 11000
+    },
+    {
+      wiId: 'WI-EGG-JAM-PROD',
+      title: 'Egg Jam Removal Procedure',
+      type: 'repair',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Production critical — act immediately. Never reach into a moving conveyor.',
+      steps: [
+        'Stop the conveyor safely.',
+        'Locate the jam source.',
+        'Remove broken eggs and debris.',
+        'Inspect rods and guides for damage.',
+        'Check egg flow upstream for cause.',
+        'Restart conveyor slowly.',
+        'Watch the first 5 minutes of operation.'
+      ],
+      ts: base + 12000
+    },
+    {
+      wiId: 'WI-CONV-SPEED-ADJ',
+      title: 'Conveyor Speed Adjustment',
+      type: 'repair',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Small adjustments only — large speed changes cause pileups or gaps. Purpose: improve egg flow and reduce pileups.',
+      steps: [
+        'Identify whether issue is too fast or too slow.',
+        'Check current speed setting on controller or drive.',
+        'Adjust controller or drive per standard setting.',
+        'Restart and monitor egg flow.',
+        'Confirm no buildup at transition points.',
+        'Record final setting in the app.'
+      ],
+      ts: base + 13000
+    },
+    {
+      wiId: 'WI-BROKEN-ROD',
+      title: 'Broken Rod Replacement',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Egg Collectors',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves.',
+      warnings: 'Lockout before accessing conveyor. Verify rod spacing and alignment after installation.',
+      steps: [
+        'Lockout power to the conveyor.',
+        'Locate the damaged rod.',
+        'Remove retaining hardware on both ends.',
+        'Remove the broken rod.',
+        'Install replacement rod.',
+        'Verify rod spacing and alignment with adjacent rods.',
+        'Rotate chain manually through full cycle.',
+        'Restore power and restart system.'
+      ],
+      ts: base + 14000
+    },
+    {
+      wiId: 'WI-CONV-CHAIN-TENSION',
+      title: 'Conveyor Chain Tensioning',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Egg Collectors',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves.',
+      warnings: 'Lockout before adjustment. Purpose: prevent chain jumping and premature wear.',
+      steps: [
+        'Lockout power to the conveyor.',
+        'Inspect chain slack — should not sag excessively.',
+        'Adjust take-up evenly on both sides.',
+        'Verify sprocket alignment with a straight edge.',
+        'Rotate chain manually through full cycle.',
+        'Lubricate chain if applicable per schedule.',
+        'Test run and observe.'
+      ],
+      ts: base + 15000
+    },
+    {
+      wiId: 'WI-EGG-FLOW-AUDIT',
+      title: 'Egg Flow Alignment Audit',
+      type: 'startup',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Perform weekly. Escalate any structural redesign needs — do not attempt major guide modifications without approval.',
+      steps: [
+        'Observe eggs entering the line at each barn.',
+        'Identify any crowding or pileup points.',
+        'Check guide rails and guide plates for position and wear.',
+        'Inspect transition heights between conveyor sections.',
+        'Look for cracked eggs indicating impact or drop problems.',
+        'Make minor guide corrections as needed.',
+        'Escalate any redesign needs to supervisor.'
+      ],
+      ts: base + 16000
+    },
+    {
+      wiId: 'WI-FAN-BELT-VENT',
+      title: 'Ventilation Fan Belt Replacement',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, safety glasses, gloves.',
+      warnings: 'Lockout power before removing guard. Verify zero energy before touching belt.',
+      steps: [
+        'Lockout power to the fan.',
+        'Remove the belt guard.',
+        'Loosen the motor mount bolts.',
+        'Remove the old belt.',
+        'Install the new belt.',
+        'Set correct belt tension.',
+        'Align pulleys visually.',
+        'Replace the belt guard.',
+        'Restore power and test run.'
+      ],
+      ts: base + 17000
+    },
+    {
+      wiId: 'WI-BLOWER-MOTOR',
+      title: 'Blower Motor Changeout',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 90,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves, safety glasses. Skilled repair.',
+      warnings: 'Verify zero energy before disconnecting wiring. Label all leads before removal. Confirm correct rotation direction before final run check.',
+      steps: [
+        'Lockout power and verify zero energy at the motor.',
+        'Disconnect wiring and label all leads.',
+        'Remove belt or coupling from motor shaft.',
+        'Support motor weight with proper lifting equipment.',
+        'Remove mounting bolts and remove old motor.',
+        'Install new motor in position.',
+        'Align shaft and pulleys.',
+        'Reconnect wiring per labeled leads.',
+        'Test amp draw and verify correct rotation direction.',
+        'Perform final run check — no excessive heat, noise, or vibration.'
+      ],
+      ts: base + 18000
     }
   ];
 
@@ -4377,7 +4585,7 @@ async function seedRushtownOpsWI() {
     for (const wi of instructions) {
       await db.collection('workInstructions').add(wi);
     }
-    console.log('✅ Rushtown Ops WIs seeded (19 procedures).');
+    console.log('✅ Rushtown Ops WIs seeded (28 procedures).');
   } catch(e) {
     console.error('seedRushtownOpsWI error:', e);
   }
