@@ -3940,7 +3940,10 @@ async function seedRushtownOpsWI() {
     'WI-PIT-BELT-CHANGEOUT','WI-ORANGE-BELT-PM','WI-MANURE-CLEANOUT',
     'WI-MANURE-WEEKLY-PM','WI-ROD-CONV-INSPECT','WI-EGG-JAM-PROD',
     'WI-CONV-SPEED-ADJ','WI-BROKEN-ROD','WI-CONV-CHAIN-TENSION',
-    'WI-EGG-FLOW-AUDIT','WI-FAN-BELT-VENT','WI-BLOWER-MOTOR'
+    'WI-EGG-FLOW-AUDIT','WI-FAN-BELT-VENT','WI-BLOWER-MOTOR',
+    'WI-TEMP-SENSOR','WI-VENT-DOOR-CABLE','WI-FAN-BEARING-GREASE',
+    'WI-HOT-HOUSE','WI-WATER-PRESSURE','WI-FILTER-CHANGE',
+    'WI-IRON-FLUSH','WI-WATER-LEAK','WI-FEED-AUGER'
   ];
   try {
     const check = await db.collection('workInstructions').where('wiId','in',SEED_IDS).get();
@@ -4578,6 +4581,209 @@ async function seedRushtownOpsWI() {
         'Perform final run check — no excessive heat, noise, or vibration.'
       ],
       ts: base + 18000
+    },
+    {
+      wiId: 'WI-TEMP-SENSOR',
+      title: 'House Temperature Sensor Check',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Pass Check: reading within acceptable tolerance. Report any large variance immediately — incorrect readings cause incorrect ventilation.',
+      steps: [
+        'Bring a calibrated reference thermometer.',
+        'Compare controller reading vs actual measured temperature.',
+        'Check sensor location for drafts, fan wash, or direct sunlight exposure.',
+        'Inspect sensor wiring and mounting.',
+        'Clean any dust buildup from sensor.',
+        'Adjust or calibrate if the control system allows.',
+        'Report any large variance to supervisor.'
+      ],
+      ts: base + 19000
+    },
+    {
+      wiId: 'WI-VENT-DOOR-CABLE',
+      title: 'Vent Door Cable Adjustment',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Lockout controller if required. Purpose: maintain even airflow and proper vent opening.',
+      steps: [
+        'Lockout the vent controller if required.',
+        'Inspect cable for fraying or slipping.',
+        'Cycle vents open and closed manually.',
+        'Identify any uneven doors.',
+        'Adjust cable tension equally on all doors.',
+        'Tighten clamps and set screws.',
+        'Recycle the system and verify smooth even movement.'
+      ],
+      ts: base + 20000
+    },
+    {
+      wiId: 'WI-FAN-BEARING-GREASE',
+      title: 'Fan Bearing Grease PM',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Do NOT over-grease — over-greasing damages seals. Fail trigger: heat, noise, or looseness in bearing.',
+      steps: [
+        'Lockout fan if required for safe access.',
+        'Clean grease fitting before applying grease.',
+        'Add correct grease type slowly — follow OEM spec.',
+        'Do not over-grease.',
+        'Spin shaft manually if accessible and check for smooth rotation.',
+        'Check for noise or play in bearing.',
+        'Wipe excess grease from fitting and housing.'
+      ],
+      ts: base + 21000
+    },
+    {
+      wiId: 'WI-HOT-HOUSE',
+      title: 'Emergency Hot House Response',
+      type: 'emergency',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Appropriate PPE for electrical and hot environment.',
+      warnings: 'CRITICAL — bird losses begin quickly in overheated houses. Do not leave until temperature is stable.',
+      steps: [
+        'Notify management immediately.',
+        'Confirm actual house temperature with a physical thermometer.',
+        'Check power supply and breakers.',
+        'Verify all fans are operating.',
+        'Open emergency ventilation if available.',
+        'Inspect controller and sensor for faults.',
+        'Bring portable ventilation support if available.',
+        'Stay on-site until house temperature is stable.',
+        'Document cause and corrective action in the app.'
+      ],
+      ts: base + 22000
+    },
+    {
+      wiId: 'WI-WATER-PRESSURE',
+      title: 'Water Pressure Check',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Water',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Ensure birds receive proper water flow. Record and escalate any abnormal zones.',
+      steps: [
+        'Read pressure gauge at the regulator.',
+        'Compare reading to target standard for the area.',
+        'Walk water lines looking for weak flow signs.',
+        'Check regulator and filter condition.',
+        'Flush the line if sediment or buildup is suspected.',
+        'Record any abnormal zones.',
+        'Correct or escalate as needed.'
+      ],
+      ts: base + 23000
+    },
+    {
+      wiId: 'WI-FILTER-CHANGE',
+      title: 'Water Filter Change Procedure',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Water',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Isolate and relieve pressure before removing filter housing.',
+      steps: [
+        'Isolate the water source valve.',
+        'Relieve pressure from the line.',
+        'Remove the old filter.',
+        'Inspect housing and seals for wear or damage.',
+        'Clean the housing.',
+        'Install the new filter.',
+        'Restore water flow slowly.',
+        'Check all connections for leaks.',
+        'Log the date and filter change in the app.'
+      ],
+      ts: base + 24000
+    },
+    {
+      wiId: 'WI-IRON-FLUSH',
+      title: 'Iron / Dirt Flush Procedure',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Water',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Purpose: remove contamination causing nipple clogs and poor flow. Record recurring problem areas.',
+      steps: [
+        'Identify the affected line or zone.',
+        'Open flush points at the end of the line.',
+        'Run water until it runs clear.',
+        'Inspect sediment level coming out.',
+        'Check upstream filter condition.',
+        'Restore normal operation and close flush points.',
+        'Record any recurring problem areas in the app.'
+      ],
+      ts: base + 25000
+    },
+    {
+      wiId: 'WI-WATER-LEAK',
+      title: 'Water Leak Repair',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Water',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Priority: medium to high depending on severity. Dry area immediately if slip risk.',
+      steps: [
+        'Identify the leak source.',
+        'Isolate the section if possible.',
+        'Replace the faulty fitting, hose, or valve.',
+        'Restore pressure slowly.',
+        'Check for any secondary leaks nearby.',
+        'Dry the area if there is a slip risk.',
+        'Log the repair in the app.'
+      ],
+      ts: base + 26000
+    },
+    {
+      wiId: 'WI-FEED-AUGER',
+      title: 'Feed Auger Inspection',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Feed',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout before opening guards. Gloves.',
+      warnings: 'Purpose: prevent feed outages and motor overload. Report any worn flighting immediately.',
+      steps: [
+        'Lockout power before opening any guards.',
+        'Inspect motor and gearbox for leaks or heat.',
+        'Listen for binding or unusual noise.',
+        'Check flighting for wear or missing sections.',
+        'Inspect tube supports and hangers for security.',
+        'Verify feed flow is moving freely.',
+        'Check boot and bin transition area for blockage.',
+        'Report any worn sections in the app.'
+      ],
+      ts: base + 27000
     }
   ];
 
@@ -4585,7 +4791,7 @@ async function seedRushtownOpsWI() {
     for (const wi of instructions) {
       await db.collection('workInstructions').add(wi);
     }
-    console.log('✅ Rushtown Ops WIs seeded (28 procedures).');
+    console.log('✅ Rushtown Ops WIs seeded (37 procedures).');
   } catch(e) {
     console.error('seedRushtownOpsWI error:', e);
   }
