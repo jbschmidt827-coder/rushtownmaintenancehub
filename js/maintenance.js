@@ -3958,7 +3958,10 @@ async function seedRushtownOpsWI() {
     'WI-FORKLIFT-INSPECT','WI-LOAD-ACCURACY','WI-DAMAGE-REPORT',
     'WI-PALLET-WRAP','WI-TRAILER-INSPECT','WI-BARN-WALK-DAILY2',
     'WI-EGG-COUNT','WI-BROKEN-EGG-REPORT','WI-MORTALITY-REMOVAL',
-    'WI-FEED-CONSUMPTION','WI-WATER-USAGE','WI-HEN-BEHAVIOR'
+    'WI-FEED-CONSUMPTION','WI-WATER-USAGE','WI-HEN-BEHAVIOR',
+    'WI-CAGE-DAMAGE','WI-BIOSEC-ENTRY','WI-TIER2-MEETING',
+    'WI-CA-WEDNESDAY','WI-WEEKEND-COVERAGE','WI-HEGINS-SAT',
+    'WI-FRIDAY-REVIEW','WI-PM-COMPLIANCE','WI-DOWNTIME-SUMMARY'
   ];
   try {
     const check = await db.collection('workInstructions').where('wiId','in',SEED_IDS).get();
@@ -5783,6 +5786,198 @@ async function seedRushtownOpsWI() {
         'Report significant behavioral changes to supervisor.'
       ],
       ts: base + 72000
+    },
+    {
+      wiId: 'WI-CAGE-DAMAGE',
+      title: 'Cage Damage Reporting',
+      type: 'repair',
+      dept: 'Barn / Layer',
+      system: 'Building',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Gloves, safety footwear.',
+      warnings: 'Purpose: capture structural issues before bird loss or injury. Isolate any immediate hazard.',
+      steps: [
+        'Identify the damaged cage, wire, door, or floor area.',
+        'Mark the exact location: barn, row, and section.',
+        'Photograph damage if possible.',
+        'Determine urgency: Safe to monitor / Needs Repair / Immediate Risk.',
+        'Submit a ticket in the app.',
+        'Isolate the hazard if there is immediate risk to birds or people.'
+      ],
+      ts: base + 73000
+    },
+    {
+      wiId: 'WI-BIOSEC-ENTRY',
+      title: 'Biosecurity Entry Procedure',
+      type: 'safety',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: 'Site-required boots, coveralls, and gloves.',
+      warnings: 'Purpose: protect flock health and prevent contamination. No unauthorized items or tools inside.',
+      steps: [
+        'Follow all site entry rules.',
+        'Wear required clean PPE and boots.',
+        'Sanitize hands and footwear at entry point.',
+        'Use approved traffic flow route only.',
+        'Do not bring unauthorized tools or items inside.',
+        'Follow visitor restrictions and complete visitor log if required.'
+      ],
+      ts: base + 74000
+    },
+    {
+      wiId: 'WI-TIER2-MEETING',
+      title: 'Tier 2 Weekly Meeting Standard',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 30,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: align departments on performance and actions. Start on time — every time.',
+      steps: [
+        'Start on time.',
+        'Review safety incidents and open actions.',
+        'Review production first pass yield and output.',
+        'Review packaging and shipping losses.',
+        'Review labor, material, and efficiency performance.',
+        'Recognize team wins.',
+        'Review all open action items.',
+        'Assign owners and due dates to every open item.',
+        'End with top priorities for the week.'
+      ],
+      ts: base + 75000
+    },
+    {
+      wiId: 'WI-CA-WEDNESDAY',
+      title: 'Corrective Action Wednesday Review',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 30,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: solve recurring top issues every week — not just discuss them.',
+      steps: [
+        'Bring the top trending problems from the prior week.',
+        'Review root cause status for each item.',
+        'Confirm corrective actions are in place.',
+        'Assign completion deadlines.',
+        'Escalate any blocked items.',
+        'Communicate the must-fix-this-week list to the team.'
+      ],
+      ts: base + 76000
+    },
+    {
+      wiId: 'WI-WEEKEND-COVERAGE',
+      title: 'Weekend Coverage Planning',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: prevent uncovered emergencies on weekends. Communicate schedule by Friday.',
+      steps: [
+        'Review scheduled staffing for the weekend.',
+        'Review any open critical jobs that may need attention.',
+        'Confirm on-call contact list is current.',
+        'Verify needed parts and tools are staged and ready.',
+        'Assign priority checks for each day.',
+        'Communicate the weekend schedule to the team on Friday.'
+      ],
+      ts: base + 77000
+    },
+    {
+      wiId: 'WI-HEGINS-SAT',
+      title: 'Hegins Saturday Job Planning',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Per job requirements.',
+      warnings: 'Purpose: execute planned weekend work efficiently. Stage everything Friday — no running for parts Saturday.',
+      steps: [
+        'Define scope of work clearly.',
+        'Confirm crew members and start time.',
+        'Stage all parts and tools on Friday.',
+        'Review lockout and safety requirements for the job.',
+        'Set expected completion time.',
+        'Complete work and submit a Monday recap in the app.'
+      ],
+      ts: base + 78000
+    },
+    {
+      wiId: 'WI-FRIDAY-REVIEW',
+      title: 'Open Project Friday Trending Review',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: use Friday to regain control before the week ends.',
+      steps: [
+        'Pull all open projects from the app.',
+        'Identify the top recurring issues from the week.',
+        'Prioritize next week\'s must-fix items.',
+        'Review any overdue actions.',
+        'Check parts blockers for the coming week.',
+        'Build the Wednesday corrective action review list.'
+      ],
+      ts: base + 79000
+    },
+    {
+      wiId: 'WI-PM-COMPLIANCE',
+      title: 'PM Compliance Dashboard Review',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: ensure the PM program is real — not just on paper.',
+      steps: [
+        'Review scheduled vs completed PM percentage.',
+        'Identify all overdue PMs.',
+        'Sort overdue PMs by critical equipment priority.',
+        'Reassign resources if needed to close overdue PMs.',
+        'Review any repeat failures tied to missed PMs.',
+        'Publish the weekly PM compliance score.'
+      ],
+      ts: base + 80000
+    },
+    {
+      wiId: 'WI-DOWNTIME-SUMMARY',
+      title: 'Downtime Root Cause Weekly Summary',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: turn downtime data into learning and prevention.',
+      steps: [
+        'Pull all downtime events from the week in the app.',
+        'Rank events by total minutes lost.',
+        'Identify the top 3 root causes.',
+        'Assign corrective actions for each top cause.',
+        'Estimate cost impact of downtime.',
+        'Share the summary with leadership.'
+      ],
+      ts: base + 81000
     }
   ];
 
@@ -5790,7 +5985,7 @@ async function seedRushtownOpsWI() {
     for (const wi of instructions) {
       await db.collection('workInstructions').add(wi);
     }
-    console.log('✅ Rushtown Ops WIs seeded (82 procedures).');
+    console.log('✅ Rushtown Ops WIs seeded (91 procedures).');
   } catch(e) {
     console.error('seedRushtownOpsWI error:', e);
   }
