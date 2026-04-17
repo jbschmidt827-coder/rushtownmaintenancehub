@@ -3934,7 +3934,10 @@ async function seedRushtownOpsWI() {
   const SEED_IDS = [
     'WI-BARNWALK-DAILY','WI-WO-CREATE','WI-EGG-JAM',
     'WI-WATER-FILTER','WI-FAN-BELT','WI-SHIFT-HANDOFF',
-    'WI-5S-CLOSEOUT','WI-PM-COMPLETE','WI-EMERGENCY-BREAKDOWN','WI-WEEKLY-REVIEW'
+    'WI-5S-CLOSEOUT','WI-PM-COMPLETE','WI-EMERGENCY-BREAKDOWN','WI-WEEKLY-REVIEW',
+    'WI-HEAD-ROLLER','WI-DRIVE-ROLLER','WI-GEARBOX-OIL',
+    'WI-CHAIN-SPROCKET','WI-BELT-FLIP','WI-FROZEN-BELT',
+    'WI-PIT-BELT-CHANGEOUT','WI-ORANGE-BELT-PM','WI-MANURE-CLEANOUT'
   ];
   try {
     const check = await db.collection('workInstructions').where('wiId','in',SEED_IDS).get();
@@ -4159,6 +4162,214 @@ async function seedRushtownOpsWI() {
         'Set the must-fix list for this week.'
       ],
       ts: base
+    },
+    {
+      wiId: 'WI-HEAD-ROLLER',
+      title: 'Head Roller Replacement',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 90,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves, safety glasses. Pinch-point caution.',
+      warnings: 'Lockout power before any work. Mark all alignment points before disassembly. Pass Check: smooth rotation, centered belt, no vibration.',
+      steps: [
+        'Lockout power source.',
+        'Remove belt tension if needed.',
+        'Remove guards and covers.',
+        'Mark current alignment points on frame.',
+        'Remove bearings and shaft hardware.',
+        'Pull damaged roller out safely.',
+        'Install new roller in position.',
+        'Reinstall bearings and hardware.',
+        'Align roller square to frame using marks.',
+        'Re-tension belt.',
+        'Test run and verify belt tracks centered.'
+      ],
+      ts: base + 1000
+    },
+    {
+      wiId: 'WI-DRIVE-ROLLER',
+      title: 'Drive Roller Replacement',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 60,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves.',
+      warnings: 'Lockout before removing chain or coupling. Inspect shaft and bearings during replacement.',
+      steps: [
+        'Lockout power source.',
+        'Remove chain or coupling from drive roller.',
+        'Release belt tension.',
+        'Remove old roller.',
+        'Inspect shaft and bearings for wear — replace if needed.',
+        'Install new roller.',
+        'Reconnect drive chain or coupling.',
+        'Set correct tension.',
+        'Test run under load and observe.'
+      ],
+      ts: base + 2000
+    },
+    {
+      wiId: 'WI-GEARBOX-OIL',
+      title: 'Gearbox Inspection & Oil Check',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Fail triggers: leak present, metal grinding noise, overheating. Do not run a leaking gearbox — tag out and report.',
+      steps: [
+        'Verify unit is cool and safe to touch.',
+        'Check for any oil leaks around seals and housing.',
+        'Inspect mounting bolts for tightness.',
+        'Check oil level via sight glass or drain plug.',
+        'Add approved gearbox oil if level is low.',
+        'Listen during operation for grinding or unusual noise.',
+        'Record findings in the app.'
+      ],
+      ts: base + 3000
+    },
+    {
+      wiId: 'WI-CHAIN-SPROCKET',
+      title: 'Chain & Sprocket Alignment',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves.',
+      warnings: 'Lockout before any inspection or adjustment. Misaligned chain causes premature wear and chain jumping.',
+      steps: [
+        'Lockout power source.',
+        'Inspect chain slack — should not exceed 1/2 inch deflection.',
+        'Inspect sprocket teeth for hooked or worn profile.',
+        'Use a straight edge to check sprocket alignment.',
+        'Adjust motor or shaft position to align.',
+        'Lubricate chain if applicable per maintenance schedule.',
+        'Rotate chain by hand through full cycle.',
+        'Test run and observe.'
+      ],
+      ts: base + 4000
+    },
+    {
+      wiId: 'WI-BELT-FLIP',
+      title: 'Belt Flip Emergency Recovery',
+      type: 'emergency',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves, boots.',
+      warnings: 'STOP equipment immediately — do not run a flipped belt. Escalate if: torn cords, damaged roller, or belt flips repeatedly.',
+      steps: [
+        'Stop equipment immediately.',
+        'Lockout power source.',
+        'Identify the flip location and root cause.',
+        'Remove any buildup or obstruction causing the flip.',
+        'Realign belt manually.',
+        'Inspect belt welds and edges for damage.',
+        'Restart slowly.',
+        'Watch a full belt cycle before returning to normal operation.'
+      ],
+      ts: base + 5000
+    },
+    {
+      wiId: 'WI-FROZEN-BELT',
+      title: 'Frozen Belt Winter Recovery',
+      type: 'emergency',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 45,
+      author,
+      date: today,
+      ppe: 'Gloves, boots, cold weather PPE.',
+      warnings: 'Do NOT hard-start repeatedly — this tears belts and burns motors. Use approved thaw method only.',
+      steps: [
+        'Do not attempt to hard-start repeatedly.',
+        'Inspect frozen points along belt path.',
+        'Remove ice and manure buildup manually.',
+        'Apply approved thaw method — safe heat source only if allowed.',
+        'Check all rollers spin freely by hand.',
+        'Jog system slowly — do not full-start until belt moves freely.',
+        'Monitor amp draw or motor load if available.',
+        'Resume normal operation once confirmed clear.'
+      ],
+      ts: base + 6000
+    },
+    {
+      wiId: 'WI-PIT-BELT-CHANGEOUT',
+      title: 'Pit Belt Changeout Procedure',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 120,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves, boots, N95 mask in pit.',
+      warnings: 'Major repair — plan labor and parts in advance. Do not work alone in pit area.',
+      steps: [
+        'Lockout power and isolate the work area.',
+        'Clean access path for safe entry and belt removal.',
+        'Remove old belt completely.',
+        'Inspect rollers and frame — repair any issues before installing new belt.',
+        'Pull new belt into position safely — use proper pulling tools.',
+        'Splice or weld belt joint.',
+        'Track and tension belt per spec.',
+        'Test run empty — verify tracking and tension.',
+        'Recheck tracking and tension after first loaded run.'
+      ],
+      ts: base + 7000
+    },
+    {
+      wiId: 'WI-ORANGE-BELT-PM',
+      title: 'Orange Transfer Belt PM',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Perform weekly. Do not skip — buildup under belt causes overload and fire risk.',
+      steps: [
+        'Inspect belt surface for cracks, tears, or wear.',
+        'Check belt tracking — adjust if off-center.',
+        'Inspect gearbox and motor for leaks or noise.',
+        'Check scraper and belt cleaners for contact and wear.',
+        'Remove buildup beneath the unit.',
+        'Tighten any loose hardware.',
+        'Run system and observe for one full cycle.'
+      ],
+      ts: base + 8000
+    },
+    {
+      wiId: 'WI-MANURE-CLEANOUT',
+      title: 'Manure Cleanout Under Belts',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Gloves, boots, N95 mask. Lockout if entering hazard zone.',
+      warnings: 'Prevent drag, odor, overload, and fire. Note any abnormal accumulation — it indicates a belt, scraper, or tracking problem.',
+      steps: [
+        'Lockout power if entering a hazard zone under the belt.',
+        'Remove manure piles from under the return path.',
+        'Clear roller pockets and end areas.',
+        'Inspect support structure and frame for corrosion.',
+        'Bag and dispose of waste properly.',
+        'Note any abnormal accumulation and record source in the app.'
+      ],
+      ts: base + 9000
     }
   ];
 
@@ -4166,7 +4377,7 @@ async function seedRushtownOpsWI() {
     for (const wi of instructions) {
       await db.collection('workInstructions').add(wi);
     }
-    console.log('✅ Rushtown Ops WIs seeded (10 procedures).');
+    console.log('✅ Rushtown Ops WIs seeded (19 procedures).');
   } catch(e) {
     console.error('seedRushtownOpsWI error:', e);
   }
