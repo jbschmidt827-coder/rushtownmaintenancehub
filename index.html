@@ -2872,22 +2872,28 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <!-- Work Instructions section -->
   <div class="maint-section" id="maint-wi">
     <div class="section-sub">Step-by-step procedures, SOPs, safety rules, and onboarding guides</div>
+
+    <!-- Search + Add -->
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
       <div style="flex:1;position:relative;">
         <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span>
-        <input type="text" id="wi-search" placeholder="Search procedures, equipment, keywords..." oninput="wiSearch()" style="width:100%;padding:10px 12px 10px 36px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'IBM Plex Sans',sans-serif;box-sizing:border-box;">
+        <input type="text" id="wi-search" placeholder="Search title, system, keywords, steps..." oninput="wiSearch()" style="width:100%;padding:10px 12px 10px 36px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:'IBM Plex Sans',sans-serif;box-sizing:border-box;background:var(--card-bg);">
       </div>
-      <button onclick="openWIForm()" style="padding:10px 18px;background:var(--green-mid);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.5px;">➕ Add</button>
+      <button onclick="openWIForm()" style="padding:10px 18px;background:var(--green-mid);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.5px;">+ Add</button>
     </div>
-    <div class="pill-bar" id="wi-type-bar">
-      <button class="pill active" onclick="wiTypeFilter('all',this)">All</button>
+
+    <!-- Type filter -->
+    <div class="pill-bar" id="wi-type-bar" style="margin-bottom:6px;">
+      <button class="pill active" onclick="wiTypeFilter('all',this)">All Types</button>
       <button class="pill" onclick="wiTypeFilter('repair',this)">🔧 Repair</button>
       <button class="pill" onclick="wiTypeFilter('startup',this)">▶️ Startup/Shutdown</button>
       <button class="pill" onclick="wiTypeFilter('emergency',this)">🚨 Emergency</button>
       <button class="pill" onclick="wiTypeFilter('safety',this)">🦺 Safety &amp; PPE</button>
       <button class="pill" onclick="wiTypeFilter('onboarding',this)">🆕 Onboarding</button>
     </div>
-    <div class="pill-bar" id="wi-dept-bar">
+
+    <!-- Dept filter -->
+    <div class="pill-bar" id="wi-dept-bar" style="margin-bottom:6px;">
       <button class="pill active" onclick="wiDeptFilter('all',this)">All Depts</button>
       <button class="pill" onclick="wiDeptFilter('Maintenance',this)">🔧 Maintenance</button>
       <button class="pill" onclick="wiDeptFilter('Egg Ops',this)">🥚 Egg Ops</button>
@@ -2896,7 +2902,25 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="pill" onclick="wiDeptFilter('Management',this)">📋 Management</button>
       <button class="pill" onclick="wiDeptFilter('General',this)">⚙️ General</button>
     </div>
-    <div class="stats-grid g4" id="wi-stats" style="margin-bottom:16px;"></div>
+
+    <!-- System filter -->
+    <div class="pill-bar" id="wi-system-bar" style="margin-bottom:12px;">
+      <button class="pill active" onclick="wiSystemFilter('all',this)">All Systems</button>
+      <button class="pill" onclick="wiSystemFilter('Manure',this)">♻️ Manure</button>
+      <button class="pill" onclick="wiSystemFilter('Ventilation',this)">💨 Ventilation</button>
+      <button class="pill" onclick="wiSystemFilter('Water',this)">💧 Water</button>
+      <button class="pill" onclick="wiSystemFilter('Feed',this)">🌾 Feed</button>
+      <button class="pill" onclick="wiSystemFilter('Egg Collectors',this)">🥚 Egg Collectors</button>
+      <button class="pill" onclick="wiSystemFilter('Electrical',this)">⚡ Electrical</button>
+      <button class="pill" onclick="wiSystemFilter('Building',this)">🏚️ Building</button>
+      <button class="pill" onclick="wiSystemFilter('General',this)">⚙️ General</button>
+    </div>
+
+    <!-- Stats + result count -->
+    <div class="stats-grid g4" id="wi-stats" style="margin-bottom:10px;"></div>
+    <div id="wi-result-count" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:10px;padding-left:2px;"></div>
+
+    <!-- List (grouped by dept) -->
     <div id="wi-list"></div>
   </div>
 

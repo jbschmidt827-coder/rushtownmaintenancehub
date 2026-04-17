@@ -3689,6 +3689,7 @@ function opsUpdateLandingCard() {
 let allWI = [];
 let wiTypeFilterVal = 'all';
 let wiDeptFilterVal = 'all';
+let wiSystemFilterVal = 'all';
 let wiSearchVal = '';
 let wiStepCount = 0;
 let editingWIId = null;
@@ -6030,6 +6031,13 @@ function wiDeptFilter(val, btn) {
   renderWI();
 }
 
+function wiSystemFilter(val, btn) {
+  wiSystemFilterVal = val;
+  document.querySelectorAll('#wi-system-bar .pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderWI();
+}
+
 function wiSearch() {
   wiSearchVal = document.getElementById('wi-search').value.toLowerCase().trim();
   renderWI();
@@ -6051,44 +6059,135 @@ function renderWI() {
   let list = allWI;
   if (wiTypeFilterVal !== 'all') list = list.filter(w => w.type === wiTypeFilterVal);
   if (wiDeptFilterVal !== 'all') list = list.filter(w => (w.dept || w.department || '') === wiDeptFilterVal);
+  if (wiSystemFilterVal !== 'all') list = list.filter(w => (w.system || '') === wiSystemFilterVal);
   if (wiSearchVal) {
     list = list.filter(w =>
       (w.title||'').toLowerCase().includes(wiSearchVal) ||
       (w.system||'').toLowerCase().includes(wiSearchVal) ||
+      (w.dept||'').toLowerCase().includes(wiSearchVal) ||
       (w.ppe||'').toLowerCase().includes(wiSearchVal) ||
       (w.warnings||'').toLowerCase().includes(wiSearchVal) ||
       (w.steps||[]).some(s => s.toLowerCase().includes(wiSearchVal))
     );
   }
 
+  // Result count
+  const countEl = document.getElementById('wi-result-count');
+  if (countEl) {
+    countEl.textContent = wiSearchVal || wiTypeFilterVal !== 'all' || wiDeptFilterVal !== 'all' || wiSystemFilterVal !== 'all'
+      ? `Showing ${list.length} of ${total} procedures`
+      : `${total} procedures`;
+  }
+
   const container = document.getElementById('wi-list');
   if (!list.length) {
-    container.innerHTML = `<div class="empty"><div class="ei">📖</div><p>${wiSearchVal ? 'No instructions match your search.' : 'No work instructions yet — add your first one above.'}</p></div>`;
+    container.innerHTML = `<div class="empty"><div class="ei">📖</div><p>${wiSearchVal ? 'No procedures match your search.' : 'No work instructions yet — click + Add above.'}</p></div>`;
     return;
   }
 
-  const SYS_ICON_MAP = {Ventilation:'💨',Water:'💧',Feed:'🌾',Manure:'♻️','Egg Collectors':'🥚',Heating:'🔥',Electrical:'⚡',Lubing:'🛢️',Building:'🏚️',General:'🔧'};
+  const WI_TYPE_MAP = WI_TYPE;
+  const SYS_ICON_MAP = {Ventilation:'💨',Water:'💧',Feed:'🌾',Manure:'♻️','Egg Collectors':'🥚',Heating:'🔥',Electrical:'⚡',Lubing:'🛢️',Building:'🏚️',General:'⚙️'};
+  const DEPT_ICON = {'Maintenance':'🔧','Egg Ops':'🥚','Shipping':'🚚','Barn / Layer':'🐔','Management':'📋','General':'⚙️'};
 
-  container.innerHTML = list.map(wi => {
-    const t = WI_TYPE[wi.type] || WI_TYPE.repair;
-    const sysIcon = SYS_ICON_MAP[wi.system] || '';
-    const stepCount = (wi.steps||[]).length;
-    const timeStr = wi.time ? wi.time + ' min' : '';
-    return `<div class="wi-card" onclick="openWIView('${wi.wiId}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px;">
-        <span class="wi-type-badge" style="background:${t.bg};color:${t.color};border-color:${t.color}40;">${t.label}</span>
-        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;margin-left:8px;">
-          ${timeStr ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);">⏱ ${timeStr}</span>` : ''}
-          ${wi.warnings ? '<span style="font-size:12px;" title="Has warnings">⚠️</span>' : ''}
-        </div>
+  // Group by dept
+  const groups = {};
+  list.forEach(wi => {
+    const dept = wi.dept || wi.department || 'General';
+    if (!groups[dept]) groups[dept] = [];
+    groups[dept].push(wi);
+  });
+
+  // Dept order
+  const DEPT_ORDER = ['Maintenance','Barn / Layer','Egg Ops','Shipping','Management','General'];
+  const sortedDepts = Object.keys(groups).sort((a,b) => {
+    const ai = DEPT_ORDER.indexOf(a); const bi = DEPT_ORDER.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  // If searching or filtering, flat view; otherwise grouped
+  const useGroups = !wiSearchVal && wiDeptFilterVal === 'all';
+
+  let html = '';
+
+  if (useGroups) {
+    sortedDepts.forEach(dept => {
+      const items = groups[dept];
+      const icon = DEPT_ICON[dept] || '📋';
+      const groupId = 'wi-group-' + dept.replace(/[^a-z0-9]/gi,'_');
+      html += `
+        <div style="margin-bottom:4px;">
+          <button onclick="toggleWIGroup('${groupId}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--card-bg);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:700;color:var(--text);">
+            <span>${icon} ${dept} <span style="font-weight:400;color:var(--muted);font-size:12px;">(${items.length})</span></span>
+            <span id="${groupId}-arrow" style="font-size:12px;color:var(--muted);">▼</span>
+          </button>
+          <div id="${groupId}" style="display:block;">
+            ${items.map(wi => wiCard(wi, WI_TYPE_MAP, SYS_ICON_MAP)).join('')}
+          </div>
+        </div>`;
+    });
+  } else {
+    html = list.map(wi => wiCard(wi, WI_TYPE_MAP, SYS_ICON_MAP)).join('');
+  }
+
+  container.innerHTML = html;
+}
+
+function toggleWIGroup(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById(id + '-arrow');
+  if (!el) return;
+  const collapsed = el.style.display === 'none';
+  el.style.display = collapsed ? 'block' : 'none';
+  if (arrow) arrow.textContent = collapsed ? '▼' : '▶';
+}
+
+function wiCard(wi, WI_TYPE_MAP, SYS_ICON_MAP) {
+  const t = WI_TYPE_MAP[wi.type] || WI_TYPE_MAP.repair;
+  const sysIcon = SYS_ICON_MAP[wi.system] || '';
+  const stepCount = (wi.steps||[]).length;
+  const timeStr = wi.time ? wi.time + ' min' : '';
+  const expandId = 'wi-expand-' + (wi.wiId||'').replace(/[^a-z0-9]/gi,'_');
+  const stepsHtml = (wi.steps||[]).map((s,i) => `
+    <div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--muted);min-width:18px;">${i+1}.</span>
+      <span style="font-size:13px;color:var(--text);line-height:1.4;">${s}</span>
+    </div>`).join('');
+
+  return `<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;">
+    <!-- Card header row -->
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;" onclick="toggleWIExpand('${expandId}')">
+      <span class="wi-type-badge" style="background:${t.bg};color:${t.color};border:1px solid ${t.color}40;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;">${t.label}</span>
+      <span style="flex:1;font-size:13px;font-weight:700;color:var(--text);line-height:1.3;">${wi.title}</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+        ${wi.ppe ? '<span title="PPE required" style="font-size:13px;">🦺</span>' : ''}
+        ${wi.warnings ? '<span title="Has warnings" style="font-size:13px;">⚠️</span>' : ''}
+        ${timeStr ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);">⏱ ${timeStr}</span>` : ''}
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);">${stepCount} steps</span>
+        <span id="${expandId}-arrow" style="font-size:11px;color:var(--muted);">▼</span>
       </div>
-      <div class="wi-title">${wi.title}</div>
-      <div class="wi-meta">
-        ${(wi.dept||wi.department) ? `<span style="background:#e8f4e8;color:#2e7d32;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-right:5px;">🏢 ${wi.dept||wi.department}</span>` : ''}${sysIcon ? sysIcon + ' ' + wi.system + ' · ' : ''}${stepCount} step${stepCount !== 1 ? 's' : ''}${wi.ppe ? ' · 🦺 PPE required' : ''}
-      </div>
-      <div class="wi-meta" style="margin-top:2px;">By ${wi.author || 'Unknown'} · ${fmtDate(wi.date)}</div>
-    </div>`;
-  }).join('');
+    </div>
+    <!-- Meta row -->
+    <div style="padding:0 12px 8px;display:flex;align-items:center;gap:8px;">
+      ${wi.system && wi.system !== 'General' ? `<span style="font-size:11px;color:var(--muted);">${sysIcon} ${wi.system}</span>` : ''}
+      <button onclick="openWIView('${wi.wiId}')" style="margin-left:auto;padding:3px 10px;background:transparent;border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">View Full →</button>
+      <button onclick="openWIForm('${wi.wiId}')" style="padding:3px 10px;background:transparent;border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">Edit</button>
+    </div>
+    <!-- Expandable steps -->
+    <div id="${expandId}" style="display:none;padding:4px 12px 12px;border-top:1px solid var(--border);">
+      ${wi.ppe ? `<div style="background:#fff8e1;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:12px;color:#b45309;">🦺 PPE: ${wi.ppe}</div>` : ''}
+      ${wi.warnings ? `<div style="background:#fef2f2;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:12px;color:#b91c1c;">⚠️ ${wi.warnings}</div>` : ''}
+      ${stepsHtml}
+    </div>
+  </div>`;
+}
+
+function toggleWIExpand(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById(id + '-arrow');
+  if (!el) return;
+  const collapsed = el.style.display === 'none';
+  el.style.display = collapsed ? 'block' : 'none';
+  if (arrow) arrow.textContent = collapsed ? '▲' : '▼';
 }
 
 // ── Form ──
