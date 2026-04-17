@@ -479,18 +479,14 @@ async function submitBarnWalk() {
   const feedBinReading    = document.getElementById('bw-feed-bin-reading')?.value ? Number(document.getElementById('bw-feed-bin-reading').value) : null;
 
   const flags = [];
-  if (_bwData.mort === 'yes')           flags.push('Mortality found' + (mortCount ? ' (' + mortCount + ')' : ''));
-  if (_bwData.mortrem === 'no')         flags.push('Mortality not removed');
+  // NOTE: Mortality and Loose Birds are logged to mortalityLog only — never create a WO
   if (_bwData.dryers === 'off')         flags.push('Manure dryers off');
   if (_bwData.feather === 'poor')       flags.push('Poor feathering');
-  if (_bwData.loose === 'yes')          flags.push('Loose birds' + (looseCount ? ' (' + looseCount + ')' : ''));
   if (_bwData.air === 'poor')           flags.push('Air quality anomaly');
   if (_bwData.feed === 'empty')         flags.push('Feeders empty');
   if (_bwData.eggbelt === 'down')       flags.push('Egg belt not working');
   if (_bwData.manure === 'stop')        flags.push('Manure belts not running');
-  // Water PSI and House Temp fields removed from Daily Employee Check form
   // Pest observations are saved to pestLog — not added to flags/WO queue
-  // (WO is only created below if rodentCount >= threshold)
   if (_bwData.doors === 'open')         flags.push('House doors open');
 
   const checklistTotal  = document.querySelectorAll('#bw-checklist-items .bw-cl-row').length;
@@ -549,17 +545,33 @@ async function submitBarnWalk() {
 
   // ── Mortality Log ──
   // Always log mortality — never creates a WO
+  // Log mortality — never creates a WO
   if (_bwData.mort === 'yes') {
     const mortEntry = {
       farm: _bwFarm, house: String(_bwHouse), employee,
       date: new Date().toISOString().slice(0,10),
       time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+      type: 'mortality',
       mortCount: mortCount || 0,
       mortrem: _bwData.mortrem || 'yes',
       notes: notes || '',
       ts: Date.now()
     };
     try { await db.collection('mortalityLog').add(mortEntry); } catch(e) { console.error('mortalityLog write failed:', e); }
+  }
+
+  // Log loose birds — never creates a WO
+  if (_bwData.loose === 'yes') {
+    const looseEntry = {
+      farm: _bwFarm, house: String(_bwHouse), employee,
+      date: new Date().toISOString().slice(0,10),
+      time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+      type: 'loose',
+      looseCount: looseCount || 0,
+      notes: notes || '',
+      ts: Date.now()
+    };
+    try { await db.collection('mortalityLog').add(looseEntry); } catch(e) { console.error('looseLog write failed:', e); }
   }
 
   // ── Pest Log ──
@@ -624,7 +636,7 @@ async function submitBarnWalk() {
     'Manure belts not running':   {problem:'Manure System',      priority:'high'},
     'Poor feathering':            {problem:'Building / Structure',priority:'normal'},
     'House doors open':           {problem:'Building / Structure',priority:'high'},
-    'Loose birds':                {problem:'Building / Structure',priority:'high'},
+    // 'Loose birds' intentionally excluded — logged to mortalityLog, never creates a WO
     'Air quality anomaly':        {problem:'Ventilation / Fans', priority:'urgent'},
     'Feeders empty':              {problem:'Feed System',        priority:'urgent'},
     'Egg belt not working':       {problem:'Egg Collection',     priority:'urgent'},
@@ -1430,19 +1442,21 @@ function renderPestLog() {
   }
   if (_pestTypeFilter === 'rodent') { mortData = []; pestData = pestData.filter(r => r.rodent === 'yes'); }
   if (_pestTypeFilter === 'fly')    { mortData = []; pestData = pestData.filter(r => r.fly === 'yes'); }
-  if (_pestTypeFilter === 'mort')   { pestData = []; }
+  if (_pestTypeFilter === 'mort')   { pestData = []; mortData = mortData.filter(r => r.type === 'mortality' || !r.type); }
+  if (_pestTypeFilter === 'loose')  { pestData = []; mortData = mortData.filter(r => r.type === 'loose'); }
 
   const combined = [...pestData, ...mortData].sort((a,b) => (b.ts||0) - (a.ts||0));
   document.getElementById('pest-log-count').textContent = combined.length + ' records · last 30 days';
 
   // Summary stats
-  const totalRodent   = pestData.filter(r => r.rodent === 'yes').length;
-  const totalFly      = pestData.filter(r => r.fly === 'yes').length;
-  const totalMortDays = mortData.length;
-  const totalMortBirds = mortData.reduce((s,r) => s + (r.mortCount||0), 0);
+  const totalRodent    = pestData.filter(r => r.rodent === 'yes').length;
+  const totalFly       = pestData.filter(r => r.fly === 'yes').length;
+  const totalMortBirds = _mortLogData.filter(r => r.type === 'mortality' || !r.type).reduce((s,r) => s + (r.mortCount||0), 0);
+  const totalLooseBirds = _mortLogData.filter(r => r.type === 'loose').reduce((s,r) => s + (r.looseCount||0), 0);
   const statStyle = 'background:#1a0a0a;border:1px solid #3a1a0a;border-radius:10px;padding:12px;text-align:center;';
   document.getElementById('pest-log-stats').innerHTML =
     '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#e07070;">'+totalMortBirds+'</div><div style="font-size:10px;color:#8a5a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">💀 Mortality (30d)</div></div>' +
+    '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#f59e0b;">'+totalLooseBirds+'</div><div style="font-size:10px;color:#8a7a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">🐔 Loose Birds (30d)</div></div>' +
     '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#c8a05a;">'+totalRodent+'</div><div style="font-size:10px;color:#8a7a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">🐀 Rodent Sightings</div></div>' +
     '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#d69e2e;">'+totalFly+'</div><div style="font-size:10px;color:#8a7a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">🪰 Fly Sightings</div></div>';
 
@@ -1453,6 +1467,22 @@ function renderPestLog() {
   }
 
   document.getElementById('pest-log-list').innerHTML = combined.map(r => {
+    if (r._type === 'mort' && r.type === 'loose') {
+      // Loose bird entry
+      return '<div style="background:#130c00;border:1px solid #7a5a00;border-radius:10px;padding:14px 16px;margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
+          '<div>' +
+            '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:#f0ead8;">'+r.farm+' — Barn '+r.house+'</div>' +
+            '<div style="font-size:11px;color:#8a7a5a;margin-top:2px;">'+(r.date||'')+(r.time?' · '+r.time:'')+' · '+(r.employee||'')+'</div>' +
+          '</div>' +
+          '<span style="background:#2a1a00;color:#f59e0b;border:1px solid #7a5a00;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;font-family:\'IBM Plex Mono\',monospace;">🐔 Loose Birds</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">' +
+          (r.looseCount ? '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;color:#f59e0b;font-weight:700;">'+r.looseCount+' bird'+(r.looseCount!==1?'s':'')+'</span>' : '') +
+        '</div>' +
+        (r.notes ? '<div style="margin-top:8px;font-size:12px;color:#8a7a5a;font-style:italic;">'+r.notes+'</div>' : '') +
+      '</div>';
+    }
     if (r._type === 'mort') {
       const notRemoved = r.mortrem === 'no';
       const borderColor = notRemoved ? '#e53e3e' : '#7a3a3a';
