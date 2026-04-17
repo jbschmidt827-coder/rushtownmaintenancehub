@@ -3929,6 +3929,249 @@ async function seedCounterCardWI() {
   console.log('✅ Counter Card Reset WI seeded.');
 }
 
+// ── Seed Rushtown Operations WIs ──────────────────────────────────────────────
+async function seedRushtownOpsWI() {
+  const SEED_IDS = [
+    'WI-BARNWALK-DAILY','WI-WO-CREATE','WI-EGG-JAM',
+    'WI-WATER-FILTER','WI-FAN-BELT','WI-SHIFT-HANDOFF',
+    'WI-5S-CLOSEOUT','WI-PM-COMPLETE','WI-EMERGENCY-BREAKDOWN','WI-WEEKLY-REVIEW'
+  ];
+  try {
+    const check = await db.collection('workInstructions').where('wiId','in',SEED_IDS).get();
+    if (!check.empty) return; // already seeded
+  } catch(e) { return; }
+
+  const today = new Date().toISOString().slice(0,10);
+  const author = 'Rushtown Poultry';
+  const base = Date.now();
+
+  const instructions = [
+    {
+      wiId: 'WI-BARNWALK-DAILY',
+      title: 'Daily Barn Walk Standard',
+      type: 'onboarding',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Identify issues before production loss.',
+      steps: [
+        'Walk barn front to back.',
+        'Check feed lines are running.',
+        'Check water pressure.',
+        'Inspect fans and airflow.',
+        'Observe bird behavior.',
+        'Look for leaks.',
+        'Look for broken equipment.',
+        'Enter any issues into the app.'
+      ],
+      ts: base - 9000
+    },
+    {
+      wiId: 'WI-WO-CREATE',
+      title: 'Work Order Creation',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Rule: One issue = one WO. Do not combine multiple problems into one work order.',
+      steps: [
+        'Select the barn or area.',
+        'Choose priority: Emergency / Planned / PM.',
+        'Enter the exact issue description.',
+        'Add a photo if possible.',
+        'Assign an owner.',
+        'Submit the work order.'
+      ],
+      ts: base - 8000
+    },
+    {
+      wiId: 'WI-EGG-JAM',
+      title: 'Conveyor Egg Jam Removal',
+      type: 'safety',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves required.',
+      warnings: 'STOP line before reaching in. Never clear a jam while the belt is moving.',
+      steps: [
+        'Hit the stop button on the conveyor.',
+        'Identify the source of the jam.',
+        'Remove broken eggs and debris.',
+        'Check rod alignment.',
+        'Restart the line slowly.',
+        'Monitor egg flow for 2 minutes.'
+      ],
+      ts: base - 7000
+    },
+    {
+      wiId: 'WI-WATER-FILTER',
+      title: 'Water Filter Change',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Water',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Isolate and relieve pressure before removing filter housing.',
+      steps: [
+        'Isolate the water supply valve.',
+        'Relieve pressure from the line.',
+        'Remove the used filter.',
+        'Clean the filter housing.',
+        'Install the new filter.',
+        'Restore water slowly.',
+        'Check all connections for leaks.',
+        'Record the date of change in the app.'
+      ],
+      ts: base - 6000
+    },
+    {
+      wiId: 'WI-FAN-BELT',
+      title: 'Fan Belt Replacement',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Safety glasses, gloves.',
+      warnings: 'LOCKOUT power before removing guard. Verify zero energy before touching belt.',
+      steps: [
+        'Lockout / tagout power to the fan.',
+        'Remove the belt guard.',
+        'Loosen the motor mount bolts.',
+        'Remove the old belt.',
+        'Install the new belt.',
+        'Set proper belt tension.',
+        'Align pulleys visually.',
+        'Replace the belt guard.',
+        'Restore power and test run.'
+      ],
+      ts: base - 5000
+    },
+    {
+      wiId: 'WI-SHIFT-HANDOFF',
+      title: 'Shift Handoff',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Do not leave without completing handoff — open breakdowns must be communicated.',
+      steps: [
+        'List all completed jobs from the shift.',
+        'List all open breakdowns still in progress.',
+        'Note any parts that are needed.',
+        'Identify priorities for the next shift.',
+        'Communicate any safety concerns.'
+      ],
+      ts: base - 4000
+    },
+    {
+      wiId: 'WI-5S-CLOSEOUT',
+      title: '5S Shop Closeout',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Complete every step — do not leave shop until checklist is done.',
+      steps: [
+        'Return all tools to their designated locations.',
+        'Throw away trash and waste.',
+        'Sweep the floor.',
+        'Put all parts and materials away.',
+        'Charge all battery-powered tools.',
+        'Reset shop for the next shift.'
+      ],
+      ts: base - 3000
+    },
+    {
+      wiId: 'WI-PM-COMPLETE',
+      title: 'PM Completion',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Do not close a PM without performing all checks.',
+      steps: [
+        'Open the PM task in the app.',
+        'Perform all required checks per the PM schedule.',
+        'Replace any worn parts found during inspection.',
+        'Add notes describing what was done and any findings.',
+        'Close the PM task in the app.'
+      ],
+      ts: base - 2000
+    },
+    {
+      wiId: 'WI-EMERGENCY-BREAKDOWN',
+      title: 'Emergency Breakdown Response',
+      type: 'emergency',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'PPE appropriate to the equipment.',
+      warnings: 'Make area safe FIRST before any diagnosis or repair.',
+      steps: [
+        'Make the area safe — lockout / isolate energy as needed.',
+        'Notify production supervisor immediately.',
+        'Diagnose root cause of failure.',
+        'Perform repair.',
+        'Test run to confirm fix.',
+        'Document downtime minutes in the app.'
+      ],
+      ts: base - 1000
+    },
+    {
+      wiId: 'WI-WEEKLY-REVIEW',
+      title: 'Weekly Open Project Review',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Every open WO must be reviewed — nothing stays invisible.',
+      steps: [
+        'Pull up all open work orders in the app.',
+        'Sort by production impact.',
+        'Assign deadlines to each open job.',
+        'Identify any parts blockers preventing completion.',
+        'Set the must-fix list for this week.'
+      ],
+      ts: base
+    }
+  ];
+
+  try {
+    for (const wi of instructions) {
+      await db.collection('workInstructions').add(wi);
+    }
+    console.log('✅ Rushtown Ops WIs seeded (10 procedures).');
+  } catch(e) {
+    console.error('seedRushtownOpsWI error:', e);
+  }
+}
+
 function startWIListener() {
   db.collection('workInstructions').orderBy('ts','desc').onSnapshot(snap => {
     allWI = [];
