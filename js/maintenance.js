@@ -3952,7 +3952,13 @@ async function seedRushtownOpsWI() {
     'WI-BARN-5S-AUDIT','WI-WASTE-WALK','WI-LOTO-MOTOR',
     'WI-LADDER-SAFETY','WI-CONFINED-SPACE','WI-PPE-BARN',
     'WI-CHEM-SPILL','WI-ELEC-SAFETY','WI-DIAMOND-STARTUP',
-    'WI-MECH-TIMING','WI-BRUSH-WASHER','WI-EGG-BACKUP'
+    'WI-MECH-TIMING','WI-BRUSH-WASHER','WI-EGG-BACKUP',
+    'WI-LANE-JAM','WI-HOURLY-THROUGHPUT','WI-SHUTDOWN-CLEAN',
+    'WI-CARTON-CHANGEOVER','WI-REJECT-EGG','WI-COOLER-TEMP',
+    'WI-FORKLIFT-INSPECT','WI-LOAD-ACCURACY','WI-DAMAGE-REPORT',
+    'WI-PALLET-WRAP','WI-TRAILER-INSPECT','WI-BARN-WALK-DAILY2',
+    'WI-EGG-COUNT','WI-BROKEN-EGG-REPORT','WI-MORTALITY-REMOVAL',
+    'WI-FEED-CONSUMPTION','WI-WATER-USAGE','WI-HEN-BEHAVIOR'
   ];
   try {
     const check = await db.collection('workInstructions').where('wiId','in',SEED_IDS).get();
@@ -5385,6 +5391,398 @@ async function seedRushtownOpsWI() {
         'Record the cause in the app.'
       ],
       ts: base + 54000
+    },
+    {
+      wiId: 'WI-LANE-JAM',
+      title: 'Lane Jam Recovery',
+      type: 'repair',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Production critical. Never reach into a moving machine. Record repeated jam areas to find root cause.',
+      steps: [
+        'Stop the affected lane or machine safely.',
+        'Identify the jam point.',
+        'Remove broken product and debris.',
+        'Inspect guides, cups, chains, and sensors.',
+        'Verify no hidden fragments remain before restarting.',
+        'Restart slowly.',
+        'Watch the lane for 5 minutes.',
+        'Record any repeated jam areas in the app.'
+      ],
+      ts: base + 55000
+    },
+    {
+      wiId: 'WI-HOURLY-THROUGHPUT',
+      title: 'Hourly Throughput Check',
+      type: 'startup',
+      dept: 'Egg Ops',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: control production rate and losses. Notify lead if trend continues below target.',
+      steps: [
+        'Record current hour output.',
+        'Compare to the target rate.',
+        'Note downtime minutes for the hour.',
+        'Note reject and damage count.',
+        'Identify the top reason if below target.',
+        'Notify lead if below-target trend continues.',
+        'Enter data in the app.'
+      ],
+      ts: base + 56000
+    },
+    {
+      wiId: 'WI-SHUTDOWN-CLEAN',
+      title: 'Shutdown Cleaning Standard',
+      type: 'startup',
+      dept: 'Egg Ops',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Gloves, eye protection near cleaning chemicals.',
+      warnings: 'Purpose: leave machine clean and ready for next shift. Lockout before cleaning guarded zones.',
+      steps: [
+        'Stop the machine in the proper shutdown sequence.',
+        'Lockout if cleaning any guarded zones.',
+        'Remove all debris and product residue.',
+        'Clean belts, lanes, brushes, and surfaces.',
+        'Empty all waste containers.',
+        'Inspect for wear or damage while cleaning.',
+        'Sanitize if required by procedure.',
+        'Sign off on completion.'
+      ],
+      ts: base + 57000
+    },
+    {
+      wiId: 'WI-CARTON-CHANGEOVER',
+      title: 'Carton Material Changeover',
+      type: 'startup',
+      dept: 'Egg Ops',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: change packaging material with minimal downtime. Run test product before returning to full rate.',
+      steps: [
+        'Verify the next carton or material type needed.',
+        'Bring required material to the line before stopping.',
+        'Stop the machine safely.',
+        'Remove old material.',
+        'Load new cartons or material.',
+        'Adjust guides and settings if needed for new material.',
+        'Run test product through.',
+        'Confirm print quality, fit, and stack before full rate.'
+      ],
+      ts: base + 58000
+    },
+    {
+      wiId: 'WI-REJECT-EGG',
+      title: 'Reject Egg Handling',
+      type: 'onboarding',
+      dept: 'Egg Ops',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Purpose: separate nonconforming product properly. Follow food safety disposal and rework rules.',
+      steps: [
+        'Identify cracked, dirty, leaker, or off-spec eggs.',
+        'Remove from the good product stream immediately.',
+        'Place in the designated reject container.',
+        'Follow food safety disposal or rework rules.',
+        'Keep the reject area clean.',
+        'Record any excessive reject trends in the app.'
+      ],
+      ts: base + 59000
+    },
+    {
+      wiId: 'WI-COOLER-TEMP',
+      title: 'Cooler Temperature Check',
+      type: 'startup',
+      dept: 'Shipping',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Escalate immediately if temperature is out of required range — product safety is at risk.',
+      steps: [
+        'Read the cooler temperature on the thermostat or display.',
+        'Compare to the required temperature range.',
+        'Check door seals and confirm all doors are closed.',
+        'Look for any blocked airflow inside the cooler.',
+        'Record the temperature reading.',
+        'Escalate to supervisor if out of required range.'
+      ],
+      ts: base + 60000
+    },
+    {
+      wiId: 'WI-FORKLIFT-INSPECT',
+      title: 'Forklift Daily Inspection',
+      type: 'startup',
+      dept: 'Shipping',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Safety glasses, safety footwear.',
+      warnings: 'Purpose: safe equipment operation. Tag out any unsafe unit — do not operate.',
+      steps: [
+        'Inspect forks, mast, and tires for damage.',
+        'Check horn, lights, and backup alarm.',
+        'Check fluid, battery, or fuel levels.',
+        'Test brakes and steering.',
+        'Look for any leaks or visible damage.',
+        'Tag out and report any unsafe unit immediately.',
+        'Record inspection in the app.'
+      ],
+      ts: base + 61000
+    },
+    {
+      wiId: 'WI-LOAD-ACCURACY',
+      title: 'Load Accuracy Verification',
+      type: 'onboarding',
+      dept: 'Shipping',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: ship correct product and quantities. Sign off only after all checks are complete.',
+      steps: [
+        'Review the order sheet.',
+        'Verify product type matches order.',
+        'Verify quantity and case count.',
+        'Verify lot or date code if required.',
+        'Confirm pallet labels are correct.',
+        'Perform final check before trailer closeout.',
+        'Sign off on the load.'
+      ],
+      ts: base + 62000
+    },
+    {
+      wiId: 'WI-DAMAGE-REPORT',
+      title: 'Damage Reporting Standard',
+      type: 'onboarding',
+      dept: 'Shipping',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: capture loss and identify recurring causes. Track weekly trends.',
+      steps: [
+        'Identify damaged product or material.',
+        'Separate from good inventory.',
+        'Photograph damage if needed.',
+        'Record quantity and cause in the app.',
+        'Notify supervisor if the quantity is significant.',
+        'Track trends weekly to find root causes.'
+      ],
+      ts: base + 63000
+    },
+    {
+      wiId: 'WI-PALLET-WRAP',
+      title: 'Pallet Wrapping Standard',
+      type: 'onboarding',
+      dept: 'Shipping',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: secure product for safe transport. Unstable pallets cause product damage and injury.',
+      steps: [
+        'Stack product squarely on the pallet.',
+        'Keep weight centered.',
+        'Wrap from the bottom up — overlap each layer.',
+        'Wrap top tier tightly.',
+        'Finish with extra wraps at the top and anchor to pallet.',
+        'Verify pallet is stable before moving.',
+        'Label pallet clearly.'
+      ],
+      ts: base + 64000
+    },
+    {
+      wiId: 'WI-TRAILER-INSPECT',
+      title: 'Trailer Inspection',
+      type: 'startup',
+      dept: 'Shipping',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Safety footwear.',
+      warnings: 'Do not load into an unsafe trailer. Reject and report any trailer with structural issues or contamination.',
+      steps: [
+        'Inspect trailer floor for holes, rot, or damage.',
+        'Check for contamination — odors, residue, pests.',
+        'Verify refrigeration unit is working if required.',
+        'Check door seals and locking hardware.',
+        'Confirm trailer is level at the dock.',
+        'Chock wheels before loading.',
+        'Record inspection.'
+      ],
+      ts: base + 65000
+    },
+    {
+      wiId: 'WI-BARN-WALK-DAILY2',
+      title: 'Daily Barn Walk — Egg Count Verification',
+      type: 'startup',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Boots, gloves as required.',
+      warnings: 'Purpose: verify accurate egg count and flag discrepancies early.',
+      steps: [
+        'Walk barn and observe conveyor flow.',
+        'Count eggs on belt or at collection point.',
+        'Compare to expected production for house size.',
+        'Flag any significant drop from prior day.',
+        'Check for off-line segments or stuck areas.',
+        'Record count in the app.',
+        'Report discrepancies to supervisor.'
+      ],
+      ts: base + 66000
+    },
+    {
+      wiId: 'WI-EGG-COUNT',
+      title: 'Egg Count Verification',
+      type: 'startup',
+      dept: 'Barn / Layer',
+      system: 'Egg Collectors',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Flag any significant drop from expected count — early detection prevents undetected production loss.',
+      steps: [
+        'Pull daily egg count from production records or app.',
+        'Compare to expected rate for the flock size.',
+        'Check hen-day production percentage.',
+        'Note any houses below target.',
+        'Investigate cause if more than 3% below normal.',
+        'Record findings in the app.'
+      ],
+      ts: base + 67000
+    },
+    {
+      wiId: 'WI-BROKEN-EGG-REPORT',
+      title: 'Broken Egg Reporting',
+      type: 'onboarding',
+      dept: 'Barn / Layer',
+      system: 'Egg Collectors',
+      time: 5,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Purpose: track breakage trends to identify equipment or handling issues.',
+      steps: [
+        'Count broken eggs found during barn walk or at collection.',
+        'Note location where breakage is concentrated.',
+        'Identify possible cause: belt speed, drop point, rod damage.',
+        'Record count and location in the app.',
+        'Report if breakage exceeds normal threshold.',
+        'Escalate to maintenance if mechanical cause found.'
+      ],
+      ts: base + 68000
+    },
+    {
+      wiId: 'WI-MORTALITY-REMOVAL',
+      title: 'Mortality Removal Procedure',
+      type: 'onboarding',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Gloves, boots, N95 mask if required.',
+      warnings: 'Remove mortalities promptly — leaving them increases disease risk and attracting pests.',
+      steps: [
+        'Identify and collect all dead birds during barn walk.',
+        'Place in designated mortality container.',
+        'Record count and house number in the app.',
+        'Transport to composting or disposal area per site procedure.',
+        'Log mortality in the mortality log.',
+        'Report unusual spikes in count to supervisor immediately.'
+      ],
+      ts: base + 69000
+    },
+    {
+      wiId: 'WI-FEED-CONSUMPTION',
+      title: 'Feed Consumption Recording',
+      type: 'startup',
+      dept: 'Barn / Layer',
+      system: 'Feed',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: detect feed issues early. Sudden drops or spikes in consumption indicate a bird health or equipment issue.',
+      steps: [
+        'Record feed bin levels or usage from meter.',
+        'Compare to prior day and expected consumption.',
+        'Note any house with abnormal usage.',
+        'Check that feed lines are running properly.',
+        'Record data in the app.',
+        'Report abnormal consumption to supervisor.'
+      ],
+      ts: base + 70000
+    },
+    {
+      wiId: 'WI-WATER-USAGE',
+      title: 'Water Usage Check',
+      type: 'startup',
+      dept: 'Barn / Layer',
+      system: 'Water',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: detect water system issues early. Water consumption is a key flock health indicator.',
+      steps: [
+        'Read water meter or flow indicator per house.',
+        'Compare to expected usage for flock size.',
+        'Note any house with low or no reading.',
+        'Check for leaks or non-functioning nipples.',
+        'Record data in the app.',
+        'Report abnormal usage to supervisor.'
+      ],
+      ts: base + 71000
+    },
+    {
+      wiId: 'WI-HEN-BEHAVIOR',
+      title: 'Hen Behavior Observation',
+      type: 'startup',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Boots.',
+      warnings: 'Purpose: early detection of health, environment, or equipment issues through bird behavior.',
+      steps: [
+        'Walk the barn and observe bird activity.',
+        'Look for huddling — may indicate cold or drafts.',
+        'Look for panting — may indicate heat or poor air quality.',
+        'Look for lethargic or separated birds.',
+        'Observe distribution across the house.',
+        'Listen for unusual vocalization.',
+        'Record any abnormal behavior in the app.',
+        'Report significant behavioral changes to supervisor.'
+      ],
+      ts: base + 72000
     }
   ];
 
@@ -5392,7 +5790,7 @@ async function seedRushtownOpsWI() {
     for (const wi of instructions) {
       await db.collection('workInstructions').add(wi);
     }
-    console.log('✅ Rushtown Ops WIs seeded (64 procedures).');
+    console.log('✅ Rushtown Ops WIs seeded (82 procedures).');
   } catch(e) {
     console.error('seedRushtownOpsWI error:', e);
   }
