@@ -3964,10 +3964,14 @@ async function seedRushtownOpsWI() {
     'WI-CA-WEDNESDAY','WI-WEEKEND-COVERAGE','WI-HEGINS-SAT',
     'WI-FRIDAY-REVIEW','WI-PM-COMPLIANCE','WI-DOWNTIME-SUMMARY'
   ];
+  // Fetch all existing wiIds so we only insert truly missing ones
+  let existingIds = new Set();
   try {
-    const check = await db.collection('workInstructions').where('wiId','in',SEED_IDS).get();
-    if (!check.empty) return; // already seeded
+    const allSnap = await db.collection('workInstructions').get();
+    allSnap.forEach(d => { if (d.data().wiId) existingIds.add(d.data().wiId); });
   } catch(e) { return; }
+  // If every single seed ID already exists, nothing to do
+  if (SEED_IDS.every(id => existingIds.has(id))) return;
 
   const today = new Date().toISOString().slice(0,10);
   const author = 'Rushtown Poultry';
@@ -5983,10 +5987,13 @@ async function seedRushtownOpsWI() {
   ];
 
   try {
+    let added = 0;
     for (const wi of instructions) {
+      if (existingIds.has(wi.wiId)) continue; // skip already-seeded
       await db.collection('workInstructions').add(wi);
+      added++;
     }
-    console.log('✅ Rushtown Ops WIs seeded (91 procedures).');
+    console.log(`✅ Rushtown Ops WIs: ${added} new procedures seeded.`);
   } catch(e) {
     console.error('seedRushtownOpsWI error:', e);
   }
@@ -6116,9 +6123,9 @@ function renderWI() {
       const groupId = 'wi-group-' + dept.replace(/[^a-z0-9]/gi,'_');
       html += `
         <div style="margin-bottom:4px;">
-          <button onclick="toggleWIGroup('${groupId}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--card-bg);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:700;color:var(--text);">
-            <span>${icon} ${dept} <span style="font-weight:400;color:var(--muted);font-size:12px;">(${items.length})</span></span>
-            <span id="${groupId}-arrow" style="font-size:12px;color:var(--muted);">▼</span>
+          <button onclick="toggleWIGroup('${groupId}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#0d1f0d;border:1.5px solid #2a5a2a;border-radius:10px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:700;color:#e8f5ec;">
+            <span>${icon} ${dept} <span style="font-weight:400;color:#4a8a4a;font-size:12px;">(${items.length})</span></span>
+            <span id="${groupId}-arrow" style="font-size:12px;color:#4a8a4a;">▼</span>
           </button>
           <div id="${groupId}" style="display:block;">
             ${items.map(wi => wiCard(wi, WI_TYPE_MAP, SYS_ICON_MAP)).join('')}
@@ -6150,14 +6157,14 @@ function wiCard(wi, WI_TYPE_MAP, SYS_ICON_MAP) {
   const stepsHtml = (wi.steps||[]).map((s,i) => `
     <div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);">
       <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--muted);min-width:18px;">${i+1}.</span>
-      <span style="font-size:13px;color:var(--text);line-height:1.4;">${s}</span>
+      <span style="font-size:13px;color:#e8f5ec;line-height:1.4;">${s}</span>
     </div>`).join('');
 
   return `<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;">
     <!-- Card header row -->
     <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;" onclick="toggleWIExpand('${expandId}')">
       <span class="wi-type-badge" style="background:${t.bg};color:${t.color};border:1px solid ${t.color}40;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;">${t.label}</span>
-      <span style="flex:1;font-size:13px;font-weight:700;color:var(--text);line-height:1.3;">${wi.title}</span>
+      <span style="flex:1;font-size:13px;font-weight:700;color:#e8f5ec;line-height:1.3;">${wi.title}</span>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
         ${wi.ppe ? '<span title="PPE required" style="font-size:13px;">🦺</span>' : ''}
         ${wi.warnings ? '<span title="Has warnings" style="font-size:13px;">⚠️</span>' : ''}
