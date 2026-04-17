@@ -6489,8 +6489,14 @@ async function saveWI() {
   try {
     const date = new Date().toISOString().slice(0,10);
     if (editingWIId) {
+      // Resolve the Firestore doc ID — try in-memory first, fall back to query
       const existing = allWI.find(w => w.wiId === editingWIId);
-      if (existing && existing._fbId) {
+      let fbId = existing && existing._fbId;
+      if (!fbId) {
+        const snap = await db.collection('workInstructions').where('wiId','==',editingWIId).limit(1).get();
+        if (!snap.empty) fbId = snap.docs[0].id;
+      }
+      if (fbId) {
         // Upload any new pending photos and merge with kept existing ones
         const photoUrls = [..._wiExistingPhotos];
         if (typeof storage !== 'undefined') {
@@ -6504,9 +6510,19 @@ async function saveWI() {
             } catch(photoErr) { console.warn('Photo upload failed (non-fatal):', photoErr); }
           }
         }
-        await db.collection('workInstructions').doc(existing._fbId).update({
+        await db.collection('workInstructions').doc(fbId).update({
           title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, photos: photoUrls, updatedTs: Date.now()
         });
+        // activityLog for edits — non-blocking
+        try {
+          await db.collection('activityLog').add({
+            type:'wi', id: editingWIId,
+            desc: 'Work instruction updated: ' + title,
+            tech: author || 'Unknown', date: fmtDate(date), ts: Date.now()
+          });
+        } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
+      } else {
+        throw new Error('Could not find work instruction "' + editingWIId + '" to update.');
       }
     } else {
       const wiId = 'WI-' + Date.now().toString(36).toUpperCase();
