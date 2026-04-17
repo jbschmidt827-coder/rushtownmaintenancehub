@@ -2147,18 +2147,23 @@ function logClassify(e) {
   if (t === 'wi') return 'wi';
   if (t === 'po') return 'po';
   if (t === '5s') return '5s';
-  // Downtime logged under type 'wo' with id 'DT' — reclassify
-  if (e.id === 'DT' || desc.startsWith('downtime')) return 'downtime';
-  // Barn walk
-  if (e.id === 'BW' || desc.startsWith('barn walk')) return 'barnwalk';
-  // Parts activity
-  if (t === 'parts' || desc.includes('inventory') || desc.includes('parts adjusted')) return 'parts';
-  // WO
-  if (t === 'wo' || desc.startsWith('wo ') || desc.startsWith('work order')) return 'wo';
+  // Explicit type matches — check these before heuristics
+  if (t === 'barnwalk') return 'barnwalk';
+  if (t === 'downtime') return 'downtime';
+  if (t === 'biosec') return 'biosec';
+  if (t === 'parts') return 'parts';
   if (t === 'ops-egg') return 'ops-egg';
   if (t === 'ops-pack') return 'ops-pack';
   if (t === 'ops-ship') return 'ops-ship';
   if (t === 'ops-exc') return 'ops-exc';
+  // Downtime logged under type 'wo' with id 'DT' — reclassify (legacy)
+  if (e.id === 'DT' || desc.startsWith('downtime')) return 'downtime';
+  // Barn walk (legacy id check)
+  if ((e.id || '').startsWith('BW') || desc.startsWith('barn walk') || desc.startsWith('daily barn') || desc.startsWith('morning walk')) return 'barnwalk';
+  // Parts activity (legacy)
+  if (desc.includes('inventory') || desc.includes('parts adjusted')) return 'parts';
+  // WO
+  if (t === 'wo' || desc.startsWith('wo ') || desc.startsWith('work order')) return 'wo';
   return t || 'wo';
 }
 
@@ -2171,6 +2176,7 @@ const LOG_TYPE_META = {
   barnwalk:  { icon:'🐔', label:'Barn Walk',         cls:'barnwalk-log' },
   parts:     { icon:'🔩', label:'Parts / Inventory', cls:'parts-log' },
   '5s':      { icon:'5️⃣', label:'5S Audit',         cls:'fives-log' },
+  biosec:    { icon:'🛡️', label:'Biosecurity',       cls:'pm-log' },
   'ops-egg': { icon:'🥚', label:'Egg Production',    cls:'barnwalk-log' },
   'ops-pack':{ icon:'📦', label:'Packing',           cls:'pm-log' },
   'ops-ship':{ icon:'🚚', label:'Shipping',          cls:'po-log' },
@@ -3694,6 +3700,8 @@ let wiSearchVal = '';
 let wiStepCount = 0;
 let editingWIId = null;
 let currentWIId = null;
+let _wiPendingPhotos = []; // {file, dataUrl} objects
+let _wiExistingPhotos = [];
 
 const WI_TYPE = {
   repair:      { label:'🔧 Repair Procedure',     color:'#3b82f6', bg:'#eff6ff' },
@@ -6351,10 +6359,55 @@ function wiTypeFilterFromPivot(type) {
 function openWIForm(wiId) {
   requireAdmin(() => _openWIForm(wiId));
 }
+// ── WI Photo Upload helpers ──────────────────────────────────────────────────
+function wiHandlePhotoSelect(input) {
+  const files = Array.from(input.files);
+  files.forEach(file => {
+    if (_wiPendingPhotos.length >= 5) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      _wiPendingPhotos.push({ file, dataUrl: e.target.result });
+      renderWIPhotoPreviews();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function renderWIPhotoPreviews() {
+  const preview = document.getElementById('wif-photo-preview');
+  if (!preview) return;
+  const existHtml = _wiExistingPhotos.map((url, idx) => `
+    <div style="position:relative;width:72px;height:72px;">
+      <img src="${url}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">
+      <button onclick="wiRemoveExistingPhoto(${idx})" style="position:absolute;top:-5px;right:-5px;background:#e53e3e;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px;text-align:center;padding:0;">✕</button>
+    </div>`).join('');
+  const pendingHtml = _wiPendingPhotos.map((p, i) => `
+    <div style="position:relative;width:72px;height:72px;">
+      <img src="${p.dataUrl}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">
+      <button onclick="wiRemovePhoto(${i})" style="position:absolute;top:-5px;right:-5px;background:#e53e3e;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px;text-align:center;padding:0;">✕</button>
+    </div>`).join('');
+  preview.innerHTML = existHtml + pendingHtml;
+}
+
+function wiRemovePhoto(i) {
+  _wiPendingPhotos.splice(i, 1);
+  renderWIPhotoPreviews();
+}
+
+function wiRemoveExistingPhoto(i) {
+  _wiExistingPhotos.splice(i, 1);
+  renderWIPhotoPreviews();
+}
+
 function _openWIForm(wiId) {
   editingWIId = wiId || null;
   wiStepCount = 0;
   document.getElementById('wif-steps-list').innerHTML = '';
+  _wiPendingPhotos = [];
+  _wiExistingPhotos = [];
+  const photoPreview = document.getElementById('wif-photo-preview');
+  if (photoPreview) photoPreview.innerHTML = '';
 
   if (wiId) {
     const wi = allWI.find(x => x.wiId === wiId);
@@ -6369,6 +6422,9 @@ function _openWIForm(wiId) {
     document.getElementById('wif-warnings').value = wi.warnings || '';
     document.getElementById('wif-author').value  = wi.author || '';
     (wi.steps || []).forEach(step => wiAddStep(step));
+    // Load existing photos
+    _wiExistingPhotos = [...(wi.photos || [])];
+    renderWIPhotoPreviews();
   } else {
     document.getElementById('wi-form-title').textContent = 'Add Work Instruction';
     ['wif-title','wif-time','wif-ppe','wif-warnings','wif-author'].forEach(id => document.getElementById(id).value = '');
@@ -6435,15 +6491,41 @@ async function saveWI() {
     if (editingWIId) {
       const existing = allWI.find(w => w.wiId === editingWIId);
       if (existing && existing._fbId) {
+        // Upload any new pending photos and merge with kept existing ones
+        const photoUrls = [..._wiExistingPhotos];
+        if (typeof storage !== 'undefined') {
+          for (let i = 0; i < _wiPendingPhotos.length; i++) {
+            const p = _wiPendingPhotos[i];
+            try {
+              const ref = storage.ref('wi-photos/' + editingWIId + '/' + Date.now() + '-' + i + '.jpg');
+              await ref.put(p.file);
+              const url = await ref.getDownloadURL();
+              photoUrls.push(url);
+            } catch(photoErr) { console.warn('Photo upload failed (non-fatal):', photoErr); }
+          }
+        }
         await db.collection('workInstructions').doc(existing._fbId).update({
-          title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, updatedTs: Date.now()
+          title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, photos: photoUrls, updatedTs: Date.now()
         });
       }
     } else {
       const wiId = 'WI-' + Date.now().toString(36).toUpperCase();
+      // Upload any pending photos before saving the document
+      const photoUrls = [..._wiExistingPhotos];
+      if (typeof storage !== 'undefined') {
+        for (let i = 0; i < _wiPendingPhotos.length; i++) {
+          const p = _wiPendingPhotos[i];
+          try {
+            const ref = storage.ref('wi-photos/' + wiId + '/' + Date.now() + '-' + i + '.jpg');
+            await ref.put(p.file);
+            const url = await ref.getDownloadURL();
+            photoUrls.push(url);
+          } catch(photoErr) { console.warn('Photo upload failed (non-fatal):', photoErr); }
+        }
+      }
       await db.collection('workInstructions').add({
         wiId, title, type, dept, system, time: parseInt(time)||0,
-        ppe, warnings, author, steps, date, ts: Date.now()
+        ppe, warnings, author, steps, date, photos: photoUrls, ts: Date.now()
       });
       // activityLog is non-blocking — never let it prevent the WI from saving
       try {
@@ -6522,6 +6604,21 @@ function openWIView(wiId) {
   if (verifEl) {
     if (wi.verification) { verifEl.style.display = ''; document.getElementById('wiv-verif-text').textContent = wi.verification; }
     else verifEl.style.display = 'none';
+  }
+
+  // Photos
+  const photosSection = document.getElementById('wiv-photos');
+  const photosGrid = document.getElementById('wiv-photos-grid');
+  if (photosSection && photosGrid) {
+    if (wi.photos && wi.photos.length) {
+      photosGrid.innerHTML = wi.photos.map(url => `
+        <a href="${url}" target="_blank" style="display:block;">
+          <img src="${url}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #ddd;cursor:pointer;">
+        </a>`).join('');
+      photosSection.style.display = 'block';
+    } else {
+      photosSection.style.display = 'none';
+    }
   }
 
   document.getElementById('wiv-footer').textContent = `#${wi.wiId} · ${steps.length} steps`;

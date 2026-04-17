@@ -527,9 +527,21 @@ async function submitBarnWalk() {
       ? flags.length + ' flag' + (flags.length !== 1 ? 's' : '')
       : 'All Clear';
     await db.collection('activityLog').add({
-      type: 'barnwalk', id: 'BW',
-      desc: 'Daily barn check: ' + _bwFarm + ' Barn ' + _bwHouse + ' — ' + statusDesc,
+      type: 'barnwalk',
+      id: 'BW-' + _bwFarm + '-H' + _bwHouse,
+      desc: 'Daily barn check: ' + _bwFarm + ' Barn ' + _bwHouse + ' — ' + statusDesc
+        + (_bwData.feed === 'empty' ? ' ⚠ Feed Empty' : '')
+        + (_bwData.mort === 'yes' ? ' ⚠ Mortality' + (mortCount ? ' (' + mortCount + ')' : '') : '')
+        + (flags.length > 0 ? ' · Flags: ' + flags.slice(0, 2).join(', ') + (flags.length > 2 ? '…' : '') : ''),
       tech: employee,
+      farm: _bwFarm,
+      house: String(_bwHouse),
+      feed: _bwData.feed,
+      water: _bwData.stand,
+      fans: _bwData.air,
+      mort: _bwData.mort,
+      mortCount: mortCount || 0,
+      flagCount: flags.length,
       date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}),
       ts: Date.now()
     });
@@ -722,9 +734,20 @@ async function submitMorningWalk() {
       ? flags.length + ' flag' + (flags.length !== 1 ? 's' : '')
       : 'All Clear';
     await db.collection('activityLog').add({
-      type: 'barnwalk', id: 'BW',
-      desc: 'Morning walk: ' + _mwFarm + ' Barn ' + _mwHouse + ' — ' + statusDesc,
+      type: 'barnwalk',
+      id: 'BW-' + _mwFarm + '-H' + _mwHouse,
+      desc: 'Morning walk: ' + _mwFarm + ' Barn ' + _mwHouse + ' — ' + statusDesc
+        + (_mwData.feed === 'no' ? ' ⚠ Feeders not running' : '')
+        + (_mwData.fans === 'no' ? ' ⚠ Fan issue' : '')
+        + (flags.length > 0 ? ' · Flags: ' + flags.slice(0, 2).join(', ') + (flags.length > 2 ? '…' : '') : ''),
       tech: employee,
+      farm: _mwFarm,
+      house: String(_mwHouse),
+      feed: _mwData.feed,
+      fans: _mwData.fans,
+      blowers: _mwData.blowers,
+      waterPSI,
+      flagCount: flags.length,
       date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}),
       ts: Date.now()
     });
