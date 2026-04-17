@@ -3946,7 +3946,10 @@ async function seedRushtownOpsWI() {
     'WI-IRON-FLUSH','WI-WATER-LEAK','WI-FEED-AUGER',
     'WI-FEED-MOTOR-RESET','WI-BIN-BOOT-CLEANOUT','WI-DAILY-JOB-TICKET',
     'WI-EMERGENCY-TICKET','WI-PM-SIGNOFF','WI-PARTS-REQUEST',
-    'WI-INVENTORY-REVIEW','WI-CONTRACTOR-APPROVAL','WI-SHIFT-HANDOFF-NOTES'
+    'WI-INVENTORY-REVIEW','WI-CONTRACTOR-APPROVAL','WI-SHIFT-HANDOFF-NOTES',
+    'WI-WEEKLY-PROJECT-REVIEW','WI-ROOT-CAUSE','WI-SHOP-CLEANUP',
+    'WI-TOOL-RETURN','WI-SCRAP-REMOVAL','WI-RED-TAG-PROC',
+    'WI-BARN-5S-AUDIT','WI-WASTE-WALK','WI-LOTO-MOTOR'
   ];
   try {
     const check = await db.collection('workInstructions').where('wiId','in',SEED_IDS).get();
@@ -4984,6 +4987,202 @@ async function seedRushtownOpsWI() {
         'Submit handoff notes before leaving.'
       ],
       ts: base + 36000
+    },
+    {
+      wiId: 'WI-WEEKLY-PROJECT-REVIEW',
+      title: 'Weekly Open Project Review',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 30,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: keep projects moving and remove blockers. Every open item must have an owner and a due date.',
+      steps: [
+        'Pull all open jobs and projects from the app.',
+        'Sort by impact: safety first, then production, then cost.',
+        'Identify any overdue items.',
+        'Review parts status for blocked jobs.',
+        'Assign an owner to each open item.',
+        'Set due dates for all open items.',
+        'Select the top 3 must-win items for the week.',
+        'Communicate priorities to the team.'
+      ],
+      ts: base + 37000
+    },
+    {
+      wiId: 'WI-ROOT-CAUSE',
+      title: 'Root Cause Corrective Action (5-Why)',
+      type: 'onboarding',
+      dept: 'Management',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: fix the cause, not just symptoms. Standardize the lesson learned so it cannot recur.',
+      steps: [
+        'Define the exact problem clearly.',
+        'Record when and where it happened.',
+        'Ask "Why?" and answer — repeat 5 times to reach root cause.',
+        'Identify the true root cause.',
+        'Set a corrective action to eliminate the root cause.',
+        'Assign an owner and a completion date.',
+        'Verify the problem does not repeat after correction.',
+        'Standardize the lesson learned — update procedure if needed.'
+      ],
+      ts: base + 38000
+    },
+    {
+      wiId: 'WI-SHOP-CLEANUP',
+      title: 'Shop Cleanup — End of Shift',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Standard: leave it better than you found it.',
+      steps: [
+        'Put all tools away in their labeled locations.',
+        'Sweep the floor.',
+        'Remove trash and cardboard.',
+        'Return unused parts to inventory.',
+        'Charge batteries and cordless tools.',
+        'Wipe down work benches.',
+        'Prepare the shop for the next shift.'
+      ],
+      ts: base + 39000
+    },
+    {
+      wiId: 'WI-TOOL-RETURN',
+      title: 'Tool Return Standard',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: eliminate lost time searching for tools.',
+      steps: [
+        'Clean tool after use.',
+        'Inspect for damage.',
+        'Return to its labeled location.',
+        'Charge battery if it is a cordless tool.',
+        'Report any broken or missing tools immediately.'
+      ],
+      ts: base + 40000
+    },
+    {
+      wiId: 'WI-SCRAP-REMOVAL',
+      title: 'Scrap Removal Standard',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Gloves for sharp metal.',
+      warnings: 'Purpose: remove hazards and clutter. Keep aisles clear at all times.',
+      steps: [
+        'Separate usable material from scrap.',
+        'Move scrap to the designated scrap bin or area.',
+        'Remove sharp metal hazards safely — wear gloves.',
+        'Keep all aisles and walkways clear.',
+        'Record large metal scrap loads if required for disposal.'
+      ],
+      ts: base + 41000
+    },
+    {
+      wiId: 'WI-RED-TAG-PROC',
+      title: 'Red Tag Procedure',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: control unnecessary items and keep the shop organized.',
+      steps: [
+        'Identify any item with no clear use or home.',
+        'Apply a red tag with the date and your name.',
+        'Move item to the designated red tag area.',
+        'Review red tag area weekly.',
+        'Decide: keep in a new location, relocate, or dispose.'
+      ],
+      ts: base + 42000
+    },
+    {
+      wiId: 'WI-BARN-5S-AUDIT',
+      title: 'Barn 5S Audit Standard',
+      type: 'startup',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Perform weekly. Score 1–5 per area and assign corrective actions for anything below 4.',
+      steps: [
+        'Inspect all aisles — clear and free of obstruction.',
+        'Check that tools are stored in their proper locations.',
+        'Remove any trash and debris.',
+        'Verify labels and signs are visible and readable.',
+        'Inspect housekeeping around motors and electrical panels.',
+        'Score each area on a 1–5 scale.',
+        'Assign corrective actions for any low scores.'
+      ],
+      ts: base + 43000
+    },
+    {
+      wiId: 'WI-WASTE-WALK',
+      title: 'Weekly Waste Walk',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 30,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: find hidden losses before they grow. Capture top 3 fixes and assign owners.',
+      steps: [
+        'Walk all production areas systematically.',
+        'Look for waiting time — people or machines idle.',
+        'Look for excess motion — unnecessary travel or reaching.',
+        'Look for rework or product damage.',
+        'Look for overstock or excess material.',
+        'Look for leaks, drips, or wasted energy.',
+        'Capture the top 3 fixes and assign an owner to each.'
+      ],
+      ts: base + 44000
+    },
+    {
+      wiId: 'WI-LOTO-MOTOR',
+      title: 'Lockout Tagout — Motor Work',
+      type: 'safety',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Lock, tag, safety glasses, gloves.',
+      warnings: 'CRITICAL SAFETY — never work on energized equipment. Only the person who applied the lock may remove it.',
+      steps: [
+        'Notify all affected people in the area.',
+        'Shut equipment down using normal stop procedure.',
+        'Isolate the power source — open disconnect or breaker.',
+        'Apply personal lock and tag to the energy isolation point.',
+        'Verify zero energy: attempt to start, check for stored energy (pressure, spring, gravity).',
+        'Perform the work.',
+        'Remove all tools, guards, and materials when work is complete.',
+        'Remove lock — only the person who applied it may remove it.',
+        'Notify affected people and restart safely.'
+      ],
+      ts: base + 45000
     }
   ];
 
@@ -4991,7 +5190,7 @@ async function seedRushtownOpsWI() {
     for (const wi of instructions) {
       await db.collection('workInstructions').add(wi);
     }
-    console.log('✅ Rushtown Ops WIs seeded (46 procedures).');
+    console.log('✅ Rushtown Ops WIs seeded (55 procedures).');
   } catch(e) {
     console.error('seedRushtownOpsWI error:', e);
   }
