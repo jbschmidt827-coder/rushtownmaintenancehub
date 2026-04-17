@@ -3943,7 +3943,10 @@ async function seedRushtownOpsWI() {
     'WI-EGG-FLOW-AUDIT','WI-FAN-BELT-VENT','WI-BLOWER-MOTOR',
     'WI-TEMP-SENSOR','WI-VENT-DOOR-CABLE','WI-FAN-BEARING-GREASE',
     'WI-HOT-HOUSE','WI-WATER-PRESSURE','WI-FILTER-CHANGE',
-    'WI-IRON-FLUSH','WI-WATER-LEAK','WI-FEED-AUGER'
+    'WI-IRON-FLUSH','WI-WATER-LEAK','WI-FEED-AUGER',
+    'WI-FEED-MOTOR-RESET','WI-BIN-BOOT-CLEANOUT','WI-DAILY-JOB-TICKET',
+    'WI-EMERGENCY-TICKET','WI-PM-SIGNOFF','WI-PARTS-REQUEST',
+    'WI-INVENTORY-REVIEW','WI-CONTRACTOR-APPROVAL','WI-SHIFT-HANDOFF-NOTES'
   ];
   try {
     const check = await db.collection('workInstructions').where('wiId','in',SEED_IDS).get();
@@ -4784,6 +4787,203 @@ async function seedRushtownOpsWI() {
         'Report any worn sections in the app.'
       ],
       ts: base + 27000
+    },
+    {
+      wiId: 'WI-FEED-MOTOR-RESET',
+      title: 'Feed Motor Reset Procedure',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Feed',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves, safety glasses.',
+      warnings: 'NEVER repeatedly reset without finding the cause. Rule: identify why it tripped before resetting.',
+      steps: [
+        'Identify why the motor stopped — check for fault code or alarm.',
+        'Check breaker and overload relay status.',
+        'Inspect for a jammed or plugged auger.',
+        'Verify no one is working on the system before restarting.',
+        'Reset overload relay or breaker.',
+        'Start motor briefly and observe.',
+        'Monitor amp draw and listen for unusual noise.',
+        'If it trips again — stop, tag out, and troubleshoot root cause before any further reset.'
+      ],
+      ts: base + 28000
+    },
+    {
+      wiId: 'WI-BIN-BOOT-CLEANOUT',
+      title: 'Bin Boot Cleanout',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Feed',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves, dust mask.',
+      warnings: 'Purpose: prevent bridging, feed blockage, and contamination. Inspect for moisture or mold — do not return contaminated feed to system.',
+      steps: [
+        'Lockout the feed system.',
+        'Open bin boot access safely.',
+        'Remove compacted feed and material.',
+        'Inspect for moisture or mold buildup.',
+        'Check sensors and gates for function.',
+        'Reassemble access point.',
+        'Restart system and verify feed flow.'
+      ],
+      ts: base + 29000
+    },
+    {
+      wiId: 'WI-DAILY-JOB-TICKET',
+      title: 'Daily Maintenance Job Ticket',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Rule: If it was not documented, it did not happen.',
+      steps: [
+        'Open a new ticket in the app.',
+        'Enter date and time.',
+        'Select the area or barn.',
+        'Describe the task clearly.',
+        'Note whether planned or emergency.',
+        'Enter start and finish time.',
+        'Add any parts used.',
+        'Close the ticket with the result.'
+      ],
+      ts: base + 30000
+    },
+    {
+      wiId: 'WI-EMERGENCY-TICKET',
+      title: 'Emergency Breakdown Ticket',
+      type: 'emergency',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Create ticket immediately at start of event — do not wait until after the repair.',
+      steps: [
+        'Create an emergency ticket at the start of the breakdown event.',
+        'Enter the equipment affected.',
+        'Note the downtime start time.',
+        'Add cause once known.',
+        'Enter repair action taken.',
+        'Record restart time.',
+        'Close ticket with total downtime minutes.'
+      ],
+      ts: base + 31000
+    },
+    {
+      wiId: 'WI-PM-SIGNOFF',
+      title: 'PM Completion Signoff',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: ensure PMs are truly completed. Supervisors may perform random audits on closed PMs.',
+      steps: [
+        'Open the scheduled PM task in the app.',
+        'Perform each checklist item — do not skip.',
+        'Replace wear items found during inspection.',
+        'Add notes and findings.',
+        'Mark the PM complete in the app.',
+        'Supervisor verifies on random audits.'
+      ],
+      ts: base + 32000
+    },
+    {
+      wiId: 'WI-PARTS-REQUEST',
+      title: 'Parts Request Procedure',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Urgency levels: Critical (production down) / This Week / Stock Refill. Always search existing inventory first.',
+      steps: [
+        'Search existing inventory before requesting.',
+        'Confirm the correct part number.',
+        'Enter urgency level: Critical / This Week / Stock Refill.',
+        'Add the equipment tied to the request.',
+        'Submit to approver or buyer.',
+        'Track order status in the app.'
+      ],
+      ts: base + 33000
+    },
+    {
+      wiId: 'WI-INVENTORY-REVIEW',
+      title: 'Min/Max Inventory Review',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: avoid stockouts and overbuying. Perform weekly.',
+      steps: [
+        'Review the critical spare parts list.',
+        'Count on-hand quantity for each item.',
+        'Compare to established min and max levels.',
+        'Flag any items below minimum.',
+        'Generate a reorder list for approval.',
+        'Remove obsolete items from inventory.',
+        'Update records in the app.'
+      ],
+      ts: base + 34000
+    },
+    {
+      wiId: 'WI-CONTRACTOR-APPROVAL',
+      title: 'Contractor Call Approval Process',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: control outside spend. Do not call a contractor without manager approval.',
+      steps: [
+        'Confirm the issue cannot be handled in-house safely.',
+        'Estimate the downtime impact if not repaired.',
+        'Gather photos and details of the problem.',
+        'Notify manager and get approval.',
+        'Request a quote from contractor if possible.',
+        'Track contractor hours and cost in the app.',
+        'Capture lessons learned after the job is complete.'
+      ],
+      ts: base + 35000
+    },
+    {
+      wiId: 'WI-SHIFT-HANDOFF-NOTES',
+      title: 'Daily Shift Handoff Notes',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: eliminate lost information between shifts. Submit before leaving — do not leave without completing handoff.',
+      steps: [
+        'List all completed work from the shift.',
+        'List all open breakdowns still in progress.',
+        'Note any parts currently waiting on order.',
+        'Note urgent priorities for the next shift.',
+        'Include any safety concerns.',
+        'Submit handoff notes before leaving.'
+      ],
+      ts: base + 36000
     }
   ];
 
@@ -4791,7 +4991,7 @@ async function seedRushtownOpsWI() {
     for (const wi of instructions) {
       await db.collection('workInstructions').add(wi);
     }
-    console.log('✅ Rushtown Ops WIs seeded (37 procedures).');
+    console.log('✅ Rushtown Ops WIs seeded (46 procedures).');
   } catch(e) {
     console.error('seedRushtownOpsWI error:', e);
   }
