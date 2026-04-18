@@ -541,16 +541,41 @@ async function renderStaffSched() {
   html += '</tr></thead>';
 
   // Rows
+  const SITE_OPTS = ['', 'Hegins', 'Danville', 'Rushtown', 'Feed Mill'];
+  const SITE_COLOR = { Hegins:'#4a8a4a', Danville:'#4a70aa', Rushtown:'#9a6a2a', 'Feed Mill':'#7a5a2a', '':'#2a4a2a' };
+
   html += '<tbody>';
   staff.forEach(s => {
     const row = schedData[s._fbId] || {};
-    html += '<tr style="border-top:1px solid #121e12;">';
-    html += `<td style="padding:6px 10px;color:#c0d8c0;white-space:nowrap;">${s.name}<br><span style="font-size:9px;color:#3a5a3a;">${s.role || ''}</span></td>`;
+    const site = s.farm || '';
+    const siteColor = SITE_COLOR[site] || SITE_COLOR[''];
+    const siteLabel = site || 'No site';
+    const safeId = s._fbId.replace(/['"]/g, '');
+    const siteOptsHtml = SITE_OPTS.map(o =>
+      `<option value="${o}"${o===site?' selected':''}>${o||'— No site —'}</option>`
+    ).join('');
+    const safeName = s.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const onCall = !!row.onCall;
+    html += `<tr style="border-top:1px solid #121e12;${onCall ? 'background:#0d1a0d;' : ''}">`;
+    html += `<td style="padding:6px 10px;color:#c0d8c0;white-space:nowrap;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span>${s.name}</span>
+        ${onCall ? '<span style="font-size:9px;background:#1a4a1a;border:1px solid #4ade80;border-radius:4px;padding:1px 5px;color:#4ade80;font-family:\'IBM Plex Mono\',monospace;font-weight:700;">ON CALL</span>' : ''}
+      </div>
+      <span style="font-size:9px;color:#3a5a3a;">${s.role || ''}</span><br>
+      <div style="display:flex;gap:4px;margin-top:3px;align-items:center;">
+        <select onchange="setStaffSite('${safeId}',this.value)"
+          style="background:#0a1a0a;border:1px solid ${siteColor};border-radius:4px;color:${siteColor};font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 4px;cursor:pointer;max-width:90px;">
+          ${siteOptsHtml}
+        </select>
+        <button onclick="toggleOnCall('${safeId}','${safeName}',${onCall})"
+          title="${onCall ? 'Remove on-call' : 'Set on-call'}"
+          style="background:${onCall ? '#1a4a1a' : '#0a1a0a'};border:1px solid ${onCall ? '#4ade80' : '#2a4a2a'};border-radius:4px;color:${onCall ? '#4ade80' : '#4a6a4a'};font-size:9px;padding:2px 5px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-weight:700;">📞</button>
+      </div>
+    </td>`;
     STAFF_SCHED_DAYS.forEach(day => {
       const shift = row[day] || '';
       const st    = SHIFT_STYLES[shift] || SHIFT_STYLES[''];
-      const safeId = s._fbId.replace(/['"]/g, '');
-      const safeName = s.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       html += `<td style="padding:3px;text-align:center;"><button onclick="cycleShift('${safeId}','${safeName}','${day}','${shift}')" style="${st};border-radius:5px;padding:5px 2px;font-size:10px;font-weight:700;cursor:pointer;width:100%;min-width:38px;font-family:'IBM Plex Mono',monospace;">${shift || '–'}</button></td>`;
     });
     html += '</tr>';
@@ -571,6 +596,26 @@ async function cycleShift(staffId, staffName, day, currentShift) {
     );
     renderStaffSched();
   } catch(e) { console.error('Shift save error:', e); }
+}
+
+async function toggleOnCall(staffId, staffName, currentlyOnCall) {
+  try {
+    const docId = `${staffId}_${_staffSchedWeekOf}`;
+    await db.collection('staffSchedule').doc(docId).set(
+      { staffId, staffName, weekOf: _staffSchedWeekOf, onCall: !currentlyOnCall, ts: Date.now() },
+      { merge: true }
+    );
+    renderStaffSched();
+  } catch(e) { console.error('On-call save error:', e); }
+}
+
+async function setStaffSite(staffId, site) {
+  try {
+    await db.collection('staff').doc(staffId).update({ farm: site });
+    const s = staffList.find(x => x._fbId === staffId);
+    if (s) s.farm = site;
+    renderStaffSched();
+  } catch(e) { console.error('Site save error:', e); }
 }
 
 // ═══════════════════════════════════════════

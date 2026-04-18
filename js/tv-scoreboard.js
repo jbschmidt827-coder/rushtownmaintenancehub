@@ -161,7 +161,7 @@ function renderTVMode() {
 // ═══════════════════════════════════════════
 let s5Records = [];
 let s5LocFilter = 'all';
-let redTags = [];
+let _tvRedTags = [];
 
 function s5Loc(v, btn) {
   s5LocFilter = v;
@@ -179,15 +179,15 @@ function start5SListener() {
   }, err => console.error('5sAudits listener:', err));
 
   db.collection('redTags').orderBy('ts','desc').limit(200).onSnapshot(snap => {
-    redTags = [];
-    snap.forEach(d => redTags.push({...d.data(), _fbId: d.id}));
+    _tvRedTags = [];
+    snap.forEach(d => _tvRedTags.push({...d.data(), _fbId: d.id}));
     if (window._maintSection==='5s') render5S();
   }, err => console.error('redTags listener:', err));
 }
 
 function render5S() {
   const base = s5LocFilter==='all' ? s5Records : s5Records.filter(r=>r.farm===s5LocFilter);
-  const rtBase = s5LocFilter==='all' ? redTags : redTags.filter(r=>r.farm===s5LocFilter);
+  const rtBase = s5LocFilter==='all' ? _tvRedTags : _tvRedTags.filter(r=>r.farm===s5LocFilter);
 
   // Stats
   const avgScore = base.length ? Math.round(base.reduce((s,r)=>s+(r.totalScore||0),0)/base.length) : 0;
@@ -468,8 +468,8 @@ function close5SRedTag() {
 async function loadRedTags() {
   try {
     const snap = await db.collection('redTags').orderBy('ts','desc').limit(100).get();
-    redTags = [];
-    snap.forEach(d=>redTags.push({...d.data(),_fbId:d.id}));
+    _tvRedTags = [];
+    snap.forEach(d=>_tvRedTags.push({...d.data(),_fbId:d.id}));
     renderRedTagList();
   } catch(e){ renderRedTagList(); }
 }
@@ -477,8 +477,8 @@ async function loadRedTags() {
 function renderRedTagList() {
   const el = document.getElementById('rt-list');
   if (!el) return;
-  const active = redTags.filter(r=>!r.resolved);
-  const resolved = redTags.filter(r=>r.resolved);
+  const active = _tvRedTags.filter(r=>!r.resolved);
+  const resolved = _tvRedTags.filter(r=>r.resolved);
   const rows = [...active,...resolved.slice(0,5)];
   if (!rows.length){ el.innerHTML='<div class="empty"><div class="ei">🏷️</div><p>No red tags yet</p></div>'; return; }
   const actionLabel={remove:'Remove',repair:'Repair',relocate:'Relocate',evaluate:'Evaluate'};
@@ -507,7 +507,7 @@ async function addRedTag() {
   setSyncDot('saving');
   const ref = await db.collection('redTags').add(record);
   record._fbId = ref.id;
-  redTags.unshift(record);
+  _tvRedTags.unshift(record);
   setSyncDot('live');
   document.getElementById('rt-item').value = '';
   renderRedTagList();
@@ -516,7 +516,7 @@ async function addRedTag() {
 async function resolveRedTag(fbId) {
   setSyncDot('saving');
   await db.collection('redTags').doc(fbId).update({resolved:true,resolvedDate:new Date().toISOString().slice(0,10)});
-  const r = redTags.find(r=>r._fbId===fbId);
+  const r = _tvRedTags.find(r=>r._fbId===fbId);
   if (r) r.resolved = true;
   setSyncDot('live');
   renderRedTagList();

@@ -5,7 +5,7 @@
 // Falls back to cache when offline.
 // ═══════════════════════════════════════════
 
-const CACHE_NAME = 'rushtown-v8';
+const CACHE_NAME = 'rushtown-v9';
 
 const SHELL_FILES = [
   '/',

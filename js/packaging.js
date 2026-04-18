@@ -118,7 +118,7 @@ function goMaintSection(section) {
   document.querySelectorAll('#panel-maint .sub-btn').forEach(b => {
     if (b.dataset.section === section) b.classList.add('active');
   });
-  const renders = {wo:renderWO, pm:renderPM, parts:renderParts, downtime:renderDowntime, log:renderLog, assets:renderAssets, wi:renderWI, calendar:renderMaintCalendar};
+  const renders = {wo:renderWO, pm:renderPM, parts:renderParts, downtime:renderDowntime, log:renderLog, assets:renderAssets, wi:renderWI, calendar:renderMaintCalendar, contractor:renderContractor, cost:renderCostDashboard, 'weekly-agenda':renderWeeklyAgenda, redtags:renderRedTags};
   if (section === 'wi') {
     // If the real-time listener hasn't populated allWI yet (e.g. index error), force a fetch
     if (typeof allWI !== 'undefined' && allWI.length === 0) {
