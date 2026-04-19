@@ -764,55 +764,65 @@ async function submitBulkPM() {
   if (!bulkPMSelected.size) { alert('No tasks selected.'); return; }
 
   const ids = Array.from(bulkPMSelected);
-  document.getElementById('bulk-pm-submit-btn').disabled = true;
+  const submitBtn = document.getElementById('bulk-pm-submit-btn');
+  submitBtn.disabled = true;
   document.getElementById('bulk-pm-progress').style.display = 'block';
+  document.getElementById('bulk-pm-bar').style.background = 'var(--green-mid)';
 
-  let done = 0;
-  const batch = db.batch();
   const historyDocs = [];
+  const batch = db.batch();
 
-  for (const pmId of ids) {
+  ids.forEach((pmId, i) => {
     const t = ALL_PM.find(x=>x.id===pmId);
-    if (!t) continue;
-    // Update latest completion
-    const ref = db.collection('pmCompletions').doc(pmId);
-    batch.set(ref, {tech, date, parts:'', notes, ts:Date.now()});
-    // Prepare history record
+    if (!t) return;
+    batch.set(db.collection('pmCompletions').doc(pmId), {tech, date, parts:'', notes, ts:Date.now()});
     historyDocs.push({pmId, farm:t.farm, sys:t.sys, task:t.task, freq:t.freq, tech, date, parts:'', notes, ts:Date.now()});
-    done++;
-    document.getElementById('bulk-pm-bar').style.width = (done/ids.length*100)+'%';
-    document.getElementById('bulk-pm-status').textContent = `Saving ${done}/${ids.length}...`;
-  }
-
-  setSyncDot('saving');
-  await batch.commit();
-
-  // Write history records in batches of 500
-  const histBatch = db.batch();
-  historyDocs.forEach(h=>{ histBatch.set(db.collection('pmHistory').doc(), h); });
-  await histBatch.commit();
-
-  // Activity log
-  await db.collection('activityLog').add({
-    type:'pm', id:'BULK',
-    desc:`Bulk PM catch-up: ${ids.length} tasks marked done by ${tech} for date ${date}`,
-    tech, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), ts:Date.now()
+    document.getElementById('bulk-pm-bar').style.width = ((i+1)/ids.length*100)+'%';
+    document.getElementById('bulk-pm-status').textContent = `Saving ${i+1}/${ids.length}...`;
   });
 
-  setSyncDot('live');
-  document.getElementById('bulk-pm-status').textContent = `✅ ${ids.length} tasks marked complete!`;
-  document.getElementById('bulk-pm-bar').style.background = '#4caf50';
+  try {
+    setSyncDot('saving');
+    await batch.commit();
 
-  // Reload PM completions
-  const snap = await db.collection('pmCompletions').get();
-  pmComps = {};
-  snap.forEach(d=>{ pmComps[d.id] = d.data(); });
+    // Write history in chunks of 499 (Firestore batch limit is 500)
+    for (let i = 0; i < historyDocs.length; i += 499) {
+      const chunk = historyDocs.slice(i, i + 499);
+      const hBatch = db.batch();
+      chunk.forEach(h => hBatch.set(db.collection('pmHistory').doc(), h));
+      await hBatch.commit();
+    }
 
-  setTimeout(()=>{
-    closeBulkPM();
-    renderPM();
-    renderDash();
-  }, 1500);
+    try {
+      await db.collection('activityLog').add({
+        type:'pm', id:'BULK',
+        desc:`Bulk PM catch-up: ${ids.length} tasks marked done by ${tech} for date ${date}`,
+        tech, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), ts:Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
+
+    setSyncDot('live');
+    document.getElementById('bulk-pm-status').textContent = `✅ ${ids.length} tasks marked complete!`;
+    document.getElementById('bulk-pm-bar').style.width = '100%';
+
+    // Reload PM completions
+    const snap = await db.collection('pmCompletions').get();
+    pmComps = {};
+    snap.forEach(d=>{ pmComps[d.id] = d.data(); });
+
+    setTimeout(()=>{
+      closeBulkPM();
+      renderPM();
+      renderDash();
+    }, 1500);
+
+  } catch(err) {
+    console.error('submitBulkPM error:', err);
+    setSyncDot('live');
+    document.getElementById('bulk-pm-status').textContent = `❌ Save failed — please try again`;
+    document.getElementById('bulk-pm-bar').style.background = '#e53e3e';
+    submitBtn.disabled = false;
+  }
 }
 
 // ═══════════════════════════════════════════
