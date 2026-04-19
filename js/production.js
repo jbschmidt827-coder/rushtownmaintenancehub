@@ -342,6 +342,22 @@ function bwInitChecklist() {
   document.querySelectorAll('#bw-checklist-items input[id^="bw-cl-note-"]').forEach(el => el.value='');
   document.getElementById('bw-checklist-progress').textContent = '0 / 14 reviewed';
 
+  // Clean Under Cages — House 1: Sun(0)/Thu(4), House 2: Mon(1)/Sat(6)
+  const _CAGE_CLEAN_DAYS = { 1: [0, 4], 2: [1, 6] };
+  const cageCard = document.getElementById('bw-cage-clean-card');
+  const cageStatus = document.getElementById('bw-cage-clean-status');
+  if (cageStatus) { cageStatus.style.display = 'none'; cageStatus.textContent = ''; }
+  const todayDay = new Date().getDay();
+  const scheduledDays = _CAGE_CLEAN_DAYS[_bwHouse];
+  if (scheduledDays && scheduledDays.includes(todayDay)) {
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    document.getElementById('bw-cage-clean-note').textContent =
+      'Scheduled for House ' + _bwHouse + ' on ' + scheduledDays.map(d => dayNames[d]).join(' & ') + ' each week';
+    cageCard.style.display = 'block';
+  } else {
+    cageCard.style.display = 'none';
+  }
+
   const day = new Date().getDay();
   const weekly = _BW_WEEKLY[day];
   const card = document.getElementById('bw-weekly-card');
@@ -445,8 +461,9 @@ function bwSet(key, val) {
     stand:   {clean:'bw-yes-sel',dirty:'bw-no-sel'},
     eggbelt: {working:'bw-yes-sel',down:'bw-no-sel'},
     manure:  {run:'bw-yes-sel', stop:'bw-no-sel'},
-    rodent:  {yes:'bw-no-sel',  no:'bw-yes-sel'},
-    fly:     {yes:'bw-warn-sel',no:'bw-yes-sel'},
+    rodent:    {yes:'bw-no-sel',  no:'bw-yes-sel'},
+    fly:       {yes:'bw-warn-sel',no:'bw-yes-sel'},
+    cageclean: {complete:'bw-yes-sel', incomplete:'bw-no-sel'},
   };
   document.querySelectorAll(`#barn-walk-modal .bw-yn-btn[id^="bw-${key}-"]`).forEach(b => b.className = 'bw-yn-btn');
   const sel = document.getElementById(`bw-${key}-${val}`);
@@ -456,6 +473,20 @@ function bwSet(key, val) {
   if (key === 'rodent')  document.getElementById('bw-rodent-count-row').style.display  = val==='yes'  ? 'block' : 'none';
   if (key === 'fly')     document.getElementById('bw-fly-count-row').style.display     = val==='yes'  ? 'block' : 'none';
   if (key === 'eggbelt') document.getElementById('bw-eggbelt-wo-note').style.display   = val==='down' ? 'block' : 'none';
+  if (key === 'cageclean') {
+    const emp  = (document.getElementById('bw-employee')?.value || '').trim() || 'Unknown';
+    const time = new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+    _bwData._cageCleanEmployee = emp;
+    _bwData._cageCleanTime     = time;
+    const statusEl = document.getElementById('bw-cage-clean-status');
+    if (statusEl) {
+      statusEl.textContent = (val === 'complete' ? '✅ Completed' : '❌ Incomplete') + ' · ' + emp + ' · ' + time;
+      statusEl.style.background = val === 'complete' ? '#0f3a1a' : '#2d1a1a';
+      statusEl.style.borderColor = val === 'complete' ? '#4caf50' : '#e53e3e';
+      statusEl.style.color = val === 'complete' ? '#7ad07a' : '#e57373';
+      statusEl.style.display = 'block';
+    }
+  }
   checkBWReady();
 }
 
@@ -510,6 +541,9 @@ async function submitBarnWalk() {
     doors: _bwData.doors,
     checklist: _bwChecklist, checklistNotes,
     checklistFails: checklistFails.length, checklistTotal,
+    cageClean: _bwData.cageclean || null,
+    cageCleanEmployee: _bwData._cageCleanEmployee || null,
+    cageCleanTime: _bwData._cageCleanTime || null,
     date: new Date().toISOString().slice(0,10),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
     ts: Date.now()

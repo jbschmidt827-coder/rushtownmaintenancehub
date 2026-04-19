@@ -2431,6 +2431,19 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div id="bw-weekly-content"></div>
   </div>
 
+  <!-- Clean Under Cages (House 1: Sun/Thu · House 2: Mon/Sat) -->
+  <div class="bw-card" id="bw-cage-clean-card" style="display:none;border-color:#3a6a8a;">
+    <div class="bw-card-title" style="color:#7ab8d9;">🧹 Clean Under Cages</div>
+    <div id="bw-cage-clean-note" style="font-size:11px;color:#5a8aaa;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;"></div>
+    <div style="font-size:12px;color:#a0c8e0;margin-bottom:10px;line-height:1.5;">Scheduled deep-clean task: sweep and remove buildup from under all cage rows on both floors.</div>
+    <div class="bw-row-label" style="color:#7ab8d9;">Was this completed?</div>
+    <div class="bw-yn-row" style="margin-top:8px;">
+      <button class="bw-yn-btn" id="bw-cageclean-complete"   onclick="bwSet('cageclean','complete')"   style="border-color:#3a6a8a;">✅ COMPLETE</button>
+      <button class="bw-yn-btn" id="bw-cageclean-incomplete" onclick="bwSet('cageclean','incomplete')" style="border-color:#3a6a8a;">❌ INCOMPLETE</button>
+    </div>
+    <div id="bw-cage-clean-status" style="display:none;margin-top:12px;padding:10px 12px;border-radius:8px;background:#0f2a3a;border:1px solid #3a6a8a;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#7ab8d9;"></div>
+  </div>
+
   <!-- Notes -->
   <div class="bw-card">
     <div class="bw-card-title">📝 Notes / Corrective Actions</div>
