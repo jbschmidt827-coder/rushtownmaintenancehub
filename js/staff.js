@@ -5,7 +5,9 @@ let staffList = [];
 let _staffFilter = 'active';
 let _staffFarmFilter = 'all';
 
-const STAFF_ROLES = ['Technician','Lead','WNO','Director','Driver','Feed Mill','Other'];
+const STAFF_ROLES = ['Technician','Lead','WNO','Barn Worker','Director','Driver','Feed Mill','Other'];
+const MAINTENANCE_ROLES = ['Technician','Lead','Director','Driver'];
+const BARN_ROLES        = ['WNO','Barn Worker','Other'];
 
 // ── Firestore listener ──────────────────────
 function startStaffListener() {
@@ -432,6 +434,8 @@ async function addCustomOnboardItem(staffId) {
 // ═══════════════════════════════════════════
 let _staffSchedWeekOf = '';
 let _staffSchedFac = 'all';
+let _staffSchedType = 'maintenance'; // 'maintenance' | 'barn'
+let _staffSchedLoc  = 'Danville';   // 'Danville' | 'Hegins'
 
 const STAFF_SCHED_DAYS       = ['mon','tue','wed','thu','fri','sat','sun'];
 const STAFF_SCHED_DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -480,6 +484,36 @@ function staffSchedFacFilter(val, btn) {
   renderStaffSched();
 }
 
+function staffSchedTypeFilter(type, btn) {
+  _staffSchedType = type;
+  document.querySelectorAll('.sched-type-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderStaffSched();
+}
+
+function staffSchedLocFilter(loc, btn) {
+  _staffSchedLoc = loc;
+  document.querySelectorAll('.sched-loc-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderStaffSched();
+}
+
+async function setBarnLeader(staffId, staffName) {
+  try {
+    await db.collection('barnLeaders').doc(_staffSchedLoc).set({
+      staffId, staffName, location: _staffSchedLoc, ts: Date.now()
+    });
+    renderStaffSched();
+  } catch(e) { console.error('Leader set error:', e); }
+}
+
+async function clearBarnLeader() {
+  try {
+    await db.collection('barnLeaders').doc(_staffSchedLoc).delete();
+    renderStaffSched();
+  } catch(e) { console.error('Leader clear error:', e); }
+}
+
 async function renderStaffSched() {
   if (!_staffSchedWeekOf) _staffSchedWeekOf = _schedGetMonday(new Date());
 
@@ -495,14 +529,39 @@ async function renderStaffSched() {
   const grid = document.getElementById('staff-sched-grid');
   if (!grid) return;
 
-  let staff = staffList.filter(s => s.active !== false);
-  if (_staffSchedFac !== 'all') {
-    staff = staff.filter(s =>
-      s.farm === _staffSchedFac ||
-      s.farm === 'Both' ||
-      s.farm === 'All Farms' ||
-      s.farm === 'All'
-    );
+  // Filter by worker type
+  const roleSet = _staffSchedType === 'barn' ? BARN_ROLES : MAINTENANCE_ROLES;
+  let staff = staffList.filter(s => s.active !== false && roleSet.includes(s.role));
+
+  // Filter by location
+  staff = staff.filter(s =>
+    s.farm === _staffSchedLoc ||
+    s.farm === 'Both' ||
+    s.farm === 'All Farms' ||
+    s.farm === 'All'
+  );
+
+  // Load barn leader for this location (barn tab only)
+  let barnLeaderId = null;
+  if (_staffSchedType === 'barn') {
+    try {
+      const leaderDoc = await db.collection('barnLeaders').doc(_staffSchedLoc).get();
+      if (leaderDoc.exists) {
+        barnLeaderId = leaderDoc.data().staffId;
+        const bannerEl = document.getElementById('barn-leader-banner');
+        const nameEl   = document.getElementById('barn-leader-name');
+        if (bannerEl && nameEl) {
+          nameEl.textContent = leaderDoc.data().staffName + ' — ' + _staffSchedLoc;
+          bannerEl.style.display = 'flex';
+        }
+      } else {
+        const bannerEl = document.getElementById('barn-leader-banner');
+        if (bannerEl) bannerEl.style.display = 'none';
+      }
+    } catch(e) { /* ignore */ }
+  } else {
+    const bannerEl = document.getElementById('barn-leader-banner');
+    if (bannerEl) bannerEl.style.display = 'none';
   }
 
   if (!staff.length) {
@@ -555,15 +614,17 @@ async function renderStaffSched() {
       `<option value="${o}"${o===site?' selected':''}>${o||'— No site —'}</option>`
     ).join('');
     const safeName = s.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    const onCall = !!row.onCall;
-    html += `<tr style="border-top:1px solid #121e12;${onCall ? 'background:#0d1a0d;' : ''}">`;
+    const onCall   = !!row.onCall;
+    const isLeader = _staffSchedType === 'barn' && s._fbId === barnLeaderId;
+    html += `<tr style="border-top:1px solid #121e12;${onCall ? 'background:#0d1a0d;' : ''}${isLeader ? 'border-left:3px solid #4ade80;' : ''}">`;
     html += `<td style="padding:6px 10px;color:#c0d8c0;white-space:nowrap;">
-      <div style="display:flex;align-items:center;gap:6px;">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         <span>${s.name}</span>
+        ${isLeader ? '<span style="font-size:9px;background:#1a4a1a;border:1px solid #4ade80;border-radius:4px;padding:1px 5px;color:#4ade80;font-family:\'IBM Plex Mono\',monospace;font-weight:700;">👑 LEADER</span>' : ''}
         ${onCall ? '<span style="font-size:9px;background:#1a4a1a;border:1px solid #4ade80;border-radius:4px;padding:1px 5px;color:#4ade80;font-family:\'IBM Plex Mono\',monospace;font-weight:700;">ON CALL</span>' : ''}
       </div>
       <span style="font-size:9px;color:#3a5a3a;">${s.role || ''}</span><br>
-      <div style="display:flex;gap:4px;margin-top:3px;align-items:center;">
+      <div style="display:flex;gap:4px;margin-top:3px;align-items:center;flex-wrap:wrap;">
         <select onchange="setStaffSite('${safeId}',this.value)"
           style="background:#0a1a0a;border:1px solid ${siteColor};border-radius:4px;color:${siteColor};font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 4px;cursor:pointer;max-width:90px;">
           ${siteOptsHtml}
@@ -571,6 +632,9 @@ async function renderStaffSched() {
         <button onclick="toggleOnCall('${safeId}','${safeName}',${onCall})"
           title="${onCall ? 'Remove on-call' : 'Set on-call'}"
           style="background:${onCall ? '#1a4a1a' : '#0a1a0a'};border:1px solid ${onCall ? '#4ade80' : '#2a4a2a'};border-radius:4px;color:${onCall ? '#4ade80' : '#4a6a4a'};font-size:9px;padding:2px 5px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-weight:700;">📞</button>
+        ${_staffSchedType === 'barn' ? `<button onclick="${isLeader ? 'clearBarnLeader()' : `setBarnLeader('${safeId}','${safeName.replace(/'/g,"\\'")}')`}"
+          title="${isLeader ? 'Remove as leader' : 'Set as leader'}"
+          style="background:${isLeader ? '#1a4a1a' : '#0a1a0a'};border:1px solid ${isLeader ? '#4ade80' : '#3a4a2a'};border-radius:4px;color:${isLeader ? '#4ade80' : '#4a6a4a'};font-size:9px;padding:2px 5px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-weight:700;">👑</button>` : ''}
       </div>
     </td>`;
     STAFF_SCHED_DAYS.forEach(day => {

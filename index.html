@@ -1892,6 +1892,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
             <option value="Technician">Technician</option>
             <option value="Lead">Lead</option>
             <option value="WNO">WNO</option>
+            <option value="Barn Worker">Barn Worker</option>
             <option value="Director">Director</option>
             <option value="Driver">Driver</option>
             <option value="Feed Mill">Feed Mill</option>
@@ -1938,18 +1939,30 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
   <!-- Schedule Tab -->
   <div id="staff-sec-sched" style="display:none;">
+    <!-- Worker Type Tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <button class="prod-tab-btn active sched-type-btn" id="sched-type-maint" onclick="staffSchedTypeFilter('maintenance',this)">🔧 Maintenance</button>
+      <button class="prod-tab-btn sched-type-btn" id="sched-type-barn" onclick="staffSchedTypeFilter('barn',this)">🐔 Barn Workers</button>
+    </div>
+    <!-- Location Tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;">
+      <button class="prod-tab-btn active sched-loc-btn" id="sched-loc-danville" onclick="staffSchedLocFilter('Danville',this)">📍 Danville</button>
+      <button class="prod-tab-btn sched-loc-btn" id="sched-loc-hegins" onclick="staffSchedLocFilter('Hegins',this)">📍 Hegins</button>
+    </div>
+    <!-- Week Navigation -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
       <button onclick="staffSchedPrevWeek()" style="padding:6px 12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:13px;cursor:pointer;">◀</button>
       <span id="sched-week-label" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#c0d8c0;font-weight:700;min-width:180px;text-align:center;"></span>
       <button onclick="staffSchedNextWeek()" style="padding:6px 12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:13px;cursor:pointer;">▶</button>
       <button onclick="staffSchedThisWeek()" style="padding:6px 12px;background:#1a3a1a;border:1px solid #2a5a2a;border-radius:6px;color:#7ac57a;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">This Week</button>
     </div>
-    <div id="staff-sched-fac-bar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
-      <button class="pill active" onclick="staffSchedFacFilter('all',this)">All</button>
-      <button class="pill" onclick="staffSchedFacFilter('Hegins',this)">📍 Hegins</button>
-      <button class="pill" onclick="staffSchedFacFilter('Danville',this)">📍 Danville</button>
-      <button class="pill" onclick="staffSchedFacFilter('Rushtown',this)">📍 Rushtown</button>
-      <button class="pill" onclick="staffSchedFacFilter('Feed Mill',this)">🌾 Feed Mill</button>
+    <!-- Barn Leader Banner -->
+    <div id="barn-leader-banner" style="display:none;background:#1a2a0a;border:1.5px solid #4ade80;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-family:'IBM Plex Mono',monospace;">
+      <span style="font-size:16px;">👑</span>
+      <div>
+        <div style="font-size:9px;color:#4ade80;letter-spacing:2px;font-weight:700;text-transform:uppercase;">Location Leader</div>
+        <div id="barn-leader-name" style="font-size:13px;color:#f0ead8;font-weight:700;"></div>
+      </div>
     </div>
     <div id="staff-sched-grid" style="overflow-x:auto;"></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6a4a;">
@@ -2017,6 +2030,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
             <option value="Technician">Technician</option>
             <option value="Lead">Lead</option>
             <option value="WNO">WNO</option>
+            <option value="Barn Worker">Barn Worker</option>
             <option value="Director">Director</option>
             <option value="Driver">Driver</option>
             <option value="Feed Mill">Feed Mill</option>
