@@ -1875,15 +1875,16 @@ async function renderRptFeed() {
 // STAFF SUB-TABS
 // ═══════════════════════════════════════════
 function goStaffSection(sec) {
-  ['dir','add','sched','certs','onboard'].forEach(s => {
+  ['dir','add','sched','certs','onboard','oncal'].forEach(s => {
     const el  = document.getElementById('staff-sec-' + s);
-    const btn = document.getElementById('staff-tab-' + s);
+    const btn = document.getElementById('staff-tab-' + (s === 'oncal' ? 'oncal' : s));
     if (el)  el.style.display = s === sec ? 'block' : 'none';
     if (btn) btn.classList.toggle('active', s === sec);
   });
-  if (sec === 'sched') renderStaffSched();
-  if (sec === 'add' && typeof checkStaffDbStatus === 'function') checkStaffDbStatus();
-  if (sec === 'onboard' && typeof renderStaffOnboard === 'function') renderStaffOnboard();
+  if (sec === 'sched')   renderStaffSched();
+  if (sec === 'add'    && typeof checkStaffDbStatus       === 'function') checkStaffDbStatus();
+  if (sec === 'onboard'&& typeof renderStaffOnboard       === 'function') renderStaffOnboard();
+  if (sec === 'oncal'  && typeof renderStaffOnCallCalendar=== 'function') renderStaffOnCallCalendar();
 }
 
 async function renderReports() {

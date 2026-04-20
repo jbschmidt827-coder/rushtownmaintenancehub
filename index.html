@@ -895,6 +895,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="nav-tab" id="tab-mw" onclick="go('mw')" style="display:none;">☀️ Morning Walk</button>
       <button class="nav-tab" id="tab-daily" onclick="go('daily')" style="display:none;">📋 Daily Report</button>
       <button class="nav-tab" id="tab-brief" onclick="go('brief')" style="display:none;">🚨 Brief</button>
+      <button class="nav-tab" id="tab-oncall" onclick="go('oncall')" style="display:none;">📞 On Call</button>
     </nav>
     <button onclick="goHome()" class="header-home-btn" style="padding:10px 20px;background:#163016;border:2px solid #4caf50;border-radius:10px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">⌂ HOME</button>
     <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
@@ -1854,6 +1855,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button class="prod-tab-btn"        id="staff-tab-sched"   onclick="goStaffSection('sched')">📅 Schedule</button>
     <button class="prod-tab-btn"        id="staff-tab-certs"   onclick="goStaffSection('certs')">🏆 Certifications</button>
     <button class="prod-tab-btn"        id="staff-tab-onboard" onclick="goStaffSection('onboard')">📋 Onboarding</button>
+    <button class="prod-tab-btn"        id="staff-tab-oncal"   onclick="goStaffSection('oncal')">📞 On-Call Cal</button>
   </div>
 
   <!-- Directory Tab -->
@@ -1938,6 +1940,12 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div id="onboard-list"></div>
   </div>
 
+  <!-- On-Call Calendar Tab -->
+  <div id="staff-sec-oncal" style="display:none;">
+    <div style="font-size:11px;color:#4a6a4a;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;">Click any day to assign who is on call. Changes sync across the app.</div>
+    <div id="staff-oncall-cal-grid"></div>
+  </div>
+
   <!-- Schedule Tab -->
   <div id="staff-sec-sched" style="display:none;">
     <!-- Worker Type Tabs -->
@@ -2013,6 +2021,145 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div id="cert-list"></div>
   </div>
 
+</div>
+
+<!-- ═══ ON CALL PANEL ═══ -->
+<div class="panel" id="panel-oncall">
+  <div class="section-title">📞 On Call</div>
+
+  <!-- Stats -->
+  <div class="stats-grid g4" id="oncall-stats" style="margin-bottom:18px;"></div>
+
+  <!-- Sub-Nav -->
+  <div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;">
+    <button class="prod-tab-btn active" id="oncall-tab-log"      onclick="goOnCallSection('log')">📋 Log Event</button>
+    <button class="prod-tab-btn"        id="oncall-tab-history"  onclick="goOnCallSection('history')">📜 History</button>
+    <button class="prod-tab-btn"        id="oncall-tab-calendar" onclick="goOnCallSection('calendar')">📅 Calendar</button>
+  </div>
+
+  <!-- LOG SECTION -->
+  <div id="oncall-sec-log">
+    <!-- Form -->
+    <div style="background:#0f1a0f;border:1.5px solid #5a2a0a;border-radius:14px;padding:16px;margin-bottom:18px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#e53e3e;text-transform:uppercase;margin-bottom:12px;">🚨 Log On-Call Event</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <label style="font-size:11px;color:#7a4a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Who Was On Call *</label>
+          <input type="text" id="oc-who" list="staff-datalist" placeholder="Name" autocomplete="off" style="width:100%;background:#0a0a0a;border:1px solid #5a2a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#7a4a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Called By</label>
+          <input type="text" id="oc-called-by" list="staff-datalist" placeholder="Who made the call" autocomplete="off" style="width:100%;background:#0a0a0a;border:1px solid #5a2a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#7a4a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Reason *</label>
+          <select id="oc-reason" style="width:100%;background:#0a0a0a;border:1px solid #5a2a2a;border-radius:6px;color:#f0ead8;padding:10px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+            <option value="">— Select reason —</option>
+            <option>Equipment Failure</option>
+            <option>Animal Health</option>
+            <option>Safety Issue</option>
+            <option>Power Outage</option>
+            <option>Water / Feed Issue</option>
+            <option>Weather Emergency</option>
+            <option>After-Hours Work Order</option>
+            <option>Biosecurity</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#7a4a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Location</label>
+          <select id="oc-location" style="width:100%;background:#0a0a0a;border:1px solid #5a2a2a;border-radius:6px;color:#f0ead8;padding:10px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+            <option value="">— Select —</option>
+            <option>Danville</option>
+            <option>Hegins</option>
+            <option>Rushtown</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#7a4a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Date &amp; Time Called</label>
+          <input type="datetime-local" id="oc-called-at" style="width:100%;background:#0a0a0a;border:1px solid #5a2a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding-top:18px;">
+          <input type="checkbox" id="oc-urgent" style="width:18px;height:18px;accent-color:#e53e3e;cursor:pointer;">
+          <label for="oc-urgent" style="font-size:12px;color:#c0403a;font-family:'IBM Plex Mono',monospace;font-weight:700;cursor:pointer;">🚨 URGENT</label>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:11px;color:#7a4a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">What Happened *</label>
+          <textarea id="oc-desc" rows="3" placeholder="Describe the issue, actions taken, equipment involved..." style="width:100%;background:#0a0a0a;border:1px solid #5a2a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button id="oc-submit-btn" onclick="submitOnCallEvent()" style="padding:11px 24px;background:#3a0a0a;border:2px solid #e53e3e;border-radius:10px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">+ Log On-Call Event</button>
+        <div id="oc-submit-result" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#4caf50;">✓ Event logged!</div>
+      </div>
+    </div>
+    <!-- Open Events -->
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#e53e3e;text-transform:uppercase;margin-bottom:10px;">● Open Events</div>
+    <div id="oncall-log-list"></div>
+  </div>
+
+  <!-- HISTORY SECTION -->
+  <div id="oncall-sec-history" style="display:none;">
+    <div id="oncall-status-bar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px;">
+      <button class="pill active" onclick="onCallHistoryFilter('status','all',this)">All</button>
+      <button class="pill" onclick="onCallHistoryFilter('status','open',this)">● Open</button>
+      <button class="pill" onclick="onCallHistoryFilter('status','resolved',this)">✓ Resolved</button>
+    </div>
+    <div id="oncall-loc-bar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="pill active" onclick="onCallHistoryFilter('loc','all',this)">All Locations</button>
+      <button class="pill" onclick="onCallHistoryFilter('loc','Danville',this)">📍 Danville</button>
+      <button class="pill" onclick="onCallHistoryFilter('loc','Hegins',this)">📍 Hegins</button>
+      <button class="pill" onclick="onCallHistoryFilter('loc','Rushtown',this)">📍 Rushtown</button>
+    </div>
+    <div id="oncall-history-list"></div>
+  </div>
+
+  <!-- CALENDAR SECTION -->
+  <div id="oncall-sec-calendar" style="display:none;">
+    <div style="font-size:11px;color:#4a6a4a;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;">Click any day to assign who is on call.</div>
+    <div id="oncall-cal-grid"></div>
+  </div>
+</div>
+
+<!-- On-Call Resolve Modal -->
+<div id="oc-resolve-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:900;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:16px;padding:24px;width:100%;max-width:400px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:#f0ead8;margin-bottom:14px;">✓ Resolve On-Call Event</div>
+    <input type="hidden" id="oc-resolve-id">
+    <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:6px;">Resolution Notes (optional)</label>
+    <textarea id="oc-resolve-notes" rows="3" placeholder="How was it resolved? Parts used, actions taken..." style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;margin-bottom:14px;"></textarea>
+    <div style="display:flex;gap:10px;">
+      <button id="oc-resolve-save-btn" onclick="saveResolve()" style="flex:1;padding:11px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:10px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">Mark Resolved</button>
+      <button onclick="closeResolveModal()" style="padding:11px 18px;background:#1a1a1a;border:1px solid #3a3a3a;border-radius:10px;color:#888;font-size:13px;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- On-Call Day Assignment Modal -->
+<div id="oc-day-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:900;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:16px;padding:24px;width:100%;max-width:380px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;margin-bottom:4px;">📅 Assign On-Call</div>
+    <div id="oc-day-date" style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;margin-bottom:16px;"></div>
+    <input type="hidden" id="oc-day-date-val">
+    <input type="hidden" id="oc-day-prefix">
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:5px;">Who is On Call</label>
+      <select id="oc-day-staff" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px;font-size:13px;font-family:inherit;box-sizing:border-box;"></select>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:5px;">Location (optional)</label>
+      <select id="oc-day-loc" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        <option value="">All Locations</option>
+        <option>Danville</option>
+        <option>Hegins</option>
+        <option>Rushtown</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button id="oc-day-save-btn" onclick="saveOnCallDay()" style="flex:1;padding:11px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:10px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">Save</button>
+      <button onclick="closeOnCallDayModal()" style="padding:11px 18px;background:#1a1a1a;border:1px solid #3a3a3a;border-radius:10px;color:#888;font-size:13px;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <!-- Staff Edit Modal -->
@@ -4567,6 +4714,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script src="js/director-brief.js?v=20260419"></script>
 <script src="js/barn-entry.js?v=20260419"></script>
 <script src="js/notifications.js?v=20260420"></script>
+<script src="js/oncall.js?v=20260420"></script>
 <style>
 @keyframes notif-slide-in {
   from { opacity:0; transform:translateX(20px); }
