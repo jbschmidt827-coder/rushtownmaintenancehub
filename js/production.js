@@ -31,6 +31,24 @@ async function renderLandingStatus() {
       : `${count} open work order${count!==1?'s':''}`;
     badge('ls-maint', `<span style="color:${color};font-weight:700;">${txt}</span>`);
   } catch(e) { badge('ls-maint',''); }
+
+  // On-Call: today's scheduled people across sites
+  try {
+    const ocSnap = await db.collection('onCallSchedule').where('date','==',today).get();
+    const ocDocs = ocSnap.docs.map(d => d.data());
+    // Also count any open (unresolved) on-call log entries today
+    const ocLogSnap = await db.collection('onCallLog').where('resolved','==',false).get();
+    const openCount = ocLogSnap.docs.length;
+    if (ocDocs.length > 0) {
+      const names = ocDocs.map(d => `${d.site}: ${d.staffName}`).join(' · ');
+      const suffix = openCount > 0 ? ` · <span style="color:#e53e3e;">${openCount} open</span>` : '';
+      badge('ls-oncall', `<span style="color:#4caf50;font-weight:700;">${names}</span>${suffix}`);
+    } else if (openCount > 0) {
+      badge('ls-oncall', `<span style="color:#e53e3e;font-weight:700;">${openCount} open event${openCount!==1?'s':''}</span>`);
+    } else {
+      badge('ls-oncall', `<span style="color:#4a4a4a;">No assignments today</span>`);
+    }
+  } catch(e) { badge('ls-oncall',''); }
 }
 const EGG_KPI_RATE       = 0.90;
 const EGG_TARGET         = Math.round(EGG_BIRDS_PER_BARN * EGG_KPI_RATE); // 135,000

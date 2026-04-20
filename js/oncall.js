@@ -21,8 +21,9 @@ function startOnCallListener() {
   try {
     db.collection('onCallLog').orderBy('ts','desc').onSnapshot(snap => {
       onCallLog = snap.docs.map(d => ({...d.data(), _fbId: d.id}));
-      const nums = onCallLog.map(e => parseInt((e.ocNum||'OC-0').replace('OC-','')));
-      _ocCounter = nums.length ? Math.max(...nums.filter(n=>!isNaN(n))) + 1 : 1;
+      const nums  = onCallLog.map(e => parseInt((e.ocNum||'OC-0').replace('OC-','')));
+      const valid = nums.filter(n => !isNaN(n));
+      _ocCounter  = valid.length ? Math.max(...valid) + 1 : 1;
       if (document.getElementById('panel-oncall')?.classList.contains('active')) _renderOcView();
     }, err => console.error('OnCall listener:', err));
   } catch(e) { console.error(e); }
@@ -375,7 +376,10 @@ async function saveOcDay() {
   btn.disabled=false; btn.textContent='Save';
 }
 
-// legacy alias kept for old HTML if any
+// Public wrapper called by maintenance.js goStaffSection
+function renderStaffOnCallCalendar() { _renderStaffOnCallCal(); }
+
+// Legacy aliases kept for old HTML if any
 function openOnCallDayModal(date,prefix){ openOcDayModal(date,prefix==='staff-oncall-cal'?'staff':'main'); }
 function closeOnCallDayModal(){ closeOcDayModal(); }
 function saveOnCallDay(){ saveOcDay(); }
