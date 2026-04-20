@@ -336,44 +336,71 @@ function ocCalToday(ctx) {
   if (ctx==='staff') _renderStaffOnCallCal();
 }
 
-// ── Day assignment modal ─────────────────────
+// ── Week helpers ─────────────────────────────
+function _weekMonday(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const dow = d.getDay(); // 0=Sun
+  d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1));
+  return d.toISOString().slice(0, 10);
+}
+function _weekDates(mondayStr) {
+  return Array.from({length:7}, (_,i) => {
+    const d = new Date(mondayStr + 'T12:00:00');
+    d.setDate(d.getDate() + i);
+    return d.toISOString().slice(0, 10);
+  });
+}
+
+// ── Week assignment modal ─────────────────────
 function openOcDayModal(date, ctx) {
-  const site  = ctx==='staff' ? (_ocSite||'Danville') : _ocSite;
-  const sched = Object.values(onCallSched).find(s=>s.date===date && s.site===site);
-  const active= (typeof staffList!=='undefined') ? staffList.filter(s=>s.active!==false) : [];
+  const site   = ctx === 'staff' ? (_ocSite || 'Danville') : _ocSite;
+  const monStr = _weekMonday(date);
+  const days   = _weekDates(monStr);
+  // Pre-select staff if any day this week is already assigned
+  const existing = days.map(ds => Object.values(onCallSched).find(s => s.date === ds && s.site === site)).find(Boolean);
+  const active = (typeof staffList !== 'undefined') ? staffList.filter(s => s.active !== false) : [];
+  // Build week label: "Apr 21 – Apr 27, 2026 — Danville"
+  const monD = new Date(monStr + 'T12:00:00');
+  const sunD = new Date(monStr + 'T12:00:00'); sunD.setDate(sunD.getDate() + 6);
+  const fmt  = d => d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
   document.getElementById('oc-day-label').textContent =
-    new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) + ' — ' + site;
-  document.getElementById('oc-day-date-val').value = date;
+    `${fmt(monD)} – ${fmt(sunD)}, ${sunD.getFullYear()} — ${site}`;
+  document.getElementById('oc-day-date-val').value = monStr;
   document.getElementById('oc-day-ctx').value      = ctx;
   document.getElementById('oc-day-site-val').value = site;
   const sel = document.getElementById('oc-day-staff');
   sel.innerHTML = '<option value="">— No one assigned —</option>' +
-    active.map(s=>`<option value="${s._fbId}|${s.name.replace(/"/g,'&quot;')}" ${sched&&sched.staffId===s._fbId?'selected':''}>${s.name}</option>`).join('');
+    active.map(s => `<option value="${s._fbId}|${s.name.replace(/"/g,'&quot;')}" ${existing && existing.staffId === s._fbId ? 'selected' : ''}>${s.name}</option>`).join('');
   document.getElementById('oc-day-modal').style.display = 'flex';
 }
-function closeOcDayModal() { document.getElementById('oc-day-modal').style.display='none'; }
+function closeOcDayModal() { document.getElementById('oc-day-modal').style.display = 'none'; }
 
 async function saveOcDay() {
-  const date    = document.getElementById('oc-day-date-val').value;
+  const monStr  = document.getElementById('oc-day-date-val').value;
   const ctx     = document.getElementById('oc-day-ctx').value;
   const site    = document.getElementById('oc-day-site-val').value;
   const staffVal= document.getElementById('oc-day-staff').value;
   const btn     = document.getElementById('oc-day-save-btn');
-  btn.disabled=true; btn.textContent='Saving...';
+  btn.disabled  = true; btn.textContent = 'Saving...';
   try {
-    const docId = date+'_'+site.toLowerCase();
-    if (!staffVal) {
-      await db.collection('onCallSchedule').doc(docId).delete();
-    } else {
-      const [staffId,staffName] = staffVal.split('|');
-      await db.collection('onCallSchedule').doc(docId).set({date, site, staffId, staffName, ts:Date.now()});
-    }
+    const days  = _weekDates(monStr);
+    const batch = db.batch();
+    days.forEach(ds => {
+      const ref = db.collection('onCallSchedule').doc(ds + '_' + site.toLowerCase());
+      if (!staffVal) {
+        batch.delete(ref);
+      } else {
+        const [staffId, staffName] = staffVal.split('|');
+        batch.set(ref, {date: ds, site, staffId, staffName, ts: Date.now()});
+      }
+    });
+    await batch.commit();
     closeOcDayModal();
-    if (ctx==='main')  _renderOcCalendar();
-    if (ctx==='staff') _renderStaffOnCallCal();
+    if (ctx === 'main')  _renderOcCalendar();
+    if (ctx === 'staff') _renderStaffOnCallCal();
     _renderOcTodayBanner();
-  } catch(e) { alert('Error: '+e.message); }
-  btn.disabled=false; btn.textContent='Save';
+  } catch(e) { alert('Error: ' + e.message); }
+  btn.disabled = false; btn.textContent = 'Save Week';
 }
 
 // Public wrapper called by maintenance.js goStaffSection

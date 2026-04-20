@@ -2131,7 +2131,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
   <!-- ── CALENDAR SECTION ── -->
   <div id="oc-sec-calendar" style="display:none;">
-    <div style="font-size:11px;color:#4a6a4a;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;">Click any day to assign who is on call for this site.</div>
+    <div style="font-size:11px;color:#4a6a4a;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;">Click any day to assign who is on call for that entire week.</div>
     <div id="oc-cal-grid"></div>
   </div>
 </div>
@@ -2153,7 +2153,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <!-- On-Call Day Assignment Modal -->
 <div id="oc-day-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:900;align-items:center;justify-content:center;padding:20px;">
   <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:16px;padding:24px;width:100%;max-width:380px;">
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;margin-bottom:4px;">📅 Assign On-Call</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;margin-bottom:4px;">📅 Assign On-Call Week</div>
     <div id="oc-day-label" style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;margin-bottom:16px;"></div>
     <input type="hidden" id="oc-day-date-val">
     <input type="hidden" id="oc-day-ctx">
@@ -2163,7 +2163,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <select id="oc-day-staff" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px;font-size:13px;font-family:inherit;box-sizing:border-box;"></select>
     </div>
     <div style="display:flex;gap:10px;">
-      <button id="oc-day-save-btn" onclick="saveOcDay()" style="flex:1;padding:12px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:10px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">Save</button>
+      <button id="oc-day-save-btn" onclick="saveOcDay()" style="flex:1;padding:12px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:10px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">Save Week</button>
       <button onclick="closeOcDayModal()" style="padding:12px 18px;background:#1a1a1a;border:1px solid #3a3a3a;border-radius:10px;color:#888;font-size:13px;cursor:pointer;">Cancel</button>
     </div>
   </div>
