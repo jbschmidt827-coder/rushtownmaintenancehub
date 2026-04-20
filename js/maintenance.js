@@ -2194,18 +2194,25 @@ function logSetFarm(farm, btn) {
   logHouseFilter = 'all';
   document.querySelectorAll('#log-farm-bar .pill').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  const sel = document.getElementById('log-house-select');
-  sel.innerHTML = '<option value="all">All Houses</option>';
-  if (farm !== 'all') {
+  const houseBar = document.getElementById('log-house-bar');
+  if (farm === 'all') {
+    houseBar.style.display = 'none';
+    houseBar.innerHTML = '';
+  } else {
     const count = farm === 'Hegins' ? 8 : 5;
-    for (let i = 1; i <= count; i++) sel.innerHTML += `<option value="${i}">House ${i}</option>`;
+    let html = `<button class="pill active" onclick="logSetHouse('all',this)">All Houses</button>`;
+    for (let i = 1; i <= count; i++)
+      html += `<button class="pill" onclick="logSetHouse('${i}',this)">House ${i}</button>`;
+    houseBar.innerHTML = html;
+    houseBar.style.display = '';
   }
-  sel.value = 'all';
   renderLog();
 }
 
-function logSetHouse(val) {
+function logSetHouse(val, btn) {
   logHouseFilter = val;
+  document.querySelectorAll('#log-house-bar .pill').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
   renderLog();
 }
 
