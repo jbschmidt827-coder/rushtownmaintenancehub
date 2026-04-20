@@ -25,6 +25,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
 
 <style>
 :root {
@@ -898,6 +899,24 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button onclick="goHome()" class="header-home-btn" style="padding:10px 20px;background:#163016;border:2px solid #4caf50;border-radius:10px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">⌂ HOME</button>
     <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
     <button id="lang-toggle-btn" onclick="toggleLang()" title="Switch Language / Cambiar Idioma" style="padding:7px 13px;background:#0a1a2a;border:1.5px solid #3b82f6;border-radius:9px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;flex-shrink:0;">🌐 ES</button>
+
+    <!-- 🔔 Notification bell -->
+    <div style="position:relative;flex-shrink:0;" id="notif-bell-wrap">
+      <button id="notif-bell-btn" onclick="toggleNotifPanel()" title="Notifications"
+        style="position:relative;padding:7px 11px;background:#0f2a0f;border:1.5px solid #2a5a2a;border-radius:9px;color:#7ab07a;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s;">
+        🔔
+        <span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;background:#e53e3e;border-radius:9px;font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#fff;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--green-dark,#0a1a0a);"></span>
+      </button>
+
+      <!-- Dropdown panel -->
+      <div id="notif-panel" style="display:none;position:absolute;top:calc(100% + 8px);right:0;width:320px;max-height:420px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.7);z-index:800;overflow:hidden;flex-direction:column;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #1a3a1a;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7ab07a;">🔔 Notifications</div>
+          <button onclick="_markAllRead()" style="background:none;border:none;font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;cursor:pointer;padding:2px 6px;">Mark all read</button>
+        </div>
+        <div id="notif-list" style="overflow-y:auto;max-height:360px;"></div>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -4531,6 +4550,13 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script src="js/red-tags.js?v=20260419"></script>
 <script src="js/director-brief.js?v=20260419"></script>
 <script src="js/barn-entry.js?v=20260419"></script>
+<script src="js/notifications.js?v=20260420"></script>
+<style>
+@keyframes notif-slide-in {
+  from { opacity:0; transform:translateX(20px); }
+  to   { opacity:1; transform:translateX(0);    }
+}
+</style>
 
 
 <!-- ═══ BARN ENTRY OVERLAY ═══ -->

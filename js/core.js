@@ -1068,6 +1068,7 @@ async function initApp() {
     setTimeout(() => {
       document.getElementById('loading-screen').classList.add('hidden');
       renderDash();
+      if (typeof initNotifications === 'function') initNotifications();
     }, 600);
 
   } catch(err) {
