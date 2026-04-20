@@ -663,22 +663,28 @@ async function submitBarnWalk() {
   BARN_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
   if (mortCount) _todayMortTotal += mortCount;
 
-  // Map each flag to a problem category and priority
-  // Mortality and Pest are logged separately — not auto-WO
+  // Map each flag to a problem category and priority.
+  // Mortality, loose birds, and pest are logged to their own collections — never WOs.
+  // Checklist failures are handled individually above (_BW_WO_ITEMS loop) — skip here.
   const flagProblemMap = {
-    'Manure dryers off':          {problem:'Manure System',      priority:'high'},
-    'Manure belts not running':   {problem:'Manure System',      priority:'high'},
-    'Poor feathering':            {problem:'Building / Structure',priority:'normal'},
-    'House doors open':           {problem:'Building / Structure',priority:'high'},
-    // 'Loose birds' intentionally excluded — logged to mortalityLog, never creates a WO
-    'Air quality anomaly':        {problem:'Ventilation / Fans', priority:'urgent'},
-    'Feeders empty':              {problem:'Feed System',        priority:'urgent'},
-    'Egg belt not working':       {problem:'Egg Collection',     priority:'urgent'},
+    'Manure dryers off':          {problem:'Manure System',       priority:'high'},
+    'Manure belts not running':   {problem:'Manure System',       priority:'high'},
+    'Poor feathering':            {problem:'Building / Structure', priority:'normal'},
+    'House doors open':           {problem:'Building / Structure', priority:'high'},
+    'Air quality anomaly':        {problem:'Ventilation / Fans',  priority:'urgent'},
+    'Feeders empty':              {problem:'Feed System',         priority:'urgent'},
+    'Egg belt not working':       {problem:'Egg Collection',      priority:'urgent'},
   };
   for (const flag of flags) {
+    // Checklist failures already handled above — skip to avoid duplicate WOs
+    if (flag.startsWith('Checklist failures')) continue;
+    // Mortality and loose birds go to mortalityLog only — never WOs
+    if (flag.toLowerCase().includes('mort') || flag.toLowerCase().includes('loose')) continue;
+    // Only create WOs for flags we explicitly recognise
+    const mapKey = Object.keys(flagProblemMap).find(k => flag.startsWith(k));
+    if (!mapKey) continue; // unknown flag — log it but don't create a WO
     try {
-      const mapKey = Object.keys(flagProblemMap).find(k => flag.startsWith(k)) || flag;
-      const {problem, priority} = flagProblemMap[mapKey] || {problem:'Other',priority:'high'};
+      const {problem, priority} = flagProblemMap[mapKey];
       const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
       woCounter = (woCounter || 900) + 1;
       await db.collection('workOrders').add({
