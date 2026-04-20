@@ -2975,6 +2975,16 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="pill" onclick="logFilter('ops-ship',this)">🚚 Shipping</button>
       <button class="pill" onclick="logFilter('ops-exc',this)">⚠️ Exceptions</button>
     </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;">
+      <div class="pill-bar" id="log-farm-bar" style="margin:0;">
+        <button class="pill active" onclick="logSetFarm('all',this)">All Plants</button>
+        <button class="pill" onclick="logSetFarm('Hegins',this)">📍 Hegins</button>
+        <button class="pill" onclick="logSetFarm('Danville',this)">📍 Danville</button>
+      </div>
+      <select id="log-house-select" onchange="logSetHouse(this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:20px;font-size:12px;font-family:'IBM Plex Mono',sans-serif;color:var(--ink);background:var(--surface);cursor:pointer;height:32px;">
+        <option value="all">All Houses</option>
+      </select>
+    </div>
     <div id="log-container"></div>
   </div>
 

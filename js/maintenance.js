@@ -2189,12 +2189,37 @@ function logFilter(v,btn) {
   btn.classList.add('active'); renderLog();
 }
 
+function logSetFarm(farm, btn) {
+  logFarmFilter = farm;
+  logHouseFilter = 'all';
+  document.querySelectorAll('#log-farm-bar .pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const sel = document.getElementById('log-house-select');
+  sel.innerHTML = '<option value="all">All Houses</option>';
+  if (farm !== 'all') {
+    const count = farm === 'Hegins' ? 8 : 5;
+    for (let i = 1; i <= count; i++) sel.innerHTML += `<option value="${i}">House ${i}</option>`;
+  }
+  sel.value = 'all';
+  renderLog();
+}
+
+function logSetHouse(val) {
+  logHouseFilter = val;
+  renderLog();
+}
+
 function renderLog() {
   let entries = actLog.map(e => ({...e, _classified: logClassify(e)}));
 
   if (logFilterVal !== 'all') {
-    // 'parts' filter also catches 'po' loosely — keep them separate
     entries = entries.filter(e => e._classified === logFilterVal);
+  }
+  if (logFarmFilter !== 'all') {
+    entries = entries.filter(e => e.farm === logFarmFilter);
+  }
+  if (logHouseFilter !== 'all') {
+    entries = entries.filter(e => String(e.house) === String(logHouseFilter));
   }
 
   if (!entries.length) {

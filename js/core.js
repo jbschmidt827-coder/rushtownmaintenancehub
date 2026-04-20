@@ -346,6 +346,8 @@ let woPriorityFilters = new Set();
 let woStatusFilters = new Set();
 let pmLocFilter = 'all', pmStatFilter = 'all';
 let logFilterVal = 'all';
+let logFarmFilter = 'all';
+let logHouseFilter = 'all';
 let modalPMId   = null;
 let woCounter   = 1;
 let flocks        = [];   // flock placement records
