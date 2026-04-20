@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+functions/node_modules/
+
+# Firebase
+.firebase/
+*.cache
+
+# Local env
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude local config
+.claude/
