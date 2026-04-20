@@ -1868,6 +1868,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="pill active" onclick="staffFarmFilter('all',this)">All Farms</button>
       <button class="pill" onclick="staffFarmFilter('Hegins',this)">📍 Hegins</button>
       <button class="pill" onclick="staffFarmFilter('Danville',this)">📍 Danville</button>
+      <button class="pill" onclick="staffFarmFilter('Rushtown',this)">📍 Rushtown</button>
     </div>
     <div id="staff-list"></div>
   </div>
@@ -1945,9 +1946,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="prod-tab-btn sched-type-btn" id="sched-type-barn" onclick="staffSchedTypeFilter('barn',this)">🐔 Barn Workers</button>
     </div>
     <!-- Location Tabs -->
-    <div style="display:flex;gap:6px;margin-bottom:14px;">
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
       <button class="prod-tab-btn active sched-loc-btn" id="sched-loc-danville" onclick="staffSchedLocFilter('Danville',this)">📍 Danville</button>
       <button class="prod-tab-btn sched-loc-btn" id="sched-loc-hegins" onclick="staffSchedLocFilter('Hegins',this)">📍 Hegins</button>
+      <button class="prod-tab-btn sched-loc-btn" id="sched-loc-rushtown" onclick="staffSchedLocFilter('Rushtown',this)">📍 Rushtown</button>
     </div>
     <!-- Week Navigation -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
