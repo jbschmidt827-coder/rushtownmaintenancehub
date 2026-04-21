@@ -2321,6 +2321,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <input class="sched-modal-input" id="sched-notes" type="text" placeholder="Optional">
       </div>
     </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;background:#0d2a0d;border:1px solid #2a5a2a;border-radius:8px;padding:10px 14px;">
+      <input type="checkbox" id="sched-whole-week" style="width:18px;height:18px;accent-color:#4a9b6f;cursor:pointer;">
+      <label for="sched-whole-week" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#7ac57a;cursor:pointer;font-weight:700;">📅 Assign whole week (Mon – Sun)</label>
+    </div>
     <div class="sched-modal-btns">
       <button class="sched-save-btn" onclick="saveSchedEntry()">✓ Save</button>
       <button class="sched-del-btn" id="sched-del-btn" onclick="deleteSchedEntry()" style="display:none;">🗑 Delete</button>

@@ -178,6 +178,8 @@ function openSchedModal(dept, day, entryId) {
     document.getElementById('sched-del-btn').style.display = 'none';
   }
 
+  const wwCb = document.getElementById('sched-whole-week');
+  if (wwCb) wwCb.checked = false;
   document.getElementById('sched-modal-bg').style.display = 'block';
   document.getElementById('sched-person').focus();
   applyFormTextTranslation();
@@ -188,30 +190,45 @@ function closeSchedModal() {
 }
 
 async function saveSchedEntry() {
-  const person = document.getElementById('sched-person').value.trim();
+  const person    = document.getElementById('sched-person').value.trim();
   if (!person) { alert('Person name is required.'); return; }
-  const record = {
+  const wholeWeek = document.getElementById('sched-whole-week')?.checked;
+  const base = {
     weekOf:   _schedWeekOf,
     facility: _schedFacility,
     dept:     _schedModalDept,
-    day:      _schedModalDay,
     person,
     role:   '',
     shift:  document.getElementById('sched-shift').value,
     notes:  document.getElementById('sched-notes').value.trim(),
     ts:     Date.now()
   };
+
   try {
-    if (_schedEditId) {
-      await db.collection('teamSchedule').doc(_schedEditId).update(record);
-      const idx = _schedData.findIndex(r => r._id === _schedEditId);
-      if (idx > -1) _schedData[idx] = { _id: _schedEditId, ...record };
+    if (wholeWeek) {
+      // Write one entry per day for the whole week
+      const batch = db.batch();
+      SCHED_DAYS.forEach(day => {
+        // Remove any existing entry for this person/dept/day first isn't needed —
+        // just add; duplicates are visible and can be deleted individually
+        const ref = db.collection('teamSchedule').doc();
+        batch.set(ref, { ...base, day });
+      });
+      await batch.commit();
+      await loadSchedule();
     } else {
-      const ref = await db.collection('teamSchedule').add(record);
-      _schedData.push({ _id: ref.id, ...record });
+      const record = { ...base, day: _schedModalDay };
+      if (_schedEditId) {
+        await db.collection('teamSchedule').doc(_schedEditId).update(record);
+        const idx = _schedData.findIndex(r => r._id === _schedEditId);
+        if (idx > -1) _schedData[idx] = { _id: _schedEditId, ...record };
+      } else {
+        const ref = await db.collection('teamSchedule').add(record);
+        _schedData.push({ _id: ref.id, ...record });
+      }
+      renderSchedule();
     }
     closeSchedModal();
-    renderSchedule();
     try {
       await db.collection('activityLog').add({
         type: 'wo', id: 'SCHED',
