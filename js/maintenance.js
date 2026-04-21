@@ -500,7 +500,7 @@ function _crewForFarm(farm) {
   return farm ? (SITE_TECHS[farm] || []) : Object.values(SITE_TECHS).flat();
 }
 
-function loadHouses() {
+async function loadHouses() {
   const farm = document.getElementById('wo-farm').value;
 
   // Update house dropdown
@@ -512,12 +512,37 @@ function loadHouses() {
   AREAS.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;ag.appendChild(o);});
   sel.appendChild(hg); sel.appendChild(ag);
 
-  const techs = _crewForFarm(farm);
+  // Try to get today's scheduled staff first, fall back to all staff at location
+  let techs = [];
+  let scheduleLabel = '';
+  if (farm) {
+    try {
+      const dowIndex = new Date().getDay(); // 0=Sun
+      const todayKey = ['sun','mon','tue','wed','thu','fri','sat'][dowIndex];
+      // schedGetMonday is defined in scheduling.js (loaded before maintenance.js)
+      const weekOf = (typeof schedGetMonday === 'function') ? schedGetMonday() : '';
+      if (weekOf) {
+        const snap = await db.collection('teamSchedule')
+          .where('weekOf','==',weekOf)
+          .where('facility','==',farm)
+          .where('day','==',todayKey)
+          .get();
+        const scheduled = [...new Set(snap.docs.map(d=>d.data().person).filter(Boolean))].sort();
+        if (scheduled.length) {
+          techs = scheduled;
+          scheduleLabel = ' — on schedule today';
+        }
+      }
+    } catch(e) { /* fall through */ }
+    if (!techs.length) techs = _crewForFarm(farm);
+  } else {
+    techs = _crewForFarm('');
+  }
 
-  // Update tech dropdown to show only this site's crew
+  // Update tech dropdown
   const techSel = document.getElementById('wo-tech');
   const currentTech = techSel.value;
-  techSel.innerHTML = '<option value="">— Select Name —</option>';
+  techSel.innerHTML = `<option value="">— Select Name${scheduleLabel} —</option>`;
   techs.forEach(name => {
     const o = document.createElement('option');
     o.value = name; o.textContent = name;
