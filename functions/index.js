@@ -53,6 +53,27 @@ async function writeNotification(type, title, body) {
 }
 
 // ────────────────────────────────────────────────────
+// TRIGGER — On-Call event logged
+// ────────────────────────────────────────────────────
+exports.notifyOnCall = onDocumentCreated(
+  { document: 'onCallLog/{docId}', region: 'us-central1' },
+  async (event) => {
+    const oc = event.data?.data();
+    if (!oc) return null;
+
+    const urgent = oc.urgent ? '🚨 URGENT — ' : '';
+    const title  = `${urgent}📞 On-Call Event — ${oc.site}`;
+    const body   = `${oc.ocNum}: ${oc.reason} · Who: ${oc.who}${oc.description ? ' · ' + oc.description.slice(0, 80) : ''}`;
+
+    await Promise.all([
+      sendPushToAll(title, body, 'oncall'),
+      writeNotification('oncall', title, body),
+    ]);
+    return null;
+  }
+);
+
+// ────────────────────────────────────────────────────
 // TRIGGER — Urgent Work Order created
 // ────────────────────────────────────────────────────
 exports.notifyUrgentWO = onDocumentCreated(

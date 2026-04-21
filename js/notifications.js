@@ -7,7 +7,7 @@
 // Generate once at: Firebase Console → Project Settings
 //   → Cloud Messaging → Web Push certificates → Generate key pair
 // Paste the key string below:
-const VAPID_KEY = 'PASTE_YOUR_VAPID_KEY_HERE';
+const VAPID_KEY = 'BOWvCMW927PI2vndQLJozUhrGbI0sqqFQ3lAvpXlJmZZzbx99oZOqei7Y442lf5WyOVLjNbRdlgboSfNFu8wIt4';
 
 let _notifUnsub   = null;
 let _panelOpen    = false;
