@@ -2299,12 +2299,10 @@ function renderLog() {
 }
 
 // ═══════════════════════════════════════════
-// DOWNTIME TRACKER
+// DOWNTIME DATA (used by reports)
 // ═══════════════════════════════════════════
 let downtimeEvents = [];
-let dtFarmFilterVal = 'all';
 
-// Load downtime from Firebase on boot (called in initApp)
 async function loadDowntime() {
   try {
     const snap = await db.collection('downtimeEvents').orderBy('startTs','desc').get();
@@ -2314,170 +2312,9 @@ async function loadDowntime() {
     db.collection('downtimeEvents').orderBy('startTs','desc').onSnapshot(snap => {
       downtimeEvents = [];
       snap.forEach(d => downtimeEvents.push({...d.data(), _fbId: d.id}));
-      if (window._maintSection==='downtime') renderDowntime();
       if (document.getElementById('panel-reports').classList.contains('active')) renderReports();
     });
   } catch(e) { console.error('Downtime load error:', e); }
-}
-
-function dtFarmFilter(v, btn) {
-  dtFarmFilterVal = v;
-  document.querySelectorAll('#maint-downtime .pill').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderDowntime();
-}
-
-function loadDtHouses() {
-  // pre-fill start time to now
-  const now = new Date();
-  now.setSeconds(0,0);
-  document.getElementById('dt-start').value = now.toISOString().slice(0,16);
-}
-
-function populateDtWOList() {
-  const farm = document.getElementById('dt-farm').value;
-  const sel = document.getElementById('dt-linked-wo');
-  const current = sel.value;
-  sel.innerHTML = '<option value="">— None —</option>';
-  const openWOs = workOrders.filter(w =>
-    (w.status === 'open' || w.status === 'in-progress') &&
-    (!farm || w.farm === farm)
-  );
-  openWOs.forEach(wo => {
-    const o = document.createElement('option');
-    o.value = wo.id;
-    o.textContent = `${wo.id} · ${wo.farm} · ${wo.house} — ${wo.problem.slice(0,30)}`;
-    if (wo.id === current) o.selected = true;
-    sel.appendChild(o);
-  });
-}
-
-async function submitDowntime() {
-  const farm = document.getElementById('dt-farm').value;
-  const system = document.getElementById('dt-system').value;
-  const startVal = document.getElementById('dt-start').value;
-  const endVal = document.getElementById('dt-end').value;
-  const desc = document.getElementById('dt-desc').value.trim();
-  if (!farm || !system || !startVal || !desc) return alert('Please fill in Farm, System, Start Time and Description.');
-  const startTs = new Date(startVal).getTime();
-  const endTs = endVal ? new Date(endVal).getTime() : null;
-  const durationMins = endTs ? Math.round((endTs - startTs) / 60000) : null;
-  const linkedWO = document.getElementById('dt-linked-wo').value || null;
-  const event = {
-    farm, system, desc,
-    startTs, endTs, durationMins,
-    ongoing: !endTs,
-    linkedWO,
-    date: new Date(startTs).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-    loggedAt: Date.now()
-  };
-  setSyncDot('saving');
-  try {
-    await db.collection('downtimeEvents').add(event);
-    try {
-      await db.collection('activityLog').add({
-        type:'downtime', id:'DT',
-        desc: `Downtime logged: ${farm} · ${system} — ${desc}`,
-        tech: 'System', date: event.date, ts: Date.now()
-      });
-    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
-    setSyncDot('live');
-    ['dt-farm','dt-system','dt-start','dt-end','dt-desc','dt-linked-wo'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.value = '';
-    });
-    renderDowntime();
-  } catch(err) {
-    setSyncDot('live');
-    console.error('submitDowntime error:', err);
-    alert('Something went wrong saving the downtime event. Please try again.\n\nError: ' + err.message);
-  }
-}
-
-function renderDowntime() {
-  // Default downtime start to current date/time
-  const nowLocal = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
-  const startEl = document.getElementById('dt-start');
-  if (startEl && !startEl.value) startEl.value = nowLocal;
-  const list = dtFarmFilterVal === 'all' ? downtimeEvents : downtimeEvents.filter(e => e.farm === dtFarmFilterVal);
-
-  // Stats
-  const now = Date.now();
-  const cutoff30 = now - 30 * 86400000;
-  const recent = list.filter(e => e.startTs >= cutoff30);
-  const ongoing = list.filter(e => e.ongoing);
-  const totalMins = recent.filter(e => e.durationMins).reduce((s,e) => s + e.durationMins, 0);
-  const totalHrs = (totalMins / 60).toFixed(1);
-  const avgMins = recent.filter(e=>e.durationMins).length
-    ? Math.round(totalMins / recent.filter(e=>e.durationMins).length)
-    : 0;
-
-  // MTBF / MTTR calculation
-  const completedEvents = recent.filter(e => e.durationMins && !e.ongoing).sort((a,b)=>a.startTs-b.startTs);
-  let mtbfHrs = null, mttrMins = null;
-  if (completedEvents.length > 1) {
-    // MTBF = total operating time / number of failures
-    const spanMs = completedEvents[completedEvents.length-1].startTs - completedEvents[0].startTs;
-    const totalDownMs = completedEvents.reduce((s,e)=>s+(e.durationMins*60000),0);
-    const operatingMs = Math.max(0, spanMs - totalDownMs);
-    mtbfHrs = operatingMs > 0 ? (operatingMs / completedEvents.length / 3600000).toFixed(1) : null;
-  }
-  if (completedEvents.length) {
-    mttrMins = Math.round(completedEvents.reduce((s,e)=>s+e.durationMins,0) / completedEvents.length);
-  }
-
-  document.getElementById('dt-stats').innerHTML =
-    sc('s-red', ongoing.length, '🔴 Active Now') +
-    sc('s-amber', recent.length, 'Events (30d)') +
-    sc('s-blue', totalHrs + 'h', 'Total Downtime') +
-    sc('', avgMins + 'm', 'Avg Duration (MTTR)') +
-    (mtbfHrs !== null ? sc('s-green', mtbfHrs + 'h', 'MTBF') : '') +
-    (mttrMins !== null ? sc('s-amber', mttrMins + 'm', 'MTTR') : '');
-
-  // By system breakdown
-  const sysMap = {};
-  recent.filter(e=>e.durationMins).forEach(e => {
-    if (!sysMap[e.system]) sysMap[e.system] = {count:0, mins:0};
-    sysMap[e.system].count++;
-    sysMap[e.system].mins += e.durationMins;
-  });
-  const sysEntries = Object.entries(sysMap).sort((a,b) => b[1].mins - a[1].mins);
-  const maxMins = sysEntries.length ? sysEntries[0][1].mins : 1;
-
-  document.getElementById('dt-by-system').innerHTML = sysEntries.length
-    ? sysEntries.map(([sys, data]) => {
-        const pct = Math.round((data.mins / maxMins) * 100);
-        const hrs = (data.mins/60).toFixed(1);
-        return `<div style="margin-bottom:10px;">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-            <span style="font-weight:600;">${sys}</span>
-            <span style="font-family:'IBM Plex Mono',monospace;color:var(--muted);">${data.count} event${data.count!==1?'s':''} · ${hrs}h</span>
-          </div>
-          <div style="background:#eee;border-radius:4px;height:8px;overflow:hidden;">
-            <div style="background:var(--amber);height:100%;width:${pct}%;border-radius:4px;transition:width .5s;"></div>
-          </div>
-        </div>`;
-      }).join('')
-    : '<div class="empty"><div class="ei">✅</div><p>No downtime logged in last 30 days</p></div>';
-
-  // Events list
-  document.getElementById('dt-log-list').innerHTML = list.length
-    ? list.slice(0,20).map(e => {
-        const dur = e.durationMins ? `${Math.floor(e.durationMins/60)}h ${e.durationMins%60}m` : '⏳ Ongoing';
-        const col = e.ongoing ? '#e53e3e' : 'var(--green-mid)';
-        const linkedWOHtml = e.linkedWO
-          ? `<span style="display:inline-block;margin-top:5px;background:#e8f4fd;border:1px solid #3b82f6;border-radius:5px;padding:2px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#1a3a6b;cursor:pointer;" onclick="go('wo');woResetFilters()">🔧 ${e.linkedWO}</span>`
-          : '';
-        return `<div style="background:white;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);padding:12px 14px;margin-bottom:8px;border-left:4px solid ${col};">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
-            <div style="font-weight:700;font-size:13px;">${e.farm} · ${e.system}</div>
-            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${col};">${dur}</span>
-          </div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:3px;">${e.desc}</div>
-          <div style="font-size:11px;color:#aaa;">${e.date}</div>
-          ${linkedWOHtml}
-        </div>`;
-      }).join('')
-    : '<div class="empty"><div class="ei">⏱️</div><p>No downtime events logged yet</p></div>';
 }
 
 // ═══════════════════════════════════════════
