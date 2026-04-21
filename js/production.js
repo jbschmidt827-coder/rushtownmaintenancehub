@@ -1251,35 +1251,123 @@ function renderProdEggTrends() {
   el.innerHTML = '<div style="padding:20px;text-align:center;color:#a0c060;font-family:\'IBM Plex Mono\',monospace;">📈 Egg Trends — coming soon</div>';
 }
 
+let _walkDetailData = {}; // docId → full walk record
+
 function renderProdWalkHistory() {
   const el = document.getElementById('prod-sec-history');
   if (!el) return;
   el.innerHTML = '<div style="color:#aaa;font-family:\'IBM Plex Mono\',monospace;font-size:12px;margin-bottom:12px;">Loading walk history…</div>';
-  const farms = [{name:'Hegins',houses:8},{name:'Danville',houses:5}];
   const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
   db.collection('barnWalks').where('ts','>=',cutoff).orderBy('ts','desc').get().then(snap => {
     if (snap.empty) { el.innerHTML = '<div style="color:#888;padding:20px;text-align:center;">No walks in the last 30 days.</div>'; return; }
+    _walkDetailData = {};
     const rows = snap.docs.map(d => {
       const r = d.data();
-      const date = r.ts ? new Date(r.ts).toLocaleDateString() : '—';
-      const flags = r.flags && r.flags.length ? '<span style="color:#e53e3e;">⚑ '+r.flags.length+'</span>' : '<span style="color:#4caf50;">✓</span>';
-      return `<tr style="border-bottom:1px solid #1a2a1a;">
+      _walkDetailData[d.id] = r;
+      const date  = r.ts ? new Date(r.ts).toLocaleDateString() : '—';
+      const flags = r.flags && r.flags.length ? `<span style="color:#e53e3e;">⚑ ${r.flags.length}</span>` : '<span style="color:#4caf50;">✓</span>';
+      return `<tr onclick="openWalkDetail('${d.id}')" style="border-bottom:1px solid #1a2a1a;cursor:pointer;" onmouseover="this.style.background='#1a2a1a'" onmouseout="this.style.background=''">
         <td style="padding:8px 6px;color:#f0ead8;">${date}</td>
         <td style="padding:8px 6px;color:#7ab07a;">${r.farm||'—'}</td>
         <td style="padding:8px 6px;color:#aaa;">H${r.house||'—'}</td>
         <td style="padding:8px 6px;">${flags}</td>
         <td style="padding:8px 6px;color:#aaa;">${r.employee||'—'}</td>
+        <td style="padding:8px 6px;color:#3a6a8a;font-size:10px;">→</td>
       </tr>`;
     }).join('');
-    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+    el.innerHTML = `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6a4a;margin-bottom:8px;">Tap any row to see full details</div>
+      <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
       <thead><tr style="border-bottom:1px solid #2a4a2a;">
         <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Date</th>
         <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Farm</th>
         <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">House</th>
         <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Flags</th>
         <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Employee</th>
+        <th style="padding:6px;"></th>
       </tr></thead><tbody>${rows}</tbody></table>`;
   }).catch(e => { el.innerHTML = '<div style="color:#e53e3e;padding:20px;">Error: '+e.message+'</div>'; });
+}
+
+function openWalkDetail(id) {
+  const r = _walkDetailData[id];
+  if (!r) return;
+  const hasFlagsArr = r.flags && r.flags.length > 0;
+  const date = r.ts ? new Date(r.ts).toLocaleString() : (r.date || '—');
+  const yn = v => v === 'yes' ? '<span style="color:#e53e3e;">⚠ YES</span>' : v === 'no' ? '<span style="color:#4caf50;">✓ NO</span>' : v ? `<span style="color:#d69e2e;">${v}</span>` : '—';
+  const field = (label, val) => val != null && val !== '' && val !== '—'
+    ? `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a2a1a;">
+        <span style="color:#5a8a5a;font-size:11px;">${label}</span>
+        <span style="color:#f0ead8;font-size:11px;font-weight:600;text-align:right;max-width:60%;">${val}</span>
+       </div>` : '';
+
+  let html = `
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;overflow-y:auto;padding:16px;">
+  <div style="max-width:520px;margin:0 auto;background:#0d1a0d;border:1.5px solid ${hasFlagsArr?'#4a1a1a':'#1a3a1a'};border-radius:16px;padding:20px;">
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;">${r.farm} — House ${r.house}</div>
+        <div style="font-size:11px;color:#5a8a5a;margin-top:3px;">📅 ${date} · 👤 ${r.employee||'—'}</div>
+      </div>
+      <button onclick="closeWalkDetail()" style="background:#1a1a1a;border:1px solid #3a3a3a;border-radius:8px;padding:8px 14px;color:#888;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;flex-shrink:0;">✕ Close</button>
+    </div>
+    <!-- Status banner -->
+    <div style="background:${hasFlagsArr?'#1a0a0a':'#0a1a0a'};border:1px solid ${hasFlagsArr?'#e53e3e':'#4caf50'};border-radius:8px;padding:10px 14px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;color:${hasFlagsArr?'#e53e3e':'#4caf50'};">${hasFlagsArr?'⚠ '+r.flags.length+' Flag'+(r.flags.length!==1?'s':''):'✓ All Clear'}</div>
+      ${hasFlagsArr?`<div style="font-size:11px;color:#c07070;margin-top:6px;line-height:1.7;">${r.flags.map(f=>'• '+f).join('<br>')}</div>`:''}
+    </div>
+    <!-- Readings -->
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;color:#4a7a4a;text-transform:uppercase;margin-bottom:8px;">Readings</div>
+    <div style="background:#0a140a;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;">
+      ${field('Water PSI', r.waterPSI != null ? r.waterPSI + ' PSI' : null)}
+      ${field('House Temp', r.temp != null ? r.temp + '°F' : null)}
+      ${field('Feed Bin', r.feedBinReading != null ? r.feedBinReading + ' lbs' : null)}
+      ${field('Mortality Count', r.mortCount || null)}
+      ${field('Loose Birds', r.looseCount || null)}
+      ${field('Rodents Found', r.rodentCount || null)}
+      ${field('Fly Count', r.flyCount || null)}
+    </div>
+    <!-- Observations -->
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;color:#4a7a4a;text-transform:uppercase;margin-bottom:8px;">Observations</div>
+    <div style="background:#0a140a;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;">
+      ${field('Mortality Found', yn(r.mort))}
+      ${field('All Mortality Removed', yn(r.mortrem))}
+      ${field('Loose Birds', yn(r.loose))}
+      ${field('Feathering', r.feather||null)}
+      ${field('Air Quality', yn(r.air))}
+      ${field('Feeders', r.feed||null)}
+      ${field('Rodents', yn(r.rodent))}
+      ${field('Manure Dryers', r.dryers||null)}
+      ${field('Egg Belt', r.eggbelt||null)}
+      ${field('Manure Belts', r.manure||null)}
+      ${field('Standpipes', r.stand||null)}
+      ${field('Fly Traps', r.fly||null)}
+      ${field('House Doors', r.doors||null)}
+    </div>
+    ${r.checklist && Object.keys(r.checklist).length ? `
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;color:#4a7a4a;text-transform:uppercase;margin-bottom:8px;">Checklist <span style="color:${r.checklistFails>0?'#e53e3e':'#4caf50'};">(${r.checklistFails||0} fail${r.checklistFails!==1?'s':''})</span></div>
+    <div style="background:#0a140a;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;">
+      ${Object.entries(r.checklist).map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1a2a1a;font-size:11px;">
+        <span style="color:#5a8a5a;max-width:70%;">${k}</span>
+        <span style="color:${v==='pass'||v==='ok'?'#4caf50':v==='fail'?'#e53e3e':'#d69e2e'};font-weight:700;">${(v||'').toUpperCase()}</span>
+      </div>`).join('')}
+    </div>` : ''}
+    ${r.notes ? `<div style="background:#0a1a0a;border-radius:8px;padding:10px 12px;font-size:12px;color:#7ab07a;font-style:italic;font-family:'IBM Plex Mono',monospace;">📝 ${r.notes}</div>` : ''}
+  </div></div>`;
+
+  let overlay = document.getElementById('walk-detail-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'walk-detail-overlay';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = html;
+  overlay.style.display = 'block';
+}
+
+function closeWalkDetail() {
+  const el = document.getElementById('walk-detail-overlay');
+  if (el) el.style.display = 'none';
 }
 
 function renderProdBiosec() {
