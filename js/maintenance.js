@@ -485,10 +485,20 @@ async function woSetStatus(fbId, newStatus) {
   setSyncDot('live');
 }
 
+// Fallback names if staffList hasn't loaded yet
 const SITE_TECHS = {
   Hegins:   ['Nathan','Adam','Carlos','Randy','Steve'],
   Danville: ['Josh','Cain','Celia','Deb','Steve'],
+  Rushtown: [],
 };
+
+function _crewForFarm(farm) {
+  if (typeof staffList !== 'undefined' && staffList.length) {
+    const crew = staffList.filter(s => s.active !== false && (!farm || s.location === farm));
+    if (crew.length) return crew.map(s => s.name).filter(Boolean).sort();
+  }
+  return farm ? (SITE_TECHS[farm] || []) : Object.values(SITE_TECHS).flat();
+}
 
 function loadHouses() {
   const farm = document.getElementById('wo-farm').value;
@@ -502,11 +512,12 @@ function loadHouses() {
   AREAS.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;ag.appendChild(o);});
   sel.appendChild(hg); sel.appendChild(ag);
 
+  const techs = _crewForFarm(farm);
+
   // Update tech dropdown to show only this site's crew
   const techSel = document.getElementById('wo-tech');
   const currentTech = techSel.value;
-  techSel.innerHTML = '<option value="">— Select Tech —</option>';
-  const techs = farm ? SITE_TECHS[farm] : ['Adam','Nathan','Carlos','Randy','Josh','Cain','Celia','Deb','Steve'];
+  techSel.innerHTML = '<option value="">— Select Name —</option>';
   techs.forEach(name => {
     const o = document.createElement('option');
     o.value = name; o.textContent = name;
@@ -1504,10 +1515,10 @@ function openCloseout(wo) {
   document.getElementById('closeout-wo-info').textContent = `${wo.id} · ${wo.farm} · ${wo.house} · ${wo.problem}`;
   closeoutPartsSelected = {};
 
-  // Tech dropdown — show farm crew
+  // Tech dropdown — show farm crew from live staff directory
   const techSel = document.getElementById('closeout-tech');
   techSel.innerHTML = '<option value="">— Who completed this? —</option>';
-  (SITE_TECHS[wo.farm]||[]).forEach(t => {
+  _crewForFarm(wo.farm).forEach(t => {
     const o = document.createElement('option');
     o.value = t; o.textContent = t;
     if (t === wo.tech) o.selected = true;
