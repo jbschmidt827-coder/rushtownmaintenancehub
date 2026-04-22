@@ -1096,7 +1096,6 @@ function refreshCurrentPanel() {
     else if (s==='parts')   renderParts();
     else if (s==='log')     renderLog();
     else if (s==='assets')  renderAssets();
-    else if (s==='downtime')renderDowntime();
     return;
   }
   // Packaging sub-sections
@@ -1119,7 +1118,7 @@ function refreshCurrentPanel() {
 function go(tab) {
   const fab = document.getElementById('fab-btn');
   // Backward compat aliases
-  const maintSections = {wo:'wo', pm:'pm', parts:'parts', downtime:'downtime', log:'log', assets:'assets', wi:'wi', '5s':'5s', calendar:'calendar'};
+  const maintSections = {wo:'wo', pm:'pm', parts:'parts', log:'log', assets:'assets', wi:'wi', '5s':'5s', calendar:'calendar'};
   if (maintSections[tab] !== undefined) {
     go('maint');
     setTimeout(()=>goMaintSection(tab), 50);

@@ -2843,7 +2843,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button class="sub-btn active" data-section="wo"       onclick="goMaintSection('wo')"       data-i18n="sub.wo">🔧 Work Orders</button>
     <button class="sub-btn"        data-section="pm"       onclick="goMaintSection('pm')"       data-i18n="sub.pm">📋 PM Schedule</button>
     <button class="sub-btn"        data-section="parts"    onclick="goMaintSection('parts')"    data-i18n="sub.parts">🔩 Parts <span id="parts-alert-badge" style="display:none;background:#e53e3e;color:white;border-radius:50%;font-size:10px;padding:1px 5px;margin-left:3px;"></span></button>
-    <button class="sub-btn"        data-section="downtime" onclick="goMaintSection('downtime')" data-i18n="sub.downtime">⏱️ Downtime</button>
     <button class="sub-btn"        data-section="assets"   onclick="goMaintSection('assets')"   data-i18n="sub.assets">🏭 Assets</button>
     <button class="sub-btn"        data-section="wi"       onclick="goMaintSection('wi')"       data-i18n="sub.wi">📖 Work Instructions</button>
     <button class="sub-btn"        data-section="log"      onclick="goMaintSection('log')"      data-i18n="sub.log">📁 Log</button>
@@ -3012,33 +3011,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="pill" onclick="partsFilter('General',this)">🔧 General</button>
     </div>
     <div id="parts-container"></div>
-  </div>
-
-  <!-- Downtime section -->
-  <div class="maint-section" id="maint-downtime">
-    <div class="section-sub">Log equipment downtime — track trends by farm and system</div>
-    <div class="pill-bar">
-      <button class="pill active" onclick="dtFarmFilter('all',this)">All Farms</button>
-      <button class="pill" onclick="dtFarmFilter('Hegins',this)">📍 Hegins</button>
-      <button class="pill" onclick="dtFarmFilter('Danville',this)">📍 Danville</button>
-    </div>
-    <div id="dt-stats" class="stats-grid g4" style="margin-bottom:16px;"></div>
-    <div style="background:#fff8e1;border:1px solid var(--amber);border-radius:10px;padding:14px 16px;margin-bottom:16px;">
-      <div style="font-weight:700;font-size:13px;margin-bottom:10px;">➕ Log Downtime Event</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-        <div><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Farm</label><select id="dt-farm" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;" onchange="loadDtHouses();populateDtWOList()"><option value="">— Select Farm —</option><option>Hegins</option><option>Danville</option></select></div>
-        <div><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">System / Area</label><select id="dt-system" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;"><option value="">— Select System —</option><option>Ventilation / Fans</option><option>Watering System</option><option>Feed System</option><option>Heating / Brooders</option><option>Manure System</option><option>Egg Collection</option><option>Electrical</option><option>Generator</option><option>Other</option></select></div>
-        <div><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Start Time</label><input type="datetime-local" id="dt-start" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></div>
-        <div><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">End Time (leave blank if ongoing)</label><input type="datetime-local" id="dt-end" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></div>
-      </div>
-      <div style="margin-bottom:10px;"><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Description / Root Cause</label><textarea id="dt-desc" placeholder="What failed? What caused it?" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;min-height:50px;resize:vertical;"></textarea></div>
-      <div style="margin-bottom:10px;"><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Linked Work Order # (optional)</label><select id="dt-linked-wo" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;" onclick="populateDtWOList()"><option value="">— None —</option></select></div>
-      <button onclick="submitDowntime()" style="width:100%;padding:12px;background:var(--green-mid);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">✓ LOG DOWNTIME</button>
-    </div>
-    <div class="recent-hdr">📊 Downtime by System (Last 30 Days)</div>
-    <div id="dt-by-system" style="margin-bottom:16px;"></div>
-    <div class="recent-hdr">📋 Recent Downtime Events</div>
-    <div id="dt-log-list"></div>
   </div>
 
   <!-- Assets section -->
