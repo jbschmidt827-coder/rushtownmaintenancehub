@@ -1096,7 +1096,6 @@ function refreshCurrentPanel() {
     else if (s==='parts')   renderParts();
     else if (s==='log')     renderLog();
     else if (s==='assets')  renderAssets();
-    else if (s==='downtime')renderDowntime();
     return;
   }
   // Packaging sub-sections
