@@ -2413,26 +2413,24 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <!-- Equipment -->
   <div class="bw-card">
     <div class="bw-card-title">⚙️ Equipment</div>
-    <div style="margin-bottom:12px;">
-      <div class="bw-row-label">Manure Dryers</div>
+    <div>
+      <div class="bw-row-label">House Doors</div>
       <div class="bw-yn-row">
-        <button class="bw-yn-btn" id="bw-dryers-on"  onclick="bwSet('dryers','on')">🟢 ON</button>
-        <button class="bw-yn-btn" id="bw-dryers-off" onclick="bwSet('dryers','off')">🔴 OFF</button>
+        <button class="bw-yn-btn" id="bw-doors-open"   onclick="bwSet('doors','open')">Open</button>
+        <button class="bw-yn-btn" id="bw-doors-closed" onclick="bwSet('doors','closed')">Closed</button>
       </div>
     </div>
+  </div>
+
+  <!-- Bird Condition -->
+  <div class="bw-card">
+    <div class="bw-card-title">🐦 Bird Condition</div>
     <div style="margin-bottom:12px;">
       <div class="bw-row-label">Feathering condition</div>
       <div class="bw-3-row">
         <button class="bw-yn-btn" id="bw-feather-good" onclick="bwSet('feather','good')">✅ Good</button>
         <button class="bw-yn-btn" id="bw-feather-fair" onclick="bwSet('feather','fair')">⚠️ Fair</button>
         <button class="bw-yn-btn" id="bw-feather-poor" onclick="bwSet('feather','poor')">❌ Poor</button>
-      </div>
-    </div>
-    <div style="margin-bottom:12px;">
-      <div class="bw-row-label">House Doors</div>
-      <div class="bw-yn-row">
-        <button class="bw-yn-btn" id="bw-doors-open"   onclick="bwSet('doors','open')">Open</button>
-        <button class="bw-yn-btn" id="bw-doors-closed" onclick="bwSet('doors','closed')">Closed</button>
       </div>
     </div>
     <div>
@@ -2488,8 +2486,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
   <!-- Belts -->
   <div class="bw-card">
-    <div class="bw-card-title">🥚 Belts</div>
-    <div style="margin-bottom:12px;">
+    <div class="bw-card-title">🥚 Egg Belt</div>
+    <div>
       <div class="bw-row-label">Egg Belt Working?</div>
       <div class="bw-yn-row">
         <button class="bw-yn-btn" id="bw-eggbelt-working" onclick="bwSet('eggbelt','working')">✅ Working</button>
@@ -2499,19 +2497,13 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         🔧 Work Order will be auto-created when you submit.
       </div>
     </div>
-    <div style="margin-bottom:12px;">
-      <div class="bw-row-label">Manure Belts</div>
-      <div class="bw-yn-row">
-        <button class="bw-yn-btn" id="bw-manure-run"  onclick="bwSet('manure','run')">✅ Running</button>
-        <button class="bw-yn-btn" id="bw-manure-stop" onclick="bwSet('manure','stop')">❌ Not Running</button>
-      </div>
-    </div>
   </div>
 
-  <!-- Pest -->
-  <div class="bw-card">
+  <!-- Pest (Friday = rodent, Tuesday = fly) -->
+  <div class="bw-card" id="bw-pest-card" style="display:none;">
     <div class="bw-card-title">🐀 Pest Control</div>
-    <div style="margin-bottom:12px;">
+    <div id="bw-pest-rodent-section" style="display:none;margin-bottom:12px;">
+      <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;margin-bottom:8px;letter-spacing:1px;">FRIDAY — RODENT CHECK</div>
       <div class="bw-row-label">Rodents present?</div>
       <div class="bw-yn-row">
         <button class="bw-yn-btn" id="bw-rodent-yes" onclick="bwSet('rodent','yes')">❌ YES</button>
@@ -2522,7 +2514,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <input type="number" id="bw-rodent-count" class="bw-input" placeholder="Enter count" min="0">
       </div>
     </div>
-    <div style="margin-top:12px;">
+    <div id="bw-pest-fly-section" style="display:none;">
+      <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;margin-bottom:8px;letter-spacing:1px;">TUESDAY — FLY CHECK</div>
       <div class="bw-row-label">Fly trap activity?</div>
       <div class="bw-yn-row">
         <button class="bw-yn-btn" id="bw-fly-yes" onclick="bwSet('fly','yes')">⚠️ YES</button>
@@ -2708,24 +2701,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <div>
         <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">House Temp (°F)</div>
         <input type="number" id="mw-temp" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="e.g. 72" oninput="checkMWReady()">
-      </div>
-    </div>
-    <div>
-      <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">🌾 Feed Meter Reading (lbs) — updates bin level instantly</div>
-      <input type="number" id="mw-feed-meter" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter total lbs remaining" min="0" onchange="liveUpdateFeedBin('mw-feed-meter','mw-feed-meter-status',_mwFarm,_mwHouse)">
-      <div id="mw-feed-meter-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:6px;min-height:18px;"></div>
-    </div>
-    <!-- Bin A / Bin B -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
-      <div>
-        <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">🌾 Bin A (tons)</div>
-        <input type="number" id="mw-bin-a" class="bw-input" style="border-color:#1e3a6a;background:#091529;text-align:center;font-size:18px;" placeholder="0.0" min="0" step="0.1" oninput="mwCheckBinLevel('mw-bin-a','mw-bin-a-status')">
-        <div id="mw-bin-a-status" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:4px;min-height:14px;text-align:center;"></div>
-      </div>
-      <div>
-        <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">🌾 Bin B (tons)</div>
-        <input type="number" id="mw-bin-b" class="bw-input" style="border-color:#1e3a6a;background:#091529;text-align:center;font-size:18px;" placeholder="0.0" min="0" step="0.1" oninput="mwCheckBinLevel('mw-bin-b','mw-bin-b-status')">
-        <div id="mw-bin-b-status" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:4px;min-height:14px;text-align:center;"></div>
       </div>
     </div>
   </div>
