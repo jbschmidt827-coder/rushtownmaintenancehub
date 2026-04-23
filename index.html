@@ -2686,8 +2686,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <div style="background:#0d1f3a;border:1px solid #1e3a6a;border-radius:14px;padding:18px 16px;margin-bottom:14px;">
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6a90d9;margin-bottom:12px;">👤 Lead / WNO Name</div>
     <input type="text" id="mw-employee" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter your name..." oninput="checkMWReady()" list="staff-datalist" autocomplete="off">
-    <div style="font-size:11px;color:#6a90d9;margin:14px 0 6px;">👥 Employees Present at This Barn</div>
-    <input type="number" id="mw-ee-count" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Headcount" min="0" oninput="checkMWReady()">
+    <div style="font-size:11px;color:#6a90d9;margin:14px 0 8px;">👥 Employees Present at This Barn</div>
+    <div id="mw-ee-select" style="max-height:220px;overflow-y:auto;"></div>
   </div>
 
   <!-- Readings -->

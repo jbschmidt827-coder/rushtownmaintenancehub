@@ -774,12 +774,32 @@ async function submitBarnWalk() {
 // ── Morning Walk (Lead / WNO) ──
 var _mwFarm = '', _mwHouse = 0, _mwData = {};
 
+function mwRenderEESelect(farm) {
+  const container = document.getElementById('mw-ee-select');
+  if (!container) return;
+  const active = (typeof staffList !== 'undefined' ? staffList : [])
+    .filter(s => s.active !== false && (!farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All'))
+    .sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  if (!active.length) {
+    container.innerHTML = '<div style="font-size:12px;color:#6a90d9;padding:6px 0;font-family:\'IBM Plex Mono\',monospace;">No staff loaded yet — try again in a moment.</div>';
+    return;
+  }
+  container.innerHTML = active.map(s =>
+    `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#091529;border:1.5px solid #1e3a6a;border-radius:8px;margin-bottom:6px;cursor:pointer;font-size:13px;color:#c0d8f0;">
+      <input type="checkbox" value="${(s.name||'').replace(/"/g,'&quot;')}" style="width:16px;height:16px;accent-color:#3b82f6;cursor:pointer;flex-shrink:0;">
+      <span style="flex:1;">${s.name||'Unknown'}</span>
+      ${s.role ? `<span style="font-size:10px;color:#4a7aaa;font-family:'IBM Plex Mono',monospace;">${s.role}</span>` : ''}
+    </label>`
+  ).join('');
+}
+
 function openMorningWalk(farm, house) {
   _mwFarm = farm; _mwHouse = house; _mwData = {};
   document.getElementById('mw-title').textContent = farm + ' — Barn ' + house;
-  ['mw-employee','mw-water','mw-temp','mw-notes','mw-ee-count'].forEach(id => {
+  ['mw-employee','mw-water','mw-temp','mw-notes'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  mwRenderEESelect(farm);
   document.querySelectorAll('#morning-walk-modal .bw-yn-btn').forEach(b => b.className = 'bw-yn-btn');
   document.getElementById('mw-submit-btn').disabled = true;
   document.getElementById('morning-walk-modal').style.display = 'block';
@@ -827,7 +847,8 @@ async function submitMorningWalk() {
   const notes    = document.getElementById('mw-notes').value.trim();
   const waterPSI = Number(document.getElementById('mw-water').value) || 0;
   const temp     = Number(document.getElementById('mw-temp').value) || 0;
-  const eeCount  = document.getElementById('mw-ee-count').value !== '' ? Number(document.getElementById('mw-ee-count').value) : null;
+  const eeNames  = Array.from(document.querySelectorAll('#mw-ee-select input[type="checkbox"]:checked')).map(cb => cb.value);
+  const eeCount  = eeNames.length || null;
 
   const flags = [];
   if (waterPSI < 10 || waterPSI > 60) flags.push('Water pressure out of range (' + waterPSI + ' PSI)');
@@ -837,7 +858,7 @@ async function submitMorningWalk() {
 
   const record = {
     farm: _mwFarm, house: String(_mwHouse), employee, notes, flags,
-    waterPSI, temp, eeCount,
+    waterPSI, temp, eeCount, eeNames,
     feed: _mwData.feed, fans: _mwData.fans, blowers: _mwData.blowers,
     date: new Date().toISOString().slice(0,10),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
