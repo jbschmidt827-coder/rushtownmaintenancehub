@@ -3177,10 +3177,11 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <div class="fg"><label>Line / Area</label><input type="text" id="pf-line" placeholder="e.g. Line 1"></div>
         <div class="fg"><label>Shift</label><select id="pf-shift"><option>AM</option><option>PM</option><option>Night</option></select></div>
         <div class="fg"><label>Entered By</label><input type="text" id="pf-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
+        <div class="fg"><label>Cracked / Damaged (dz)</label><input type="number" id="pf-dmg" min="0" placeholder="0" oninput="calcPack()"></div>
         <div class="fg ops-form-full"><label>Notes</label><input type="text" id="pf-notes" placeholder="Optional notes"></div>
         <div class="fg ops-form-full" id="pf-calc-row" style="display:none;background:#0f1f0f;border:1.5px solid #2a5a2a;border-radius:10px;padding:12px 14px;">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;color:#4caf50;text-transform:uppercase;margin-bottom:10px;">⚡ Auto-Calculated</div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
             <div style="text-align:center;">
               <div style="font-size:11px;color:#7ab07a;margin-bottom:3px;font-family:'IBM Plex Mono',monospace;">Run Time</div>
               <div id="pf-calc-runtime" style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">—</div>
@@ -3192,6 +3193,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
             <div style="text-align:center;">
               <div style="font-size:11px;color:#7ab07a;margin-bottom:3px;font-family:'IBM Plex Mono',monospace;">Dz / House</div>
               <div id="pf-calc-dzhouse" style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">—</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:11px;color:#e57373;margin-bottom:3px;font-family:'IBM Plex Mono',monospace;">Damage %</div>
+              <div id="pf-calc-dmgpct" style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">—</div>
             </div>
           </div>
         </div>
