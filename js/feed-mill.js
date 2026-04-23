@@ -1198,14 +1198,10 @@ function calcPack() {
   const runLabel=runH>0?`${runH}h ${runM}m`:`${runM}m`;
   const dzhr=runMin>0?Math.round((qty/(runMin/60))*10)/10:0;
   const dzhouse=houses>0?Math.round((qty/houses)*10)/10:0;
-  const dmg=parseInt(document.getElementById('pf-dmg')?.value||'0')||0;
-  const dmgPct=qty>0?Math.round((dmg/qty)*1000)/10:0;
   if(row)row.style.display='block';
   document.getElementById('pf-calc-runtime').textContent=runLabel;
   document.getElementById('pf-calc-dzhr').textContent=dzhr?fmtNum(dzhr):'—';
   document.getElementById('pf-calc-dzhouse').textContent=dzhouse?fmtNum(dzhouse):'—';
-  const dmgEl=document.getElementById('pf-calc-dmgpct');
-  if(dmgEl){dmgEl.textContent=dmg?dmgPct+'%':'—';dmgEl.style.color=dmgPct>5?'#e53e3e':dmgPct>2?'#d69e2e':'#f0ead8';}
 }
 
 function renderPacking() {
@@ -1264,7 +1260,6 @@ async function savePacking() {
   const stops=parseInt(document.getElementById('pf-stops')?.value||'0')||0;
   const line=document.getElementById('pf-line')?.value?.trim()||'', shift=document.getElementById('pf-shift')?.value||'AM';
   const by=document.getElementById('pf-by')?.value?.trim()||'Unknown', notes=document.getElementById('pf-notes')?.value?.trim()||'';
-  const dmgDz=parseInt(document.getElementById('pf-dmg')?.value||'0')||0;
   if (!date||!product||!qty) { alert('Date, Product Type, and Total Dz are required.'); return; }
   // Compute run time and rates
   let runMin=0, dzPerHr=0, dzPerHouse=0;
@@ -1276,8 +1271,7 @@ async function savePacking() {
     if(runMin>0) dzPerHr=Math.round((qty/(runMin/60))*10)/10;
   }
   if(houses>0) dzPerHouse=Math.round((qty/houses)*10)/10;
-  const dmgPct=qty>0?Math.round((dmgDz/qty)*1000)/10:0;
-  const record={date,product,qty,unit,startTime,endTime,breakMin,downtimeMin,runMin,houses,stops,dzPerHr,dzPerHouse,dmgDz,dmgPct,line,shift,by,notes,ts:Date.now()};
+  const record={date,product,qty,unit,startTime,endTime,breakMin,downtimeMin,runMin,houses,stops,dzPerHr,dzPerHouse,line,shift,by,notes,ts:Date.now()};
   try {
     const ref=await db.collection('opsPacking').add(record);
     record._fbId=ref.id; opsPackData.unshift(record);
@@ -1288,7 +1282,7 @@ async function savePacking() {
 
 function clearPackForm() {
   const t=opsToday(),s=shiftFromTime();
-  ['pf-date','pf-product','pf-qty','pf-unit','pf-start','pf-end','pf-break','pf-downtime','pf-houses','pf-stops','pf-line','pf-shift','pf-by','pf-dmg','pf-notes'].forEach(id=>{
+  ['pf-date','pf-product','pf-qty','pf-unit','pf-start','pf-end','pf-break','pf-downtime','pf-houses','pf-stops','pf-line','pf-shift','pf-by','pf-notes'].forEach(id=>{
     const el=document.getElementById(id);if(!el)return;
     if(id==='pf-date')el.value=t; else if(id==='pf-shift')el.value=s; else if(id==='pf-unit')el.value='Dozen'; else el.value='';
   });

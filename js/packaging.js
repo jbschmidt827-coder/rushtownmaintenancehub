@@ -183,6 +183,122 @@ function goPkgSection(section) {
     if (!document.getElementById('cool-date').value) document.getElementById('cool-date').value = today;
     renderCooler();
   }
+  if (section === 'kpi-dash') {
+    pkgKpiRange('7', document.querySelector('#pkg-kpi-dash .pill'));
+  }
+}
+
+// ── KPI Dashboard ──────────────────────────────
+const PKG_STD_DZHR    = 180;   // packaging efficiency standard (dz/hr)
+const PKG_STD_QUALITY = 93;    // egg quality Grade A% standard
+const PKG_STD_HENDAY  = 90;    // hen-day production standard (%)
+
+function pkgKpiRange(days, btn) {
+  document.querySelectorAll('#pkg-kpi-dash .pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const today = new Date();
+  const from  = new Date(today); from.setDate(from.getDate() - (parseInt(days)||7) + 1);
+  window._kpiDays = parseInt(days)||7;
+  window._kpiFrom = from.toISOString().slice(0,10);
+  window._kpiTo   = today.toISOString().slice(0,10);
+  renderPkgKpiDash();
+}
+
+function renderPkgKpiDash() {
+  const el = document.getElementById('pkg-kpi-content');
+  if (!el) return;
+  const from = window._kpiFrom || '';
+  const to   = window._kpiTo   || '';
+  const days = window._kpiDays || 7;
+
+  // ── Efficiency data ──
+  const effRows = (opsPackData||[]).filter(r => r.date >= from && r.date <= to && r.runMin > 0);
+  const avgDzHr = effRows.length
+    ? Math.round(effRows.reduce((s,r) => s+(Number(r.dzPerHr)||0), 0) / effRows.length)
+    : null;
+  const effPct  = avgDzHr !== null ? Math.round((avgDzHr / PKG_STD_DZHR) * 100) : null;
+
+  // ── Egg quality data ──
+  const qRows   = (opsEggQuality||[]).filter(r => r.date >= from && r.date <= to);
+  const avgQual = qRows.length
+    ? Math.round(qRows.reduce((s,r) => s+(Number(r.gradeAPct)||0), 0) / qRows.length * 10) / 10
+    : null;
+  const qualPct = avgQual !== null ? Math.round((avgQual / PKG_STD_QUALITY) * 100) : null;
+
+  // ── Hen-day production (from opsEggData if available) ──
+  const eggRows = (opsEggData||[]).filter(r => r.date >= from && r.date <= to);
+  const totalEggs = eggRows.reduce((s,r) => s+(Number(r.eggs)||0), 0);
+  const birds     = 150000; // EGG_BIRDS_PER_BARN
+  const henDayPct = days > 0 && totalEggs > 0
+    ? Math.round((totalEggs / (birds * days)) * 100 * 10) / 10
+    : null;
+
+  const kpiCard = (label, value, unit, std, stdLabel, pct, color, note) => `
+    <div style="background:var(--card);border:2px solid ${color}22;border-radius:14px;padding:20px 18px;flex:1;min-width:220px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${color};margin-bottom:12px;">${label}</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:42px;font-weight:700;color:${color};line-height:1;">${value !== null ? value + unit : '—'}</div>
+      <div style="margin:10px 0 4px;background:#ffffff18;border-radius:6px;height:8px;overflow:hidden;">
+        <div style="height:100%;width:${Math.min(pct||0,100)}%;background:${color};border-radius:6px;transition:width .4s;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+        <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">Standard: ${stdLabel}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${color};">${pct !== null ? pct + '% of target' : 'No data'}</div>
+      </div>
+      ${note ? `<div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'IBM Plex Mono',monospace;">${note}</div>` : ''}
+    </div>`;
+
+  const effColor  = avgDzHr === null ? '#6b7280' : avgDzHr >= PKG_STD_DZHR ? '#4caf50' : avgDzHr >= PKG_STD_DZHR * 0.9 ? '#f59e0b' : '#e53e3e';
+  const qualColor = avgQual === null ? '#6b7280' : avgQual >= PKG_STD_QUALITY ? '#4caf50' : avgQual >= PKG_STD_QUALITY * 0.97 ? '#f59e0b' : '#e53e3e';
+  const hdColor   = henDayPct === null ? '#6b7280' : henDayPct >= PKG_STD_HENDAY ? '#4caf50' : henDayPct >= PKG_STD_HENDAY * 0.95 ? '#f59e0b' : '#e53e3e';
+
+  // Daily trend bars
+  const dateRange = Array.from({length:days},(_,i)=>{
+    const d=new Date(); d.setDate(d.getDate()-i); return d.toISOString().slice(0,10);
+  }).reverse();
+
+  const effByDay  = {};
+  effRows.forEach(r => { if(!effByDay[r.date]){effByDay[r.date]={sum:0,n:0};} effByDay[r.date].sum+=Number(r.dzPerHr)||0; effByDay[r.date].n++; });
+  const qualByDay = {};
+  qRows.forEach(r => { if(!qualByDay[r.date]){qualByDay[r.date]={sum:0,n:0};} qualByDay[r.date].sum+=Number(r.gradeAPct)||0; qualByDay[r.date].n++; });
+
+  const sparkBar = (byDay, std, color) => {
+    const vals = dateRange.map(d => byDay[d] ? Math.round(byDay[d].sum/byDay[d].n*10)/10 : null);
+    const max  = Math.max(...vals.filter(v=>v!==null), std);
+    return `<div style="display:flex;align-items:flex-end;gap:4px;height:50px;margin-top:12px;">
+      ${dateRange.map((d,i)=>{
+        const v=vals[i];
+        const h=v!==null?Math.max(4,Math.round((v/max)*50)):4;
+        const c=v===null?'#374151':v>=std?'#4caf50':v>=std*0.95?'#f59e0b':'#e53e3e';
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <div title="${d}: ${v!==null?v:'No data'}" style="width:100%;height:${h}px;background:${c};border-radius:2px 2px 0 0;"></div>
+          <div style="font-size:7px;color:#6b7280;font-family:'IBM Plex Mono',monospace;">${d.slice(5)}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  };
+
+  el.innerHTML = `
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;">
+      📊 ${days}-Day Performance vs Standards
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+      ${kpiCard('📈 Packaging Efficiency', avgDzHr, ' dz/hr', PKG_STD_DZHR, PKG_STD_DZHR+' dz/hr', effPct, effColor,
+        effRows.length ? effRows.length+' run'+( effRows.length!==1?'s':'')+' logged' : 'No timed runs in range')}
+      ${kpiCard('🏅 Egg Quality (Grade A)', avgQual, '%', PKG_STD_QUALITY, PKG_STD_QUALITY+'%', qualPct, qualColor,
+        qRows.length ? qRows.length+' grade-out'+( qRows.length!==1?'s':'')+' logged' : 'No quality records in range')}
+      ${kpiCard('🐔 Hen-Day Production', henDayPct, '%', PKG_STD_HENDAY, PKG_STD_HENDAY+'%', henDayPct!==null?Math.round((henDayPct/PKG_STD_HENDAY)*100):null, hdColor,
+        henDayPct!==null ? fmtNum(totalEggs)+' eggs logged' : 'No egg data in range')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#4caf50;margin-bottom:4px;">📈 Efficiency Trend</div>
+        ${sparkBar(effByDay, PKG_STD_DZHR, '#4caf50')}
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#3b82f6;margin-bottom:4px;">🏅 Quality Trend</div>
+        ${sparkBar(qualByDay, PKG_STD_QUALITY, '#3b82f6')}
+      </div>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════
