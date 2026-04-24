@@ -1186,7 +1186,8 @@ function calcPack() {
   const brk=parseInt(document.getElementById('pf-break')?.value||'0')||0;
   const down=parseInt(document.getElementById('pf-downtime')?.value||'0')||0;
   const qty=parseInt(document.getElementById('pf-qty')?.value||'0')||0;
-  const houses=parseInt(document.getElementById('pf-houses')?.value||'0')||0;
+  const houseList=typeof getPackHouses==='function'?getPackHouses():[];
+  const houses=houseList.length||parseInt(document.getElementById('pf-houses')?.value||'0')||0;
   const row=document.getElementById('pf-calc-row');
   if (!start||!end) { if(row)row.style.display='none'; return; }
   const [sh,sm]=start.split(':').map(Number);
@@ -1222,7 +1223,7 @@ function renderPacking() {
     sc('s-red',data.length,'# Entries');
   const tbl=document.getElementById('pack-table'); if(!tbl)return;
   if (!data.length) { tbl.innerHTML='<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;">No entries for this date.</td></tr>'; return; }
-  let html='<thead><tr><th>Product</th><th>Total Dz</th><th>Start</th><th>End</th><th>Break</th><th>Downtime</th><th>Run Time</th><th>Dz/Hr</th><th>Dz/House</th><th>Houses</th><th>Stops</th><th>Shift</th><th>By</th><th></th></tr></thead><tbody>';
+  let html='<thead><tr><th>Product</th><th>Total Dz</th><th>Start</th><th>End</th><th>Break</th><th>Downtime</th><th>Run Time</th><th>Dz/Hr</th><th>Dz/House</th><th>Houses</th><th>Stops</th><th>Broken Eggs</th><th>Shift</th><th>By</th><th></th></tr></thead><tbody>';
   let tot=0;
   data.forEach(r=>{
     tot+=Number(r.qty)||0;
@@ -1241,12 +1242,13 @@ function renderPacking() {
       <td style="font-weight:700;color:#4caf50;">${r.dzPerHouse?fmtNum(r.dzPerHouse):'—'}</td>
       <td>${r.houses||'—'}</td>
       <td style="font-weight:700;">${r.stops||'—'}</td>
+      <td style="font-weight:700;color:#e53e3e;">${r.brokenEggs||'—'}</td>
       <td><span class="badge ${sc2}" style="font-size:9px;">${r.shift}</span></td>
       <td>${r.by||'—'}</td>
       <td><button class="ops-action-btn danger" onclick="deletePacking('${r._fbId}')">✕</button></td>
     </tr>`;
   });
-  html+=`<tr class="total-row"><td>TOTAL</td><td>${fmtNum(tot)}</td><td colspan="11"></td></tr></tbody>`;
+  html+=`<tr class="total-row"><td>TOTAL</td><td>${fmtNum(tot)}</td><td colspan="12"></td></tr></tbody>`;
   tbl.innerHTML=html;
 }
 
@@ -1256,9 +1258,10 @@ async function savePacking() {
   const startTime=document.getElementById('pf-start')?.value||'', endTime=document.getElementById('pf-end')?.value||'';
   const breakMin=parseInt(document.getElementById('pf-break')?.value||'0')||0;
   const downtimeMin=parseInt(document.getElementById('pf-downtime')?.value||'0')||0;
-  const houses=parseInt(document.getElementById('pf-houses')?.value||'0')||0;
+  const houseList=typeof getPackHouses==='function'?getPackHouses():[];
+  const houses=houseList.length||parseInt(document.getElementById('pf-houses')?.value||'0')||0;
   const stops=parseInt(document.getElementById('pf-stops')?.value||'0')||0;
-  const line=document.getElementById('pf-line')?.value?.trim()||'', shift=document.getElementById('pf-shift')?.value||'AM';
+  const brokenEggs=parseInt(document.getElementById('pf-line')?.value||'0')||0, shift=document.getElementById('pf-shift')?.value||'AM';
   const by=document.getElementById('pf-by')?.value?.trim()||'Unknown', notes=document.getElementById('pf-notes')?.value?.trim()||'';
   if (!date||!product||!qty) { alert('Date, Product Type, and Total Dz are required.'); return; }
   // Compute run time and rates
@@ -1271,7 +1274,7 @@ async function savePacking() {
     if(runMin>0) dzPerHr=Math.round((qty/(runMin/60))*10)/10;
   }
   if(houses>0) dzPerHouse=Math.round((qty/houses)*10)/10;
-  const record={date,product,qty,unit,startTime,endTime,breakMin,downtimeMin,runMin,houses,stops,dzPerHr,dzPerHouse,line,shift,by,notes,ts:Date.now()};
+  const record={date,product,qty,unit,startTime,endTime,breakMin,downtimeMin,runMin,houses,houseList,stops,dzPerHr,dzPerHouse,brokenEggs,shift,by,notes,ts:Date.now()};
   try {
     const ref=await db.collection('opsPacking').add(record);
     record._fbId=ref.id; opsPackData.unshift(record);
@@ -1286,6 +1289,9 @@ function clearPackForm() {
     const el=document.getElementById(id);if(!el)return;
     if(id==='pf-date')el.value=t; else if(id==='pf-shift')el.value=s; else if(id==='pf-unit')el.value='Dozen'; else el.value='';
   });
+  // Reset dynamic house inputs to a single empty field
+  const houseList=document.getElementById('pf-houses-list');
+  if(houseList){houseList.innerHTML='<input type="text" class="pf-house-input" placeholder="House #" style="width:90px;" oninput="calcPack()">';}
   const row=document.getElementById('pf-calc-row');if(row)row.style.display='none';
 }
 
