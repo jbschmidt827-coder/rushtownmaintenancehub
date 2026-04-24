@@ -358,7 +358,8 @@ function bwInitChecklist() {
   });
   document.querySelectorAll('#bw-checklist-items .bw-cl-fail-detail').forEach(el => el.style.display='none');
   document.querySelectorAll('#bw-checklist-items input[id^="bw-cl-note-"]').forEach(el => el.value='');
-  document.getElementById('bw-checklist-progress').textContent = '0 / 14 reviewed';
+  const _bwTot = document.querySelectorAll('#bw-checklist-items .bw-cl-row').length;
+  document.getElementById('bw-checklist-progress').textContent = '0 / ' + _bwTot + ' reviewed';
 
   // Clean Under Cages — House 1: Sun(0)/Thu(4), House 2: Mon(1)/Sat(6)
   const _CAGE_CLEAN_DAYS = { 1: [0, 4], 2: [1, 6] };
