@@ -507,11 +507,8 @@ function bwRecordToDraft(rec) {
 
 // items that auto-generate a WO on fail
 const _BW_WO_ITEMS = {
-  waterleaks:    { desc:'Water leak found',                   problem:'Watering System',       priority:'urgent' },
-  cagebirdcheck: { desc:'Injured/sick birds found in cages',  problem:'Building / Structure',  priority:'urgent' },
-  chutefull:     { desc:'Mortality chute getting full',        problem:'Building / Structure',  priority:'high'   },
-  damagedcages:  { desc:'Damaged cages or egg belts found',   problem:'Egg Collection',        priority:'high'   },
-  watertubes:    { desc:'Water tubes not cleaned / issue',    problem:'Watering System',       priority:'normal' },
+  birdcheck:  { desc:'Issues found during bird check — see notes', problem:'Building / Structure', priority:'urgent' },
+  watertubes: { desc:'Water tubes not cleaned / issue',            problem:'Watering System',      priority:'normal' },
 };
 
 function bwSetCheck(key, val, btn) {
