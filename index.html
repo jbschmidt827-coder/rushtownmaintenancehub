@@ -679,13 +679,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
           <div data-i18n="landing.staff_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5a90c9;line-height:1.4;">Directory · Schedule · Onboarding · Certs</div>
         </button>
 
-        <!-- Daily Report -->
-        <button onclick="enterApp('daily')" style="padding:16px 14px;background:#0a1f1a;border:2px solid #2a7a5a;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
-          <span style="font-size:28px;line-height:1;">📋</span>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#4ade80;letter-spacing:1px;text-transform:uppercase;">Daily Report</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#2a8a5a;line-height:1.4;">Barns · Dead birds · Safe days · Projects</div>
-        </button>
-
         <!-- On Call -->
         <button onclick="enterApp('oncall')" style="padding:16px 14px;background:#2a0a0a;border:2px solid #e53e3e;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
           <span style="font-size:28px;line-height:1;">📞</span>
@@ -699,9 +692,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <!-- Quick Actions -->
       <div style="border-top:1px solid #1e3a1e;padding-top:12px;">
         <div data-i18n="landing.quick_actions" style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:8px;">⚡ QUICK ACTIONS</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="display:grid;grid-template-columns:1fr;gap:8px;">
           <button data-i18n="landing.new_wo" onclick="enterApp('wo-submit')" style="padding:13px 10px;background:#0d1f3a;border:1.5px solid #3b82f6;border-radius:10px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🔧 New Work Order</button>
-          <button data-i18n="landing.enter_egg" onclick="enterApp('kpi');setTimeout(function(){go('kpi')},100)" style="padding:13px 10px;background:#1a1400;border:1.5px solid #d69e2e;border-radius:10px;color:#d69e2e;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🥚 Enter Egg Data</button>
         </div>
       </div>
 
@@ -968,6 +960,9 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div id="dash-ship-card" onclick="go('ship')" style="cursor:pointer;background:#1a0a2a;border:1.5px solid #3a1a5a;border-radius:12px;padding:14px 12px;transition:border-color .15s;" onmouseover="this.style.borderColor='#9b59b6'" onmouseout="this.style.borderColor='#3a1a5a'"></div>
     <div id="dash-feed-card" onclick="go('feed')" style="cursor:pointer;grid-column:1/-1;background:#0c1f0c;border:1.5px solid #2a5a2a;border-radius:12px;padding:14px 12px;transition:border-color .15s;" onmouseover="this.style.borderColor='#4caf50'" onmouseout="this.style.borderColor='#2a5a2a'"></div>
   </div>
+
+  <!-- Packing Performance Summary -->
+  <div id="dash-packing-summary" style="margin-bottom:20px;"></div>
 
   <!-- Critical alerts -->
   <div class="recent-hdr">🔴 Open Urgent Work Orders</div>
