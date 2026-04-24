@@ -2524,11 +2524,11 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div class="bw-card-title">✅ Daily Checklist</div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;">MARK EACH ITEM PASS OR FAIL — IN ORDER</div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:8px;padding:3px 8px;">⏱ ~3h 40m daily + periodic</div>
+      <div id="bw-time-badge" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:8px;padding:3px 8px;">⏱ ~7h 10m remaining</div>
     </div>
     <div id="bw-checklist-items">
 
-      <div class="bw-cl-row" id="bw-cl-fwv">
+      <div class="bw-cl-row" id="bw-cl-fwv" data-minutes="0">
         <div class="bw-cl-top">
           <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
               <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">1</span>
@@ -2542,7 +2542,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-birdcheck">
+      <div class="bw-cl-row" id="bw-cl-birdcheck" data-minutes="120">
         <div class="bw-cl-top">
           <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
               <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">2</span>
@@ -2556,7 +2556,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-watertubes">
+      <div class="bw-cl-row" id="bw-cl-watertubes" data-minutes="30">
         <div class="bw-cl-top">
           <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
               <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">3</span>
@@ -2570,7 +2570,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-frontofhouse">
+      <div class="bw-cl-row" id="bw-cl-frontofhouse" data-minutes="45">
         <div class="bw-cl-top">
           <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
               <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">4</span>
@@ -2584,7 +2584,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-blowoff">
+      <div class="bw-cl-row" id="bw-cl-blowoff" data-minutes="210">
         <div class="bw-cl-top">
           <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
               <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">5</span>
@@ -2598,7 +2598,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-wheelbarrow">
+      <div class="bw-cl-row" id="bw-cl-wheelbarrow" data-minutes="25">
         <div class="bw-cl-top">
           <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
               <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">6</span>
@@ -2612,7 +2612,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-undercages">
+      <div class="bw-cl-row" id="bw-cl-undercages" data-minutes="180">
         <div class="bw-cl-top">
           <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
               <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">7</span>
@@ -2626,7 +2626,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-hallways">
+      <div class="bw-cl-row" id="bw-cl-hallways" data-minutes="45">
         <div class="bw-cl-top">
           <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
               <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">8</span>
@@ -2640,7 +2640,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-flycheck">
+      <div class="bw-cl-row" id="bw-cl-flycheck" data-minutes="15">
         <div class="bw-cl-top">
           <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
               <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">9</span>
@@ -2654,7 +2654,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-rodentcheck">
+      <div class="bw-cl-row" id="bw-cl-rodentcheck" data-minutes="30">
         <div class="bw-cl-top">
           <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
               <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">10</span>

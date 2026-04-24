@@ -358,8 +358,7 @@ function bwInitChecklist() {
   });
   document.querySelectorAll('#bw-checklist-items .bw-cl-fail-detail').forEach(el => el.style.display='none');
   document.querySelectorAll('#bw-checklist-items input[id^="bw-cl-note-"]').forEach(el => el.value='');
-  const _bwTot = document.querySelectorAll('#bw-checklist-items .bw-cl-row').length;
-  document.getElementById('bw-checklist-progress').textContent = '0 / ' + _bwTot + ' reviewed';
+  bwUpdateTimeBadge();
 
   // Clean Under Cages — House 1: Sun(0)/Thu(4), House 2: Mon(1)/Sat(6)
   const _CAGE_CLEAN_DAYS = { 1: [0, 4], 2: [1, 6] };
@@ -396,6 +395,35 @@ function bwInitChecklist() {
     card.style.display = 'block';
   } else {
     card.style.display = 'none';
+  }
+}
+
+// ── Checklist time badge ──
+function bwUpdateTimeBadge() {
+  const badge = document.getElementById('bw-time-badge');
+  const prog  = document.getElementById('bw-checklist-progress');
+  const rows  = document.querySelectorAll('#bw-checklist-items .bw-cl-row');
+  let remaining = 0, total = 0, done = 0;
+  rows.forEach(row => {
+    const mins = parseInt(row.dataset.minutes || '0');
+    total += mins;
+    const checked = _bwChecklist[row.id.replace('bw-cl-','')];
+    if (checked) { done++; } else { remaining += mins; }
+  });
+  const fmt = m => m >= 60 ? Math.floor(m/60) + 'h ' + (m%60 ? (m%60) + 'm' : '') : m + 'm';
+  if (badge) {
+    if (done === rows.length) {
+      badge.textContent = '✅ All tasks reviewed';
+      badge.style.color = '#4caf50'; badge.style.borderColor = '#2a5a2a';
+    } else {
+      badge.textContent = '⏱ ~' + fmt(remaining).trim() + ' remaining';
+      badge.style.color = '#3a6a3a'; badge.style.borderColor = '#1a4a1a';
+    }
+  }
+  if (prog) {
+    const fails = Object.values(_bwChecklist).filter(v => v === 'fail').length;
+    prog.textContent = done + ' / ' + rows.length + ' reviewed' + (fails ? ' · ' + fails + ' ⚠️ FAIL' : '');
+    prog.style.color = fails ? '#e53e3e' : done === rows.length ? '#4caf50' : '#5a8a5a';
   }
 }
 
@@ -462,6 +490,7 @@ function bwRestoreFromData(data) {
       if (el) el.value = val;
     });
   }
+  bwUpdateTimeBadge();
   // Restore cage clean status display if present
   if (_bwData._cageCleanEmployee && _bwData.cageclean) {
     const statusEl = document.getElementById('bw-cage-clean-status');
@@ -524,13 +553,7 @@ function bwSetCheck(key, val, btn) {
   row.classList.add(val === 'pass' ? 'bw-pass' : 'bw-fail');
   // Show/hide fail detail
   if (detail) detail.style.display = val === 'fail' ? 'block' : 'none';
-  // Update progress
-  const total   = document.querySelectorAll('#bw-checklist-items .bw-cl-row').length;
-  const reviewed = Object.keys(_bwChecklist).length;
-  const fails   = Object.values(_bwChecklist).filter(v => v === 'fail').length;
-  const prog    = document.getElementById('bw-checklist-progress');
-  prog.textContent = reviewed + ' / ' + total + ' reviewed' + (fails ? ' · ' + fails + ' ⚠️ FAIL' : '');
-  prog.style.color = fails ? '#e53e3e' : (reviewed === total ? '#4caf50' : '#5a8a5a');
+  bwUpdateTimeBadge();
   bwSaveDraft();
 }
 
