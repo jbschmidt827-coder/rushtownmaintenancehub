@@ -118,19 +118,19 @@ function dbBuildAlerts() {
       if (bw) {
         const dead = Number(bw.mortCount || 0);
         if (dead >= DB_THRESH.deadPerHouse) {
-          alerts.critical.push({ icon:'💀', farm, house:h, msg:`H${h} — ${dead} dead birds today`, action:`go('daily')` });
+          alerts.critical.push({ icon:'💀', farm, house:h, msg:`H${h} — ${dead} dead birds today`, action:`go('prod')` });
         } else if (dead > 5) {
-          alerts.warning.push({ icon:'💀', farm, house:h, msg:`H${h} — ${dead} dead birds (monitor)`, action:`go('daily')` });
+          alerts.warning.push({ icon:'💀', farm, house:h, msg:`H${h} — ${dead} dead birds (monitor)`, action:`go('prod')` });
         }
 
         // Feed bin levels
         const binA = bw.binA !== undefined && bw.binA !== null ? Number(bw.binA) : null;
         const binB = bw.binB !== undefined && bw.binB !== null ? Number(bw.binB) : null;
         if (binA !== null && binA < 2) {
-          alerts.warning.push({ icon:'🌾', farm, house:h, msg:`H${h} Bin A low — ${binA}t remaining`, action:`go('daily')` });
+          alerts.warning.push({ icon:'🌾', farm, house:h, msg:`H${h} Bin A low — ${binA}t remaining`, action:`go('prod')` });
         }
         if (binB !== null && binB < 2) {
-          alerts.warning.push({ icon:'🌾', farm, house:h, msg:`H${h} Bin B low — ${binB}t remaining`, action:`go('daily')` });
+          alerts.warning.push({ icon:'🌾', farm, house:h, msg:`H${h} Bin B low — ${binB}t remaining`, action:`go('prod')` });
         }
       }
     }
@@ -167,7 +167,7 @@ function dbBuildAlerts() {
     ['Danville','Hegins'].forEach(farm => {
       const ss = ssStatus(farm);
       if (!ss.signed) {
-        alerts.warning.push({ icon:'✅', farm, house:'', msg:`${farm} shift not signed off yet`, action:`go('daily')` });
+        alerts.warning.push({ icon:'✅', farm, house:'', msg:`${farm} shift not signed off yet`, action:`go('prod')` });
       }
     });
   }
@@ -402,7 +402,6 @@ function dbRender() {
     <div style="padding:20px 16px 0 16px;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:10px;">⚡ QUICK ACTIONS</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
-        ${dbQuickBtn('📋', 'Daily Report',   `go('daily')`)}
         ${dbQuickBtn('🔧', 'Work Orders',    `go('maint')`)}
         ${dbQuickBtn('📋', 'PM Schedule',    `go('maint');setTimeout(()=>goMaintSection('pm'),50)`)}
         ${dbQuickBtn('🏗️', 'Contractors',   `go('maint');setTimeout(()=>goMaintSection('contractor'),50)`)}
