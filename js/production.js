@@ -319,7 +319,7 @@ function renderMWContent() {
 }
 
 // ── Employee Daily Barn Check ──
-var _bwFarm = '', _bwHouse = 0, _bwData = {}, _bwChecklist = {};
+var _bwFarm = '', _bwHouse = 0, _bwData = {}, _bwChecklist = {}, _bwDocId = null;
 
 const _BW_WEEKLY = {
   2: { // Tuesday
@@ -398,6 +398,112 @@ function bwInitChecklist() {
   }
 }
 
+// ── Barn Walk Draft Persistence ──
+function bwSaveDraft() {
+  if (!_bwFarm) return;
+  const today = new Date().toISOString().slice(0,10);
+  const fields = {};
+  ['bw-employee','bw-notes','bw-mort-count','bw-loose-count','bw-rodent-count',
+   'bw-fly-count','bw-egg-count','bw-weekly-rodent-count','bw-feed-bin-reading'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) fields[id] = el.value;
+  });
+  const clNotes = {};
+  document.querySelectorAll('#bw-checklist-items input[id^="bw-cl-note-"]').forEach(el => {
+    clNotes[el.id.replace('bw-cl-note-', '')] = el.value;
+  });
+  try {
+    localStorage.setItem('bwDraft-' + _bwFarm + '-' + _bwHouse + '-' + today,
+      JSON.stringify({ fields, bwData: _bwData, bwChecklist: _bwChecklist, clNotes, ts: Date.now() }));
+  } catch(e) {}
+}
+
+function bwRestoreFromData(data) {
+  if (data.fields) {
+    Object.entries(data.fields).forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val;
+    });
+  }
+  if (data.bwData) {
+    Object.entries(data.bwData).forEach(([key, val]) => {
+      if (val == null) return;
+      if (key.startsWith('_')) { _bwData[key] = val; return; }
+      bwSet(key, val);
+    });
+  }
+  if (data.bwChecklist) {
+    Object.entries(data.bwChecklist).forEach(([key, val]) => {
+      _bwChecklist[key] = val;
+      const row    = document.getElementById('bw-cl-' + key);
+      const detail = document.getElementById('bw-cl-det-' + key);
+      if (!row) return;
+      row.querySelectorAll('.bw-cl-pass').forEach(b => b.classList.remove('active'));
+      row.querySelectorAll('.bw-cl-fail-btn').forEach(b => b.classList.remove('active'));
+      const btn = row.querySelector(val === 'pass' ? '.bw-cl-pass' : '.bw-cl-fail-btn');
+      if (btn) btn.classList.add('active');
+      row.classList.remove('bw-pass','bw-fail');
+      row.classList.add(val === 'pass' ? 'bw-pass' : 'bw-fail');
+      if (detail) detail.style.display = val === 'fail' ? 'block' : 'none';
+    });
+    const total    = document.querySelectorAll('#bw-checklist-items .bw-cl-row').length;
+    const reviewed = Object.keys(_bwChecklist).length;
+    const fails    = Object.values(_bwChecklist).filter(v => v === 'fail').length;
+    const prog     = document.getElementById('bw-checklist-progress');
+    if (prog) {
+      prog.textContent = reviewed + ' / ' + total + ' reviewed' + (fails ? ' · ' + fails + ' ⚠️ FAIL' : '');
+      prog.style.color = fails ? '#e53e3e' : (reviewed === total ? '#4caf50' : '#5a8a5a');
+    }
+  }
+  if (data.clNotes) {
+    Object.entries(data.clNotes).forEach(([key, val]) => {
+      const el = document.getElementById('bw-cl-note-' + key);
+      if (el) el.value = val;
+    });
+  }
+  // Restore cage clean status display if present
+  if (_bwData._cageCleanEmployee && _bwData.cageclean) {
+    const statusEl = document.getElementById('bw-cage-clean-status');
+    if (statusEl) {
+      const v = _bwData.cageclean;
+      statusEl.textContent = (v === 'complete' ? '✅ Completed' : '❌ Incomplete')
+        + ' · ' + _bwData._cageCleanEmployee + ' · ' + (_bwData._cageCleanTime || '');
+      statusEl.style.background  = v === 'complete' ? '#0f3a1a' : '#2d1a1a';
+      statusEl.style.borderColor = v === 'complete' ? '#4caf50' : '#e53e3e';
+      statusEl.style.color       = v === 'complete' ? '#7ad07a' : '#e57373';
+      statusEl.style.display = 'block';
+    }
+  }
+  checkBWReady();
+}
+
+function bwRecordToDraft(rec) {
+  return {
+    fields: {
+      'bw-employee':            rec.employee   || '',
+      'bw-notes':               rec.notes      || '',
+      'bw-mort-count':          rec.mortCount  != null ? String(rec.mortCount)  : '',
+      'bw-loose-count':         rec.looseCount != null ? String(rec.looseCount) : '',
+      'bw-rodent-count':        rec.rodentCount!= null ? String(rec.rodentCount): '',
+      'bw-fly-count':           rec.flyCount   != null ? String(rec.flyCount)   : '',
+      'bw-egg-count':           rec.eggCount   != null ? String(rec.eggCount)   : '',
+      'bw-weekly-rodent-count': rec.weeklyRodentCount != null ? String(rec.weeklyRodentCount) : '',
+      'bw-feed-bin-reading':    rec.feedBinReading    != null ? String(rec.feedBinReading)    : '',
+    },
+    bwData: {
+      mort: rec.mort, feather: rec.feather, air: rec.air, feed: rec.feed,
+      rodent: rec.rodent, loose: rec.loose, dryers: rec.dryers,
+      eggbelt: rec.eggbelt, manure: rec.manure, stand: rec.stand,
+      fly: rec.fly, mortrem: rec.mortrem, doors: rec.doors, cageclean: rec.cageClean,
+      footpan: rec.footpan, waste: rec.waste,
+      _cageCleanEmployee: rec.cageCleanEmployee || '',
+      _cageCleanTime:     rec.cageCleanTime     || '',
+    },
+    bwChecklist: rec.checklist || {},
+    clNotes:     rec.checklistNotes || {},
+  };
+}
+
 // items that auto-generate a WO on fail
 const _BW_WO_ITEMS = {
   waterleaks:    { desc:'Water leak found',                   problem:'Watering System',       priority:'urgent' },
@@ -427,10 +533,11 @@ function bwSetCheck(key, val, btn) {
   const prog    = document.getElementById('bw-checklist-progress');
   prog.textContent = reviewed + ' / ' + total + ' reviewed' + (fails ? ' · ' + fails + ' ⚠️ FAIL' : '');
   prog.style.color = fails ? '#e53e3e' : (reviewed === total ? '#4caf50' : '#5a8a5a');
+  bwSaveDraft();
 }
 
 function openBarnWalk(farm, house) {
-  _bwFarm = farm; _bwHouse = house; _bwData = {};
+  _bwFarm = farm; _bwHouse = house; _bwData = {}; _bwDocId = null;
   document.getElementById('bw-title').textContent = farm + ' — Barn ' + house;
   document.getElementById('bw-subtitle').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
   ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count','bw-egg-count'].forEach(id => {
@@ -443,19 +550,69 @@ function openBarnWalk(farm, house) {
   document.getElementById('bw-eggbelt-wo-note').style.display   = 'none';
   document.querySelectorAll('#barn-walk-modal .bw-yn-btn').forEach(b => b.className = 'bw-yn-btn');
   bwInitChecklist();
-  document.getElementById('bw-submit-btn').disabled = true;
+
+  // Remove any stale submitted banner and reset submit button
+  const oldBanner = document.getElementById('bw-submitted-banner');
+  if (oldBanner) oldBanner.remove();
+  const submitBtn = document.getElementById('bw-submit-btn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submit';
+  submitBtn.style.background = '';
+
   document.getElementById('barn-walk-modal').style.display = 'block';
   document.getElementById('barn-walk-modal').scrollTop = 0;
   applyFormTextTranslation();
-  // Pre-populate employee from last submission for this barn
-  db.collection('barnWalks').where('farm','==',farm).where('house','==',String(house))
-    .limit(20).get()
+
+  // Auto-save on any text input inside the modal
+  const modal = document.getElementById('barn-walk-modal');
+  modal._bwInputHandler = modal._bwInputHandler || function() { bwSaveDraft(); };
+  modal.removeEventListener('input', modal._bwInputHandler);
+  modal.addEventListener('input', modal._bwInputHandler);
+
+  const today = new Date().toISOString().slice(0,10);
+  const draftKey = 'bwDraft-' + farm + '-' + house + '-' + today;
+
+  // 1. Check for an in-progress draft first
+  try {
+    const draftStr = localStorage.getItem(draftKey);
+    if (draftStr) {
+      const draft = JSON.parse(draftStr);
+      bwRestoreFromData(draft);
+      return;
+    }
+  } catch(e) {}
+
+  // 2. Check Firestore for today's already-submitted walk
+  db.collection('barnWalks')
+    .where('farm','==',farm).where('house','==',String(house)).where('date','==',today)
+    .limit(1).get()
     .then(snap => {
-      if (snap.empty) return;
-      const docs = snap.docs.map(d => d.data()).sort((a,b) => (b.ts||0) - (a.ts||0));
-      const l = docs[0];
-      const e = document.getElementById('bw-employee');
-      if (e && !e.value) { e.value = l.employee || ''; checkBWReady(); }
+      if (!snap.empty) {
+        _bwDocId = snap.docs[0].id;
+        bwRestoreFromData(bwRecordToDraft(snap.docs[0].data()));
+        // Show "editing previous submission" banner
+        let banner = document.getElementById('bw-submitted-banner');
+        if (!banner) {
+          banner = document.createElement('div');
+          banner.id = 'bw-submitted-banner';
+          banner.style.cssText = 'background:#0f2a3a;border:1px solid #3a8ac0;border-radius:8px;padding:10px 14px;margin:0 0 12px;color:#7ab8d0;font-size:12px;font-family:"IBM Plex Mono",monospace;text-align:center;';
+          const sb = document.getElementById('bw-submit-btn');
+          if (sb) sb.parentNode.insertBefore(banner, sb);
+        }
+        banner.textContent = '✏️ Editing today\'s submission — changes will update the existing record';
+        const sb = document.getElementById('bw-submit-btn');
+        if (sb) { sb.textContent = 'Update Submission'; sb.style.background = '#1a3a4a'; }
+        return;
+      }
+      // 3. No draft, no submission — pre-fill employee from last barn walk
+      db.collection('barnWalks').where('farm','==',farm).where('house','==',String(house))
+        .limit(20).get()
+        .then(snap2 => {
+          if (snap2.empty) return;
+          const docs = snap2.docs.map(d => d.data()).sort((a,b) => (b.ts||0) - (a.ts||0));
+          const e = document.getElementById('bw-employee');
+          if (e && !e.value) { e.value = docs[0].employee || ''; checkBWReady(); }
+        }).catch(()=>{});
     }).catch(()=>{});
 }
 
@@ -506,6 +663,7 @@ function bwSet(key, val) {
     }
   }
   checkBWReady();
+  bwSaveDraft();
 }
 
 function checkBWReady() {
@@ -567,7 +725,14 @@ async function submitBarnWalk() {
     ts: Date.now()
   };
 
-  try { await db.collection('barnWalks').add(record); } catch(e) { console.error(e); }
+  try {
+    if (_bwDocId) {
+      await db.collection('barnWalks').doc(_bwDocId).set(record);
+    } else {
+      const docRef = await db.collection('barnWalks').add(record);
+      _bwDocId = docRef.id;
+    }
+  } catch(e) { console.error(e); }
 
   // ── Activity Log ──
   try {
@@ -716,7 +881,27 @@ async function submitBarnWalk() {
     } catch(e) { console.error(e); }
   }
 
-  closeBarnWalk();
+  // Clear localStorage draft — data is now in Firestore
+  const draftKey = 'bwDraft-' + _bwFarm + '-' + _bwHouse + '-' + record.date;
+  try { localStorage.removeItem(draftKey); } catch(e) {}
+
+  // Keep form open for editing; show success banner and update button label
+  const sBtn = document.getElementById('bw-submit-btn');
+  if (sBtn) {
+    sBtn.disabled = false;
+    sBtn.textContent = '✅ Submitted — Tap to Update';
+    sBtn.style.background = '#1a4a1a';
+  }
+  let banner = document.getElementById('bw-submitted-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'bw-submitted-banner';
+    banner.style.cssText = 'background:#0f3a1a;border:1px solid #4caf50;border-radius:8px;padding:10px 14px;margin:0 0 12px;color:#7ad07a;font-size:12px;font-family:"IBM Plex Mono",monospace;text-align:center;';
+    if (sBtn) sBtn.parentNode.insertBefore(banner, sBtn);
+  }
+  banner.style.cssText = 'background:#0f3a1a;border:1px solid #4caf50;border-radius:8px;padding:10px 14px;margin:0 0 12px;color:#7ad07a;font-size:12px;font-family:"IBM Plex Mono",monospace;text-align:center;';
+  banner.textContent = '✅ Saved at ' + record.time + ' — edit any field above and tap Update to re-save';
+
   renderProdPanel();
   renderECContent();
   if (document.getElementById('panel-dash')?.classList.contains('active')) renderDash();
