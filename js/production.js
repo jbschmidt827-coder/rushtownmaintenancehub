@@ -590,6 +590,9 @@ function openBarnWalk(farm, house) {
   modal.removeEventListener('input', modal._bwInputHandler);
   modal.addEventListener('input', modal._bwInputHandler);
 
+  // Load today's staffing schedule for this barn
+  bwLoadStaffingPanel(farm, house);
+
   const today = new Date().toISOString().slice(0,10);
   const draftKey = 'bwDraft-' + farm + '-' + house + '-' + today;
 
@@ -639,6 +642,49 @@ function openBarnWalk(farm, house) {
 
 function closeBarnWalk() {
   document.getElementById('barn-walk-modal').style.display = 'none';
+}
+
+async function bwLoadStaffingPanel(farm, house) {
+  const panel   = document.getElementById('bw-staffing-panel');
+  const content = document.getElementById('bw-staffing-content');
+  if (!panel || !content) return;
+  panel.style.display = 'block';
+  content.innerHTML = '<div style="color:#5a7a5a;font-size:11px;font-family:\'IBM Plex Mono\',monospace;">Loading...</div>';
+  const dayKeys = ['sun','mon','tue','wed','thu','fri','sat'];
+  const todayDay = dayKeys[new Date().getDay()];
+  const weekOf = schedGetMonday();
+  const SHIFT_HOURS = { morning:'6:00 AM – 2:00 PM', afternoon:'2:00 PM – 10:00 PM', night:'10:00 PM – 6:00 AM' };
+  const SHIFT_STYLE = {
+    morning:   { bg:'#122a1a', border:'#4a9b6f', text:'#7dd8a0' },
+    afternoon: { bg:'#2a1f00', border:'#d69e2e', text:'#f6d860' },
+    night:     { bg:'#121a2a', border:'#4a6ab0', text:'#7a9ad8' }
+  };
+  try {
+    const snap = await db.collection('teamSchedule')
+      .where('facility','==',farm).where('dept','==','house_'+house)
+      .where('weekOf','==',weekOf).where('day','==',todayDay).get();
+    if (snap.empty) {
+      content.innerHTML = '<div style="color:#8a6a2a;font-size:11px;font-family:\'IBM Plex Mono\',monospace;">⚠️ No staff assigned to this barn today</div>';
+      return;
+    }
+    let html = '';
+    snap.forEach(doc => {
+      const e = doc.data();
+      const sc = SHIFT_STYLE[e.shift] || SHIFT_STYLE.morning;
+      const hrs = SHIFT_HOURS[e.shift] || e.shift;
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;background:${sc.bg};border:1.5px solid ${sc.border};border-radius:8px;padding:10px 12px;margin-bottom:6px;">
+        <div><div style="font-size:13px;font-weight:700;color:#f0ead8;">${e.person}</div>${e.role ? `<div style="font-size:10px;color:#7ab07a;margin-top:2px;">${e.role}</div>` : ''}</div>
+        <div style="text-align:right;"><div style="font-size:11px;font-weight:700;color:${sc.text};font-family:'IBM Plex Mono',monospace;text-transform:uppercase;">${e.shift}</div><div style="font-size:10px;color:#7ab07a;margin-top:2px;font-family:'IBM Plex Mono',monospace;">${hrs}</div></div>
+      </div>`;
+    });
+    content.innerHTML = html;
+    // Auto-fill employee name if field is still empty
+    const empEl = document.getElementById('bw-employee');
+    if (empEl && !empEl.value) { empEl.value = snap.docs[0].data().person || ''; checkBWReady(); }
+  } catch(err) {
+    console.warn('bwLoadStaffingPanel:', err);
+    panel.style.display = 'none';
+  }
 }
 
 function bwSet(key, val) {
