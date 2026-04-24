@@ -20,7 +20,11 @@ function startStaffListener() {
   } catch(e) { console.error('Staff listener error:', e); }
 }
 
-const FALLBACK_TEAM = [];
+// ── Fallback team list used until staff are added via the Staff panel ──
+const FALLBACK_TEAM = [
+  'Josh','Steve','Mike','Chris','Dave','Dan','Tom','Joe','Kyle','Brian',
+  'Ryan','Tyler','Jake','Zach','Derek','Adam','Kevin','Scott','Eric','Matt'
+];
 
 // ── Populate all name datalists and selects in the app ──
 function updateStaffDropdowns() {
@@ -39,7 +43,6 @@ function updateStaffDropdowns() {
     names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
 
   const selectIds = [
-    'wo-tech',          // WO form: Your Name
     'bulk-tech',        // Bulk PM Catch-Up: Completed By
     'wo-assign',        // WO form: Assign To
     'closeout-tech',    // WO Closeout modal: Completed By
