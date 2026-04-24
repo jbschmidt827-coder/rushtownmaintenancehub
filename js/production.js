@@ -493,7 +493,7 @@ function bwRecordToDraft(rec) {
     bwData: {
       mort: rec.mort, feather: rec.feather, air: rec.air, feed: rec.feed,
       rodent: rec.rodent, loose: rec.loose, dryers: rec.dryers,
-      eggbelt: rec.eggbelt, manure: rec.manure, stand: rec.stand,
+      eggbelt: rec.eggbelt, stand: rec.stand,
       fly: rec.fly, mortrem: rec.mortrem, doors: rec.doors, cageclean: rec.cageClean,
       footpan: rec.footpan, waste: rec.waste,
       _cageCleanEmployee: rec.cageCleanEmployee || '',
@@ -635,7 +635,7 @@ function bwSet(key, val) {
     waste:   {yes:'bw-warn-sel',no:'bw-yes-sel'},
     stand:   {clean:'bw-yes-sel',dirty:'bw-no-sel'},
     eggbelt: {working:'bw-yes-sel',down:'bw-no-sel'},
-    manure:  {run:'bw-yes-sel', stop:'bw-no-sel'},
+
     rodent:    {yes:'bw-no-sel',  no:'bw-yes-sel'},
     fly:       {yes:'bw-warn-sel',no:'bw-yes-sel'},
     cageclean: {complete:'bw-yes-sel', incomplete:'bw-no-sel'},
@@ -692,7 +692,7 @@ async function submitBarnWalk() {
   if (_bwData.air === 'poor')           flags.push('Air quality anomaly');
   if (_bwData.feed === 'empty')         flags.push('Feeders empty');
   if (_bwData.eggbelt === 'down')       flags.push('Egg belt not working');
-  if (_bwData.manure === 'stop')        flags.push('Manure belts not running');
+
   // Pest observations are saved to pestLog — not added to flags/WO queue
   if (_bwData.doors === 'open')         flags.push('House doors open');
 
@@ -712,7 +712,7 @@ async function submitBarnWalk() {
     waterPSI, temp, mortCount, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading,
     mort: _bwData.mort, feather: _bwData.feather, air: _bwData.air,
     feed: _bwData.feed, rodent: _bwData.rodent, loose: _bwData.loose,
-    dryers: _bwData.dryers, eggbelt: _bwData.eggbelt, manure: _bwData.manure,
+    dryers: _bwData.dryers, eggbelt: _bwData.eggbelt,
     stand: _bwData.stand, fly: _bwData.fly, mortrem: _bwData.mortrem,
     doors: _bwData.doors,
     checklist: _bwChecklist, checklistNotes,
@@ -851,7 +851,7 @@ async function submitBarnWalk() {
   // Checklist failures are handled individually above (_BW_WO_ITEMS loop) — skip here.
   const flagProblemMap = {
     'Manure dryers off':          {problem:'Manure System',       priority:'high'},
-    'Manure belts not running':   {problem:'Manure System',       priority:'high'},
+
     'Poor feathering':            {problem:'Building / Structure', priority:'normal'},
     'House doors open':           {problem:'Building / Structure', priority:'high'},
     'Air quality anomaly':        {problem:'Ventilation / Fans',  priority:'urgent'},
@@ -1524,7 +1524,7 @@ function openWalkDetail(id) {
       ${field('Rodents', yn(r.rodent))}
       ${field('Manure Dryers', r.dryers||null)}
       ${field('Egg Belt', r.eggbelt||null)}
-      ${field('Manure Belts', r.manure||null)}
+
       ${field('Standpipes', r.stand||null)}
       ${field('Fly Traps', r.fly||null)}
       ${field('House Doors', r.doors||null)}
