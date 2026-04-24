@@ -486,18 +486,18 @@ async function woSetStatus(fbId, newStatus) {
 }
 
 // Fallback names if staffList hasn't loaded yet
-const SITE_TECHS = {
-  Hegins:   ['Nathan','Adam','Carlos','Randy','Steve'],
-  Danville: ['Josh','Cain','Celia','Deb','Steve'],
-  Rushtown: [],
-};
+const SITE_TECHS = { Hegins: [], Danville: [], Rushtown: [] };
 
 function _crewForFarm(farm) {
   if (typeof staffList !== 'undefined' && staffList.length) {
-    const crew = staffList.filter(s => s.active !== false && (!farm || s.location === farm));
+    const crew = staffList.filter(s => {
+      if (s.active === false) return false;
+      if (!farm) return true;
+      return s.farm === farm || s.farm === 'Both' || s.farm === 'All';
+    });
     if (crew.length) return crew.map(s => s.name).filter(Boolean).sort();
   }
-  return farm ? (SITE_TECHS[farm] || []) : Object.values(SITE_TECHS).flat();
+  return [];
 }
 
 async function loadHouses() {
