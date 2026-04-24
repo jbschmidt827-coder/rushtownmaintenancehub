@@ -2529,62 +2529,211 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <!-- Daily Checklist -->
   <div class="bw-card">
     <div class="bw-card-title">✅ Daily Checklist</div>
-    <div style="font-size:10px;color:#5a8a5a;margin-bottom:12px;font-family:'IBM Plex Mono',monospace;">MARK EACH ITEM PASS OR FAIL</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;">MARK EACH ITEM PASS OR FAIL — IN ORDER</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:8px;padding:3px 8px;">⏱ ~3h 37m total</div>
+    </div>
     <div id="bw-checklist-items">
 
       <div class="bw-cl-row" id="bw-cl-waterleaks">
-        <div class="bw-cl-top"><div class="bw-cl-label">Check for water leaks — notify manager if found</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('waterleaks','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('waterleaks','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-waterleaks"><input type="text" placeholder="Describe location / issue..." id="bw-cl-note-waterleaks"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">1</span>
+            <div><div class="bw-cl-label">Check for water leaks — notify manager if found</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 3 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('waterleaks','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('waterleaks','fail',this)">❌ Fail</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-waterleaks">
+          <div style="background:#1a0505;border-left:3px solid #e53e3e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#e53e3e;letter-spacing:1px;margin-bottom:3px;">⚠ STOP — NOTIFY MANAGER NOW</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c07070;">Do not continue until you have reported the leak location to your supervisor. Log the exact location below.</div></div>
+          <input type="text" placeholder="Describe leak location (aisle, cage row, nipple line)..." id="bw-cl-note-waterleaks"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div>
+        </div>
       </div>
 
       <div class="bw-cl-row" id="bw-cl-cagebirdcheck">
-        <div class="bw-cl-top"><div class="bw-cl-label">Check all cages — cull any injured or sick birds</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('cagebirdcheck','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('cagebirdcheck','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-cagebirdcheck"><input type="text" placeholder="Describe issue (location, count)..." id="bw-cl-note-cagebirdcheck"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">2</span>
+            <div><div class="bw-cl-label">Check all cages — cull any injured or sick birds</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 15 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('cagebirdcheck','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('cagebirdcheck','fail',this)">❌ Fail</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-cagebirdcheck">
+          <div style="background:#1a0505;border-left:3px solid #e53e3e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#e53e3e;letter-spacing:1px;margin-bottom:3px;">⚠ ACTION: REMOVE & LOG</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c07070;">Move injured bird to isolation. Count culls. Log cage location and count below. Do not skip — injured birds cause flock stress.</div></div>
+          <input type="text" placeholder="Cage location, # culled, condition observed..." id="bw-cl-note-cagebirdcheck"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div>
+        </div>
       </div>
 
       <div class="bw-cl-row" id="bw-cl-mortchute">
-        <div class="bw-cl-top"><div class="bw-cl-label">All dead birds placed in white chute (back of barn, top floor)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('mortchute','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('mortchute','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-mortchute"><input type="text" placeholder="Notes..." id="bw-cl-note-mortchute"></div>
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">3</span>
+            <div><div class="bw-cl-label">All dead birds placed in white chute (back of barn, top floor)</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 5 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('mortchute','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('mortchute','fail',this)">❌ Fail</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-mortchute">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ COMPLETE BEFORE MOVING ON</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Dead birds must not remain on the floor. Place in white chute at back of barn, top floor, before continuing to next task.</div></div>
+          <input type="text" placeholder="Notes (count, location where found)..." id="bw-cl-note-mortchute">
+        </div>
       </div>
 
       <div class="bw-cl-row" id="bw-cl-chutefull">
-        <div class="bw-cl-top"><div class="bw-cl-label">White chute checked — getting full?</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('chutefull','pass',this)">✅ OK</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('chutefull','fail',this)">⚠️ Full</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-chutefull"><input type="text" placeholder="Notes..." id="bw-cl-note-chutefull"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">4</span>
+            <div><div class="bw-cl-label">White chute checked — getting full?</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 2 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('chutefull','pass',this)">✅ OK</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('chutefull','fail',this)">⚠️ Full</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-chutefull">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ NOTIFY SUPERVISOR</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Chute must be emptied before next shift. Notify supervisor now so it can be scheduled. A WO will be created automatically.</div></div>
+          <input type="text" placeholder="Estimated fill level, any notes..." id="bw-cl-note-chutefull"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div>
+        </div>
       </div>
 
       <div class="bw-cl-row" id="bw-cl-damagedcages">
-        <div class="bw-cl-top"><div class="bw-cl-label">Damaged cages &amp; egg belts — any damage found?</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('damagedcages','pass',this)">✅ None</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('damagedcages','fail',this)">❌ Found</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-damagedcages"><input type="text" placeholder="Describe damage location..." id="bw-cl-note-damagedcages"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">5</span>
+            <div><div class="bw-cl-label">Damaged cages &amp; egg belts — any damage found?</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 5 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('damagedcages','pass',this)">✅ None</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('damagedcages','fail',this)">❌ Found</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-damagedcages">
+          <div style="background:#1a0505;border-left:3px solid #e53e3e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#e53e3e;letter-spacing:1px;margin-bottom:3px;">⚠ MARK &amp; LOG DAMAGE</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c07070;">Mark damage with tape or zip tie. Do not attempt to repair — log the exact cage/belt location and a WO will be created for maintenance.</div></div>
+          <input type="text" placeholder="Cage row, belt section, type of damage..." id="bw-cl-note-damagedcages"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div>
+        </div>
       </div>
 
       <div class="bw-cl-row" id="bw-cl-watertubes">
-        <div class="bw-cl-top"><div class="bw-cl-label">Water tubes cleaned (front &amp; back of house)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('watertubes','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('watertubes','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-watertubes"><input type="text" placeholder="Notes on issue..." id="bw-cl-note-watertubes"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">6</span>
+            <div><div class="bw-cl-label">Water tubes cleaned (front &amp; back of house)</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 30 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('watertubes','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('watertubes','fail',this)">❌ Fail</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-watertubes">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ MUST COMPLETE — RETURN TO FINISH</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">This task cannot be skipped. Dirty water tubes cause health issues. If partially complete, log what was missed and finish before end of shift.</div></div>
+          <input type="text" placeholder="What was incomplete, reason for skip..." id="bw-cl-note-watertubes"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div>
+        </div>
       </div>
 
       <div class="bw-cl-row" id="bw-cl-dustblown">
-        <div class="bw-cl-top"><div class="bw-cl-label">Dust &amp; dander blown off — ceiling, walls, cages &amp; fan screens (top &amp; bottom)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('dustblown','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('dustblown','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-dustblown"><input type="text" placeholder="Notes..." id="bw-cl-note-dustblown"></div>
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">7</span>
+            <div><div class="bw-cl-label">Dust &amp; dander blown off — ceiling, walls, cages &amp; fan screens (top &amp; bottom)</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 45 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('dustblown','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('dustblown','fail',this)">❌ Fail</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-dustblown">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ LOG WHAT WAS MISSED</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Fan screen buildup reduces airflow and raises ammonia. Log which areas were skipped — supervisor will schedule catch-up on next shift.</div></div>
+          <input type="text" placeholder="Which areas were not completed (top floor, fan screens, etc.)..." id="bw-cl-note-dustblown">
+        </div>
       </div>
 
       <div class="bw-cl-row" id="bw-cl-aislesblown">
-        <div class="bw-cl-top"><div class="bw-cl-label">All aisles blown out on bottom floor (under cages &amp; egg collectors)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('aislesblown','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('aislesblown','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-aislesblown"><input type="text" placeholder="Notes..." id="bw-cl-note-aislesblown"></div>
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">8</span>
+            <div><div class="bw-cl-label">All aisles blown out on bottom floor (under cages &amp; egg collectors)</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 20 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('aislesblown','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('aislesblown','fail',this)">❌ Fail</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-aislesblown">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ COMPLETE BEFORE SHIFT END</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Debris in aisles attracts pests and creates slip hazards. Complete before leaving. Log which aisles remain unfinished.</div></div>
+          <input type="text" placeholder="Which aisles/areas were not completed..." id="bw-cl-note-aislesblown">
+        </div>
       </div>
 
       <div class="bw-cl-row" id="bw-cl-eggcollblown">
-        <div class="bw-cl-top"><div class="bw-cl-label">Front &amp; back of egg collectors blown off</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('eggcollblown','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('eggcollblown','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-eggcollblown"><input type="text" placeholder="Notes..." id="bw-cl-note-eggcollblown"></div>
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">9</span>
+            <div><div class="bw-cl-label">Front &amp; back of egg collectors blown off</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 15 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('eggcollblown','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('eggcollblown','fail',this)">❌ Fail</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-eggcollblown">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ COMPLETE BEFORE SHIFT END</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Buildup on collectors causes egg damage and belt slippage. Must be completed. Log reason for skip.</div></div>
+          <input type="text" placeholder="Reason, what was skipped..." id="bw-cl-note-eggcollblown">
+        </div>
       </div>
 
       <div class="bw-cl-row" id="bw-cl-eggspills">
-        <div class="bw-cl-top"><div class="bw-cl-label">Egg spills cleaned up after egg collector run</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('eggspills','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('eggspills','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-eggspills"><input type="text" placeholder="Notes..." id="bw-cl-note-eggspills"></div>
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">10</span>
+            <div><div class="bw-cl-label">Egg spills cleaned up after egg collector run</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 5 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('eggspills','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('eggspills','fail',this)">❌ Fail</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-eggspills">
+          <div style="background:#1a0505;border-left:3px solid #e53e3e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#e53e3e;letter-spacing:1px;margin-bottom:3px;">⚠ CLEAN NOW — DO NOT LEAVE</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c07070;">Egg spills attract flies and create slip hazards. Clean before moving on. This is a 5-minute task — no skip allowed.</div></div>
+          <input type="text" placeholder="Location, volume of spill..." id="bw-cl-note-eggspills">
+        </div>
       </div>
 
       <div class="bw-cl-row" id="bw-cl-wheelbarrow">
-        <div class="bw-cl-top"><div class="bw-cl-label">Wheelbarrow emptied behind manure belts — NOT on pit belt</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('wheelbarrow','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('wheelbarrow','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-wheelbarrow"><input type="text" placeholder="Notes..." id="bw-cl-note-wheelbarrow"></div>
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">11</span>
+            <div><div class="bw-cl-label">Wheelbarrow emptied behind manure belts — NOT on pit belt</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 5 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('wheelbarrow','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('wheelbarrow','fail',this)">❌ Fail</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-wheelbarrow">
+          <div style="background:#1a0505;border-left:3px solid #e53e3e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#e53e3e;letter-spacing:1px;margin-bottom:3px;">⚠ DO NOT LEAVE FULL — EMPTY BEFORE LEAVING</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c07070;">Full wheelbarrow left on pit belt will cause belt damage and backup. Empty behind manure belts only. This takes 5 minutes — no exceptions.</div></div>
+          <input type="text" placeholder="Reason..." id="bw-cl-note-wheelbarrow">
+        </div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-toolsback">
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">12</span>
+            <div><div class="bw-cl-label">All tools returned to designated spots</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 2 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('toolsback','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('toolsback','fail',this)">❌ Fail</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-toolsback">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ RETURN ALL TOOLS BEFORE SUBMITTING</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">List any tools not in their designated spot. This must be resolved before you can complete the shift.</div></div>
+          <input type="text" placeholder="List missing tools and last known location..." id="bw-cl-note-toolsback">
+        </div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-hallways">
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">13</span>
+            <div><div class="bw-cl-label">Designated hallways cleaned (swept &amp; tidied)</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 45 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('hallways','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('hallways','fail',this)">❌ Fail</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-hallways">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ COMPLETE BEFORE SUBMITTING</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Log which hallway was skipped. Supervisor will assign catch-up at start of next shift.</div></div>
+          <input type="text" placeholder="Which hallway(s) not completed, reason..." id="bw-cl-note-hallways">
+        </div>
+      </div>
+
+      <div class="bw-cl-row" id="bw-cl-backofhouse">
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">14</span>
+            <div><div class="bw-cl-label">Back of house cleaned — dusting, sweeping &amp; general cleanup</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 20 min</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('backofhouse','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('backofhouse','fail',this)">❌ Fail</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-backofhouse">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ COMPLETE BEFORE SHIFT END</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Log what was missed. Supervisor will verify at start of next shift.</div></div>
+          <input type="text" placeholder="What was missed, reason..." id="bw-cl-note-backofhouse">
+        </div>
+      </div>
+
+    </div>
+    <div id="bw-checklist-progress" style="margin-top:10px;font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-align:right;">0 / 14 reviewed</div>
+  </div>
       </div>
 
       <div class="bw-cl-row" id="bw-cl-toolsback">
