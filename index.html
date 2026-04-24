@@ -3179,10 +3179,9 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <div class="sub-nav">
     <button class="sub-btn active" data-section="packing" onclick="goPkgSection('packing')" data-i18n="sub.packing">📦 Packing</button>
     <button class="sub-btn" data-section="eggs" onclick="goPkgSection('eggs')" data-i18n="sub.eggs">🥚 Eggs by Barn</button>
-    <button class="sub-btn" data-section="quality" onclick="goPkgSection('quality')" data-i18n="sub.quality">🏅 Egg Quality</button>
     <button class="sub-btn" data-section="efficiency" onclick="goPkgSection('efficiency')">📈 Efficiency</button>
-    <button class="sub-btn" data-section="downtime" onclick="goPkgSection('downtime')">⏱️ Downtime <span id="pkg-dt-badge" style="display:none;background:#e53e3e;color:#fff;border-radius:50%;font-size:10px;padding:1px 5px;margin-left:3px;vertical-align:middle;"></span></button>
-    <button class="sub-btn" data-section="waste" onclick="goPkgSection('waste')">🗑️ Waste</button>
+    <button class="sub-btn" data-section="hegins" onclick="goPkgSection('hegins')">📍 Hegins</button>
+    <button class="sub-btn" data-section="danville" onclick="goPkgSection('danville')">📍 Danville</button>
   </div>
   <!-- Packing -->
   <div class="pkg-section" id="pkg-packing" style="display:block;">
@@ -3197,9 +3196,16 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <div class="fg"><label>End Time</label><input type="time" id="pf-end" oninput="calcPack()"></div>
         <div class="fg"><label>Break (min)</label><input type="number" id="pf-break" min="0" placeholder="0" oninput="calcPack()"></div>
         <div class="fg"><label>Downtime (min)</label><input type="number" id="pf-downtime" min="0" placeholder="0" oninput="calcPack()"></div>
-        <div class="fg"><label>Houses Packed</label><input type="number" id="pf-houses" min="1" placeholder="0" oninput="calcPack()"></div>
+        <div class="fg ops-form-full" id="pf-houses-wrap">
+          <label>Houses Ran</label>
+          <div id="pf-houses-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+            <input type="text" class="pf-house-input" placeholder="House #" style="width:90px;" oninput="calcPack()">
+          </div>
+          <button type="button" onclick="addPackHouse()" style="margin-top:6px;padding:4px 10px;font-size:11px;background:#1a3a1a;border:1px solid #2a5a2a;color:#7ab07a;border-radius:6px;cursor:pointer;">+ Add House</button>
+          <input type="hidden" id="pf-houses" value="0">
+        </div>
         <div class="fg"><label>Total Stops</label><input type="number" id="pf-stops" min="0" placeholder="0"></div>
-        <div class="fg"><label>Line / Area</label><input type="text" id="pf-line" placeholder="e.g. Line 1"></div>
+        <div class="fg"><label>Broken Eggs</label><input type="number" id="pf-line" min="0" placeholder="0" oninput="calcPack()"></div>
         <div class="fg"><label>Shift</label><select id="pf-shift"><option>AM</option><option>PM</option><option>Night</option></select></div>
         <div class="fg"><label>Entered By</label><input type="text" id="pf-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
         <div class="fg ops-form-full"><label>Notes</label><input type="text" id="pf-notes" placeholder="Optional notes"></div>
@@ -3364,6 +3370,77 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div style="overflow-x:auto;"><table class="ops-table" id="eff-weekly-table"></table></div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin:16px 0 8px;">Product Mix Breakdown</div>
     <div id="eff-product-mix" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:16px;"></div>
+  </div>
+
+  <!-- ── Hegins ── -->
+  <div class="pkg-section" id="pkg-hegins" style="display:none;">
+    <div class="ops-quick-form">
+      <div class="ops-qf-title">📍 Log Hegins Packing</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label>Date *</label><input type="date" id="hg-date"></div>
+        <div class="fg"><label>Barn *</label>
+          <select id="hg-barn">
+            <option value="">— Select Barn —</option>
+            <option>Barn 1</option><option>Barn 2</option><option>Barn 3</option>
+            <option>Barn 4</option><option>Barn 5</option><option>Barn 6</option>
+            <option>Barn 7</option><option>Barn 8</option>
+          </select>
+        </div>
+        <div class="fg"><label>Product Type *</label>
+          <select id="hg-product">
+            <option value="">— Select —</option>
+            <option>Jumbo</option><option>XL</option><option>Large</option>
+            <option>Medium</option><option>Small</option><option>Pullet</option><option>Nest Run</option>
+          </select>
+        </div>
+        <div class="fg"><label>Total Dz *</label><input type="number" id="hg-qty" min="0" placeholder="0"></div>
+        <div class="fg"><label>Broken Eggs</label><input type="number" id="hg-broken" min="0" placeholder="0"></div>
+        <div class="fg"><label>Shift</label><select id="hg-shift"><option>AM</option><option>PM</option><option>Night</option></select></div>
+        <div class="fg"><label>Entered By</label><input type="text" id="hg-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
+        <div class="fg ops-form-full"><label>Notes</label><input type="text" id="hg-notes" placeholder="Optional notes"></div>
+      </div>
+      <div class="ops-form-actions">
+        <button class="ops-save-btn" onclick="saveLocationPack('hegins')">✓ Save Hegins Entry</button>
+        <button class="ops-cancel-btn" onclick="clearLocationForm('hegins')">Clear</button>
+      </div>
+    </div>
+    <div class="stats-grid g4" id="hg-stats" style="margin:14px 0;"></div>
+    <div style="overflow-x:auto;"><table class="ops-table" id="hg-table"></table></div>
+  </div>
+
+  <!-- ── Danville ── -->
+  <div class="pkg-section" id="pkg-danville" style="display:none;">
+    <div class="ops-quick-form">
+      <div class="ops-qf-title">📍 Log Danville Packing</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label>Date *</label><input type="date" id="dv-date"></div>
+        <div class="fg"><label>Barn *</label>
+          <select id="dv-barn">
+            <option value="">— Select Barn —</option>
+            <option>Barn 1</option><option>Barn 2</option><option>Barn 3</option>
+            <option>Barn 4</option><option>Barn 5</option>
+          </select>
+        </div>
+        <div class="fg"><label>Product Type *</label>
+          <select id="dv-product">
+            <option value="">— Select —</option>
+            <option>Jumbo</option><option>XL</option><option>Large</option>
+            <option>Medium</option><option>Small</option><option>Pullet</option><option>Nest Run</option>
+          </select>
+        </div>
+        <div class="fg"><label>Total Dz *</label><input type="number" id="dv-qty" min="0" placeholder="0"></div>
+        <div class="fg"><label>Broken Eggs</label><input type="number" id="dv-broken" min="0" placeholder="0"></div>
+        <div class="fg"><label>Shift</label><select id="dv-shift"><option>AM</option><option>PM</option><option>Night</option></select></div>
+        <div class="fg"><label>Entered By</label><input type="text" id="dv-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
+        <div class="fg ops-form-full"><label>Notes</label><input type="text" id="dv-notes" placeholder="Optional notes"></div>
+      </div>
+      <div class="ops-form-actions">
+        <button class="ops-save-btn" onclick="saveLocationPack('danville')">✓ Save Danville Entry</button>
+        <button class="ops-cancel-btn" onclick="clearLocationForm('danville')">Clear</button>
+      </div>
+    </div>
+    <div class="stats-grid g4" id="dv-stats" style="margin:14px 0;"></div>
+    <div style="overflow-x:auto;"><table class="ops-table" id="dv-table"></table></div>
   </div>
 
   <!-- ── Downtime ── -->
@@ -4675,29 +4752,29 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script src="js/core.js?v=20260403"></script>
-<script src="js/dashboard.js?v=20260403"></script>
-<script src="js/maintenance.js?v=20260403"></script>
-<script src="js/packaging.js?v=20260403"></script>
-<script src="js/shipping.js?v=20260403"></script>
-<script src="js/production.js?v=20260403"></script>
-<script src="js/feed-mill.js?v=20260403"></script>
-<script src="js/egg-quality.js?v=20260403"></script>
-<script src="js/biosecurity.js?v=20260403"></script>
-<script src="js/scheduling.js?v=20260403"></script>
-<script src="js/tv-scoreboard.js?v=20260403"></script>
-<script src="js/staff.js?v=20260403"></script>
-<script src="js/enhancements.js?v=20260403"></script>
-<script src="js/daily-report.js?v=20260419"></script>
-<script src="js/contractor.js?v=20260419"></script>
-<script src="js/cost-dashboard.js?v=20260419"></script>
-<script src="js/weekly-agenda.js?v=20260419"></script>
-<script src="js/shift-signoff.js?v=20260419"></script>
-<script src="js/red-tags.js?v=20260419"></script>
-<script src="js/director-brief.js?v=20260419"></script>
-<script src="js/barn-entry.js?v=20260419"></script>
-<script src="js/notifications.js?v=20260420"></script>
-<script src="js/oncall.js?v=20260420"></script>
+<script src="js/core.js?v=20260424"></script>
+<script src="js/dashboard.js?v=20260424"></script>
+<script src="js/maintenance.js?v=20260424"></script>
+<script src="js/packaging.js?v=20260424"></script>
+<script src="js/shipping.js?v=20260424"></script>
+<script src="js/production.js?v=20260424"></script>
+<script src="js/feed-mill.js?v=20260424"></script>
+<script src="js/egg-quality.js?v=20260424"></script>
+<script src="js/biosecurity.js?v=20260424"></script>
+<script src="js/scheduling.js?v=20260424"></script>
+<script src="js/tv-scoreboard.js?v=20260424"></script>
+<script src="js/staff.js?v=20260424"></script>
+<script src="js/enhancements.js?v=20260424"></script>
+<script src="js/daily-report.js?v=20260424"></script>
+<script src="js/contractor.js?v=20260424"></script>
+<script src="js/cost-dashboard.js?v=20260424"></script>
+<script src="js/weekly-agenda.js?v=20260424"></script>
+<script src="js/shift-signoff.js?v=20260424"></script>
+<script src="js/red-tags.js?v=20260424"></script>
+<script src="js/director-brief.js?v=20260424"></script>
+<script src="js/barn-entry.js?v=20260424"></script>
+<script src="js/notifications.js?v=20260424"></script>
+<script src="js/oncall.js?v=20260424"></script>
 <style>
 @keyframes notif-slide-in {
   from { opacity:0; transform:translateX(20px); }
