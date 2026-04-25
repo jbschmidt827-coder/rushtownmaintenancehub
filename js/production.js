@@ -653,6 +653,7 @@ async function bwLoadStaffingPanel(farm, house) {
   const dayKeys = ['sun','mon','tue','wed','thu','fri','sat'];
   const todayDay = dayKeys[new Date().getDay()];
   const weekOf = schedGetMonday();
+  const deptKey = 'house_' + house;
   const SHIFT_HOURS = { morning:'6:00 AM – 2:00 PM', afternoon:'2:00 PM – 10:00 PM', night:'10:00 PM – 6:00 AM' };
   const SHIFT_STYLE = {
     morning:   { bg:'#122a1a', border:'#4a9b6f', text:'#7dd8a0' },
@@ -660,16 +661,20 @@ async function bwLoadStaffingPanel(farm, house) {
     night:     { bg:'#121a2a', border:'#4a6ab0', text:'#7a9ad8' }
   };
   try {
+    // Match same 2-field query pattern as loadSchedule(); filter dept+day client-side
     const snap = await db.collection('teamSchedule')
-      .where('facility','==',farm).where('dept','==','house_'+house)
-      .where('weekOf','==',weekOf).where('day','==',todayDay).get();
-    if (snap.empty) {
-      content.innerHTML = '<div style="color:#8a6a2a;font-size:11px;font-family:\'IBM Plex Mono\',monospace;">⚠️ No staff assigned to this barn today</div>';
+      .where('facility','==',farm).where('weekOf','==',weekOf).get();
+    const entries = [];
+    snap.forEach(doc => {
+      const d = doc.data();
+      if (d.dept === deptKey && d.day === todayDay) entries.push(d);
+    });
+    if (entries.length === 0) {
+      content.innerHTML = '<div style="color:#8a6a2a;font-size:11px;font-family:\'IBM Plex Mono\',monospace;">⚠️ No staff assigned to this barn today — add in Team Schedule</div>';
       return;
     }
     let html = '';
-    snap.forEach(doc => {
-      const e = doc.data();
+    entries.forEach(e => {
       const sc = SHIFT_STYLE[e.shift] || SHIFT_STYLE.morning;
       const hrs = SHIFT_HOURS[e.shift] || e.shift;
       html += `<div style="display:flex;align-items:center;justify-content:space-between;background:${sc.bg};border:1.5px solid ${sc.border};border-radius:8px;padding:10px 12px;margin-bottom:6px;">
@@ -680,10 +685,10 @@ async function bwLoadStaffingPanel(farm, house) {
     content.innerHTML = html;
     // Auto-fill employee name if field is still empty
     const empEl = document.getElementById('bw-employee');
-    if (empEl && !empEl.value) { empEl.value = snap.docs[0].data().person || ''; checkBWReady(); }
+    if (empEl && !empEl.value) { empEl.value = entries[0].person || ''; checkBWReady(); }
   } catch(err) {
     console.warn('bwLoadStaffingPanel:', err);
-    panel.style.display = 'none';
+    content.innerHTML = '<div style="color:#5a3a3a;font-size:11px;font-family:\'IBM Plex Mono\',monospace;">Could not load schedule</div>';
   }
 }
 
