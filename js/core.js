@@ -1148,7 +1148,7 @@ function go(tab) {
   const tabEl = document.getElementById(tm[tab]);
   if (tabEl) tabEl.classList.add('active');
   if (tab === 'dash')  renderDash();
-  if (tab === 'prod')  renderProdPanel();
+  if (tab === 'prod')  { renderProdPanel(); goProdSection('overview'); }
   if (tab === 'maint') { goMaintSection(window._maintSection || 'wo'); }
   if (tab === 'pkg')   { goPkgSection(window._pkgSection || 'packing'); }
   if (tab === 'feed')  { goFeedSection(window._feedSection || 'dashboard'); }
