@@ -5960,8 +5960,10 @@ function wiSystemFilter(val, btn) {
 }
 
 function wiSearch() {
-  wiSearchVal = document.getElementById('wi-search').value.toLowerCase().trim();
-  renderWI();
+  const el = document.getElementById('wi-search');
+  if (!el) return;
+  wiSearchVal = el.value.toLowerCase().trim();
+  try { renderWI(); } catch(e) { console.error('renderWI error:', e); }
 }
 
 function renderWI() {
@@ -6076,7 +6078,7 @@ function wiCard(wi, WI_TYPE_MAP, SYS_ICON_MAP) {
 
   return `<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;">
     <!-- Card header row -->
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;" onclick="toggleWIExpand('${expandId}')">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;" onclick="openWIView('${wi.wiId}')">
       <span class="wi-type-badge" style="background:${t.bg};color:${t.color};border:1px solid ${t.color}40;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;">${t.label}</span>
       <span style="flex:1;font-size:13px;font-weight:700;color:#e8f5ec;line-height:1.3;">${wi.title}</span>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
@@ -6084,20 +6086,13 @@ function wiCard(wi, WI_TYPE_MAP, SYS_ICON_MAP) {
         ${wi.warnings ? '<span title="Has warnings" style="font-size:13px;">⚠️</span>' : ''}
         ${timeStr ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);">⏱ ${timeStr}</span>` : ''}
         <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);">${stepCount} steps</span>
-        <span id="${expandId}-arrow" style="font-size:11px;color:var(--muted);">▼</span>
+        <span style="font-size:11px;color:var(--muted);">›</span>
       </div>
     </div>
     <!-- Meta row -->
     <div style="padding:0 12px 8px;display:flex;align-items:center;gap:8px;">
       ${wi.system && wi.system !== 'General' ? `<span style="font-size:11px;color:var(--muted);">${sysIcon} ${wi.system}</span>` : ''}
-      <button onclick="openWIView('${wi.wiId}')" style="margin-left:auto;padding:3px 10px;background:transparent;border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">View Full →</button>
-      <button onclick="openWIForm('${wi.wiId}')" style="padding:3px 10px;background:transparent;border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">Edit</button>
-    </div>
-    <!-- Expandable steps -->
-    <div id="${expandId}" style="display:none;padding:4px 12px 12px;border-top:1px solid var(--border);">
-      ${wi.ppe ? `<div style="background:#fff8e1;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:12px;color:#b45309;">🦺 PPE: ${wi.ppe}</div>` : ''}
-      ${wi.warnings ? `<div style="background:#fef2f2;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:12px;color:#b91c1c;">⚠️ ${wi.warnings}</div>` : ''}
-      ${stepsHtml}
+      <button onclick="event.stopPropagation();openWIForm('${wi.wiId}')" style="margin-left:auto;padding:3px 10px;background:transparent;border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">✏️ Edit</button>
     </div>
   </div>`;
 }
