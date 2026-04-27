@@ -6551,6 +6551,7 @@ function openWIView(wiId) {
   }
 
   document.getElementById('wiv-footer').textContent = `#${wi.wiId} · ${steps.length} steps`;
+  _wiViewOpenedAt = Date.now();
   document.getElementById('wi-view-modal').classList.add('open');
 }
 
@@ -6564,7 +6565,11 @@ function wiToggleStep(idx) {
   text.style.color = done ? 'var(--muted)' : '';
 }
 
+let _wiViewOpenedAt = 0;
+
 function closeWIView() {
+  // Guard against iOS ghost-click closing the modal immediately after it opens
+  if (Date.now() - _wiViewOpenedAt < 600) return;
   document.getElementById('wi-view-modal').classList.remove('open');
   currentWIId = null;
 }
