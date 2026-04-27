@@ -288,15 +288,18 @@ let _clDashData = [];   // today's submitted checklists
 let _clDashUnsub = null;
 
 async function clOpenTaskWI(taskId, taskLabel) {
-  if (typeof allWI === 'undefined' || !allWI.length) {
-    if (typeof loadWI === 'function') await loadWI();
-  }
+  try {
+    if (typeof allWI === 'undefined' || !allWI.length) {
+      if (typeof loadWI === 'function') await loadWI();
+    }
+  } catch(e) {}
   const matches = (typeof allWI !== 'undefined' ? allWI : []).filter(w => w.clTaskId === taskId);
   if (matches.length > 0) {
-    openWIView(matches[0].wiId);
+    if (typeof openWIView === 'function') openWIView(matches[0].wiId);
   } else {
-    if (typeof openWIForm === 'function') {
-      openWIForm(null, taskId, taskLabel, 'Barn / Layer');
+    // Bypass admin check — workers need to create/view WIs directly from checklist
+    if (typeof _openWIForm === 'function') {
+      _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
     }
   }
 }
