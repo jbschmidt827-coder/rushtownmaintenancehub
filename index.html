@@ -995,7 +995,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 <!-- ═══ PART ADD / EDIT MODAL ═══ -->
 <div class="overlay" id="part-form-modal">
-  <div class="modal" style="max-width:480px;">
+  <div class="modal" style="max-width:480px;max-height:92vh;overflow-y:auto;">
     <h3 id="part-form-title">Add Part</h3>
     <p class="modal-sub">Add a part to the inventory master list</p>
 
@@ -2490,6 +2490,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         🔧 Work Order will be auto-created when you submit.
       </div>
     </div>
+    <div style="margin-top:12px;">
+      <div class="bw-row-label">Egg count (approx. total today)</div>
+      <input type="number" id="bw-egg-count" class="bw-input" placeholder="e.g. 134500" min="0">
+    </div>
   </div>
 
   <!-- Pest -->
@@ -2516,6 +2520,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <div class="bw-row-label">Fly trap count (flies caught)</div>
         <input type="number" id="bw-fly-count" class="bw-input" placeholder="Enter fly count" min="0">
       </div>
+    </div>
+    <div style="margin-top:12px;">
+      <div class="bw-row-label">Weekly rodent trap count</div>
+      <input type="number" id="bw-weekly-rodent-count" class="bw-input" placeholder="Total rodents caught this week" min="0">
     </div>
   </div>
 
@@ -4841,7 +4849,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 
 <!-- ═══ BARN ENTRY OVERLAY ═══ -->
-<div id="barn-entry-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0f1a0f;flex-direction:column;overflow:hidden;">
+<div id="barn-entry-overlay" style="display:none;position:fixed;inset:0;z-index:9990;background:#0f1a0f;flex-direction:column;overflow:hidden;">
   <div id="barn-entry-body" style="display:flex;flex-direction:column;height:100%;max-width:520px;margin:0 auto;width:100%;"></div>
 </div>
 
