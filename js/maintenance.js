@@ -5941,22 +5941,22 @@ async function loadWIFallback() {
 function wiTypeFilter(val, btn) {
   wiTypeFilterVal = val;
   document.querySelectorAll('#wi-type-bar .pill').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderWI();
+  if (btn) btn.classList.add('active');
+  try { renderWI(); } catch(e) { console.error('renderWI error:', e); }
 }
 
 function wiDeptFilter(val, btn) {
   wiDeptFilterVal = val;
   document.querySelectorAll('#wi-dept-bar .pill').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderWI();
+  if (btn) btn.classList.add('active');
+  try { renderWI(); } catch(e) { console.error('renderWI error:', e); }
 }
 
 function wiSystemFilter(val, btn) {
   wiSystemFilterVal = val;
   document.querySelectorAll('#wi-system-bar .pill').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderWI();
+  if (btn) btn.classList.add('active');
+  try { renderWI(); } catch(e) { console.error('renderWI error:', e); }
 }
 
 function wiSearch() {
