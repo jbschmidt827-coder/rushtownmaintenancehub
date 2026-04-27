@@ -641,6 +641,22 @@ function closeBarnWalk() {
   document.getElementById('barn-walk-modal').style.display = 'none';
 }
 
+async function clOpenTaskWI(taskId, taskLabel) {
+  try {
+    if (typeof allWI === 'undefined' || !allWI.length) {
+      if (typeof loadWI === 'function') await loadWI();
+    }
+  } catch(e) {}
+  const matches = (typeof allWI !== 'undefined' ? allWI : []).filter(w => w.clTaskId === taskId);
+  if (matches.length > 0) {
+    if (typeof openWIView === 'function') openWIView(matches[0].wiId);
+  } else {
+    if (typeof _openWIForm === 'function') {
+      _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
+    }
+  }
+}
+
 function bwSet(key, val) {
   _bwData[key] = val;
   const badge = {
