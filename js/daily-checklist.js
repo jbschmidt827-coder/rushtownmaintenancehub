@@ -244,6 +244,7 @@ function renderChecklist() {
     }
 
     const showNote = t.group === 'p1' || !chk.done;
+    const wiExists = (typeof allWI !== 'undefined') && allWI.some(w => w.clTaskId === t.id);
     html += `
       <div style="background:${chk.done?'#050f05':g.bg};border:1.5px solid ${chk.done?'#1a3a1a':g.border};border-radius:10px;padding:10px 12px;margin-bottom:8px;">
         <div style="display:flex;align-items:flex-start;gap:10px;">
@@ -255,6 +256,7 @@ function renderChecklist() {
               <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${chk.done?'#3a6a3a':'#f0ead8'};${chk.done?'text-decoration:line-through;':''}">${t.label}</span>
               ${freqBadge}
               ${t.timeMin?`<span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a6a4a;">${clFmtTime(t.timeMin)}</span>`:''}
+              <button onclick="clOpenTaskWI('${t.id}','${t.label.replace(/'/g,"\\'")}');" style="margin-left:auto;padding:2px 8px;border-radius:5px;border:1px solid ${wiExists?'#2a5a3a':'#2a3a5a'};background:${wiExists?'#0a2a0a':'#0a0f1a'};color:${wiExists?'#5a9a6a':'#5a7a9a'};font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;">📖 ${wiExists?'WI':'+ WI'}</button>
             </div>
             ${t.sub?`<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a6a4a;margin-bottom:${showNote?'5px':'0'};">${t.sub}</div>`:''}
             ${showNote?`<input type="text" placeholder="${t.group==='p1'?'Note any issues here (required if not checked)…':'Optional note…'}" value="${chk.note||''}" oninput="clNote('${t.id}',this.value)" ${_cl.submitted?'disabled':''} style="width:100%;background:#0a1a0a;border:1px solid #1a3a1a;color:#9a9a8a;padding:5px 8px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;box-sizing:border-box;">`:''}
@@ -284,6 +286,20 @@ function renderChecklist() {
 
 let _clDashData = [];   // today's submitted checklists
 let _clDashUnsub = null;
+
+async function clOpenTaskWI(taskId, taskLabel) {
+  if (typeof allWI === 'undefined' || !allWI.length) {
+    if (typeof loadWI === 'function') await loadWI();
+  }
+  const matches = (typeof allWI !== 'undefined' ? allWI : []).filter(w => w.clTaskId === taskId);
+  if (matches.length > 0) {
+    openWIView(matches[0].wiId);
+  } else {
+    if (typeof openWIForm === 'function') {
+      openWIForm(null, taskId, taskLabel, 'Barn / Layer');
+    }
+  }
+}
 
 function startChecklistDashboard() {
   if (_clDashUnsub) _clDashUnsub();

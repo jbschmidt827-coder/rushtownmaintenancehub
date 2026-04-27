@@ -1153,7 +1153,7 @@ function go(tab) {
   if (tab === 'pkg')   { goPkgSection(window._pkgSection || 'packing'); }
   if (tab === 'feed')  { goFeedSection(window._feedSection || 'dashboard'); }
   if (tab === 'ship')  { goShipSection(window._shipSection || 'shipping'); }
-  if (tab === 'check') { renderProdCheck(); if (typeof startChecklistDashboard==='function') startChecklistDashboard(); }
+  if (tab === 'check') { renderProdCheck(); if (typeof startChecklistDashboard==='function') startChecklistDashboard(); if (typeof loadWI==='function') loadWI(); }
   if (tab === 'mw')    renderProdMW();
   if (tab === 'kpi')   { goKpiSection(window._kpiSection || 'dashboard'); }
   if (tab === 'reports') renderReports();
