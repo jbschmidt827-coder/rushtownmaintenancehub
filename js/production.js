@@ -642,15 +642,22 @@ function closeBarnWalk() {
 }
 
 async function clOpenTaskWI(taskId, taskLabel) {
+  // Close barn-walk-modal first — its overflow:auto creates a stacking context
+  // that clips position:fixed children even at high z-index
+  const bwModal = document.getElementById('barn-walk-modal');
+  if (bwModal) bwModal.style.display = 'none';
+
   try {
     if (typeof allWI === 'undefined' || !allWI.length) {
       if (typeof loadWI === 'function') await loadWI();
+      else if (typeof loadWIFallback === 'function') await loadWIFallback();
     }
   } catch(e) {}
+
   const wi = (typeof allWI !== 'undefined' ? allWI : []);
   // 1. Exact clTaskId match
   let matches = wi.filter(w => w.clTaskId === taskId);
-  // 2. Fallback: title keyword match (for WIs created before clTaskId existed)
+  // 2. Fallback: title keyword match
   if (!matches.length && taskLabel) {
     const words = taskLabel.toLowerCase().split(/\s+/).filter(w => w.length > 3);
     matches = wi.filter(w => {

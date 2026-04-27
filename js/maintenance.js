@@ -5963,6 +5963,11 @@ function wiSearch() {
   const el = document.getElementById('wi-search');
   if (!el) return;
   wiSearchVal = el.value.toLowerCase().trim();
+  // If WIs not loaded yet, trigger a load then re-render
+  if (!allWI.length && wiSearchVal) {
+    loadWIFallback().then(() => { try { renderWI(); } catch(e) {} });
+    return;
+  }
   try { renderWI(); } catch(e) { console.error('renderWI error:', e); }
 }
 
