@@ -647,12 +647,25 @@ async function clOpenTaskWI(taskId, taskLabel) {
       if (typeof loadWI === 'function') await loadWI();
     }
   } catch(e) {}
-  const matches = (typeof allWI !== 'undefined' ? allWI : []).filter(w => w.clTaskId === taskId);
+  const wi = (typeof allWI !== 'undefined' ? allWI : []);
+  // 1. Exact clTaskId match
+  let matches = wi.filter(w => w.clTaskId === taskId);
+  // 2. Fallback: title keyword match (for WIs created before clTaskId existed)
+  if (!matches.length && taskLabel) {
+    const words = taskLabel.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+    matches = wi.filter(w => {
+      const t = (w.title || '').toLowerCase();
+      return words.length > 0 && words.some(word => t.includes(word));
+    });
+  }
   if (matches.length > 0) {
     if (typeof openWIView === 'function') openWIView(matches[0].wiId);
   } else {
-    if (typeof _openWIForm === 'function') {
-      _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
+    // No WI found — prompt user to create one
+    if (confirm('No work instruction found for "' + taskLabel + '".\n\nTap OK to create one now.')) {
+      if (typeof _openWIForm === 'function') {
+        _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
+      }
     }
   }
 }
