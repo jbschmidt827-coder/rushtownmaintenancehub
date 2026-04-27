@@ -120,6 +120,10 @@ function goMaintSection(section) {
   });
   const renders = {wo:renderWO, pm:renderPM, parts:renderParts, log:renderLog, assets:renderAssets, wi:renderWI, calendar:renderMaintCalendar, contractor:renderContractor, cost:renderCostDashboard, 'weekly-agenda':renderWeeklyAgenda, redtags:renderRedTags};
   if (section === 'wi') {
+    // Clear any stale search so the list always shows fresh when navigating here
+    if (typeof wiSearchVal !== 'undefined') wiSearchVal = '';
+    const wiSearchEl = document.getElementById('wi-search');
+    if (wiSearchEl) wiSearchEl.value = '';
     // If the real-time listener hasn't populated allWI yet (e.g. index error), force a fetch
     if (typeof allWI !== 'undefined' && allWI.length === 0) {
       if (typeof loadWIFallback === 'function') { loadWIFallback(); return; }
