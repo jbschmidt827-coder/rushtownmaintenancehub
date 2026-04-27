@@ -664,11 +664,17 @@ async function clOpenTaskWI(taskId, taskLabel) {
   const wi = (typeof allWI !== 'undefined' ? allWI : []);
   let matches = wi.filter(w => w.clTaskId === taskId);
   if (!matches.length && taskLabel) {
-    const words = taskLabel.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+    // AND logic: every word must appear in title (prevents loose matches like
+    // 'Fly Check' → 'check' → 'Water Usage Check')
+    const words = taskLabel.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
     matches = wi.filter(w => {
       const t = (w.title || '').toLowerCase();
-      return words.length > 0 && words.some(word => t.includes(word));
+      return words.length > 0 && words.every(word => t.includes(word));
     });
+    // If still no match, try matching on the taskId word only as a last resort
+    if (!matches.length) {
+      matches = wi.filter(w => (w.title || '').toLowerCase().includes(taskId.toLowerCase()));
+    }
   }
 
   // Step 4: open WI viewer or pre-fill create form
