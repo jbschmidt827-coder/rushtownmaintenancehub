@@ -651,15 +651,7 @@ async function clOpenTaskWI(taskId, taskLabel) {
     fly:         'Fly Test',
   };
 
-  // Step 1: close ALL barn walk overlays
-  if (typeof closeBarnEntry === 'function') closeBarnEntry();
-  if (typeof closeBarnWalk  === 'function') closeBarnWalk();
-  const bwModal = document.getElementById('barn-walk-modal');
-  if (bwModal) bwModal.style.display = 'none';
-  const beOverlay = document.getElementById('barn-entry-overlay');
-  if (beOverlay) { beOverlay.style.display = 'none'; document.body.style.overflow = ''; }
-
-  // Step 2: load WIs if not yet loaded
+  // Load WIs if not yet loaded (barn walk stays open underneath)
   try {
     if (!allWI || !allWI.length) {
       if (typeof loadWIFallback === 'function') await loadWIFallback();
@@ -667,7 +659,7 @@ async function clOpenTaskWI(taskId, taskLabel) {
     }
   } catch(e) {}
 
-  // Step 3: find match by exact title
+  // Find match by exact title
   const wi = (typeof allWI !== 'undefined' ? allWI : []);
   const targetTitle = WI_TITLE_MAP[taskId];
   let match = null;
@@ -675,19 +667,18 @@ async function clOpenTaskWI(taskId, taskLabel) {
     match = wi.find(w => (w.title || '').trim().toLowerCase() === targetTitle.toLowerCase());
   }
 
-  // Step 4: open viewer directly (wi-view-modal z-index:5000, visible over everything)
-  // — no page navigation needed since barn overlays are already closed
+  // Open WI viewer on top of barn walk (wi-view-modal z-index:10000 > barn-entry-overlay 9990)
+  // Closing the viewer returns user to exactly where they were in the barn walk
   setTimeout(() => {
     if (match && typeof openWIView === 'function') {
       openWIView(match.wiId || match._fbId);
     } else {
-      // No WI mapped yet — navigate to WI section with search pre-filled
+      // No WI mapped yet — close barn walk and go to WI section
+      if (typeof closeBarnEntry === 'function') closeBarnEntry();
+      const beOverlay = document.getElementById('barn-entry-overlay');
+      if (beOverlay) { beOverlay.style.display = 'none'; document.body.style.overflow = ''; }
       if (typeof go === 'function') go('maint');
-      setTimeout(() => {
-        if (typeof goMaintSection === 'function') goMaintSection('wi');
-        const el = document.getElementById('wi-search');
-        if (el) { el.value = taskLabel || taskId; if (typeof wiSearch === 'function') wiSearch(); }
-      }, 80);
+      setTimeout(() => { if (typeof goMaintSection === 'function') goMaintSection('wi'); }, 80);
     }
   }, 100);
 }
