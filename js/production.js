@@ -679,11 +679,17 @@ async function clOpenTaskWI(taskId, taskLabel) {
   setTimeout(() => {
     if (match) {
       const id = match.wiId || match._fbId;
-      if (id && typeof openWIView === 'function') {
-        // Patch allWI entry to ensure wiId is set so openWIView can find it
-        if (!match.wiId && match._fbId) match.wiId = match._fbId;
-        openWIView(id);
+      if (!match.wiId && match._fbId) match.wiId = match._fbId;
+      try {
+        if (typeof openWIView === 'function') openWIView(id);
+      } catch(err) {
+        _dbg.textContent += ' ERR:' + err.message;
       }
+      const m = document.getElementById('wi-view-modal');
+      const hasOpen = m && m.classList.contains('open');
+      _dbg.textContent += hasOpen ? ' ✓OPEN' : ' ✗NOTOPEN';
+      // Force-show if openWIView didn't open it
+      if (m && !hasOpen) m.classList.add('open');
     } else {
       // No WI mapped — close barn walk and go to WI section
       if (typeof closeBarnEntry === 'function') closeBarnEntry();
