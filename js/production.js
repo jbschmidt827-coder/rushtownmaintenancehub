@@ -642,22 +642,24 @@ function closeBarnWalk() {
 }
 
 async function clOpenTaskWI(taskId, taskLabel) {
-  // Close barn-walk-modal first — its overflow:auto creates a stacking context
-  // that clips position:fixed children even at high z-index
+  // Step 1: close barn walk and go to Maintenance → WI section
+  // This avoids ALL z-index/overflow/stacking-context issues entirely
   const bwModal = document.getElementById('barn-walk-modal');
   if (bwModal) bwModal.style.display = 'none';
+  if (typeof go === 'function') go('maint');
+  if (typeof goMaintSection === 'function') goMaintSection('wi');
 
+  // Step 2: load WIs if not yet loaded
   try {
-    if (typeof allWI === 'undefined' || !allWI.length) {
-      if (typeof loadWI === 'function') await loadWI();
-      else if (typeof loadWIFallback === 'function') await loadWIFallback();
+    if (!allWI || !allWI.length) {
+      if (typeof loadWIFallback === 'function') await loadWIFallback();
+      else if (typeof loadWI === 'function') await loadWI();
     }
   } catch(e) {}
 
+  // Step 3: find matching WI
   const wi = (typeof allWI !== 'undefined' ? allWI : []);
-  // 1. Exact clTaskId match
   let matches = wi.filter(w => w.clTaskId === taskId);
-  // 2. Fallback: title keyword match
   if (!matches.length && taskLabel) {
     const words = taskLabel.toLowerCase().split(/\s+/).filter(w => w.length > 3);
     matches = wi.filter(w => {
@@ -665,13 +667,18 @@ async function clOpenTaskWI(taskId, taskLabel) {
       return words.length > 0 && words.some(word => t.includes(word));
     });
   }
-  if (matches.length > 0) {
-    if (typeof openWIView === 'function') openWIView(matches[0].wiId);
-  } else {
-    if (typeof _openWIForm === 'function') {
-      _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
+
+  // Step 4: open WI viewer or pre-fill create form
+  setTimeout(() => {
+    if (matches.length > 0) {
+      if (typeof openWIView === 'function') openWIView(matches[0].wiId);
+    } else {
+      // Pre-fill search with task label so user can see what's available
+      const el = document.getElementById('wi-search');
+      if (el) { el.value = taskLabel; if (typeof wiSearch === 'function') wiSearch(); }
+      if (typeof _openWIForm === 'function') _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
     }
-  }
+  }, 150);
 }
 
 function bwSet(key, val) {
