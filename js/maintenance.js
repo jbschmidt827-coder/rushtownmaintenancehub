@@ -6258,7 +6258,7 @@ function wiTypeFilterFromPivot(type) {
 
 // ── Form ──
 function openWIForm(wiId, clTaskId, prefillTitle, prefillDept) {
-  requireAdmin(() => _openWIForm(wiId, clTaskId, prefillTitle, prefillDept));
+  _openWIForm(wiId, clTaskId, prefillTitle, prefillDept);
 }
 // ── WI Photo Upload helpers ──────────────────────────────────────────────────
 function wiHandlePhotoSelect(input) {
@@ -6566,7 +6566,8 @@ function closeWIView() {
 
 function wiEditCurrent() {
   const id = currentWIId;
-  requireAdmin(() => { closeWIView(); _openWIForm(id); });
+  closeWIView();
+  _openWIForm(id);
 }
 
 async function wiDeleteCurrent() {
