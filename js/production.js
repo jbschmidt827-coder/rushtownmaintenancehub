@@ -661,11 +661,8 @@ async function clOpenTaskWI(taskId, taskLabel) {
   if (matches.length > 0) {
     if (typeof openWIView === 'function') openWIView(matches[0].wiId);
   } else {
-    // No WI found — prompt user to create one
-    if (confirm('No work instruction found for "' + taskLabel + '".\n\nTap OK to create one now.')) {
-      if (typeof _openWIForm === 'function') {
-        _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
-      }
+    if (typeof _openWIForm === 'function') {
+      _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
     }
   }
 }
