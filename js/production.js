@@ -642,7 +642,16 @@ function closeBarnWalk() {
 }
 
 async function clOpenTaskWI(taskId, taskLabel) {
-  // Step 1: close ALL barn walk overlays before navigating
+  // Exact title map — taskId → WI title as it appears in Firestore
+  const WI_TITLE_MAP = {
+    undercage:   'Cleaning Under Cages',
+    blowoff:     'House Dust and Dander Removal',
+    hallway:     'Cleaning Designated Hallways',
+    rodent:      'Rodents and Rodent Bait',
+    fly:         'Fly Test',
+  };
+
+  // Close all barn walk overlays before navigating away
   if (typeof closeBarnEntry === 'function') closeBarnEntry();
   if (typeof closeBarnWalk  === 'function') closeBarnWalk();
   const bwModal = document.getElementById('barn-walk-modal');
@@ -652,7 +661,7 @@ async function clOpenTaskWI(taskId, taskLabel) {
   if (typeof go === 'function') go('maint');
   if (typeof goMaintSection === 'function') goMaintSection('wi');
 
-  // Step 2: load WIs if not yet loaded
+  // Load WIs if not yet loaded
   try {
     if (!allWI || !allWI.length) {
       if (typeof loadWIFallback === 'function') await loadWIFallback();
@@ -660,32 +669,22 @@ async function clOpenTaskWI(taskId, taskLabel) {
     }
   } catch(e) {}
 
-  // Step 3: find matching WI
   const wi = (typeof allWI !== 'undefined' ? allWI : []);
-  let matches = wi.filter(w => w.clTaskId === taskId);
-  if (!matches.length && taskLabel) {
-    // AND logic: every word must appear in title (prevents loose matches like
-    // 'Fly Check' → 'check' → 'Water Usage Check')
-    const words = taskLabel.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
-    matches = wi.filter(w => {
-      const t = (w.title || '').toLowerCase();
-      return words.length > 0 && words.every(word => t.includes(word));
-    });
-    // If still no match, try matching on the taskId word only as a last resort
-    if (!matches.length) {
-      matches = wi.filter(w => (w.title || '').toLowerCase().includes(taskId.toLowerCase()));
-    }
+  const targetTitle = WI_TITLE_MAP[taskId];
+  let match = null;
+
+  if (targetTitle) {
+    // Exact title match (case-insensitive)
+    match = wi.find(w => (w.title || '').trim().toLowerCase() === targetTitle.toLowerCase());
   }
 
-  // Step 4: open WI viewer or pre-fill create form
   setTimeout(() => {
-    if (matches.length > 0) {
-      if (typeof openWIView === 'function') openWIView(matches[0].wiId);
+    if (match) {
+      if (typeof openWIView === 'function') openWIView(match.wiId);
     } else {
-      // Pre-fill search with task label so user can see what's available
+      // No mapped WI yet — pre-fill search so user can find or create one
       const el = document.getElementById('wi-search');
-      if (el) { el.value = taskLabel; if (typeof wiSearch === 'function') wiSearch(); }
-      if (typeof _openWIForm === 'function') _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
+      if (el) { el.value = taskLabel || taskId; if (typeof wiSearch === 'function') wiSearch(); }
     }
   }, 150);
 }
