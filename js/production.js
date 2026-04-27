@@ -651,17 +651,15 @@ async function clOpenTaskWI(taskId, taskLabel) {
     fly:         'Fly Test',
   };
 
-  // Close all barn walk overlays before navigating away
+  // Step 1: close ALL barn walk overlays
   if (typeof closeBarnEntry === 'function') closeBarnEntry();
   if (typeof closeBarnWalk  === 'function') closeBarnWalk();
   const bwModal = document.getElementById('barn-walk-modal');
   if (bwModal) bwModal.style.display = 'none';
   const beOverlay = document.getElementById('barn-entry-overlay');
   if (beOverlay) { beOverlay.style.display = 'none'; document.body.style.overflow = ''; }
-  if (typeof go === 'function') go('maint');
-  if (typeof goMaintSection === 'function') goMaintSection('wi');
 
-  // Load WIs if not yet loaded
+  // Step 2: load WIs if not yet loaded
   try {
     if (!allWI || !allWI.length) {
       if (typeof loadWIFallback === 'function') await loadWIFallback();
@@ -669,24 +667,29 @@ async function clOpenTaskWI(taskId, taskLabel) {
     }
   } catch(e) {}
 
+  // Step 3: find match by exact title
   const wi = (typeof allWI !== 'undefined' ? allWI : []);
   const targetTitle = WI_TITLE_MAP[taskId];
   let match = null;
-
   if (targetTitle) {
-    // Exact title match (case-insensitive)
     match = wi.find(w => (w.title || '').trim().toLowerCase() === targetTitle.toLowerCase());
   }
 
+  // Step 4: open viewer directly (wi-view-modal z-index:5000, visible over everything)
+  // — no page navigation needed since barn overlays are already closed
   setTimeout(() => {
-    if (match) {
-      if (typeof openWIView === 'function') openWIView(match.wiId);
+    if (match && typeof openWIView === 'function') {
+      openWIView(match.wiId || match._fbId);
     } else {
-      // No mapped WI yet — pre-fill search so user can find or create one
-      const el = document.getElementById('wi-search');
-      if (el) { el.value = taskLabel || taskId; if (typeof wiSearch === 'function') wiSearch(); }
+      // No WI mapped yet — navigate to WI section with search pre-filled
+      if (typeof go === 'function') go('maint');
+      setTimeout(() => {
+        if (typeof goMaintSection === 'function') goMaintSection('wi');
+        const el = document.getElementById('wi-search');
+        if (el) { el.value = taskLabel || taskId; if (typeof wiSearch === 'function') wiSearch(); }
+      }, 80);
     }
-  }, 150);
+  }, 100);
 }
 
 function bwSet(key, val) {
