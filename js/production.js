@@ -659,21 +659,33 @@ async function clOpenTaskWI(taskId, taskLabel) {
     }
   } catch(e) {}
 
-  // Find match by exact title
+  // Find match — exact title first, then partial
   const wi = (typeof allWI !== 'undefined' ? allWI : []);
-  const targetTitle = WI_TITLE_MAP[taskId];
+  const targetTitle = (WI_TITLE_MAP[taskId] || '').toLowerCase();
   let match = null;
   if (targetTitle) {
-    match = wi.find(w => (w.title || '').trim().toLowerCase() === targetTitle.toLowerCase());
+    match = wi.find(w => (w.title || '').trim().toLowerCase() === targetTitle);
+    if (!match) match = wi.find(w => (w.title || '').toLowerCase().includes(targetTitle));
+    if (!match) match = wi.find(w => targetTitle.includes((w.title || '').toLowerCase().trim()) && (w.title||'').length > 3);
   }
 
-  // Open WI viewer on top of barn walk (wi-view-modal z-index:10000 > barn-entry-overlay 9990)
-  // Closing the viewer returns user to exactly where they were in the barn walk
+  // Debug toast — tap to dismiss
+  const _dbg = document.createElement('div');
+  _dbg.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a3a1a;color:#a0e0a0;padding:10px 16px;border-radius:10px;font-size:13px;z-index:20000;max-width:90vw;text-align:center;border:1px solid #4a9b6f;';
+  _dbg.textContent = `WI debug: ${wi.length} loaded | target="${WI_TITLE_MAP[taskId]||'none'}" | match=${match?match.title:'NONE'} | id=${match?(match.wiId||match._fbId||'?'):'—'}`;
+  document.body.appendChild(_dbg);
+  setTimeout(() => _dbg.remove(), 8000);
+
   setTimeout(() => {
-    if (match && typeof openWIView === 'function') {
-      openWIView(match.wiId || match._fbId);
+    if (match) {
+      const id = match.wiId || match._fbId;
+      if (id && typeof openWIView === 'function') {
+        // Patch allWI entry to ensure wiId is set so openWIView can find it
+        if (!match.wiId && match._fbId) match.wiId = match._fbId;
+        openWIView(id);
+      }
     } else {
-      // No WI mapped yet — close barn walk and go to WI section
+      // No WI mapped — close barn walk and go to WI section
       if (typeof closeBarnEntry === 'function') closeBarnEntry();
       const beOverlay = document.getElementById('barn-entry-overlay');
       if (beOverlay) { beOverlay.style.display = 'none'; document.body.style.overflow = ''; }
