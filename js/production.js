@@ -973,6 +973,18 @@ function closeMorningWalk() {
   document.getElementById('morning-walk-modal').style.display = 'none';
 }
 
+function mwCheckBinLevel(inputId, statusId) {
+  const input = document.getElementById(inputId);
+  const status = document.getElementById(statusId);
+  if (!input || !status) return;
+  const val = parseFloat(input.value);
+  if (isNaN(val) || input.value === '') { status.textContent = ''; return; }
+  if (val < 1)        { status.style.color = '#e53e3e'; status.textContent = '🔴 CRITICAL — Order feed now'; }
+  else if (val < 2.5) { status.style.color = '#d69e2e'; status.textContent = '🟡 Low — Order soon'; }
+  else if (val < 5)   { status.style.color = '#4ade80'; status.textContent = '🟢 Moderate'; }
+  else                { status.style.color = '#4ade80'; status.textContent = '🟢 Good'; }
+}
+
 function mwSet(key, val) {
   _mwData[key] = val;
   const badge = {
@@ -1009,9 +1021,13 @@ async function submitMorningWalk() {
   if (_mwData.blowers === 'no')        flags.push('Blower issue');
 
   const feedMeterReading = document.getElementById('mw-feed-meter')?.value ? Number(document.getElementById('mw-feed-meter').value) : null;
+  const binA = document.getElementById('mw-bin-a')?.value !== '' ? Number(document.getElementById('mw-bin-a').value) : null;
+  const binB = document.getElementById('mw-bin-b')?.value !== '' ? Number(document.getElementById('mw-bin-b').value) : null;
+  if (binA !== null && binA < 1)   flags.push('Bin A critically low (' + binA + ' tons)');
+  if (binB !== null && binB < 1)   flags.push('Bin B critically low (' + binB + ' tons)');
   const record = {
     farm: _mwFarm, house: String(_mwHouse), employee, notes, flags,
-    waterPSI, temp, eeCount, feedMeterReading,
+    waterPSI, temp, eeCount, feedMeterReading, binA, binB,
     feed: _mwData.feed, fans: _mwData.fans, blowers: _mwData.blowers,
     date: new Date().toISOString().slice(0,10),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
