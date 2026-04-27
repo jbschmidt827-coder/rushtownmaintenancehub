@@ -642,10 +642,13 @@ function closeBarnWalk() {
 }
 
 async function clOpenTaskWI(taskId, taskLabel) {
-  // Step 1: close barn walk and go to Maintenance → WI section
-  // This avoids ALL z-index/overflow/stacking-context issues entirely
+  // Step 1: close ALL barn walk overlays before navigating
+  if (typeof closeBarnEntry === 'function') closeBarnEntry();
+  if (typeof closeBarnWalk  === 'function') closeBarnWalk();
   const bwModal = document.getElementById('barn-walk-modal');
   if (bwModal) bwModal.style.display = 'none';
+  const beOverlay = document.getElementById('barn-entry-overlay');
+  if (beOverlay) { beOverlay.style.display = 'none'; document.body.style.overflow = ''; }
   if (typeof go === 'function') go('maint');
   if (typeof goMaintSection === 'function') goMaintSection('wi');
 
