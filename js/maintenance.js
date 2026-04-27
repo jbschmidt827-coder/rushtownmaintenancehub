@@ -6570,7 +6570,8 @@ function closeWIView() {
 }
 
 function wiEditCurrent() {
-  requireAdmin(() => { closeWIView(); _openWIForm(currentWIId); });
+  const id = currentWIId;
+  requireAdmin(() => { closeWIView(); _openWIForm(id); });
 }
 
 async function wiDeleteCurrent() {
