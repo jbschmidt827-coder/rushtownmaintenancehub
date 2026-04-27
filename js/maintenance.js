@@ -6262,8 +6262,8 @@ function wiTypeFilterFromPivot(type) {
 }
 
 // ── Form ──
-function openWIForm(wiId) {
-  requireAdmin(() => _openWIForm(wiId));
+function openWIForm(wiId, clTaskId, prefillTitle, prefillDept) {
+  requireAdmin(() => _openWIForm(wiId, clTaskId, prefillTitle, prefillDept));
 }
 // ── WI Photo Upload helpers ──────────────────────────────────────────────────
 function wiHandlePhotoSelect(input) {
@@ -6306,7 +6306,7 @@ function wiRemoveExistingPhoto(i) {
   renderWIPhotoPreviews();
 }
 
-function _openWIForm(wiId) {
+function _openWIForm(wiId, clTaskId, prefillTitle, prefillDept) {
   editingWIId = wiId || null;
   wiStepCount = 0;
   document.getElementById('wif-steps-list').innerHTML = '';
@@ -6314,6 +6314,8 @@ function _openWIForm(wiId) {
   _wiExistingPhotos = [];
   const photoPreview = document.getElementById('wif-photo-preview');
   if (photoPreview) photoPreview.innerHTML = '';
+  const clTaskInput = document.getElementById('wif-cl-task-id');
+  if (clTaskInput) clTaskInput.value = clTaskId || '';
 
   if (wiId) {
     const wi = allWI.find(x => x.wiId === wiId);
@@ -6334,9 +6336,10 @@ function _openWIForm(wiId) {
   } else {
     document.getElementById('wi-form-title').textContent = 'Add Work Instruction';
     ['wif-title','wif-time','wif-ppe','wif-warnings','wif-author'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('wif-type').value   = '';
-    document.getElementById('wif-dept').value   = '';
+    document.getElementById('wif-type').value   = 'onboarding';
+    document.getElementById('wif-dept').value   = prefillDept || '';
     document.getElementById('wif-system').value = '';
+    if (prefillTitle) document.getElementById('wif-title').value = prefillTitle;
     wiAddStep(); wiAddStep(); wiAddStep(); // start with 3 blank steps
   }
   document.getElementById('wi-form-modal').classList.add('open');
@@ -6416,8 +6419,10 @@ async function saveWI() {
             } catch(photoErr) { console.warn('Photo upload failed (non-fatal):', photoErr); }
           }
         }
+        const clTaskId = (document.getElementById('wif-cl-task-id')?.value || '').trim();
         await db.collection('workInstructions').doc(fbId).update({
-          title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, photos: photoUrls, updatedTs: Date.now()
+          title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, photos: photoUrls, updatedTs: Date.now(),
+          ...(clTaskId ? { clTaskId } : {})
         });
         // activityLog for edits — non-blocking
         try {
@@ -6445,9 +6450,11 @@ async function saveWI() {
           } catch(photoErr) { console.warn('Photo upload failed (non-fatal):', photoErr); }
         }
       }
+      const clTaskId = (document.getElementById('wif-cl-task-id')?.value || '').trim();
       await db.collection('workInstructions').add({
         wiId, title, type, dept, system, time: parseInt(time)||0,
-        ppe, warnings, author, steps, date, photos: photoUrls, ts: Date.now()
+        ppe, warnings, author, steps, date, photos: photoUrls, ts: Date.now(),
+        ...(clTaskId ? { clTaskId } : {})
       });
       // activityLog is non-blocking — never let it prevent the WI from saving
       try {
