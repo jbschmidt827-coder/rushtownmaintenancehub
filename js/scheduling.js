@@ -342,13 +342,17 @@ function _showUpdateBanner() {
   var banner = document.getElementById('sw-update-banner');
   if (!banner) return;
   banner.style.display = 'flex';
-  banner.onclick = function() {
-    banner.innerHTML = '⏳ Refreshing...';
-    // Tell the waiting SW to take over, then reload
-    navigator.serviceWorker.ready.then(function(reg) {
-      if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-    });
-    setTimeout(function() { location.reload(true); }, 400);
-  };
+  banner.innerHTML = '🆕 App updated — reloading in 3s… (tap to reload now)';
+  // Auto-reload after 3 seconds so users always get fresh code
+  var t = setTimeout(function() { _doReload(); }, 3000);
+  banner.onclick = function() { clearTimeout(t); _doReload(); };
+}
+function _doReload() {
+  var banner = document.getElementById('sw-update-banner');
+  if (banner) banner.innerHTML = '⏳ Reloading…';
+  navigator.serviceWorker.ready.then(function(reg) {
+    if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+  });
+  setTimeout(function() { location.reload(true); }, 400);
 }
 

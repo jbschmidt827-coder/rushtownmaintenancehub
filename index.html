@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Rushtown Poultry — Operations Hub</title>
 <script>
-(function(){var V='20260427c';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
+(function(){var V='20260427d';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
 </script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0f1a0f">
@@ -3118,11 +3118,11 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
     <!-- Search + Add -->
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
-      <div style="flex:1;position:relative;">
-        <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span>
-        <input type="text" id="wi-search" placeholder="Search title, system, keywords, steps..." oninput="wiSearch()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:10px 12px 10px 36px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:'IBM Plex Sans',sans-serif;box-sizing:border-box;background:var(--card-bg);touch-action:manipulation;-webkit-user-select:text;user-select:text;">
-      </div>
-      <button onclick="openWIForm()" style="padding:10px 18px;background:var(--green-mid);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.5px;">+ Add</button>
+      <form onsubmit="return false;" style="flex:1;position:relative;margin:0;">
+        <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;z-index:1;">🔍</span>
+        <input type="search" name="wi-search" id="wi-search" placeholder="Search work instructions..." oninput="wiSearch()" onkeyup="wiSearch()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:10px 12px 10px 36px;border:1.5px solid var(--border);border-radius:9px;font-size:16px;font-family:'IBM Plex Sans',sans-serif;box-sizing:border-box;background:var(--card-bg);touch-action:manipulation;-webkit-user-select:text;user-select:text;pointer-events:auto;-webkit-appearance:none;">
+      </form>
+      <button onclick="openWIForm()" style="padding:10px 18px;background:var(--green-mid);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.5px;touch-action:manipulation;">+ Add</button>
     </div>
 
     <!-- Type filter -->
@@ -4070,7 +4070,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 </main>
 
 <!-- ═══ ADD / EDIT WORK INSTRUCTION MODAL ═══ -->
-<div class="overlay" id="wi-form-modal">
+<div class="overlay" id="wi-form-modal" style="z-index:5000;">
   <div class="modal" style="max-width:540px;max-height:92vh;overflow-y:auto;">
     <h3 id="wi-form-title">Add Work Instruction</h3>
     <p class="modal-sub">Write a clear procedure anyone on the crew can follow</p>
@@ -4166,7 +4166,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 </div>
 
 <!-- ═══ VIEW WORK INSTRUCTION MODAL ═══ -->
-<div class="overlay" id="wi-view-modal">
+<div class="overlay" id="wi-view-modal" style="z-index:5000;">
   <div class="modal" style="max-width:560px;max-height:92vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
       <div style="flex:1;padding-right:12px;">
@@ -4823,14 +4823,14 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 <script src="js/core.js?v=20260424"></script>
 <script src="js/dashboard.js?v=20260424"></script>
-<script src="js/maintenance.js?v=20260427e"></script>
+<script src="js/maintenance.js?v=20260427f"></script>
 <script src="js/packaging.js?v=20260424"></script>
 <script src="js/shipping.js?v=20260424"></script>
 <script src="js/production.js?v=20260427c"></script>
 <script src="js/feed-mill.js?v=20260424"></script>
 <script src="js/egg-quality.js?v=20260424"></script>
 <script src="js/biosecurity.js?v=20260424"></script>
-<script src="js/scheduling.js?v=20260424"></script>
+<script src="js/scheduling.js?v=20260427a"></script>
 <script src="js/tv-scoreboard.js?v=20260424"></script>
 <script src="js/staff.js?v=20260424"></script>
 <script src="js/enhancements.js?v=20260424"></script>
