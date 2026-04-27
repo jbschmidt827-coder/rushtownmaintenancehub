@@ -6479,9 +6479,9 @@ async function saveWI() {
 
 // ── View modal ──
 function openWIView(wiId) {
-  const wi = allWI.find(x => x.wiId === wiId);
+  const wi = allWI.find(x => x.wiId === wiId || x._fbId === wiId);
   if (!wi) return;
-  currentWIId = wiId;
+  currentWIId = wi.wiId || wi._fbId;
   const t = WI_TYPE[wi.type] || WI_TYPE.repair;
   const SYS_ICON_MAP = {Ventilation:'💨',Water:'💧',Feed:'🌾',Manure:'♻️','Egg Collectors':'🥚',Heating:'🔥',Electrical:'⚡',Lubing:'🛢️',Building:'🏚️',General:'🔧'};
 
