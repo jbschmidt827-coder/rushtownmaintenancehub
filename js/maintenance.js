@@ -3566,13 +3566,31 @@ function opsDashRender() {
   var pC={urgent:'#c0392b',high:'#d69e2e',routine:'#4caf50'};
   var wHtml=!openWOs.length?'<div style="color:#4caf50;font-size:13px;padding:8px 0">No open work orders</div>'
     :openWOs.slice(0,12).map(function(w){
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #2a5a2a">'
+      return '<div onclick="opsOpenWO(\''+w._fbId+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 8px;border-bottom:1px solid #2a5a2a;cursor:pointer;border-radius:6px;" onmouseover="this.style.background=\'#0f2a0f\'" onmouseout="this.style.background=\'transparent\'">'
         +'<div><span style="font-size:13px;font-weight:700;color:#f0ead8">'+w.id+'</span>'
         +'<span style="font-size:11px;color:#7ab07a;display:block">'+w.farm+' - '+w.house+'</span></div>'
         +'<div style="text-align:right"><span style="font-size:11px;font-weight:700;color:'+(pC[w.priority]||'#7ab07a')+'">'+(w.priority||'routine').toUpperCase()+'</span>'
         +'<span style="font-size:10px;color:#5a8a5a;display:block">'+w.problem.slice(0,28)+'</span></div></div>';
     }).join('');
   document.getElementById('ops-wo-dash').innerHTML=wHtml;
+}
+
+
+
+// ── Make Operations overlay WO list rows tappable
+function opsOpenWO(fbId){
+  if(!fbId) return;
+  // Close ops overlay if open
+  var ov=document.getElementById('operations-overlay');
+  if(ov && ov.style.display!=='none') ov.style.display='none';
+  // Navigate to maintenance > work orders, then open the update modal
+  if(typeof go==='function') go('maint');
+  setTimeout(function(){
+    if(typeof goMaintSection==='function') goMaintSection('wo');
+    setTimeout(function(){
+      if(typeof openWOUpdate==='function') openWOUpdate(fbId);
+    },120);
+  },80);
 }
 
 function opsUpdateLandingCard() {
@@ -6083,7 +6101,7 @@ function wiCard(wi, WI_TYPE_MAP, SYS_ICON_MAP) {
 
   return `<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;">
     <!-- Card header row -->
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;" onclick="openWIView('${wi.wiId}')">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;" onclick="openWIView('${wi.wiId || wi._fbId || ''}')">
       <span class="wi-type-badge" style="background:${t.bg};color:${t.color};border:1px solid ${t.color}40;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;">${t.label}</span>
       <span style="flex:1;font-size:13px;font-weight:700;color:#e8f5ec;line-height:1.3;">${wi.title}</span>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
@@ -6479,9 +6497,23 @@ async function saveWI() {
 
 // ── View modal ──
 function openWIView(wiId) {
-  const wi = allWI.find(x => x.wiId === wiId || x._fbId === wiId);
-  if (!wi) return;
+  if (!wiId || wiId === 'undefined' || wiId === 'null') {
+    if (typeof toast === 'function') toast('Could not open: missing WI id');
+    console.warn('openWIView called with bad id:', wiId);
+    return;
+  }
+  let wi = allWI.find(x => x.wiId === wiId || x._fbId === wiId);
+  if (!wi) {
+    // Fallback: try title-based match if id lookup fails
+    wi = allWI.find(x => (x.title||'').toLowerCase() === String(wiId).toLowerCase());
+  }
+  if (!wi) {
+    if (typeof toast === 'function') toast('WI not found in list (id: '+wiId+')');
+    console.warn('openWIView: no WI found for', wiId, '— allWI count:', allWI.length);
+    return;
+  }
   currentWIId = wi.wiId || wi._fbId;
+  try {
   const t = WI_TYPE[wi.type] || WI_TYPE.repair;
   const SYS_ICON_MAP = {Ventilation:'💨',Water:'💧',Feed:'🌾',Manure:'♻️','Egg Collectors':'🥚',Heating:'🔥',Electrical:'⚡',Lubing:'🛢️',Building:'🏚️',General:'🔧'};
 
@@ -6550,9 +6582,13 @@ function openWIView(wiId) {
     }
   }
 
-  document.getElementById('wiv-footer').textContent = `#${wi.wiId} · ${steps.length} steps`;
+  document.getElementById('wiv-footer').textContent = `#${wi.wiId || wi._fbId || '—'} · ${steps.length} steps`;
+  } catch(err) {
+    console.error('openWIView render error (continuing to force-open):', err);
+  }
   _wiViewOpenedAt = Date.now();
-  document.getElementById('wi-view-modal').classList.add('open');
+  const _modal = document.getElementById('wi-view-modal');
+  if (_modal) _modal.classList.add('open');
 }
 
 function wiToggleStep(idx) {

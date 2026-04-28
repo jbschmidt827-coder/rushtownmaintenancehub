@@ -34,6 +34,224 @@ const CL_GROUPS = {
 
 const CL_FARMS = { Hegins:8, Danville:5, Rushtown:5, Turbotville:4, 'W&M':2 };
 
+// ═══════════════════════════════════════════════════════════════════
+// BUILT-IN WORK INSTRUCTIONS (source of truth per checklist task)
+// ═══════════════════════════════════════════════════════════════════
+const CL_INSTRUCTIONS = {
+  fwv: {
+    title: 'Monitor Feed, Water, Ventilation',
+    purpose: 'Birds depend on these three systems every minute. Catch failures fast — minutes matter.',
+    ppe: 'Coveralls · gloves · dust mask',
+    tools: 'Phone (for photos) · flashlight',
+    timeMin: 15,
+    steps: [
+      'Walk the full length of the house and look at every feed line — feed should be present in pans, no clumping or empty stretches.',
+      'Check water lines and drinkers — water should be flowing at every nipple/cup, no dripping or dry spots.',
+      'Listen and feel for ventilation — fans running, air moving, no dead spots, no unusual smells (ammonia, dust spike).',
+      'Read controller temp + set point. Note actual vs target on the checklist.',
+      'Photo any issue (empty pan, dry drinker, dead fan, alarm light) and submit a Work Order from the checklist.',
+    ],
+    verification: 'Every pan has feed · every nipple drips when triggered · all fans turning · controller in normal range with no active alarms.',
+  },
+  bird: {
+    title: 'Full Bird & Equipment Check',
+    purpose: 'Find mortality, sick or loose birds, and equipment failures before they become bigger problems.',
+    ppe: 'Coveralls · gloves · boots',
+    tools: 'Mortality bucket · flashlight · cage-row clipboard',
+    timeMin: 120,
+    steps: [
+      'Start at the front, walk every cage row. Pull all dead birds — note count by row.',
+      'Look for sick birds (huddled, eyes closed, ruffled feathers) — pull and isolate.',
+      'Look for loose birds outside cages — recover and return.',
+      'Check chute level — should be evenly loaded, not packed at one end.',
+      'Watch the egg belt for jams, broken eggs piling up, or off-track belt.',
+      'Inspect cage doors, latches, and bottom wires — flag any damaged cages.',
+      'Total mortality count goes on the checklist + create a Work Order for any equipment damage found.',
+    ],
+    verification: 'No dead/sick birds left in cages · belt running clean · no loose birds · no flagged cage damage left without a WO.',
+  },
+  tubes: {
+    title: 'Clean Water Tubes (front & back)',
+    purpose: 'Biofilm in water tubes makes birds sick and tanks intake.',
+    ppe: 'Gloves · safety glasses',
+    tools: 'Tube brush · bucket · sanitizer (per label) · flashlight',
+    timeMin: 30,
+    steps: [
+      'Shut off water at the regulator for the line you are cleaning.',
+      'Open the end cap and let the line drain into the bucket.',
+      'Run the tube brush through the full length. Repeat at the back of house.',
+      'Flush with clean water until it runs clear.',
+      'If sanitizer is on the schedule today, dose per label and let dwell, then flush again.',
+      'Re-cap, restore pressure, walk the line and confirm every drinker is wet.',
+    ],
+    verification: 'Water runs clear at the end cap · every nipple drips on demand · no leaks at fittings.',
+    warnings: 'Do NOT skip the flush after sanitizer — birds cannot drink chlorinated water at dose strength.',
+  },
+  front: {
+    title: 'Clean Front of House',
+    purpose: 'The front is the first thing visitors and inspectors see — and where the most cross-contamination risk lives.',
+    ppe: 'Gloves · dust mask',
+    tools: 'Broom · scraper · trash can · rags',
+    timeMin: 45,
+    steps: [
+      'Sweep all dust, feathers, and feed off the floor from the door back to the first cage row.',
+      'Scrape any caked manure off walls, doors, and the threshold.',
+      'Wipe down door handles, light switches, and the controller face.',
+      'Empty the trash can. Replace bag.',
+      'Restock paper towels, sanitizer, and gloves at the entry station.',
+      'Roll up hoses and cords. Hang tools on the rack.',
+    ],
+    verification: 'Floor is clean enough that nothing tracks back into the house · entry station fully stocked · no trash overflowing.',
+  },
+  blowoff: {
+    title: 'Blow Off (Walls · Cages · Egg Collectors · Floors)',
+    purpose: 'Dust on cages and equipment kills airflow, attracts mites, and is a fire hazard.',
+    ppe: 'Coveralls · dust mask (P100 or N95) · safety glasses · hearing protection',
+    tools: 'Backpack blower · extension wand · spare fuel',
+    timeMin: 210,
+    steps: [
+      'Start at the back of the house and work toward the door — never blow dust over a clean section.',
+      'Walls: top down. Get cobwebs and dust off the rafters first.',
+      'Cages: blow horizontally across the top, then down the rows. Don\'t blast birds directly — angle to flush dust off the structure.',
+      'Egg collectors and belts: turn collectors OFF before blowing the belt area.',
+      'Floors: last step. Push everything to the front and sweep out.',
+      'Empty blower fuel and check filter at end of shift.',
+    ],
+    verification: 'No visible dust pile on cage tops · belt area clean · floor has no drift piles · no birds visibly stressed.',
+    warnings: 'Hearing protection is REQUIRED. Backpack blowers exceed 100 dB. Eye protection is REQUIRED — debris will come back at you.',
+  },
+  wheelbarrow: {
+    title: 'Wheelbarrow + Back Cleanup',
+    purpose: 'Keeps the back of house clear so the manure system runs and emergency exits stay open.',
+    ppe: 'Gloves · boots',
+    tools: 'Wheelbarrow · shovel · scraper · trash can',
+    timeMin: 25,
+    steps: [
+      'Sweep loose feed and manure from the back walkway into a pile.',
+      'Shovel the pile into the wheelbarrow.',
+      'Dump into the manure pit / compost area per farm rules.',
+      'Scrape any caked spots on the back walls and doors.',
+      'Confirm the back emergency exit is clear — nothing blocking the door swing.',
+      'Rinse the wheelbarrow and hang shovel/scraper on the rack.',
+    ],
+    verification: 'Back walkway is walkable · emergency exit swings free · tools stored.',
+  },
+  undercage: {
+    title: 'Under Cage Cleaning',
+    purpose: 'Manure pits left to build up cause ammonia spikes, fly breeding, and structural damage.',
+    ppe: 'Coveralls · dust mask · gloves · boots · safety glasses',
+    tools: 'Scraper · pit shovel · drag · headlamp',
+    timeMin: 180,
+    steps: [
+      'Confirm manure belts are off and locked out before entering the pit.',
+      'Headlamp on. Walk the full length and look for wet spots, dead birds that fell through, or belt damage.',
+      'Scrape caked manure off support posts and pit walls.',
+      'Drag/shovel the loose manure to the discharge end.',
+      'Note any spots that smell strongly of ammonia — these usually mean a wet leak above.',
+      'Photograph and submit a WO for any belt damage, broken posts, or persistent leaks.',
+    ],
+    verification: 'No wet leaks left unreported · belts clear of jams · no dead birds in pit · ammonia smell back to baseline.',
+    warnings: 'Belts must be OFF and locked out before entering. NEVER work alone without telling someone you\'re going in.',
+  },
+  hallway: {
+    title: 'Hallway Cleaning',
+    purpose: 'The hallway is shared between barns — dust and manure here moves disease between flocks.',
+    ppe: 'Gloves · dust mask',
+    tools: 'Broom · scraper · mop · bucket · sanitizer',
+    timeMin: 45,
+    steps: [
+      'Sweep the full length end to end.',
+      'Scrape any caked manure or feed off the floor and walls.',
+      'Mop with sanitizer at label dilution.',
+      'Wipe down door handles between barns and the foot bath frame.',
+      'Refill foot baths with fresh sanitizer to label strength.',
+      'Restock entry stations as needed (gloves, masks, paper towels).',
+    ],
+    verification: 'Floor mopped end-to-end · all foot baths fresh · door handles wiped · no debris piles left.',
+  },
+  fly: {
+    title: 'Fly Check (Tuesday)',
+    purpose: 'Spot fly populations early — once they explode they are 10x harder to control.',
+    ppe: 'Coveralls · gloves',
+    tools: 'Spot card / scudder index card · pen · phone for photos',
+    timeMin: 15,
+    steps: [
+      'Place spot cards at the standard locations (front, mid, back of house — same spots every week).',
+      'Count spots per card vs. last week.',
+      'Walk the manure pit and note any larva activity.',
+      'Photograph any heavy fly clusters on cage supports or walls.',
+      'Record the count on the checklist. If above threshold, alert the manager and submit a WO for treatment.',
+    ],
+    verification: 'Spot cards placed · counts logged · any threshold breach reported.',
+  },
+  rodent: {
+    title: 'Rodent Check (Friday)',
+    purpose: 'Rodents carry disease, eat feed, and chew wiring — weekly check keeps the program working.',
+    ppe: 'Gloves · dust mask',
+    tools: 'Bait station key · bait log · flashlight · phone for photos',
+    timeMin: 30,
+    steps: [
+      'Walk the perimeter and check every bait station — exterior first, then interior.',
+      'Note bait take per station on the rodent log (none / partial / full).',
+      'Refill any station that\'s down past the marked line.',
+      'Look for fresh droppings, rub marks, or new burrow holes — photograph and mark on map.',
+      'Check that all stations are locked, anchored, and not damaged.',
+      'If activity is up vs. last week, alert the manager and submit a WO for an extra service.',
+    ],
+    verification: 'All stations checked + logged · all stations locked · any activity spike escalated.',
+    warnings: 'Bait is toxic to dogs and wildlife. Never leave a station unlocked or open.',
+  },
+};
+
+// Open built-in instructions modal (does NOT depend on Firestore data)
+function clShowBuiltinWI(taskId) {
+  const wi = CL_INSTRUCTIONS[taskId];
+  const task = CL_TASKS.find(t => t.id === taskId);
+  if (!wi || !task) return false;
+  const grp = CL_GROUPS[task.group] || {};
+  const stepsHtml = (wi.steps||[]).map((s,i) =>
+    `<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #1a3a1a;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${grp.color||'#7ab07a'};min-width:22px;flex-shrink:0;">${i+1}.</span>
+      <span style="font-size:13px;color:#e8f5ec;line-height:1.5;">${s}</span>
+    </div>`
+  ).join('');
+  const strip = (label, txt, color, bg) => txt
+    ? `<div style="background:${bg};border:1px solid ${color};border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${color};margin-bottom:4px;">${label}</div>
+        <div style="font-size:13px;color:#e8f5ec;line-height:1.45;">${txt}</div>
+      </div>`
+    : '';
+  const html = `
+    <div class="overlay open" id="cl-wi-modal" style="z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.78);position:fixed;inset:0;padding:16px;" onclick="if(event.target===this)document.getElementById('cl-wi-modal').remove()">
+      <div style="background:#0a1a0a;border:1.5px solid #2a5a2a;border-radius:14px;max-width:560px;width:100%;max-height:92vh;overflow-y:auto;padding:18px 20px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px;">
+          <div style="flex:1;">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:${grp.color||'#7ab07a'};letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">${(grp.label||'').replace(/^[^A-Z]*/,'')}</div>
+            <h3 style="margin:0;color:#f0ead8;font-size:18px;line-height:1.25;">${wi.title}</h3>
+            ${wi.timeMin ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7ab07a;margin-top:4px;">⏱ ${wi.timeMin} min · Built-in standard</div>` : ''}
+          </div>
+          <button onclick="document.getElementById('cl-wi-modal').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#7a9a7a;padding:0 4px;">✕</button>
+        </div>
+        ${strip('📋 Purpose',     wi.purpose,      '#4caf50','#0a1f0a')}
+        ${strip('🦺 PPE',          wi.ppe,          '#d69e2e','#1a1200')}
+        ${strip('🔧 Tools',        wi.tools,        '#3b82f6','#0d1f3a')}
+        ${strip('⚠️ Warnings',     wi.warnings,     '#e53e3e','#1a0505')}
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#7a9a7a;letter-spacing:1px;text-transform:uppercase;margin:14px 0 6px;">Steps</div>
+        ${stepsHtml}
+        ${strip('✅ What Good Looks Like', wi.verification, '#9b59b6','#1a0a2a')}
+        <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #1a3a1a;">
+          <button onclick="document.getElementById('cl-wi-modal').remove()" style="flex:1;padding:11px;background:#0a2a0a;border:1.5px solid #2a5a2a;border-radius:8px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">CLOSE</button>
+        </div>
+      </div>
+    </div>`;
+  // Remove any existing modal
+  const ex = document.getElementById('cl-wi-modal'); if (ex) ex.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+  return true;
+}
+
+
+
 let _cl = {
   farm: '', barn: '', worker: '',
   date: new Date().toISOString().slice(0,10),
@@ -288,6 +506,10 @@ let _clDashData = [];   // today's submitted checklists
 let _clDashUnsub = null;
 
 async function clOpenTaskWI(taskId, taskLabel) {
+  // ALWAYS show the built-in (correct) instructions first — guarantees the right content
+  // regardless of whatever may have been saved/edited in Firestore.
+  if (clShowBuiltinWI(taskId)) return;
+  // Fallback for tasks without a built-in: try to find a Firestore WI mapped to this task
   try {
     if (typeof allWI === 'undefined' || !allWI.length) {
       if (typeof loadWI === 'function') await loadWI();
@@ -295,12 +517,9 @@ async function clOpenTaskWI(taskId, taskLabel) {
   } catch(e) {}
   const matches = (typeof allWI !== 'undefined' ? allWI : []).filter(w => w.clTaskId === taskId);
   if (matches.length > 0) {
-    if (typeof openWIView === 'function') openWIView(matches[0].wiId);
-  } else {
-    // Bypass admin check — workers need to create/view WIs directly from checklist
-    if (typeof _openWIForm === 'function') {
-      _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
-    }
+    if (typeof openWIView === 'function') openWIView(matches[0].wiId || matches[0]._fbId);
+  } else if (typeof _openWIForm === 'function') {
+    _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
   }
 }
 
