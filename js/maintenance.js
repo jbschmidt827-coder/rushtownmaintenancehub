@@ -6499,6 +6499,82 @@ async function saveWI() {
 }
 
 // ── View modal ──
+// Auto-fill rich-content fields (purpose/tools/verification/ppe/time) based on system+type.
+// This makes every WI render in the same Daily-Check-quality format, even if the
+// stored Firestore record is sparse. We never overwrite fields the WI already has.
+function _wiEnrich(wi) {
+  if (!wi) return wi;
+  const w = Object.assign({}, wi);
+  const sys = w.system || 'General';
+  const typ = (w.type || 'repair').toLowerCase();
+
+  // PPE defaults by system
+  if (!w.ppe || !String(w.ppe).trim()) {
+    const sysPPE = {
+      Electrical: 'Insulated gloves, safety glasses, long sleeves, non-conductive footwear. Verify Lock-Out/Tag-Out before any contact.',
+      Lubing: 'Nitrile gloves, safety glasses, oil-rated apron. Wash hands thoroughly afterward.',
+      Manure: 'Rubber boots, nitrile gloves, N95 mask, eye protection. Wash hands and arms after handling.',
+      Water: 'Gloves, safety glasses, slip-resistant footwear. Watch for spills.',
+      Feed: 'Gloves, N95 dust mask, safety glasses. Long sleeves recommended.',
+      Heating: 'Heat-resistant gloves, safety glasses, long sleeves. Confirm gas valves are off before service.',
+      Ventilation: 'Gloves, safety glasses. Hearing protection if fans are running. Long sleeves around belts.',
+      Building: 'Gloves, safety glasses, hard hat for overhead work. Steel-toe boots if lifting.',
+      'Egg Collectors': 'Gloves, safety glasses. Long sleeves recommended around moving belts.',
+      General: 'Gloves and safety glasses minimum. Add system-specific PPE as needed.'
+    };
+    w.ppe = sysPPE[sys] || sysPPE.General;
+  }
+
+  // Tools defaults by system
+  if (!w.tools || !String(w.tools).trim()) {
+    const sysTools = {
+      Electrical: 'Multimeter, screwdriver set, wire strippers, electrical tape, LOTO kit, flashlight.',
+      Lubing: 'Grease gun, oil can, rags, funnel, drip tray, replacement seals.',
+      Manure: 'Pitchfork or shovel, scraper, broom, rinse hose, trash bags.',
+      Water: 'Pipe wrench, plumbers tape, bucket, towel, replacement seals or fittings.',
+      Feed: 'Scoop, brush, broom, dust pan, bucket, replacement auger sections if needed.',
+      Heating: 'Multimeter, pipe wrench, gas leak detector, rags, replacement thermocouple.',
+      Ventilation: 'Belt tension gauge, screwdriver set, replacement belts, vacuum or shop towels, ladder.',
+      Building: 'Tape measure, level, drill, fasteners, ladder, hand tools.',
+      'Egg Collectors': 'Belt tension gauge, screwdriver set, rags, replacement belts.',
+      General: 'Standard maintenance tool kit and any items called out in the steps.'
+    };
+    w.tools = sysTools[sys] || sysTools.General;
+  }
+
+  // Purpose defaults by type
+  if (!w.purpose || !String(w.purpose).trim()) {
+    const typePurpose = {
+      onboarding: 'Train operators and new hires on the correct procedure so the task is performed the same way, every time, by everyone.',
+      repair: 'Restore equipment to working condition safely and predictably without introducing new failures.',
+      emergency: 'Respond to an unplanned event quickly and safely while minimizing downtime, injury, and product loss.',
+      safety: 'Protect personnel and equipment from injury, damage, and regulatory exposure.',
+      pm: 'Perform scheduled preventive maintenance to extend equipment life and prevent unplanned breakdowns.'
+    };
+    w.purpose = typePurpose[typ] || 'Perform this task to a known standard so the result is the same every time it is done.';
+  }
+
+  // Verification / "what good looks like"
+  if (!w.verification || !String(w.verification).trim()) {
+    const stepsCount = (w.steps && w.steps.length) ? w.steps.length : 0;
+    if (stepsCount > 0) {
+      w.verification = 'All ' + stepsCount + ' steps completed; equipment runs without abnormal sound, smell, or vibration; area cleaned and tools returned; sign off in the daily log or work order.';
+    } else {
+      w.verification = 'Task completed to the standard described above; area cleaned and tools returned; document completion in the maintenance log.';
+    }
+  }
+
+  // Sane time default
+  if (!w.time || isNaN(Number(w.time))) w.time = 30;
+
+  // Steps default to a single placeholder so the renderer never gets an empty list
+  if (!w.steps || !Array.isArray(w.steps) || !w.steps.length) {
+    w.steps = ['No steps recorded yet — see the Purpose and Tools sections above. Edit this WI to add the procedure.'];
+  }
+
+  return w;
+}
+
 function openWIView(wiId) {
   if (!wiId || wiId === 'undefined' || wiId === 'null') {
     if (typeof toast === 'function') toast('Could not open: missing WI id');
@@ -6516,65 +6592,62 @@ function openWIView(wiId) {
     return;
   }
   currentWIId = wi.wiId || wi._fbId;
+  // Fill in rich defaults so sparse WIs still render in Daily-Check format
+  wi = _wiEnrich(wi);
+  // Defensive accessors — if an element is missing the render keeps going
+  const _setHTML = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  const _setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  const _show    = (id, on)  => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
   try {
-  const t = WI_TYPE[wi.type] || WI_TYPE.repair;
+  const t = (typeof WI_TYPE === 'object' && WI_TYPE && WI_TYPE[wi.type]) ? WI_TYPE[wi.type] : { bg:'#f0f4ff', color:'#3b82f6', label:(wi.type||'WI').toUpperCase() };
   const SYS_ICON_MAP = {Ventilation:'💨',Water:'💧',Feed:'🌾',Manure:'♻️','Egg Collectors':'🥚',Heating:'🔥',Electrical:'⚡',Lubing:'🛢️',Building:'🏚️',General:'🔧'};
 
-  document.getElementById('wiv-type-badge').innerHTML =
-    `<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${t.bg};color:${t.color};border:1px solid ${t.color}40;font-family:'IBM Plex Mono',monospace;">${t.label}</span>`;
-  document.getElementById('wiv-title').textContent = wi.title;
+  _setHTML('wiv-type-badge',
+    `<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${t.bg};color:${t.color};border:1px solid ${t.color}40;font-family:'IBM Plex Mono',monospace;">${t.label}</span>`);
+  _setText('wiv-title', wi.title || 'Untitled WI');
 
   const sysIcon = SYS_ICON_MAP[wi.system] || '';
   const metaParts = [];
   if (wi.system) metaParts.push(sysIcon + ' ' + wi.system);
   if (wi.time)   metaParts.push('⏱ ' + wi.time + ' min');
-  metaParts.push('By ' + (wi.author || 'Unknown') + ' · ' + fmtDate(wi.date));
-  document.getElementById('wiv-meta').textContent = metaParts.join(' · ');
+  const _fmtD = (typeof fmtDate === 'function') ? fmtDate(wi.date) : (wi.date || '');
+  metaParts.push('By ' + (wi.author || 'Unknown') + (wi.date ? ' · ' + _fmtD : ''));
+  _setText('wiv-meta', metaParts.join(' · '));
 
   // PPE strip
-  const ppeEl = document.getElementById('wiv-ppe-strip');
-  if (wi.ppe) { ppeEl.style.display = ''; document.getElementById('wiv-ppe-text').textContent = wi.ppe; }
-  else ppeEl.style.display = 'none';
+  if (wi.ppe) { _show('wiv-ppe-strip', true); _setText('wiv-ppe-text', wi.ppe); }
+  else _show('wiv-ppe-strip', false);
 
-  // Warnings strip
-  const warnEl = document.getElementById('wiv-warn-strip');
-  if (wi.warnings) { warnEl.style.display = ''; document.getElementById('wiv-warn-text').textContent = wi.warnings; }
-  else warnEl.style.display = 'none';
+  // Warnings strip (only show if warnings actually present — the enricher does not synth these)
+  if (wi.warnings && String(wi.warnings).trim()) { _show('wiv-warn-strip', true); _setText('wiv-warn-text', wi.warnings); }
+  else _show('wiv-warn-strip', false);
 
   // Tools strip
-  const toolsEl = document.getElementById('wiv-tools-strip');
-  if (toolsEl) {
-    if (wi.tools) { toolsEl.style.display = ''; document.getElementById('wiv-tools-text').textContent = wi.tools; }
-    else toolsEl.style.display = 'none';
-  }
+  if (wi.tools) { _show('wiv-tools-strip', true); _setText('wiv-tools-text', wi.tools); }
+  else _show('wiv-tools-strip', false);
 
   // Purpose strip
-  const purposeEl = document.getElementById('wiv-purpose-strip');
-  if (purposeEl) {
-    if (wi.purpose) { purposeEl.style.display = ''; document.getElementById('wiv-purpose-text').textContent = wi.purpose; }
-    else purposeEl.style.display = 'none';
-  }
+  if (wi.purpose) { _show('wiv-purpose-strip', true); _setText('wiv-purpose-text', wi.purpose); }
+  else _show('wiv-purpose-strip', false);
 
   // Steps — interactive checklist
-  const steps = wi.steps || [];
-  document.getElementById('wiv-steps').innerHTML = steps.map((step, i) => `
+  const steps = Array.isArray(wi.steps) ? wi.steps : [];
+  const _esc = (str) => String(str == null ? '' : str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  _setHTML('wiv-steps', steps.map((step, i) => `
     <div class="wiv-step" id="wiv-step-${i}" onclick="wiToggleStep(${i})">
       <div class="wiv-step-num" id="wiv-step-num-${i}">${i+1}</div>
-      <div class="wiv-step-text" id="wiv-step-text-${i}">${step}</div>
-    </div>`).join('');
+      <div class="wiv-step-text" id="wiv-step-text-${i}">${_esc(step)}</div>
+    </div>`).join(''));
 
   // Verification / "What Good Looks Like" strip
-  const verifEl = document.getElementById('wiv-verif-strip');
-  if (verifEl) {
-    if (wi.verification) { verifEl.style.display = ''; document.getElementById('wiv-verif-text').textContent = wi.verification; }
-    else verifEl.style.display = 'none';
-  }
+  if (wi.verification) { _show('wiv-verif-strip', true); _setText('wiv-verif-text', wi.verification); }
+  else _show('wiv-verif-strip', false);
 
   // Photos
   const photosSection = document.getElementById('wiv-photos');
   const photosGrid = document.getElementById('wiv-photos-grid');
   if (photosSection && photosGrid) {
-    if (wi.photos && wi.photos.length) {
+    if (wi.photos && Array.isArray(wi.photos) && wi.photos.length) {
       photosGrid.innerHTML = wi.photos.map(url => `
         <a href="${url}" target="_blank" style="display:block;">
           <img src="${url}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #ddd;cursor:pointer;">
@@ -6585,9 +6658,10 @@ function openWIView(wiId) {
     }
   }
 
-  document.getElementById('wiv-footer').textContent = `#${wi.wiId || wi._fbId || '—'} · ${steps.length} steps`;
+  _setText('wiv-footer', `#${wi.wiId || wi._fbId || '—'} · ${steps.length} steps`);
   } catch(err) {
     console.error('openWIView render error (continuing to force-open):', err);
+    if (typeof toast === 'function') toast('WI opened with limited content — see console');
   }
   _wiViewOpenedAt = Date.now();
   const _modal = document.getElementById('wi-view-modal');
