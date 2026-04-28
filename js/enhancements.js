@@ -9,6 +9,16 @@
     ['🐔 FOWL PLAY DETECTED 🐔',    'IT security has been notified. Maybe.'],
     ['🐓 COCKADOODLE DOO! 🐓',      'Why did the egg come first? Philosophy.'],
     ['🥚 EGG COUNT: TOO MANY 🥚',   'Please stop clicking and count your barns.'],
+    ['🥚 OEUF! 🥚',                 'That\'s French for "egg." We are very cultured.'],
+    ['🐔 THE PROPHECY 🐔',          'A chicken shall save the operations hub.'],
+    ['🌽 NEW WO FILED 🌽',          'Submitted by: a hen. Priority: PECK.'],
+    ['🐓 FREE-RANGE BUG 🐓',        'A glitch is loose in barn 4. Try not to step on it.'],
+    ['🥚 SUNNY SIDE UP 🥚',         'Productivity rising at 350°F.'],
+    ['🐣 OPS LEVEL UP! 🐣',         'Achievement unlocked: Knower of Secrets.'],
+    ['🐔 UNION MEETING 🐔',         'The hens have demands. They will be heard.'],
+    ['🥚 SCRAMBLED CODE 🥚',        'No bugs were harmed. The eggs are not so lucky.'],
+    ['🐓 ROOSTER BOSS MODE 🐓',     'Crowing at full volume. HR has been notified.'],
+    ['🥚 OVA-ACHIEVER 🥚',          'You really, really like that chicken, huh.'],
   ];
 
   var EFFECTS = [
@@ -18,6 +28,11 @@
     _chickenInvasion,
     _upsideDown,
     _eggExplosion,
+    _layAnEgg,
+    _discoChicken,
+    _workOrderBlast,
+    _birdRain,
+    _chickenDance,
   ];
 
   // ── Public entry point ──────────────────────────────────────
@@ -194,6 +209,141 @@
         setTimeout(function(){ el.remove(); }, 900);
       })(i);
     }
+  }
+
+  // ── Effect 7: Hen lays an egg, egg drops, hen runs off ──────
+  function _layAnEgg() {
+    var hen = document.createElement('div');
+    hen.textContent = '🐔';
+    hen.style.cssText = 'position:fixed;z-index:9998;pointer-events:none;font-size:64px;left:50%;top:30vh;transform:translateX(-50%);transition:transform 0.4s,left 0.7s ease-in,opacity 0.5s;';
+    document.body.appendChild(hen);
+    setTimeout(function(){ hen.style.transform = 'translateX(-50%) scale(1.3,0.75)'; }, 250);
+    setTimeout(function(){
+      hen.style.transform = 'translateX(-50%) scale(1,1)';
+      var egg = document.createElement('div');
+      egg.textContent = '🥚';
+      egg.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;font-size:34px;left:50%;top:calc(30vh + 56px);transform:translateX(-50%);transition:top 0.65s ease-in,transform 0.45s,opacity 0.45s;';
+      document.body.appendChild(egg);
+      setTimeout(function(){ egg.style.top = '70vh'; }, 30);
+      setTimeout(function(){
+        egg.style.transform = 'translateX(-50%) rotate(360deg) scale(1.6)';
+        egg.style.opacity = '0';
+      }, 750);
+      setTimeout(function(){ egg.remove(); }, 1300);
+    }, 750);
+    setTimeout(function(){
+      hen.style.left = '120vw';
+      hen.style.opacity = '0';
+    }, 1700);
+    setTimeout(function(){ hen.remove(); }, 2700);
+  }
+
+  // ── Effect 8: Disco chicken party ───────────────────────────
+  function _discoChicken() {
+    var style = document.createElement('style');
+    style.id = '_disco-style';
+    style.textContent = '@keyframes _disco{0%{filter:hue-rotate(0deg) saturate(1.3)}100%{filter:hue-rotate(360deg) saturate(1.3)}}';
+    document.head.appendChild(style);
+    document.body.style.animation = '_disco 0.55s linear 7';
+    var ball = document.createElement('div');
+    ball.textContent = '🪩';
+    ball.style.cssText = 'position:fixed;top:18%;left:50%;font-size:90px;z-index:9998;pointer-events:none;transform:translateX(-50%);animation:cluck-pop 0.4s ease forwards;';
+    document.body.appendChild(ball);
+    var spawned = [];
+    for (var i = 0; i < 18; i++) {
+      (function(i){
+        setTimeout(function(){
+          var c = document.createElement('div');
+          c.textContent = i % 2 ? '🐔' : '🐓';
+          c.style.cssText = 'position:fixed;z-index:9997;pointer-events:none;font-size:' +
+            (28 + Math.random()*22) + 'px;left:' + (3 + Math.random()*92) + 'vw;top:' + (10 + Math.random()*78) + 'vh;animation:cluck-pop 0.3s ease forwards;transition:opacity 0.4s;';
+          document.body.appendChild(c);
+          spawned.push(c);
+          setTimeout(function(){ c.style.opacity = '0'; }, 400);
+        }, i * 200);
+      })(i);
+    }
+    setTimeout(function(){
+      document.body.style.animation = '';
+      var s = document.getElementById('_disco-style');
+      if (s) s.remove();
+      ball.remove();
+      spawned.forEach(function(el){ el.remove(); });
+    }, 4800);
+  }
+
+  // ── Effect 9: Work Order blast (work-themed) ────────────────
+  function _workOrderBlast() {
+    var msgs = ['🔧 WO #420', '🔧 WO #069', '🔧 WO #LOL', '🚨 PRIORITY: PECK', '🥚 NEEDS GREASE', '🐔 BIRD JAMMED', '🌽 LOW ON CORN', '🔧 WO #BAWK', '🐓 LOOSE BIRD'];
+    for (var i = 0; i < 12; i++) {
+      (function(i){
+        setTimeout(function(){
+          var el = document.createElement('div');
+          el.textContent = msgs[Math.floor(Math.random()*msgs.length)];
+          el.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;font-family:IBM Plex Mono,monospace;font-size:14px;font-weight:700;background:#1a3a1a;border:2px solid #4caf50;color:#7ab07a;padding:8px 14px;border-radius:8px;left:' +
+            (5 + Math.random()*75) + 'vw;top:' + (8 + Math.random()*72) + 'vh;transform:rotate(' + (Math.random()*40-20) + 'deg);transition:transform 1s,opacity 0.6s;opacity:1;box-shadow:0 4px 12px rgba(0,0,0,.3);';
+          document.body.appendChild(el);
+          setTimeout(function(){
+            el.style.transform = 'rotate(' + (Math.random()*40-20) + 'deg) translateY(-180px)';
+            el.style.opacity = '0';
+          }, 800);
+          setTimeout(function(){ el.remove(); }, 2000);
+        }, i * 180);
+      })(i);
+    }
+  }
+
+  // ── Effect 10: Bird rain (chickens, eggs, chicks falling) ───
+  function _birdRain() {
+    for (var i = 0; i < 30; i++) {
+      (function(i){
+        setTimeout(function(){
+          var el = document.createElement('div');
+          el.textContent = ['🐔','🐓','🐣','🥚'][Math.floor(Math.random()*4)];
+          el.style.cssText = 'position:fixed;z-index:9998;pointer-events:none;font-size:' +
+            (22 + Math.random()*20) + 'px;left:' + (Math.random()*100) + 'vw;top:-40px;transition:top 1.7s linear,transform 1.7s linear;';
+          document.body.appendChild(el);
+          setTimeout(function(){
+            el.style.top = '110vh';
+            el.style.transform = 'rotate(' + (Math.random()*720-360) + 'deg)';
+          }, 30);
+          setTimeout(function(){ el.remove(); }, 1800);
+        }, i * 100);
+      })(i);
+    }
+  }
+
+  // ── Effect 11: Conga line of dancing chickens ──────────────
+  function _chickenDance() {
+    var dancers = [];
+    var count = 7;
+    for (var i = 0; i < count; i++) {
+      var el = document.createElement('div');
+      el.textContent = i % 2 ? '🐓' : '🐔';
+      el.style.cssText = 'position:fixed;z-index:9998;pointer-events:none;font-size:52px;left:' +
+        (8 + i * 12) + 'vw;top:55vh;transform:translateY(0);transition:transform 0.24s;';
+      document.body.appendChild(el);
+      dancers.push(el);
+    }
+    var beats = 18;
+    var t = 0;
+    var iv = setInterval(function(){
+      dancers.forEach(function(d, idx){
+        var up = (idx + t) % 2 === 0;
+        d.style.transform = up ? 'translateY(-32px) rotate(-12deg)' : 'translateY(0) rotate(12deg)';
+      });
+      t++;
+      if (t > beats) {
+        clearInterval(iv);
+        setTimeout(function(){
+          dancers.forEach(function(d){
+            d.style.transition = 'opacity 0.4s';
+            d.style.opacity = '0';
+            setTimeout(function(){ d.remove(); }, 450);
+          });
+        }, 300);
+      }
+    }, 270);
   }
 
   // ── Falling eggs (shared) ───────────────────────────────────
