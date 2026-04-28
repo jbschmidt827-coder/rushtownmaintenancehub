@@ -690,6 +690,13 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
           <div id="ls-oncall" style="font-family:'IBM Plex Mono',monospace;font-size:10px;min-height:14px;"></div>
         </button>
 
+        <!-- Daily End-of-Shift Report -->
+        <button onclick="enterApp('daily')" style="padding:16px 14px;background:#0a1f0a;border:2px solid #4ade80;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:28px;line-height:1;">📋</span>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#4ade80;letter-spacing:1px;text-transform:uppercase;">Daily Report</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab07a;line-height:1.4;">End-of-shift summary &amp; sign-off</div>
+        </button>
+
       </div>
 
       <!-- Quick Actions -->
@@ -892,6 +899,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="nav-tab" id="tab-ship" onclick="go('ship')" data-i18n="nav.ship" style="display:none;">🚚 Shipping</button>
       <button class="nav-tab" id="tab-kpi" onclick="go('kpi')" data-i18n="nav.kpi" style="display:none;">🥚 KPI</button>
       <button class="nav-tab" id="tab-reports" onclick="go('reports')" data-i18n="nav.reports" style="display:none;">📊 Reports</button>
+      <button class="nav-tab" id="tab-daily" onclick="go('daily')" style="display:none;">📋 Daily Report</button>
       <button class="nav-tab" id="tab-sched" onclick="go('sched')" data-i18n="nav.sched" style="display:none;">📅 Schedule</button>
       <button class="nav-tab" id="tab-staff" onclick="go('staff')" style="display:none;">👥 Staff</button>
 <button class="nav-tab" id="tab-check" onclick="go('check')" style="display:none;">🐓 Daily Check</button>
@@ -1462,6 +1470,9 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <div class="section-title">☀️ Morning Walk</div>
   <div id="panel-mw-body"></div>
 </div>
+
+<!-- ═══ DAILY END-OF-SHIFT REPORT PANEL ═══ -->
+<div class="panel" id="panel-daily"></div>
 
 <!-- ═══ DIRECTOR'S BRIEF PANEL ═══ -->
 <div class="panel" id="panel-brief"></div>
@@ -4843,6 +4854,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script src="js/barn-entry.js?v=20260424"></script>
 <script src="js/notifications.js?v=20260424"></script>
 <script src="js/oncall.js?v=20260424"></script>
+<script src="js/daily-checklist.js?v=20260427"></script>
+<script src="js/daily-report.js?v=20260427"></script>
 <style>
 @keyframes notif-slide-in {
   from { opacity:0; transform:translateX(20px); }

@@ -1064,6 +1064,7 @@ async function initApp() {
     startStaffOnboardListener();
     startOnCallListener();
     startOnCallSchedListener();
+    if (typeof startSignoffListener === 'function') startSignoffListener();
     await loadOpsData();
     startOpsListeners();
 
@@ -1141,8 +1142,8 @@ function go(tab) {
   closeAssetForm();
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports', sched:'panel-sched', staff:'panel-staff', check:'panel-check', mw:'panel-mw', oncall:'panel-oncall'};
-  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports', sched:'tab-sched', staff:'tab-staff', check:'tab-check', mw:'tab-mw', oncall:'tab-oncall'};
+  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports', sched:'panel-sched', staff:'panel-staff', check:'panel-check', mw:'panel-mw', oncall:'panel-oncall', daily:'panel-daily'};
+  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports', sched:'tab-sched', staff:'tab-staff', check:'tab-check', mw:'tab-mw', oncall:'tab-oncall', daily:'tab-daily'};
   if (!pm[tab]) return;
   document.getElementById(pm[tab]).classList.add('active');
   const tabEl = document.getElementById(tm[tab]);
@@ -1160,6 +1161,7 @@ function go(tab) {
   if (tab === 'sched')   loadSchedule();
   if (tab === 'staff')   renderStaff();
   if (tab === 'oncall')  renderOnCallPanel();
+  if (tab === 'daily')   { if (typeof renderDailyReport === 'function') renderDailyReport(); }
 }
 
 // ═══════════════════════════════════════════

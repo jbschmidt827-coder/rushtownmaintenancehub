@@ -45,11 +45,12 @@ self.addEventListener('notificationclick', event => {
 // ═══════════════════════════════════════════
 // CACHE — network-first, fall back offline
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v35';
+const CACHE_NAME = 'rushtown-v36';
 
 const SHELL_FILES = [
   '/',
   '/index.html',
+  '/barn.html',
   '/js/core.js',
   '/js/dashboard.js',
   '/js/maintenance.js',
@@ -65,6 +66,15 @@ const SHELL_FILES = [
   '/js/oncall.js',
   '/js/enhancements.js',
   '/js/notifications.js',
+  '/js/contractor.js',
+  '/js/cost-dashboard.js',
+  '/js/weekly-agenda.js',
+  '/js/shift-signoff.js',
+  '/js/red-tags.js',
+  '/js/director-brief.js',
+  '/js/barn-entry.js',
+  '/js/daily-checklist.js',
+  '/js/daily-report.js',
   '/manifest.json'
 ];
 
