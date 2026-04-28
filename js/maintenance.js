@@ -6239,7 +6239,7 @@ function wiCard(wi, WI_TYPE_MAP, SYS_ICON_MAP) {
 
   return `<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;">
     <!-- Card header row -->
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;" onclick="openWIView('${wi.wiId || wi._fbId || ''}')">
+    <div data-wi-id="${wi.wiId || wi._fbId || ''}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;-webkit-tap-highlight-color:rgba(74,222,128,0.2);" onclick="openWIView('${wi.wiId || wi._fbId || ''}')">
       <span class="wi-type-badge" style="background:${t.bg};color:${t.color};border:1px solid ${t.color}40;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;">${t.label}</span>
       <span style="flex:1;font-size:13px;font-weight:700;color:#e8f5ec;line-height:1.3;">${wi.title}</span>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
@@ -6837,9 +6837,28 @@ async function wiDeleteCurrent() {
   closeWIView();
 }
 
-// Close on backdrop
-document.getElementById('wi-form-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeWIForm(); });
-document.getElementById('wi-view-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeWIView(); });
+// Close on backdrop — defensive null-checks so missing elements don't kill the script
+(function _wireWIModalDismiss() {
+  const fm = document.getElementById('wi-form-modal');
+  if (fm) fm.addEventListener('click', e => { if (e.target === e.currentTarget) closeWIForm(); });
+  const vm = document.getElementById('wi-view-modal');
+  if (vm) vm.addEventListener('click', e => { if (e.target === e.currentTarget) closeWIView(); });
+})();
+
+// Safety-net delegated click handler for WI rows — if inline onclick ever fails
+// (iOS quirks, stale cached HTML, etc.), this catches the click via bubbling.
+document.addEventListener('click', function(e) {
+  const list = document.getElementById('wi-list');
+  if (!list || !list.contains(e.target)) return;
+  // Skip clicks on buttons (Edit button has its own handler with stopPropagation)
+  if (e.target.closest('button')) return;
+  const card = e.target.closest('[data-wi-id]');
+  if (!card) return;
+  const id = card.getAttribute('data-wi-id');
+  if (id && typeof openWIView === 'function') {
+    openWIView(id);
+  }
+}, true);
 
 // ═══════════════════════════════════════════
 // ASSET MASTER MODULE
