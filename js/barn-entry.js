@@ -281,15 +281,15 @@ function _beStepName() {
              -webkit-appearance:none;text-align:center;letter-spacing:1px;"
     />
     <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      ${['Joe','Mike','Dave','Tim','Chris','Brad','Ryan','Scott'].map(n => `
-        <button onclick="BE.name='${n}';_beRender()"
+      ${(typeof getActiveStaff==='function' ? getActiveStaff(BE.farm).slice(0,12) : []).map(n => `
+        <button onclick="BE.name='${n.replace(/'/g,"\\'")}';_beRender()"
           style="padding:14px;background:${BE.name===n?'#1a4a1a':'#0a1a0a'};
                  border:1.5px solid ${BE.name===n?'#4ade80':'#2a4a2a'};
                  border-radius:10px;color:${BE.name===n?'#4ade80':'#7ab07a'};
                  font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;
                  transition:all .1s;">
           ${n}
-        </button>`).join('')}
+        </button>`).join('') || '<div style="grid-column:1/-1;text-align:center;color:#7ab07a;font-size:11px;padding:8px;">No staff added yet — type your name above or add staff via the Staff panel.</div>'}
     </div>
   `;
 }

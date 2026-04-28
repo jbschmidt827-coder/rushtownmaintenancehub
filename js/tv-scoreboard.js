@@ -828,10 +828,20 @@ async function submitBulkPM() {
 // ═══════════════════════════════════════════
 // MULTI-SITE SELECTOR (Phase 9 foundation)
 // ═══════════════════════════════════════════
+// SITES — houses are static, techs/lead are pulled live from the Staff panel
+// (no hardcoded names anywhere in the app).
 const SITES = {
-  Hegins:   { houses: 8, techs: ['Nathan','Adam','Carlos','Randy','Steve'], lead: 'Nathan' },
-  Danville: { houses: 5, techs: ['Josh','Cain','Celia','Deb','Steve'], lead: 'Josh' },
+  Hegins:   { houses: 8, get techs(){ return (typeof getActiveStaff==='function') ? getActiveStaff('Hegins')   : []; }, get lead(){ return _siteLeadFor('Hegins'); } },
+  Danville: { houses: 5, get techs(){ return (typeof getActiveStaff==='function') ? getActiveStaff('Danville') : []; }, get lead(){ return _siteLeadFor('Danville'); } },
 };
+function _siteLeadFor(farm) {
+  if (typeof staffList !== 'undefined' && Array.isArray(staffList)) {
+    const lead = staffList.find(s => s && s.active !== false && s.role === 'Lead' &&
+                                     (!s.farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All'));
+    if (lead && lead.name) return lead.name;
+  }
+  return '';
+}
 
 // Landing page site filter
 let activeSite = 'all';

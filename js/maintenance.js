@@ -488,19 +488,28 @@ async function woSetStatus(fbId, newStatus) {
   setSyncDot('live');
 }
 
-// Fallback names if staffList hasn't loaded yet
-const SITE_TECHS = {
-  Hegins:   ['Nathan','Adam','Carlos','Randy','Steve'],
-  Danville: ['Josh','Cain','Celia','Deb','Steve'],
-  Rushtown: [],
-};
+// SITE_TECHS removed — Staff panel is the only source of names app-wide.
+// Backwards-compat shim: some legacy code may still reference SITE_TECHS[farm].
+// We dynamically derive it from the live Staff list so nothing crashes,
+// but no hardcoded names live in this file anymore.
+const SITE_TECHS = new Proxy({}, {
+  get(_t, farm) {
+    if (typeof getActiveStaff === 'function') return getActiveStaff(String(farm));
+    if (typeof staffList !== 'undefined' && Array.isArray(staffList)) {
+      return staffList.filter(s => s && s.active !== false && (!s.farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All'))
+                      .map(s => s.name).filter(Boolean).sort();
+    }
+    return [];
+  }
+});
 
 function _crewForFarm(farm) {
-  if (typeof staffList !== 'undefined' && staffList.length) {
-    const crew = staffList.filter(s => s.active !== false && (!farm || s.location === farm));
-    if (crew.length) return crew.map(s => s.name).filter(Boolean).sort();
+  if (typeof getActiveStaff === 'function') return getActiveStaff(farm);
+  if (typeof staffList !== 'undefined' && Array.isArray(staffList) && staffList.length) {
+    const crew = staffList.filter(s => s && s.active !== false && (!farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All'));
+    return crew.map(s => s.name).filter(Boolean).sort();
   }
-  return farm ? (SITE_TECHS[farm] || []) : Object.values(SITE_TECHS).flat();
+  return [];
 }
 
 async function loadHouses() {
@@ -909,6 +918,101 @@ function pmCardHtml(t) {
   </div>`;
 }
 
+// ── PM ↔ WI linking + Skip ─────────────────────────────────
+let _pmCurrentLinkedWI = null;
+
+// Match a PM task to a Work Instruction by system + keyword overlap.
+// Returns the WI object, or null if no good match.
+function _pmFindWI(t) {
+  if (!t || !Array.isArray(allWI) || !allWI.length) return null;
+  const sysAlias = { 'Feeders':'Feed', 'Feed System':'Feed' };
+  const sys = sysAlias[t.sys] || t.sys;
+  const taskWords = (t.task || '').toLowerCase().match(/[a-z]{4,}/g) || [];
+  const STOP = new Set(['check','clean','make','sure','from','with','need','done','this','that','have','will','also','than','when','then','they','their','what','your','wear','only','just','next','some','more','most','tank','area','line','part','side','time']);
+  const keys = taskWords.filter(w => !STOP.has(w));
+  if (!keys.length) return null;
+
+  let best = null, bestScore = 0;
+  for (const wi of allWI) {
+    if (!wi || !wi.title) continue;
+    const wiSys = sysAlias[wi.system] || wi.system;
+    const sysMatch = (wiSys === sys) ? 2 : 0;
+    const hay = ((wi.title || '') + ' ' + (wi.purpose || '')).toLowerCase();
+    let score = sysMatch;
+    for (const k of keys) {
+      if (hay.includes(k)) score += 1;
+    }
+    if (score > bestScore) { bestScore = score; best = wi; }
+  }
+  // Require system match + at least one keyword OR three keyword hits
+  return (bestScore >= 3) ? best : null;
+}
+
+function _pmAttachWIButton(t) {
+  const strip = document.getElementById('pm-modal-wi-strip');
+  if (!strip) return;
+  const wi = _pmFindWI(t);
+  _pmCurrentLinkedWI = wi;
+  if (!wi) { strip.style.display = 'none'; return; }
+  const labelEl = document.getElementById('pm-modal-wi-label');
+  if (labelEl) labelEl.textContent = '📖 Procedure: ' + (wi.title || wi.wiId);
+  strip.style.display = '';
+}
+
+function _pmOpenLinkedWI() {
+  if (!_pmCurrentLinkedWI) return;
+  const wi = _pmCurrentLinkedWI;
+  const id = wi.wiId || wi._fbId;
+  if (id && typeof openWIView === 'function') {
+    openWIView(id);
+  }
+}
+
+// Skip PM with a reason — records the skip but moves the clock as if completed,
+// so honest compliance % isn't dragged down by legitimately-N/A cycles.
+async function skipPM() {
+  if (!modalPMId) return;
+  const t = ALL_PM.find(x => x.id === modalPMId);
+  if (!t) return;
+  const tech = document.getElementById('modal-tech').value;
+  if (!tech) {
+    if (typeof toast === 'function') toast('Pick a tech first — we still record who skipped it');
+    else alert('Select who is skipping this PM.');
+    return;
+  }
+  const reason = prompt('Why is this PM being skipped this cycle?\n(e.g. equipment offline, weather, replaced last week)', '');
+  if (reason === null) return; // cancelled
+  if (!reason.trim()) {
+    if (typeof toast === 'function') toast('A reason is required to skip a PM');
+    return;
+  }
+  const date = document.getElementById('modal-date').value || todayStr;
+
+  setSyncDot('saving');
+  try {
+    // Mark as completed so the clock resets, but flag as skipped in notes/parts
+    await db.collection('pmCompletions').doc(modalPMId).set({
+      tech, date, parts: '', notes: 'SKIPPED: ' + reason.trim(), skipped: true, ts: Date.now()
+    });
+    await db.collection('pmHistory').add({
+      pmId: modalPMId, farm: t.farm, sys: t.sys, task: t.task, freq: t.freq,
+      tech, date, parts: '', notes: 'SKIPPED: ' + reason.trim(), skipped: true, ts: Date.now()
+    });
+    await db.collection('activityLog').add({
+      type:'pm', id:modalPMId,
+      desc:`PM SKIPPED (${reason.trim()}): ${t.farm} · ${t.sys} · ${FREQ[t.freq].label} — ${t.task}`,
+      tech, date: fmtDate(date), ts: Date.now()
+    });
+  } catch(e) {
+    console.error('skipPM failed:', e);
+    if (typeof toast === 'function') toast('Could not record skip — check connection');
+    setSyncDot('live');
+    return;
+  }
+  setSyncDot('live');
+  closePMModal();
+}
+
 function openPMModal(id) {
   modalPMId=id;
   const t=ALL_PM.find(x=>x.id===id);
@@ -918,12 +1022,33 @@ function openPMModal(id) {
   document.getElementById('modal-notes').value='';
   document.getElementById('modal-gen-wo').value='no';
 
-  // Filter techs by farm
+  // Tech list — pull strictly from Staff module (no fallback names)
   const techSel = document.getElementById('modal-tech');
   techSel.innerHTML = '<option value="">— Select Tech —</option>';
-  (SITE_TECHS[t.farm]||[]).forEach(name=>{
-    const o=document.createElement('option'); o.value=name; o.textContent=name; techSel.appendChild(o);
+  const staffSrc = (typeof staffList !== 'undefined' && Array.isArray(staffList)) ? staffList : [];
+  const farmStaff = staffSrc
+    .filter(s => s && s.active !== false)
+    .filter(s => !s.farm || s.farm === t.farm || s.farm === 'Both' || s.farm === 'All')
+    .map(s => s.name)
+    .filter(Boolean)
+    .sort((a,b) => a.localeCompare(b));
+  // Pre-fill from Barn Entry context if present
+  const ctxTech = (typeof window !== 'undefined' && window._barnEntryTech) ? String(window._barnEntryTech) : '';
+  farmStaff.forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    techSel.appendChild(o);
   });
+  if (ctxTech && farmStaff.includes(ctxTech)) techSel.value = ctxTech;
+  if (!farmStaff.length) {
+    const o = document.createElement('option');
+    o.value = ''; o.textContent = '— No staff — add via Staff panel —';
+    o.disabled = true;
+    techSel.appendChild(o);
+  }
+
+  // Hook up the linked WI button (if any) for this PM task
+  if (typeof _pmAttachWIButton === 'function') _pmAttachWIButton(t);
 
   document.getElementById('pm-modal').classList.add('open');
 }
@@ -1030,7 +1155,17 @@ function closePMHistory() {
 // ═══════════════════════════════════════════
 // MORNING BRIEFING
 // ═══════════════════════════════════════════
-const LEADS = { Hegins: 'Nathan', Danville: 'Josh' };
+// LEADS — derived live from Staff (role: 'Lead'). Empty string if no Lead set.
+const LEADS = new Proxy({}, {
+  get(_t, farm) {
+    if (typeof staffList !== 'undefined' && Array.isArray(staffList)) {
+      const lead = staffList.find(s => s && s.active !== false && s.role === 'Lead' &&
+                                       (!s.farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All'));
+      if (lead && lead.name) return lead.name;
+    }
+    return '';
+  }
+});
 let dailyCheckins = {}; // loaded from Firebase: {'checkin-Hegins-2026-03-15': ['Nathan','Adam',...]}
 
 function toggleCheckin(farm, name, todayKey) {

@@ -20,19 +20,25 @@ function startStaffListener() {
   } catch(e) { console.error('Staff listener error:', e); }
 }
 
-// ── Fallback team list used until staff are added via the Staff panel ──
-const FALLBACK_TEAM = [
-  'Josh','Steve','Mike','Chris','Dave','Dan','Tom','Joe','Kyle','Brian',
-  'Ryan','Tyler','Jake','Zach','Derek','Adam','Kevin','Scott','Eric','Matt'
-];
+// ── Canonical name source for the entire app ──
+// Returns ONLY active staff added via the Staff panel. No fallback names.
+function getActiveStaff(farm, role) {
+  if (typeof staffList === 'undefined' || !Array.isArray(staffList)) return [];
+  let list = staffList.filter(s => s && s.active !== false);
+  if (farm) {
+    list = list.filter(s => !s.farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All');
+  }
+  if (role) {
+    list = list.filter(s => !s.role || s.role === role);
+  }
+  return list.map(s => s.name).filter(Boolean).sort((a,b) => a.localeCompare(b));
+}
 
 // ── Populate all name datalists and selects in the app ──
 function updateStaffDropdowns() {
   const active = staffList.filter(s => s.active !== false);
-  // If Firestore staff collection is empty, use the fallback list
-  const names = active.length
-    ? active.map(s => s.name)
-    : FALLBACK_TEAM;
+  // Staff list is the SINGLE SOURCE OF TRUTH — no fallback names.
+  const names = active.map(s => s.name).filter(Boolean);
 
   // Datalist for text inputs with list="staff-datalist"
   const datalistOpts = names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">`).join('');
