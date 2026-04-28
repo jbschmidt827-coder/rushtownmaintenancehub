@@ -311,15 +311,18 @@ async function saveWOUpdate(fbId) {
 
 // ── Action Rail & Meeting Flag ────────────────
 async function toggleWORail(fbId, state) {
-  try { await db.collection('workOrders').doc(fbId).update({ actionRail: state }); } catch(e) { console.error(e); }
+  try { await db.collection('workOrders').doc(fbId).update({ actionRail: state }); }
+  catch(e) { console.error(e); if (typeof toast === 'function') toast('Could not update action rail — check connection'); }
 }
 
 async function toggleWOMeeting(fbId, state) {
-  try { await db.collection('workOrders').doc(fbId).update({ meetingFlag: state }); } catch(e) { console.error(e); }
+  try { await db.collection('workOrders').doc(fbId).update({ meetingFlag: state }); }
+  catch(e) { console.error(e); if (typeof toast === 'function') toast('Could not update meeting flag — check connection'); }
 }
 
 async function removeFromRail(fbId) {
-  try { await db.collection('workOrders').doc(fbId).update({ actionRail: false }); } catch(e) { console.error(e); }
+  try { await db.collection('workOrders').doc(fbId).update({ actionRail: false }); }
+  catch(e) { console.error(e); if (typeof toast === 'function') toast('Could not remove from rail — check connection'); }
 }
 
 function openMeetingAgenda() {
