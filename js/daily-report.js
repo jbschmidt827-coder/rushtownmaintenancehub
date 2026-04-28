@@ -128,90 +128,110 @@ function drPMStats(farm) {
   return { total, done, overdue, dueSoon, farmPMs };
 }
 
-// ── PM section HTML ───────────────────────────────────────────────────────────
+// ── PM section HTML — percentage-based, no long list ─────────────────────────
 function drPMSection(farm) {
   const { total, done, overdue, dueSoon, farmPMs } = drPMStats(farm);
-  const today = new Date().toISOString().slice(0,10);
 
   if (!total) {
     return `<div style="background:#0a1f0a;border:1px solid #1a3a1a;border-radius:10px;padding:14px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#2a5a2a;">No PMs scheduled for ${farm}</div>`;
   }
 
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  const barColor = overdue > 0 ? '#ef4444' : pct === 100 ? '#4ade80' : '#fbbf24';
+  // Headline metric: on-time % = (total - overdue) / total
+  const onTimePct = Math.round(((total - overdue) / total) * 100);
+  const donePct   = Math.round((done / total) * 100);
+  const headColor = overdue === 0 ? '#4ade80' : onTimePct >= 90 ? '#fbbf24' : '#f87171';
+  const headBg    = overdue === 0 ? '#0a1f0a' : onTimePct >= 90 ? '#1a1400' : '#1a0505';
+  const headBorder= overdue === 0 ? '#166534' : onTimePct >= 90 ? '#854d0e' : '#7f1d1d';
 
-  // Build overdue + due-soon lists
-  const overdueList = (farmPMs || []).filter(t => {
-    const s = typeof pmStatus === 'function' ? pmStatus(t.id) : 'ok';
-    return s === 'overdue';
+  // Group overdue by system to surface the worst area without a long list
+  const sysCounts = {};
+  (farmPMs || []).forEach(t => {
+    if (typeof pmStatus === 'function' && pmStatus(t.id) === 'overdue') {
+      const sys = t.system || 'Other';
+      sysCounts[sys] = (sysCounts[sys] || 0) + 1;
+    }
   });
-  const dueSoonList = (farmPMs || []).filter(t => {
-    const s = typeof pmStatus === 'function' ? pmStatus(t.id) : 'ok';
-    return s === 'due-soon';
-  });
-  const doneList = (farmPMs || []).filter(t => {
-    const c = pmComps && pmComps[t.id];
-    return c && c.date === today;
-  });
+  const sysSorted = Object.entries(sysCounts).sort((a,b) => b[1] - a[1]);
+  const topSys = sysSorted[0];
+
+  // Stash overdue list for the optional drill-down toggle
+  const overdueList = (farmPMs || []).filter(t => typeof pmStatus === 'function' && pmStatus(t.id) === 'overdue');
+  const drillId = 'pm-drill-' + farm;
 
   return `
-    <!-- Progress bar -->
-    <div style="margin-bottom:12px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;">Completed today: ${done} / ${total}</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${barColor};">${pct}%</span>
+    <div style="background:${headBg};border:1.5px solid ${headBorder};border-radius:12px;padding:14px 16px;">
+
+      <!-- Headline: big % + mini-stats row -->
+      <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+        <div style="flex-shrink:0;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:1px;color:${headColor};line-height:1;">${onTimePct}<span style="font-size:22px;">%</span></div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:${headColor};opacity:.8;letter-spacing:1px;text-transform:uppercase;margin-top:2px;">On-Time Rate</div>
+        </div>
+        <div style="flex:1;min-width:200px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+          ${drPMMini('✓', done, 'Done', '#4ade80')}
+          ${drPMMini('⚠', overdue, 'Overdue', overdue > 0 ? '#f87171' : '#2a5a2a')}
+          ${drPMMini('⏰', dueSoon, 'Due Soon', dueSoon > 0 ? '#fbbf24' : '#2a5a2a')}
+          ${drPMMini('Σ', total, 'Total', '#7ab0f6')}
+        </div>
       </div>
-      <div style="background:#0a1a0a;border-radius:4px;height:8px;overflow:hidden;">
-        <div style="background:${barColor};width:${pct}%;height:100%;transition:width .4s;border-radius:4px;"></div>
+
+      <!-- Progress bar (done today) -->
+      <div style="margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a8a4a;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">
+          <span>Today's Progress</span><span>${done}/${total} · ${donePct}%</span>
+        </div>
+        <div style="background:#0a1a0a;border-radius:4px;height:6px;overflow:hidden;">
+          <div style="background:${donePct === 100 ? '#4ade80' : '#fbbf24'};width:${donePct}%;height:100%;transition:width .4s;border-radius:4px;"></div>
+        </div>
       </div>
-      ${overdue > 0 ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#f87171;margin-top:5px;">⚠ ${overdue} overdue · ${dueSoon} due soon</div>` :
-        dueSoon > 0 ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#fbbf24;margin-top:5px;">⏰ ${dueSoon} due soon</div>` : ''}
-    </div>
 
-    <!-- Overdue PMs -->
-    ${overdueList.length > 0 ? `
-    <div style="margin-bottom:10px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#f87171;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase;">🔴 Overdue (${overdueList.length})</div>
-      ${overdueList.map(t => `
-        <div style="background:#1a0505;border:1.5px solid #7f1d1d;border-radius:8px;padding:8px 12px;margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#fca5a5;font-weight:600;">${t.name}</div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7a3a3a;">
-              ${t.area || ''} ${t.house ? '· H'+t.house : ''} · Freq: ${t.freq||''}
-            </div>
-          </div>
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;background:#7f1d1d;color:#fca5a5;border-radius:4px;padding:2px 6px;white-space:nowrap;flex-shrink:0;">OVERDUE</span>
-        </div>`).join('')}
-    </div>` : ''}
+      ${overdue > 0 ? `
+      <!-- Worst system bars -->
+      <div style="margin-top:12px;padding-top:12px;border-top:1px dashed ${headBorder};">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#f87171;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">⚠ Where the misses are</div>
+        ${sysSorted.slice(0,3).map(([sys, n]) => {
+          const sysTotal = (farmPMs || []).filter(t => (t.system || 'Other') === sys).length;
+          const pct = sysTotal > 0 ? Math.round((n / sysTotal) * 100) : 0;
+          return `
+            <div style="margin-bottom:6px;">
+              <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#fca5a5;margin-bottom:3px;">
+                <span>${sys}</span><span>${n}/${sysTotal} overdue · ${pct}%</span>
+              </div>
+              <div style="background:#0a0505;border-radius:3px;height:5px;overflow:hidden;">
+                <div style="background:#f87171;width:${pct}%;height:100%;border-radius:3px;"></div>
+              </div>
+            </div>`;
+        }).join('')}
+        <div style="margin-top:10px;text-align:center;">
+          <button onclick="drToggleOverdue('${drillId}')" style="background:transparent;border:1px solid ${headBorder};color:#fca5a5;border-radius:6px;padding:6px 14px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;">Show overdue list ▾</button>
+        </div>
+        <div id="${drillId}" style="display:none;margin-top:10px;">
+          ${overdueList.map(t => `
+            <div style="background:#1a0505;border:1px solid #7f1d1d;border-radius:6px;padding:6px 10px;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;" onclick="go('maint');setTimeout(()=>goMaintSection('pm'),50);">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#fca5a5;">${t.name}</div>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#7a3a3a;white-space:nowrap;">${t.system||''}${t.house?' · H'+t.house:''}</span>
+            </div>`).join('')}
+        </div>
+      </div>` : `
+      <div style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4ade80;text-align:center;">All PMs on schedule${dueSoon > 0 ? ` — ${dueSoon} due soon` : ''}</div>`}
 
-    <!-- Due Soon PMs -->
-    ${dueSoonList.length > 0 ? `
-    <div style="margin-bottom:10px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#fbbf24;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase;">🟡 Due Soon (${dueSoonList.length})</div>
-      ${dueSoonList.slice(0,4).map(t => `
-        <div style="background:#1a1400;border:1.5px solid #854d0e;border-radius:8px;padding:8px 12px;margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#fde68a;font-weight:600;">${t.name}</div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7a5a2a;">${t.area||''} ${t.house ? '· H'+t.house : ''}</div>
-          </div>
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;background:#854d0e;color:#fde68a;border-radius:4px;padding:2px 6px;white-space:nowrap;flex-shrink:0;">DUE SOON</span>
-        </div>`).join('')}
-      ${dueSoonList.length > 4 ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a8a4a;text-align:center;padding:4px;">+${dueSoonList.length-4} more</div>` : ''}
-    </div>` : ''}
+    </div>`;
+}
 
-    <!-- Completed Today -->
-    ${doneList.length > 0 ? `
-    <div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4ade80;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase;">✓ Done Today (${doneList.length})</div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px;">
-        ${doneList.map(t => `
-          <span style="background:#14532d;color:#4ade80;border-radius:4px;padding:3px 9px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;">✓ ${t.name}</span>`).join('')}
-      </div>
-    </div>` : ''}
+// Tiny stat for PM section
+function drPMMini(icon, value, label, color) {
+  return `
+    <div style="background:#0a1a0a;border:1px solid ${color}33;border-radius:8px;padding:8px 6px;text-align:center;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:${color};line-height:1;">${value}</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:${color};opacity:.8;margin-top:3px;letter-spacing:1px;text-transform:uppercase;">${label}</div>
+    </div>`;
+}
 
-    ${overdueList.length === 0 && dueSoonList.length === 0 && doneList.length === 0 ? `
-      <div style="background:#0a1f0a;border:1px solid #1a3a1a;border-radius:8px;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#2a5a2a;">All PMs current — nothing due or overdue today</div>` : ''}
-  `;
+// Drill-down toggle for overdue list
+function drToggleOverdue(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
 function drWalksComplete(farm) {
@@ -280,13 +300,6 @@ function drRender() {
           openCount === 0 ? '#1b5e20' : urgentCount > 0 ? '#7f1d1d' : '#856404',
           openCount === 0 ? '#4ade80' : urgentCount > 0 ? '#f87171' : '#fbbf24')}
 
-      ${(() => {
-        const pm = drPMStats(farm);
-        return drStatCard('📋', pm.done + '/' + pm.total, 'PMs Today',
-          pm.overdue > 0 ? '#7f1d1d' : pm.done === pm.total ? '#1b5e20' : '#856404',
-          pm.overdue > 0 ? '#f87171' : pm.done === pm.total ? '#4ade80' : '#fbbf24');
-      })()}
-
       ${safeDays !== null
         ? drStatCard('🛡️', safeDays, 'Safe Days',
             safeDays >= 30 ? '#1b5e20' : safeDays >= 7 ? '#856404' : '#7f1d1d',
@@ -295,13 +308,12 @@ function drRender() {
 
     </div>
 
-    <!-- ── Safe Days Controls ── -->
-    <div style="padding:0 16px 14px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;letter-spacing:1px;">SAFETY TRACKING:</span>
-      <button onclick="drResetSafeDays()" style="padding:6px 14px;background:#2d0000;border:1.5px solid #7f1d1d;border-radius:6px;color:#f87171;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:1px;">⚠ INCIDENT — RESET DAYS</button>
-      ${!_drSafetySettings.lastIncidentDate
-        ? `<button onclick="drSetSafeDayStart()" style="padding:6px 14px;background:#0a1f0a;border:1.5px solid #2a5a2a;border-radius:6px;color:#4ade80;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:1px;">▶ SET START DATE</button>`
-        : `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;">Last incident: ${_drSafetySettings.lastIncidentDate}</span>`}
+    <!-- ── Safety Tracking — compact row ── -->
+    <div style="padding:0 16px 14px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:10px;">
+      ${_drSafetySettings.lastIncidentDate
+        ? `<span style="color:#4a8a4a;">Last incident: ${_drSafetySettings.lastIncidentDate}</span>`
+        : `<button onclick="drSetSafeDayStart()" style="padding:4px 10px;background:#0a1f0a;border:1px solid #2a5a2a;border-radius:5px;color:#4ade80;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;">▶ Set start date</button>`}
+      <button onclick="drResetSafeDays()" style="padding:4px 10px;background:transparent;border:1px solid #7f1d1d;border-radius:5px;color:#f87171;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;margin-left:auto;">⚠ Log incident</button>
     </div>
 
     <!-- ── House-by-House Grid ── -->
