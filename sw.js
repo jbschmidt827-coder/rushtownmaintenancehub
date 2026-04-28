@@ -45,7 +45,7 @@ self.addEventListener('notificationclick', event => {
 // ═══════════════════════════════════════════
 // CACHE — network-first, fall back offline
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v42';
+const CACHE_NAME = 'rushtown-v43';
 
 const SHELL_FILES = [
   '/',
@@ -124,4 +124,4 @@ self.addEventListener('fetch', event => {
         })
       )
   );
-});
+});

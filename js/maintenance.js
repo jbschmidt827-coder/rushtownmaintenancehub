@@ -6716,109 +6716,101 @@ function openWIView(wiId) {
     console.warn('openWIView called with bad id:', wiId);
     return;
   }
-  let wi = allWI.find(x => x.wiId === wiId || x._fbId === wiId);
+  let wi = (typeof allWI !== 'undefined' ? allWI : []).find(x => x.wiId === wiId || x._fbId === wiId);
   if (!wi) {
-    // Fallback: try title-based match if id lookup fails
-    wi = allWI.find(x => (x.title||'').toLowerCase() === String(wiId).toLowerCase());
+    wi = (typeof allWI !== 'undefined' ? allWI : []).find(x => (x.title||'').toLowerCase() === String(wiId).toLowerCase());
   }
   if (!wi) {
     if (typeof toast === 'function') toast('WI not found in list (id: '+wiId+')');
-    console.warn('openWIView: no WI found for', wiId, '— allWI count:', allWI.length);
     return;
   }
   currentWIId = wi.wiId || wi._fbId;
-  // Fill in rich defaults so sparse WIs still render in Daily-Check format
-  wi = _wiEnrich(wi);
-  // Defensive accessors — if an element is missing the render keeps going
-  const _setHTML = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
-  const _setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
-  const _show    = (id, on)  => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
-  try {
-  const t = (typeof WI_TYPE === 'object' && WI_TYPE && WI_TYPE[wi.type]) ? WI_TYPE[wi.type] : { bg:'#f0f4ff', color:'#3b82f6', label:(wi.type||'WI').toUpperCase() };
+  // Fill in defaults so sparse WIs still render with full content
+  wi = (typeof _wiEnrich === 'function') ? _wiEnrich(wi) : wi;
+
+  const t = (typeof WI_TYPE === 'object' && WI_TYPE && WI_TYPE[wi.type]) ? WI_TYPE[wi.type] : { bg:'#1a3a1a', color:'#7ab07a', label:(wi.type||'WI').toUpperCase() };
   const SYS_ICON_MAP = {Ventilation:'💨',Water:'💧',Feed:'🌾',Manure:'♻️','Egg Collectors':'🥚',Heating:'🔥',Electrical:'⚡',Lubing:'🛢️',Building:'🏚️',General:'🔧'};
-
-  _setHTML('wiv-type-badge',
-    `<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${t.bg};color:${t.color};border:1px solid ${t.color}40;font-family:'IBM Plex Mono',monospace;">${t.label}</span>`);
-  _setText('wiv-title', wi.title || 'Untitled WI');
-
   const sysIcon = SYS_ICON_MAP[wi.system] || '';
+  const _esc = (str) => String(str == null ? '' : str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // Daily-Check style coloured strip — dark bg, accent border, uppercase label
+  const strip = (label, txt, color, bg) => txt && String(txt).trim()
+    ? `<div style="background:${bg};border:1px solid ${color};border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${color};margin-bottom:4px;">${label}</div>
+        <div style="font-size:13px;color:#e8f5ec;line-height:1.45;">${_esc(txt)}</div>
+      </div>`
+    : '';
+
+  // Steps — interactive checklist style matching Daily Check
+  const steps = Array.isArray(wi.steps) ? wi.steps : [];
+  const stepsHtml = steps.map((s,i) =>
+    `<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #1a3a1a;">
+       <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${t.color};min-width:22px;flex-shrink:0;">${i+1}.</span>
+       <span style="font-size:13px;color:#e8f5ec;line-height:1.5;">${_esc(s)}</span>
+     </div>`
+  ).join('');
+
+  // Photos (if present)
+  const photosHtml = (wi.photos && Array.isArray(wi.photos) && wi.photos.length)
+    ? `<div style="margin-top:14px;">
+         <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7a9a7a;margin-bottom:8px;">📷 Reference Photos</div>
+         <div style="display:flex;flex-wrap:wrap;gap:8px;">
+           ${wi.photos.map(u => `<a href="${u}" target="_blank"><img src="${u}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #2a5a2a;cursor:pointer;"></a>`).join('')}
+         </div>
+       </div>`
+    : '';
+
+  // Meta line — system + time + author
   const metaParts = [];
   if (wi.system) metaParts.push(sysIcon + ' ' + wi.system);
-  if (wi.time)   metaParts.push('⏱ ' + wi.time + ' min');
+  if (wi.time) metaParts.push('⏱ ' + wi.time + ' min');
   const _fmtD = (typeof fmtDate === 'function') ? fmtDate(wi.date) : (wi.date || '');
-  metaParts.push('By ' + (wi.author || 'Unknown') + (wi.date ? ' · ' + _fmtD : ''));
-  _setText('wiv-meta', metaParts.join(' · '));
+  if (wi.author || wi.date) metaParts.push('By ' + (wi.author || 'Unknown') + (wi.date ? ' · ' + _fmtD : ''));
 
-  // PPE strip
-  if (wi.ppe) { _show('wiv-ppe-strip', true); _setText('wiv-ppe-text', wi.ppe); }
-  else _show('wiv-ppe-strip', false);
-
-  // Warnings strip (only show if warnings actually present — the enricher does not synth these)
-  if (wi.warnings && String(wi.warnings).trim()) { _show('wiv-warn-strip', true); _setText('wiv-warn-text', wi.warnings); }
-  else _show('wiv-warn-strip', false);
-
-  // Tools strip
-  if (wi.tools) { _show('wiv-tools-strip', true); _setText('wiv-tools-text', wi.tools); }
-  else _show('wiv-tools-strip', false);
-
-  // Purpose strip
-  if (wi.purpose) { _show('wiv-purpose-strip', true); _setText('wiv-purpose-text', wi.purpose); }
-  else _show('wiv-purpose-strip', false);
-
-  // Steps — interactive checklist
-  const steps = Array.isArray(wi.steps) ? wi.steps : [];
-  const _esc = (str) => String(str == null ? '' : str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  _setHTML('wiv-steps', steps.map((step, i) => `
-    <div class="wiv-step" id="wiv-step-${i}" onclick="wiToggleStep(${i})">
-      <div class="wiv-step-num" id="wiv-step-num-${i}">${i+1}</div>
-      <div class="wiv-step-text" id="wiv-step-text-${i}">${_esc(step)}</div>
-    </div>`).join(''));
-
-  // Verification / "What Good Looks Like" strip
-  if (wi.verification) { _show('wiv-verif-strip', true); _setText('wiv-verif-text', wi.verification); }
-  else _show('wiv-verif-strip', false);
-
-  // Photos
-  const photosSection = document.getElementById('wiv-photos');
-  const photosGrid = document.getElementById('wiv-photos-grid');
-  if (photosSection && photosGrid) {
-    if (wi.photos && Array.isArray(wi.photos) && wi.photos.length) {
-      photosGrid.innerHTML = wi.photos.map(url => `
-        <a href="${url}" target="_blank" style="display:block;">
-          <img src="${url}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #ddd;cursor:pointer;">
-        </a>`).join('');
-      photosSection.style.display = 'block';
-    } else {
-      photosSection.style.display = 'none';
-    }
-  }
-
-  _setText('wiv-footer', `#${wi.wiId || wi._fbId || '—'} · ${steps.length} steps`);
-  } catch(err) {
-    console.error('openWIView render error (continuing to force-open):', err);
-    if (typeof toast === 'function') toast('WI opened with limited content — see console');
-  }
-  _wiViewOpenedAt = Date.now();
-  const _modal = document.getElementById('wi-view-modal');
-  if (_modal) _modal.classList.add('open');
-}
-
-function wiToggleStep(idx) {
-  const row  = document.getElementById('wiv-step-' + idx);
-  const num  = document.getElementById('wiv-step-num-' + idx);
-  const text = document.getElementById('wiv-step-text-' + idx);
-  const done = row.classList.toggle('wiv-step-done');
-  num.textContent  = done ? '✓' : idx + 1;
-  text.style.textDecoration = done ? 'line-through' : '';
-  text.style.color = done ? 'var(--muted)' : '';
+  const html = `
+    <div class="overlay open" id="wi-view-dyn-modal" style="z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.78);position:fixed;inset:0;padding:16px;" onclick="if(event.target===this)closeWIView()">
+      <div style="background:#0a1a0a;border:1.5px solid #2a5a2a;border-radius:14px;max-width:560px;width:100%;max-height:92vh;overflow-y:auto;padding:18px 20px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px;">
+          <div style="flex:1;">
+            <span style="display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;padding:3px 10px;border-radius:5px;background:${t.bg};color:${t.color};border:1px solid ${t.color}40;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">${t.label}</span>
+            <h3 style="margin:0;color:#f0ead8;font-size:18px;line-height:1.25;font-family:'IBM Plex Sans',sans-serif;">${_esc(wi.title || 'Untitled WI')}</h3>
+            ${metaParts.length ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7a9a7a;margin-top:4px;">${metaParts.join(' · ')}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+            <button onclick="wiEditCurrent()" style="padding:6px 12px;font-size:11px;background:#0d2a0d;border:1px solid #2a5a2a;border-radius:7px;cursor:pointer;font-weight:600;color:#7ab07a;font-family:'IBM Plex Sans',sans-serif;">✏️ Edit</button>
+            <button onclick="closeWIView()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#7a9a7a;padding:0 4px;">✕</button>
+          </div>
+        </div>
+        ${strip('📋 Purpose',                wi.purpose,      '#4caf50','#0a1f0a')}
+        ${strip('🦺 PPE & Tools Required',    wi.ppe,          '#d69e2e','#1a1200')}
+        ${strip('🔧 Tools & Materials',       wi.tools,        '#3b82f6','#0d1f3a')}
+        ${strip('⚠️ Warnings & Cautions',     wi.warnings,     '#e53e3e','#1a0505')}
+        ${steps.length ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#7a9a7a;letter-spacing:1px;text-transform:uppercase;margin:14px 0 6px;">Steps</div>${stepsHtml}` : ''}
+        ${strip('✅ What Good Looks Like',     wi.verification, '#9b59b6','#1a0a2a')}
+        ${photosHtml}
+        <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #1a3a1a;align-items:center;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7a9a7a;flex:1;">#${_esc(wi.wiId || wi._fbId || '—')} · ${steps.length} steps</div>
+          <button onclick="wiDeleteCurrent()" style="padding:6px 12px;font-size:11px;background:#1a0505;border:1px solid #7f1d1d;color:#f87171;border-radius:7px;cursor:pointer;font-weight:600;font-family:'IBM Plex Sans',sans-serif;">🗑 Delete</button>
+          <button onclick="closeWIView()" style="padding:11px 22px;background:#0a2a0a;border:1.5px solid #2a5a2a;border-radius:8px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;">CLOSE</button>
+        </div>
+      </div>
+    </div>`;
+  // Remove any existing dynamic modal AND hide the legacy static one
+  const ex = document.getElementById('wi-view-dyn-modal'); if (ex) ex.remove();
+  const oldStatic = document.getElementById('wi-view-modal');
+  if (oldStatic) oldStatic.classList.remove('open');
+  document.body.insertAdjacentHTML('beforeend', html);
 }
 
 let _wiViewOpenedAt = 0;
 
 function closeWIView() {
-  // Guard against iOS ghost-click closing the modal immediately after it opens
-  if (Date.now() - _wiViewOpenedAt < 600) return;
-  document.getElementById('wi-view-modal').classList.remove('open');
+  // Close dynamic modal (current path)
+  const dyn = document.getElementById('wi-view-dyn-modal');
+  if (dyn) dyn.remove();
+  // Also close legacy static modal in case it's open from old cache
+  const legacy = document.getElementById('wi-view-modal');
+  if (legacy) legacy.classList.remove('open');
   currentWIId = null;
 }
 
