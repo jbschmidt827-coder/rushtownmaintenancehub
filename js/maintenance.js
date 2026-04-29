@@ -6422,16 +6422,27 @@ function openWIForm(wiId, clTaskId, prefillTitle, prefillDept) {
   _openWIForm(wiId, clTaskId, prefillTitle, prefillDept);
 }
 // ── WI Photo Upload helpers ──────────────────────────────────────────────────
+// We compress each picked photo with compressPhoto() so it stores as a small JPEG
+// base64 data URI. saveWI() then writes those URIs straight into the Firestore
+// workInstructions doc — same pattern Work Order photos use. This avoids the
+// Firebase Storage rules dependency that was causing photos to silently disappear.
 function wiHandlePhotoSelect(input) {
   const files = Array.from(input.files);
   files.forEach(file => {
     if (_wiPendingPhotos.length >= 5) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      _wiPendingPhotos.push({ file, dataUrl: e.target.result });
+    compressPhoto(file).then(dataUrl => {
+      if (_wiPendingPhotos.length >= 5) return;
+      _wiPendingPhotos.push({ file, dataUrl });
       renderWIPhotoPreviews();
-    };
-    reader.readAsDataURL(file);
+    }).catch(err => {
+      console.warn('WI photo compress failed, falling back to raw read:', err);
+      const reader = new FileReader();
+      reader.onload = e => {
+        _wiPendingPhotos.push({ file, dataUrl: e.target.result });
+        renderWIPhotoPreviews();
+      };
+      reader.readAsDataURL(file);
+    });
   });
   input.value = '';
 }
@@ -6562,19 +6573,22 @@ async function saveWI() {
         if (!snap.empty) fbId = snap.docs[0].id;
       }
       if (fbId) {
-        // Upload any new pending photos and merge with kept existing ones
-        const photoUrls = [..._wiExistingPhotos];
-        if (typeof storage !== 'undefined') {
-          for (let i = 0; i < _wiPendingPhotos.length; i++) {
-            const p = _wiPendingPhotos[i];
-            try {
-              const ref = storage.ref('wi-photos/' + editingWIId + '/' + Date.now() + '-' + i + '.jpg');
-              await ref.put(p.file);
-              const url = await ref.getDownloadURL();
-              photoUrls.push(url);
-            } catch(photoErr) { console.warn('Photo upload failed (non-fatal):', photoErr); }
-          }
+        // Merge kept existing photos (legacy Storage URLs OR data URIs) with newly
+        // compressed pending data URIs, then trim to fit under Firestore's 1 MB doc cap.
+        let photoUrls = [..._wiExistingPhotos, ..._wiPendingPhotos.map(p => p.dataUrl).filter(Boolean)];
+        const MAX_PHOTO_BYTES = 800 * 1024;
+        let bytes = 0;
+        const trimmed = [];
+        for (const u of photoUrls) {
+          const sz = u && u.startsWith('data:') ? Math.round(u.length * 0.75) : 0; // base64 only counts toward limit
+          if (bytes + sz > MAX_PHOTO_BYTES) break;
+          trimmed.push(u);
+          bytes += sz;
         }
+        if (trimmed.length < photoUrls.length) {
+          alert('Photos are large \u2014 only ' + trimmed.length + ' of ' + photoUrls.length + ' will be saved to stay under the size limit.');
+        }
+        photoUrls = trimmed;
         const clTaskId = (document.getElementById('wif-cl-task-id')?.value || '').trim();
         await db.collection('workInstructions').doc(fbId).update({
           title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, photos: photoUrls, updatedTs: Date.now(),
@@ -6593,19 +6607,22 @@ async function saveWI() {
       }
     } else {
       const wiId = 'WI-' + Date.now().toString(36).toUpperCase();
-      // Upload any pending photos before saving the document
-      const photoUrls = [..._wiExistingPhotos];
-      if (typeof storage !== 'undefined') {
-        for (let i = 0; i < _wiPendingPhotos.length; i++) {
-          const p = _wiPendingPhotos[i];
-          try {
-            const ref = storage.ref('wi-photos/' + wiId + '/' + Date.now() + '-' + i + '.jpg');
-            await ref.put(p.file);
-            const url = await ref.getDownloadURL();
-            photoUrls.push(url);
-          } catch(photoErr) { console.warn('Photo upload failed (non-fatal):', photoErr); }
-        }
+      // Save photos as base64 data URIs directly on the Firestore doc (same as Work Orders).
+      // Trim to fit under Firestore's 1 MB doc cap.
+      let photoUrls = [..._wiExistingPhotos, ..._wiPendingPhotos.map(p => p.dataUrl).filter(Boolean)];
+      const MAX_PHOTO_BYTES = 800 * 1024;
+      let bytes = 0;
+      const trimmed = [];
+      for (const u of photoUrls) {
+        const sz = u && u.startsWith('data:') ? Math.round(u.length * 0.75) : 0;
+        if (bytes + sz > MAX_PHOTO_BYTES) break;
+        trimmed.push(u);
+        bytes += sz;
       }
+      if (trimmed.length < photoUrls.length) {
+        alert('Photos are large \u2014 only ' + trimmed.length + ' of ' + photoUrls.length + ' will be saved to stay under the size limit.');
+      }
+      photoUrls = trimmed;
       const clTaskId = (document.getElementById('wif-cl-task-id')?.value || '').trim();
       await db.collection('workInstructions').add({
         wiId, title, type, dept, system, time: parseInt(time)||0,
