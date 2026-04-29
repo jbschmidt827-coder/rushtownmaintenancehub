@@ -506,19 +506,23 @@ let _clDashData = [];   // today's submitted checklists
 let _clDashUnsub = null;
 
 async function clOpenTaskWI(taskId, taskLabel) {
-  // ALWAYS show the built-in (correct) instructions first — guarantees the right content
-  // regardless of whatever may have been saved/edited in Firestore.
-  if (clShowBuiltinWI(taskId)) return;
-  // Fallback for tasks without a built-in: try to find a Firestore WI mapped to this task
+  // Inventory is now the source of truth — check it FIRST so user edits from
+  // the WI page take effect. Fall back to the built-in template only if the
+  // inventory has nothing for this task (e.g. WI was deleted, or never seeded).
   try {
     if (typeof allWI === 'undefined' || !allWI.length) {
       if (typeof loadWI === 'function') await loadWI();
     }
   } catch(e) {}
   const matches = (typeof allWI !== 'undefined' ? allWI : []).filter(w => w.clTaskId === taskId);
-  if (matches.length > 0) {
-    if (typeof openWIView === 'function') openWIView(matches[0].wiId || matches[0]._fbId);
-  } else if (typeof _openWIForm === 'function') {
+  if (matches.length > 0 && typeof openWIView === 'function') {
+    openWIView(matches[0].wiId || matches[0]._fbId);
+    return;
+  }
+  // Inventory miss — render built-in template if we have one
+  if (clShowBuiltinWI(taskId)) return;
+  // No inventory entry, no built-in — open the form to create a new WI
+  if (typeof _openWIForm === 'function') {
     _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
   }
 }
@@ -613,3 +617,78 @@ function renderChecklistDashboard() {
 
   el.innerHTML = html;
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// SEED BUILT-IN WORK INSTRUCTIONS INTO THE WI INVENTORY
+// One-time migration so the daily checklist tasks have editable WIs
+// in the inventory. Idempotent — safe to call repeatedly. Skips any
+// task that already has an inventory WI (by deterministic seed id or
+// by clTaskId match), so user edits/additions are never overwritten.
+// ═══════════════════════════════════════════════════════════════════
+async function clSeedBuiltinWIsToInventory(taskIds) {
+  if (typeof db === 'undefined' || !db) return;
+  const today = new Date().toISOString().slice(0,10);
+  const ids = (Array.isArray(taskIds) && taskIds.length) ? taskIds : Object.keys(CL_INSTRUCTIONS);
+  let added = 0, skipped = 0;
+  for (const taskId of ids) {
+    const builtin = CL_INSTRUCTIONS[taskId];
+    if (!builtin) continue;
+    const SEED_WI_ID = 'WI-CL-' + taskId.toUpperCase();
+    try {
+      // Skip if a WI with the deterministic seed id already exists
+      const bySeedId = await db.collection('workInstructions')
+        .where('wiId', '==', SEED_WI_ID).limit(1).get();
+      if (!bySeedId.empty) { skipped++; continue; }
+      // Also skip if any user-created WI is already mapped to this task
+      const byTaskId = await db.collection('workInstructions')
+        .where('clTaskId', '==', taskId).limit(1).get();
+      if (!byTaskId.empty) { skipped++; continue; }
+      await db.collection('workInstructions').add({
+        wiId: SEED_WI_ID,
+        title: builtin.title || taskId,
+        type: 'cleaning',
+        dept: 'Barn / Layer',
+        system: '',
+        time: builtin.timeMin || 0,
+        author: 'Rushtown Poultry',
+        date: today,
+        purpose: builtin.purpose || '',
+        ppe: builtin.ppe || '',
+        tools: builtin.tools || '',
+        warnings: builtin.warnings || '',
+        verification: builtin.verification || '',
+        steps: Array.isArray(builtin.steps) ? builtin.steps.slice() : [],
+        photos: [],
+        clTaskId: taskId,
+        ts: Date.now(),
+      });
+      added++;
+      console.log('Seeded inventory WI for daily checklist task:', taskId, '→', SEED_WI_ID);
+    } catch (err) {
+      console.warn('Seed failed for', taskId, err);
+    }
+  }
+  if (added > 0) {
+    console.log(`✅ ${added} daily-checklist WIs added to inventory (${skipped} already existed).`);
+  }
+}
+
+// Auto-seed on load — items 1, 3, 4, 6, 7 in the daily checklist UI.
+// Waits for Firestore (db) to be ready before running.
+(function _clAutoSeedOnLoad() {
+  const TASKS_TO_SEED = ['fwv', 'tubes', 'front', 'wheelbarrow', 'undercage'];
+  const tryRun = (attempt) => {
+    if (typeof db !== 'undefined' && db) {
+      clSeedBuiltinWIsToInventory(TASKS_TO_SEED);
+    } else if (attempt < 20) {
+      setTimeout(() => tryRun(attempt + 1), 1000);
+    }
+  };
+  if (typeof window !== 'undefined') {
+    if (document.readyState === 'complete') {
+      setTimeout(() => tryRun(0), 2500);
+    } else {
+      window.addEventListener('load', () => setTimeout(() => tryRun(0), 2500));
+    }
+  }
+})();
