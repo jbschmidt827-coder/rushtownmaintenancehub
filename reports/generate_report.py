@@ -125,10 +125,13 @@ def fetch_active_red_tags(db, limit=500):
 
 
 def _norm_house(h):
+    """Extract just the house number from values like '5', 'H5', 'House 5', 'house 5'.
+    Returns '' for 'N/A', 'PM-Generated', or anything without a digit."""
     if h is None:
         return ""
-    s = str(h).strip()
-    return s.lstrip("Hh") if s.lower().startswith("h") else s
+    import re as _re
+    m = _re.search(r"\d+", str(h))
+    return m.group(0) if m else ""
 
 
 def build_eos_snapshot(db, today):
