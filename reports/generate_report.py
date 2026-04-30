@@ -84,50 +84,26 @@ def fetch_work_orders(db, start_date: date, end_date: date):
 
 # ── EOS snapshot helpers ───────────────────────────────────────────────────────
 def fetch_open_work_orders(db, limit=500):
-    """Return open work orders, capped at `limit` reads to stay quota-friendly."""
-    closed = {"Closed", "Resolved", "Cancelled", "Complete", "Completed"}
+    """Return open work orders, capped at `limit` reads to stay quota-friendly.
+    Status comparison is case-insensitive (the data uses lowercase 'completed')."""
+    closed_lower = {"closed", "resolved", "cancelled", "complete", "completed"}
     out = []
-    try:
-        # Try server-side filter first (cheapest)
-        q = (db.collection("workOrders")
-               .where("status", "not-in", list(closed))
-               .limit(limit))
-        for d in q.stream():
-            wo = d.to_dict() or {}
-            wo["_id"] = d.id
-            out.append(wo)
-        return out
-    except Exception:
-        # Fallback if Firestore complains about composite index / not-in usage
-        pass
-    # Plain limited scan with client-side filter
     for d in db.collection("workOrders").limit(limit).stream():
         wo = d.to_dict() or {}
         wo["_id"] = d.id
-        if str(wo.get("status", "")).strip() not in closed:
+        if str(wo.get("status", "")).strip().lower() not in closed_lower:
             out.append(wo)
     return out
 
 
 def fetch_active_red_tags(db, limit=500):
-    """Return redTags whose status is 'Tagged' or 'Under Review', capped at `limit` reads."""
-    active_statuses = ["Tagged", "Under Review"]
+    """Return redTags whose status is 'Tagged' or 'Under Review', case-insensitive."""
+    active_lower = {"tagged", "under review"}
     out = []
-    try:
-        q = (db.collection("redTags")
-               .where("status", "in", active_statuses)
-               .limit(limit))
-        for d in q.stream():
-            rt = d.to_dict() or {}
-            rt["_id"] = d.id
-            out.append(rt)
-        return out
-    except Exception:
-        pass
     for d in db.collection("redTags").limit(limit).stream():
         rt = d.to_dict() or {}
         rt["_id"] = d.id
-        if str(rt.get("status", "")) in active_statuses:
+        if str(rt.get("status", "")).strip().lower() in active_lower:
             out.append(rt)
     return out
 
