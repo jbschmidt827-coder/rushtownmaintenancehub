@@ -31,6 +31,13 @@ import resend
 SEND_TO   = "jschmidt@rushtownpoultry.com"
 SEND_FROM = "jbschmidt827@gmail.com"
 FARMS     = {"Hegins": 8, "Danville": 5}
+
+# EOS scope: 13 maintenance-tracked houses (Hegins H1-H8 + Danville H1-H5)
+EOS_HOUSES = (
+    [("Hegins",   str(i)) for i in range(1, 9)] +
+    [("Danville", str(i)) for i in range(1, 6)]
+)
+
 GREEN_DARK  = RGBColor(0x1a, 0x3a, 0x1a)
 GREEN_MID   = RGBColor(0x2a, 0x6a, 0x2a)
 GREEN_LIGHT = RGBColor(0x4c, 0xaf, 0x50)
@@ -72,6 +79,153 @@ def fetch_work_orders(db, start_date: date, end_date: date):
               .where("date", "<=", str(end_date))
               .stream())
     return [d.to_dict() for d in docs]
+
+
+
+# ── EOS snapshot helpers ───────────────────────────────────────────────────────
+def fetch_open_work_orders(db):
+    """Return all work orders not in a closed state (no date filter)."""
+    closed = {"Closed", "Resolved", "Cancelled", "Complete", "Completed"}
+    out = []
+    for d in db.collection("workOrders").stream():
+        wo = d.to_dict() or {}
+        wo["_id"] = d.id
+        if str(wo.get("status", "")).strip() not in closed:
+            out.append(wo)
+    return out
+
+
+def fetch_active_red_tags(db):
+    """Return redTags whose status is 'Tagged' or 'Under Review'."""
+    out = []
+    for d in db.collection("redTags").stream():
+        rt = d.to_dict() or {}
+        rt["_id"] = d.id
+        if str(rt.get("status", "")) in ("Tagged", "Under Review"):
+            out.append(rt)
+    return out
+
+
+def _norm_house(h):
+    if h is None:
+        return ""
+    s = str(h).strip()
+    return s.lstrip("Hh") if s.lower().startswith("h") else s
+
+
+def build_eos_snapshot(db, today):
+    """Build the EOS daily snapshot dict — written to data/eos-snapshot.json."""
+    open_wos    = fetch_open_work_orders(db)
+    red_tags    = fetch_active_red_tags(db)
+    today_str   = str(today)
+    today_walks = fetch_walks(db, today, today)
+    today_mws   = fetch_morning_walks(db, today, today)
+
+    now_ms = int(datetime.utcnow().timestamp() * 1000)
+    seven_days_ms = 7 * 24 * 3600 * 1000
+
+    by_house = {}
+    for farm, house in EOS_HOUSES:
+        by_house[f"{farm}|{house}"] = {
+            "farm": farm, "house": house,
+            "openWO": 0, "redTags": 0, "overdue7d": 0,
+            "walkedToday": False, "morningWalkToday": False,
+            "topItem": None, "topItemDays": None,
+        }
+
+    def bucket(farm, house):
+        return by_house.get(f"{farm}|{_norm_house(house)}")
+
+    for wo in open_wos:
+        b = bucket(wo.get("farm",""), wo.get("house",""))
+        if b:
+            b["openWO"] += 1
+            ts = wo.get("ts") or wo.get("createdAt") or 0
+            try: ts = int(ts)
+            except Exception: ts = 0
+            age_days = (now_ms - ts) // (24*3600*1000) if ts else None
+            if not b["topItem"] or (age_days and (b["topItemDays"] or 0) < age_days):
+                b["topItem"] = wo.get("title") or wo.get("problem") or (wo.get("description","") or "")[:60]
+                b["topItemDays"] = age_days
+
+    for rt in red_tags:
+        b = bucket(rt.get("farm",""), rt.get("house",""))
+        if b:
+            b["redTags"] += 1
+            ts = rt.get("ts") or rt.get("createdAt") or 0
+            try: ts = int(ts)
+            except Exception: ts = 0
+            if ts and (now_ms - ts) > seven_days_ms:
+                b["overdue7d"] += 1
+
+    for w in today_walks:
+        b = bucket(w.get("farm",""), w.get("house",""))
+        if b: b["walkedToday"] = True
+    for w in today_mws:
+        b = bucket(w.get("farm",""), w.get("house",""))
+        if b: b["morningWalkToday"] = True
+
+    headline = {
+        "openWOTotal":   sum(b["openWO"]    for b in by_house.values()),
+        "redTagsActive": sum(b["redTags"]   for b in by_house.values()),
+        "overdue7d":     sum(b["overdue7d"] for b in by_house.values()),
+        "walksToday":    sum(1 for b in by_house.values() if b["walkedToday"] or b["morningWalkToday"]),
+        "totalHouses":   len(EOS_HOUSES),
+    }
+
+    def slim_wo(wo):
+        return {
+            "id":       wo.get("_id"),
+            "farm":     wo.get("farm",""),
+            "house":    _norm_house(wo.get("house","")),
+            "title":    wo.get("title") or wo.get("problem") or "",
+            "desc":     (wo.get("description") or "")[:200],
+            "priority": wo.get("priority",""),
+            "status":   wo.get("status",""),
+            "ts":       wo.get("ts") or wo.get("createdAt"),
+            "urgent":   bool(wo.get("urgent")),
+        }
+
+    def slim_rt(rt):
+        ts = rt.get("ts") or rt.get("createdAt") or 0
+        try: ts = int(ts)
+        except Exception: ts = 0
+        days_old = ((now_ms - ts) // (24*3600*1000)) if ts else None
+        return {
+            "id":      rt.get("_id"),
+            "farm":    rt.get("farm",""),
+            "house":   _norm_house(rt.get("house","")),
+            "item":    rt.get("item") or rt.get("description","") or "",
+            "status":  rt.get("status",""),
+            "daysOld": days_old,
+            "ts":      ts,
+        }
+
+    return {
+        "generatedAt": datetime.utcnow().isoformat() + "Z",
+        "date":        today_str,
+        "scope":       {"farms": list({h[0] for h in EOS_HOUSES}), "houses": len(EOS_HOUSES)},
+        "headline":    headline,
+        "byHouse":     list(by_house.values()),
+        "openWOs":     [slim_wo(w) for w in open_wos],
+        "redTags":     [slim_rt(r) for r in red_tags],
+        "walksToday":  [{"farm": w.get("farm",""), "house": _norm_house(w.get("house","")),
+                         "employee": w.get("employee","") or w.get("name",""),
+                         "time": w.get("time","")} for w in today_walks],
+        "morningWalksToday": [{"farm": w.get("farm",""), "house": _norm_house(w.get("house","")),
+                                "employee": w.get("employee","") or w.get("name",""),
+                                "time": w.get("time","")} for w in today_mws],
+    }
+
+
+def write_eos_snapshot(snapshot, path="data/eos-snapshot.json"):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(snapshot, f, indent=2, default=str)
+    print(f"Wrote EOS snapshot -> {path} "
+          f"({snapshot['headline']['openWOTotal']} open WOs, "
+          f"{snapshot['headline']['redTagsActive']} red tags, "
+          f"{snapshot['headline']['walksToday']}/{snapshot['headline']['totalHouses']} walks today)")
 
 
 # ── Date helpers ───────────────────────────────────────────────────────────────
@@ -530,6 +684,14 @@ def main():
     ppt    = build_ppt(walks, m_walks, args.type, start_d, end_d)
 
     send_email(sg_key, args.type, period, excel, ppt)
+
+    # EOS snapshot — written every run so the live EOS dashboard can read it
+    try:
+        snapshot = build_eos_snapshot(db, date.today())
+        write_eos_snapshot(snapshot, path="data/eos-snapshot.json")
+    except Exception as e:
+        print(f"WARNING — failed to write EOS snapshot: {e}", file=sys.stderr)
+
     print("Done.")
 
 
