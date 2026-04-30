@@ -389,11 +389,9 @@ function drRender() {
     <!-- EOS sections — org-wide, not per-farm -->
     <div style="margin:24px 16px 0;padding-top:18px;border-top:2px dashed #2a5a2a;">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:#4ade80;text-align:center;margin-bottom:6px;">EOS — ENTREPRENEURIAL OPERATING SYSTEM</div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;text-align:center;letter-spacing:1px;">Rocks · L10 To-Dos · Issues List — applies across all sites</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;text-align:center;letter-spacing:1px;">L10 To-Dos — 7-day clock action items</div>
     </div>
-    <div id="eos-rocks-host">${typeof renderRocksSection === 'function' ? renderRocksSection() : ''}</div>
     <div id="eos-todos-host">${typeof renderTodosSection === 'function' ? renderTodosSection() : ''}</div>
-    <div id="eos-ids-host">${typeof renderIDSSection === 'function' ? renderIDSSection() : ''}</div>
 
   </div>
 
