@@ -84,15 +84,31 @@ def fetch_work_orders(db, start_date: date, end_date: date):
 
 # ── EOS snapshot helpers ───────────────────────────────────────────────────────
 def fetch_open_work_orders(db, limit=500):
-    """Return open work orders, capped at `limit` reads to stay quota-friendly.
-    Status comparison is case-insensitive (the data uses lowercase 'completed')."""
-    closed_lower = {"closed", "resolved", "cancelled", "complete", "completed"}
+    """Return open work orders using server-side status filter.
+    Status values in the data: 'open' | 'in-progress' | 'on-hold' | 'completed'."""
+    OPEN_STATUSES = ["open", "in-progress", "on-hold"]
     out = []
-    for d in db.collection("workOrders").limit(limit).stream():
+    try:
+        q = (db.collection("workOrders")
+               .where("status", "in", OPEN_STATUSES)
+               .limit(limit))
+        for d in q.stream():
+            wo = d.to_dict() or {}
+            wo["_id"] = d.id
+            out.append(wo)
+        return out
+    except Exception as e:
+        print(f"WARN: server-side WO filter failed: {e}", file=sys.stderr)
+    # Fallback: scan & filter client-side
+    closed = {"completed", "complete", "closed", "resolved", "cancelled"}
+    for d in db.collection("workOrders").limit(limit * 4).stream():
         wo = d.to_dict() or {}
         wo["_id"] = d.id
-        if str(wo.get("status", "")).strip().lower() not in closed_lower:
+        st = str(wo.get("status", "")).strip().lower()
+        if st and st not in closed:
             out.append(wo)
+        if len(out) >= limit:
+            break
     return out
 
 
