@@ -706,17 +706,23 @@ def main():
     print(f"  Barn checks: {len(walks)}, Morning walks: {len(m_walks)}")
 
     period = str(start_d) if start_d == end_d else f"{start_d} to {end_d}"
-    excel  = build_excel(walks, m_walks, args.type, start_d, end_d)
-    ppt    = build_ppt(walks, m_walks, args.type, start_d, end_d)
 
-    send_email(sg_key, args.type, period, excel, ppt)
-
-    # EOS snapshot — written every run so the live EOS dashboard can read it
+    # EOS snapshot first — most important output, write it before anything that can fail
     try:
         snapshot = build_eos_snapshot(db, date.today())
         write_eos_snapshot(snapshot, path="data/eos-snapshot.json")
     except Exception as e:
         print(f"WARNING — failed to write EOS snapshot: {e}", file=sys.stderr)
+
+    excel  = build_excel(walks, m_walks, args.type, start_d, end_d)
+    ppt    = build_ppt(walks, m_walks, args.type, start_d, end_d)
+
+    # Email — best effort. If Resend rejects (test-mode, unverified domain, etc),
+    # log it and keep going so the snapshot still gets committed by the workflow.
+    try:
+        send_email(sg_key, args.type, period, excel, ppt)
+    except Exception as e:
+        print(f"WARNING — email send failed (continuing anyway): {e}", file=sys.stderr)
 
     print("Done.")
 
