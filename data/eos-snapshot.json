@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-30T21:11:35.232179Z",
+  "generatedAt": "2026-04-30T21:14:55.868525Z",
   "date": "2026-04-30",
   "scope": {
     "farms": [
@@ -9,7 +9,7 @@
     "houses": 13
   },
   "headline": {
-    "openWOTotal": 0,
+    "openWOTotal": 9,
     "redTagsActive": 0,
     "overdue7d": 0,
     "walksToday": 3,
@@ -63,13 +63,13 @@
     {
       "farm": "Hegins",
       "house": "5",
-      "openWO": 0,
+      "openWO": 1,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": false,
-      "topItem": null,
-      "topItemDays": null
+      "topItem": "Manure System",
+      "topItemDays": 0
     },
     {
       "farm": "Hegins",
@@ -107,24 +107,24 @@
     {
       "farm": "Danville",
       "house": "1",
-      "openWO": 0,
+      "openWO": 5,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": null,
-      "topItemDays": null
+      "topItem": "Manure System",
+      "topItemDays": 13
     },
     {
       "farm": "Danville",
       "house": "2",
-      "openWO": 0,
+      "openWO": 2,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": null,
-      "topItemDays": null
+      "topItem": "Egg Collection",
+      "topItemDays": 14
     },
     {
       "farm": "Danville",
@@ -151,20 +151,20 @@
     {
       "farm": "Danville",
       "house": "5",
-      "openWO": 0,
+      "openWO": 1,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": null,
-      "topItemDays": null
+      "topItem": "Manure System",
+      "topItemDays": 1
     }
   ],
   "openWOs": [
     {
       "id": "6JCtfJ9omeHqdcgu7Fxc",
       "farm": "Danville",
-      "house": "N/A",
+      "house": "",
       "title": "Building / Structure",
       "desc": "",
       "priority": "high",
@@ -175,7 +175,7 @@
     {
       "id": "XmJNBKOpz8wUaXrwQCGL",
       "farm": "Danville",
-      "house": "ouse 5",
+      "house": "5",
       "title": "Manure System",
       "desc": "",
       "priority": "high",
@@ -186,7 +186,7 @@
     {
       "id": "a5vjIAOymkyf6nhTN1Ac",
       "farm": "Danville",
-      "house": "N/A",
+      "house": "",
       "title": "Building / Structure",
       "desc": "",
       "priority": "high",
@@ -197,7 +197,7 @@
     {
       "id": "cj4Sr0fwgpVxscdAVl3h",
       "farm": "Danville",
-      "house": "ouse 1",
+      "house": "1",
       "title": "Manure System",
       "desc": "",
       "priority": "urgent",
@@ -208,7 +208,7 @@
     {
       "id": "co2sBFTkBGaSZreWYlW2",
       "farm": "Danville",
-      "house": "PM-Generated",
+      "house": "",
       "title": "\u267b\ufe0f Manure \u2014 PM Follow-up",
       "desc": "",
       "priority": "high",
@@ -219,7 +219,7 @@
     {
       "id": "j7AOs8G54t7AJrQBmCKs",
       "farm": "Hegins",
-      "house": "ouse 5",
+      "house": "5",
       "title": "Manure System",
       "desc": "",
       "priority": "high",
@@ -230,7 +230,7 @@
     {
       "id": "lsDqWh51TCABMeERFhOO",
       "farm": "Danville",
-      "house": "ouse 2",
+      "house": "2",
       "title": "Egg Collection",
       "desc": "",
       "priority": "urgent",
@@ -241,7 +241,7 @@
     {
       "id": "mZhK5AqrBOt09YFbfkha",
       "farm": "Danville",
-      "house": "ouse 1",
+      "house": "1",
       "title": "Manure System",
       "desc": "",
       "priority": "high",
@@ -252,7 +252,7 @@
     {
       "id": "mlZXQUE2haLOqmgCbqHw",
       "farm": "Danville",
-      "house": "ouse 1",
+      "house": "1",
       "title": "Manure System",
       "desc": "",
       "priority": "urgent",
@@ -263,7 +263,7 @@
     {
       "id": "qRRY7xHXMezz6h14yYW3",
       "farm": "Danville",
-      "house": "N/A",
+      "house": "",
       "title": "Other",
       "desc": "",
       "priority": "routine",
@@ -274,7 +274,7 @@
     {
       "id": "qoMTRHBoK2EWDxaaLYei",
       "farm": "Danville",
-      "house": "ouse 1",
+      "house": "1",
       "title": "Manure System",
       "desc": "",
       "priority": "urgent",
@@ -285,7 +285,7 @@
     {
       "id": "xdyWkut3VCb9o4okCSAy",
       "farm": "Danville",
-      "house": "ouse 1",
+      "house": "1",
       "title": "Manure System",
       "desc": "",
       "priority": "high",
@@ -296,7 +296,7 @@
     {
       "id": "yFgAw8kTvJwLgt7LIIBT",
       "farm": "Danville",
-      "house": "ouse 2",
+      "house": "2",
       "title": "Watering System",
       "desc": "",
       "priority": "normal",
