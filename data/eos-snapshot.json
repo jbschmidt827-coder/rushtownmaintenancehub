@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-30T21:07:25.627619Z",
+  "generatedAt": "2026-04-30T21:11:35.232179Z",
   "date": "2026-04-30",
   "scope": {
     "farms": [
@@ -280,6 +280,28 @@
       "priority": "urgent",
       "status": "open",
       "ts": 1777547914240,
+      "urgent": false
+    },
+    {
+      "id": "xdyWkut3VCb9o4okCSAy",
+      "farm": "Danville",
+      "house": "ouse 1",
+      "title": "Manure System",
+      "desc": "",
+      "priority": "high",
+      "status": "in-progress",
+      "ts": 1777028090780,
+      "urgent": false
+    },
+    {
+      "id": "yFgAw8kTvJwLgt7LIIBT",
+      "farm": "Danville",
+      "house": "ouse 2",
+      "title": "Watering System",
+      "desc": "",
+      "priority": "normal",
+      "status": "open",
+      "ts": 1777461591928,
       "urgent": false
     }
   ],
