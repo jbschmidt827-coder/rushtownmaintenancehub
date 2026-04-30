@@ -311,15 +311,18 @@ async function saveWOUpdate(fbId) {
 
 // ── Action Rail & Meeting Flag ────────────────
 async function toggleWORail(fbId, state) {
-  try { await db.collection('workOrders').doc(fbId).update({ actionRail: state }); } catch(e) { console.error(e); }
+  try { await db.collection('workOrders').doc(fbId).update({ actionRail: state }); }
+  catch(e) { console.error(e); if (typeof toast === 'function') toast('Could not update action rail — check connection'); }
 }
 
 async function toggleWOMeeting(fbId, state) {
-  try { await db.collection('workOrders').doc(fbId).update({ meetingFlag: state }); } catch(e) { console.error(e); }
+  try { await db.collection('workOrders').doc(fbId).update({ meetingFlag: state }); }
+  catch(e) { console.error(e); if (typeof toast === 'function') toast('Could not update meeting flag — check connection'); }
 }
 
 async function removeFromRail(fbId) {
-  try { await db.collection('workOrders').doc(fbId).update({ actionRail: false }); } catch(e) { console.error(e); }
+  try { await db.collection('workOrders').doc(fbId).update({ actionRail: false }); }
+  catch(e) { console.error(e); if (typeof toast === 'function') toast('Could not remove from rail — check connection'); }
 }
 
 function openMeetingAgenda() {
@@ -485,12 +488,31 @@ async function woSetStatus(fbId, newStatus) {
   setSyncDot('live');
 }
 
-const SITE_TECHS = {
-  Hegins:   ['Nathan','Adam','Carlos','Randy','Steve'],
-  Danville: ['Josh','Cain','Celia','Deb','Steve'],
-};
+// SITE_TECHS removed — Staff panel is the only source of names app-wide.
+// Backwards-compat shim: some legacy code may still reference SITE_TECHS[farm].
+// We dynamically derive it from the live Staff list so nothing crashes,
+// but no hardcoded names live in this file anymore.
+const SITE_TECHS = new Proxy({}, {
+  get(_t, farm) {
+    if (typeof getActiveStaff === 'function') return getActiveStaff(String(farm));
+    if (typeof staffList !== 'undefined' && Array.isArray(staffList)) {
+      return staffList.filter(s => s && s.active !== false && (!s.farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All'))
+                      .map(s => s.name).filter(Boolean).sort();
+    }
+    return [];
+  }
+});
 
-function loadHouses() {
+function _crewForFarm(farm) {
+  if (typeof getActiveStaff === 'function') return getActiveStaff(farm);
+  if (typeof staffList !== 'undefined' && Array.isArray(staffList) && staffList.length) {
+    const crew = staffList.filter(s => s && s.active !== false && (!farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All'));
+    return crew.map(s => s.name).filter(Boolean).sort();
+  }
+  return [];
+}
+
+async function loadHouses() {
   const farm = document.getElementById('wo-farm').value;
 
   // Update house dropdown
@@ -502,11 +524,37 @@ function loadHouses() {
   AREAS.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;ag.appendChild(o);});
   sel.appendChild(hg); sel.appendChild(ag);
 
-  // Update tech dropdown to show only this site's crew
+  // Try to get today's scheduled staff first, fall back to all staff at location
+  let techs = [];
+  let scheduleLabel = '';
+  if (farm) {
+    try {
+      const dowIndex = new Date().getDay(); // 0=Sun
+      const todayKey = ['sun','mon','tue','wed','thu','fri','sat'][dowIndex];
+      // schedGetMonday is defined in scheduling.js (loaded before maintenance.js)
+      const weekOf = (typeof schedGetMonday === 'function') ? schedGetMonday() : '';
+      if (weekOf) {
+        const snap = await db.collection('teamSchedule')
+          .where('weekOf','==',weekOf)
+          .where('facility','==',farm)
+          .where('day','==',todayKey)
+          .get();
+        const scheduled = [...new Set(snap.docs.map(d=>d.data().person).filter(Boolean))].sort();
+        if (scheduled.length) {
+          techs = scheduled;
+          scheduleLabel = ' — on schedule today';
+        }
+      }
+    } catch(e) { /* fall through */ }
+    if (!techs.length) techs = _crewForFarm(farm);
+  } else {
+    techs = _crewForFarm('');
+  }
+
+  // Update tech dropdown
   const techSel = document.getElementById('wo-tech');
   const currentTech = techSel.value;
-  techSel.innerHTML = '<option value="">— Select Tech —</option>';
-  const techs = farm ? SITE_TECHS[farm] : ['Adam','Nathan','Carlos','Randy','Josh','Cain','Celia','Deb','Steve'];
+  techSel.innerHTML = `<option value="">— Select Name${scheduleLabel} —</option>`;
   techs.forEach(name => {
     const o = document.createElement('option');
     o.value = name; o.textContent = name;
@@ -870,6 +918,101 @@ function pmCardHtml(t) {
   </div>`;
 }
 
+// ── PM ↔ WI linking + Skip ─────────────────────────────────
+let _pmCurrentLinkedWI = null;
+
+// Match a PM task to a Work Instruction by system + keyword overlap.
+// Returns the WI object, or null if no good match.
+function _pmFindWI(t) {
+  if (!t || !Array.isArray(allWI) || !allWI.length) return null;
+  const sysAlias = { 'Feeders':'Feed', 'Feed System':'Feed' };
+  const sys = sysAlias[t.sys] || t.sys;
+  const taskWords = (t.task || '').toLowerCase().match(/[a-z]{4,}/g) || [];
+  const STOP = new Set(['check','clean','make','sure','from','with','need','done','this','that','have','will','also','than','when','then','they','their','what','your','wear','only','just','next','some','more','most','tank','area','line','part','side','time']);
+  const keys = taskWords.filter(w => !STOP.has(w));
+  if (!keys.length) return null;
+
+  let best = null, bestScore = 0;
+  for (const wi of allWI) {
+    if (!wi || !wi.title) continue;
+    const wiSys = sysAlias[wi.system] || wi.system;
+    const sysMatch = (wiSys === sys) ? 2 : 0;
+    const hay = ((wi.title || '') + ' ' + (wi.purpose || '')).toLowerCase();
+    let score = sysMatch;
+    for (const k of keys) {
+      if (hay.includes(k)) score += 1;
+    }
+    if (score > bestScore) { bestScore = score; best = wi; }
+  }
+  // Require system match + at least one keyword OR three keyword hits
+  return (bestScore >= 3) ? best : null;
+}
+
+function _pmAttachWIButton(t) {
+  const strip = document.getElementById('pm-modal-wi-strip');
+  if (!strip) return;
+  const wi = _pmFindWI(t);
+  _pmCurrentLinkedWI = wi;
+  if (!wi) { strip.style.display = 'none'; return; }
+  const labelEl = document.getElementById('pm-modal-wi-label');
+  if (labelEl) labelEl.textContent = '📖 Procedure: ' + (wi.title || wi.wiId);
+  strip.style.display = '';
+}
+
+function _pmOpenLinkedWI() {
+  if (!_pmCurrentLinkedWI) return;
+  const wi = _pmCurrentLinkedWI;
+  const id = wi.wiId || wi._fbId;
+  if (id && typeof openWIView === 'function') {
+    openWIView(id);
+  }
+}
+
+// Skip PM with a reason — records the skip but moves the clock as if completed,
+// so honest compliance % isn't dragged down by legitimately-N/A cycles.
+async function skipPM() {
+  if (!modalPMId) return;
+  const t = ALL_PM.find(x => x.id === modalPMId);
+  if (!t) return;
+  const tech = document.getElementById('modal-tech').value;
+  if (!tech) {
+    if (typeof toast === 'function') toast('Pick a tech first — we still record who skipped it');
+    else alert('Select who is skipping this PM.');
+    return;
+  }
+  const reason = prompt('Why is this PM being skipped this cycle?\n(e.g. equipment offline, weather, replaced last week)', '');
+  if (reason === null) return; // cancelled
+  if (!reason.trim()) {
+    if (typeof toast === 'function') toast('A reason is required to skip a PM');
+    return;
+  }
+  const date = document.getElementById('modal-date').value || todayStr;
+
+  setSyncDot('saving');
+  try {
+    // Mark as completed so the clock resets, but flag as skipped in notes/parts
+    await db.collection('pmCompletions').doc(modalPMId).set({
+      tech, date, parts: '', notes: 'SKIPPED: ' + reason.trim(), skipped: true, ts: Date.now()
+    });
+    await db.collection('pmHistory').add({
+      pmId: modalPMId, farm: t.farm, sys: t.sys, task: t.task, freq: t.freq,
+      tech, date, parts: '', notes: 'SKIPPED: ' + reason.trim(), skipped: true, ts: Date.now()
+    });
+    await db.collection('activityLog').add({
+      type:'pm', id:modalPMId,
+      desc:`PM SKIPPED (${reason.trim()}): ${t.farm} · ${t.sys} · ${FREQ[t.freq].label} — ${t.task}`,
+      tech, date: fmtDate(date), ts: Date.now()
+    });
+  } catch(e) {
+    console.error('skipPM failed:', e);
+    if (typeof toast === 'function') toast('Could not record skip — check connection');
+    setSyncDot('live');
+    return;
+  }
+  setSyncDot('live');
+  closePMModal();
+}
+
 function openPMModal(id) {
   modalPMId=id;
   const t=ALL_PM.find(x=>x.id===id);
@@ -879,12 +1022,33 @@ function openPMModal(id) {
   document.getElementById('modal-notes').value='';
   document.getElementById('modal-gen-wo').value='no';
 
-  // Filter techs by farm
+  // Tech list — pull strictly from Staff module (no fallback names)
   const techSel = document.getElementById('modal-tech');
   techSel.innerHTML = '<option value="">— Select Tech —</option>';
-  (SITE_TECHS[t.farm]||[]).forEach(name=>{
-    const o=document.createElement('option'); o.value=name; o.textContent=name; techSel.appendChild(o);
+  const staffSrc = (typeof staffList !== 'undefined' && Array.isArray(staffList)) ? staffList : [];
+  const farmStaff = staffSrc
+    .filter(s => s && s.active !== false)
+    .filter(s => !s.farm || s.farm === t.farm || s.farm === 'Both' || s.farm === 'All')
+    .map(s => s.name)
+    .filter(Boolean)
+    .sort((a,b) => a.localeCompare(b));
+  // Pre-fill from Barn Entry context if present
+  const ctxTech = (typeof window !== 'undefined' && window._barnEntryTech) ? String(window._barnEntryTech) : '';
+  farmStaff.forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    techSel.appendChild(o);
   });
+  if (ctxTech && farmStaff.includes(ctxTech)) techSel.value = ctxTech;
+  if (!farmStaff.length) {
+    const o = document.createElement('option');
+    o.value = ''; o.textContent = '— No staff — add via Staff panel —';
+    o.disabled = true;
+    techSel.appendChild(o);
+  }
+
+  // Hook up the linked WI button (if any) for this PM task
+  if (typeof _pmAttachWIButton === 'function') _pmAttachWIButton(t);
 
   document.getElementById('pm-modal').classList.add('open');
 }
@@ -991,7 +1155,17 @@ function closePMHistory() {
 // ═══════════════════════════════════════════
 // MORNING BRIEFING
 // ═══════════════════════════════════════════
-const LEADS = { Hegins: 'Nathan', Danville: 'Josh' };
+// LEADS — derived live from Staff (role: 'Lead'). Empty string if no Lead set.
+const LEADS = new Proxy({}, {
+  get(_t, farm) {
+    if (typeof staffList !== 'undefined' && Array.isArray(staffList)) {
+      const lead = staffList.find(s => s && s.active !== false && s.role === 'Lead' &&
+                                       (!s.farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All'));
+      if (lead && lead.name) return lead.name;
+    }
+    return '';
+  }
+});
 let dailyCheckins = {}; // loaded from Firebase: {'checkin-Hegins-2026-03-15': ['Nathan','Adam',...]}
 
 function toggleCheckin(farm, name, todayKey) {
@@ -1504,10 +1678,10 @@ function openCloseout(wo) {
   document.getElementById('closeout-wo-info').textContent = `${wo.id} · ${wo.farm} · ${wo.house} · ${wo.problem}`;
   closeoutPartsSelected = {};
 
-  // Tech dropdown — show farm crew
+  // Tech dropdown — show farm crew from live staff directory
   const techSel = document.getElementById('closeout-tech');
   techSel.innerHTML = '<option value="">— Who completed this? —</option>';
-  (SITE_TECHS[wo.farm]||[]).forEach(t => {
+  _crewForFarm(wo.farm).forEach(t => {
     const o = document.createElement('option');
     o.value = t; o.textContent = t;
     if (t === wo.tech) o.selected = true;
@@ -1875,15 +2049,16 @@ async function renderRptFeed() {
 // STAFF SUB-TABS
 // ═══════════════════════════════════════════
 function goStaffSection(sec) {
-  ['dir','add','sched','certs','onboard'].forEach(s => {
+  ['dir','add','sched','certs','onboard','oncal'].forEach(s => {
     const el  = document.getElementById('staff-sec-' + s);
-    const btn = document.getElementById('staff-tab-' + s);
+    const btn = document.getElementById('staff-tab-' + (s === 'oncal' ? 'oncal' : s));
     if (el)  el.style.display = s === sec ? 'block' : 'none';
     if (btn) btn.classList.toggle('active', s === sec);
   });
-  if (sec === 'sched') renderStaffSched();
-  if (sec === 'add' && typeof checkStaffDbStatus === 'function') checkStaffDbStatus();
-  if (sec === 'onboard' && typeof renderStaffOnboard === 'function') renderStaffOnboard();
+  if (sec === 'sched')   renderStaffSched();
+  if (sec === 'add'    && typeof checkStaffDbStatus       === 'function') checkStaffDbStatus();
+  if (sec === 'onboard'&& typeof renderStaffOnboard       === 'function') renderStaffOnboard();
+  if (sec === 'oncal'  && typeof renderStaffOnCallCalendar=== 'function') renderStaffOnCallCalendar();
 }
 
 async function renderReports() {
@@ -2147,18 +2322,23 @@ function logClassify(e) {
   if (t === 'wi') return 'wi';
   if (t === 'po') return 'po';
   if (t === '5s') return '5s';
-  // Downtime logged under type 'wo' with id 'DT' — reclassify
-  if (e.id === 'DT' || desc.startsWith('downtime')) return 'downtime';
-  // Barn walk
-  if (e.id === 'BW' || desc.startsWith('barn walk')) return 'barnwalk';
-  // Parts activity
-  if (t === 'parts' || desc.includes('inventory') || desc.includes('parts adjusted')) return 'parts';
-  // WO
-  if (t === 'wo' || desc.startsWith('wo ') || desc.startsWith('work order')) return 'wo';
+  // Explicit type matches — check these before heuristics
+  if (t === 'barnwalk') return 'barnwalk';
+  if (t === 'downtime') return 'downtime';
+  if (t === 'biosec') return 'biosec';
+  if (t === 'parts') return 'parts';
   if (t === 'ops-egg') return 'ops-egg';
   if (t === 'ops-pack') return 'ops-pack';
   if (t === 'ops-ship') return 'ops-ship';
   if (t === 'ops-exc') return 'ops-exc';
+  // Downtime logged under type 'wo' with id 'DT' — reclassify (legacy)
+  if (e.id === 'DT' || desc.startsWith('downtime')) return 'downtime';
+  // Barn walk (legacy id check)
+  if ((e.id || '').startsWith('BW') || desc.startsWith('barn walk') || desc.startsWith('daily barn') || desc.startsWith('morning walk')) return 'barnwalk';
+  // Parts activity (legacy)
+  if (desc.includes('inventory') || desc.includes('parts adjusted')) return 'parts';
+  // WO
+  if (t === 'wo' || desc.startsWith('wo ') || desc.startsWith('work order')) return 'wo';
   return t || 'wo';
 }
 
@@ -2171,6 +2351,7 @@ const LOG_TYPE_META = {
   barnwalk:  { icon:'🐔', label:'Barn Walk',         cls:'barnwalk-log' },
   parts:     { icon:'🔩', label:'Parts / Inventory', cls:'parts-log' },
   '5s':      { icon:'5️⃣', label:'5S Audit',         cls:'fives-log' },
+  biosec:    { icon:'🛡️', label:'Biosecurity',       cls:'pm-log' },
   'ops-egg': { icon:'🥚', label:'Egg Production',    cls:'barnwalk-log' },
   'ops-pack':{ icon:'📦', label:'Packing',           cls:'pm-log' },
   'ops-ship':{ icon:'🚚', label:'Shipping',          cls:'po-log' },
@@ -2183,12 +2364,44 @@ function logFilter(v,btn) {
   btn.classList.add('active'); renderLog();
 }
 
+function logSetFarm(farm, btn) {
+  logFarmFilter = farm;
+  logHouseFilter = 'all';
+  document.querySelectorAll('#log-farm-bar .pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const houseBar = document.getElementById('log-house-bar');
+  if (farm === 'all') {
+    houseBar.style.display = 'none';
+    houseBar.innerHTML = '';
+  } else {
+    const count = farm === 'Hegins' ? 8 : 5;
+    let html = `<button class="pill active" onclick="logSetHouse('all',this)">All Houses</button>`;
+    for (let i = 1; i <= count; i++)
+      html += `<button class="pill" onclick="logSetHouse('${i}',this)">House ${i}</button>`;
+    houseBar.innerHTML = html;
+    houseBar.style.display = '';
+  }
+  renderLog();
+}
+
+function logSetHouse(val, btn) {
+  logHouseFilter = val;
+  document.querySelectorAll('#log-house-bar .pill').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderLog();
+}
+
 function renderLog() {
   let entries = actLog.map(e => ({...e, _classified: logClassify(e)}));
 
   if (logFilterVal !== 'all') {
-    // 'parts' filter also catches 'po' loosely — keep them separate
     entries = entries.filter(e => e._classified === logFilterVal);
+  }
+  if (logFarmFilter !== 'all') {
+    entries = entries.filter(e => e.farm === logFarmFilter);
+  }
+  if (logHouseFilter !== 'all') {
+    entries = entries.filter(e => String(e.house) === String(logHouseFilter));
   }
 
   if (!entries.length) {
@@ -2224,12 +2437,10 @@ function renderLog() {
 }
 
 // ═══════════════════════════════════════════
-// DOWNTIME TRACKER
+// DOWNTIME DATA (used by reports)
 // ═══════════════════════════════════════════
 let downtimeEvents = [];
-let dtFarmFilterVal = 'all';
 
-// Load downtime from Firebase on boot (called in initApp)
 async function loadDowntime() {
   try {
     const snap = await db.collection('downtimeEvents').orderBy('startTs','desc').get();
@@ -2239,170 +2450,9 @@ async function loadDowntime() {
     db.collection('downtimeEvents').orderBy('startTs','desc').onSnapshot(snap => {
       downtimeEvents = [];
       snap.forEach(d => downtimeEvents.push({...d.data(), _fbId: d.id}));
-      if (window._maintSection==='downtime') renderDowntime();
       if (document.getElementById('panel-reports').classList.contains('active')) renderReports();
     });
   } catch(e) { console.error('Downtime load error:', e); }
-}
-
-function dtFarmFilter(v, btn) {
-  dtFarmFilterVal = v;
-  document.querySelectorAll('#maint-downtime .pill').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderDowntime();
-}
-
-function loadDtHouses() {
-  // pre-fill start time to now
-  const now = new Date();
-  now.setSeconds(0,0);
-  document.getElementById('dt-start').value = now.toISOString().slice(0,16);
-}
-
-function populateDtWOList() {
-  const farm = document.getElementById('dt-farm').value;
-  const sel = document.getElementById('dt-linked-wo');
-  const current = sel.value;
-  sel.innerHTML = '<option value="">— None —</option>';
-  const openWOs = workOrders.filter(w =>
-    (w.status === 'open' || w.status === 'in-progress') &&
-    (!farm || w.farm === farm)
-  );
-  openWOs.forEach(wo => {
-    const o = document.createElement('option');
-    o.value = wo.id;
-    o.textContent = `${wo.id} · ${wo.farm} · ${wo.house} — ${wo.problem.slice(0,30)}`;
-    if (wo.id === current) o.selected = true;
-    sel.appendChild(o);
-  });
-}
-
-async function submitDowntime() {
-  const farm = document.getElementById('dt-farm').value;
-  const system = document.getElementById('dt-system').value;
-  const startVal = document.getElementById('dt-start').value;
-  const endVal = document.getElementById('dt-end').value;
-  const desc = document.getElementById('dt-desc').value.trim();
-  if (!farm || !system || !startVal || !desc) return alert('Please fill in Farm, System, Start Time and Description.');
-  const startTs = new Date(startVal).getTime();
-  const endTs = endVal ? new Date(endVal).getTime() : null;
-  const durationMins = endTs ? Math.round((endTs - startTs) / 60000) : null;
-  const linkedWO = document.getElementById('dt-linked-wo').value || null;
-  const event = {
-    farm, system, desc,
-    startTs, endTs, durationMins,
-    ongoing: !endTs,
-    linkedWO,
-    date: new Date(startTs).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-    loggedAt: Date.now()
-  };
-  setSyncDot('saving');
-  try {
-    await db.collection('downtimeEvents').add(event);
-    try {
-      await db.collection('activityLog').add({
-        type:'downtime', id:'DT',
-        desc: `Downtime logged: ${farm} · ${system} — ${desc}`,
-        tech: 'System', date: event.date, ts: Date.now()
-      });
-    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
-    setSyncDot('live');
-    ['dt-farm','dt-system','dt-start','dt-end','dt-desc','dt-linked-wo'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.value = '';
-    });
-    renderDowntime();
-  } catch(err) {
-    setSyncDot('live');
-    console.error('submitDowntime error:', err);
-    alert('Something went wrong saving the downtime event. Please try again.\n\nError: ' + err.message);
-  }
-}
-
-function renderDowntime() {
-  // Default downtime start to current date/time
-  const nowLocal = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
-  const startEl = document.getElementById('dt-start');
-  if (startEl && !startEl.value) startEl.value = nowLocal;
-  const list = dtFarmFilterVal === 'all' ? downtimeEvents : downtimeEvents.filter(e => e.farm === dtFarmFilterVal);
-
-  // Stats
-  const now = Date.now();
-  const cutoff30 = now - 30 * 86400000;
-  const recent = list.filter(e => e.startTs >= cutoff30);
-  const ongoing = list.filter(e => e.ongoing);
-  const totalMins = recent.filter(e => e.durationMins).reduce((s,e) => s + e.durationMins, 0);
-  const totalHrs = (totalMins / 60).toFixed(1);
-  const avgMins = recent.filter(e=>e.durationMins).length
-    ? Math.round(totalMins / recent.filter(e=>e.durationMins).length)
-    : 0;
-
-  // MTBF / MTTR calculation
-  const completedEvents = recent.filter(e => e.durationMins && !e.ongoing).sort((a,b)=>a.startTs-b.startTs);
-  let mtbfHrs = null, mttrMins = null;
-  if (completedEvents.length > 1) {
-    // MTBF = total operating time / number of failures
-    const spanMs = completedEvents[completedEvents.length-1].startTs - completedEvents[0].startTs;
-    const totalDownMs = completedEvents.reduce((s,e)=>s+(e.durationMins*60000),0);
-    const operatingMs = Math.max(0, spanMs - totalDownMs);
-    mtbfHrs = operatingMs > 0 ? (operatingMs / completedEvents.length / 3600000).toFixed(1) : null;
-  }
-  if (completedEvents.length) {
-    mttrMins = Math.round(completedEvents.reduce((s,e)=>s+e.durationMins,0) / completedEvents.length);
-  }
-
-  document.getElementById('dt-stats').innerHTML =
-    sc('s-red', ongoing.length, '🔴 Active Now') +
-    sc('s-amber', recent.length, 'Events (30d)') +
-    sc('s-blue', totalHrs + 'h', 'Total Downtime') +
-    sc('', avgMins + 'm', 'Avg Duration (MTTR)') +
-    (mtbfHrs !== null ? sc('s-green', mtbfHrs + 'h', 'MTBF') : '') +
-    (mttrMins !== null ? sc('s-amber', mttrMins + 'm', 'MTTR') : '');
-
-  // By system breakdown
-  const sysMap = {};
-  recent.filter(e=>e.durationMins).forEach(e => {
-    if (!sysMap[e.system]) sysMap[e.system] = {count:0, mins:0};
-    sysMap[e.system].count++;
-    sysMap[e.system].mins += e.durationMins;
-  });
-  const sysEntries = Object.entries(sysMap).sort((a,b) => b[1].mins - a[1].mins);
-  const maxMins = sysEntries.length ? sysEntries[0][1].mins : 1;
-
-  document.getElementById('dt-by-system').innerHTML = sysEntries.length
-    ? sysEntries.map(([sys, data]) => {
-        const pct = Math.round((data.mins / maxMins) * 100);
-        const hrs = (data.mins/60).toFixed(1);
-        return `<div style="margin-bottom:10px;">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-            <span style="font-weight:600;">${sys}</span>
-            <span style="font-family:'IBM Plex Mono',monospace;color:var(--muted);">${data.count} event${data.count!==1?'s':''} · ${hrs}h</span>
-          </div>
-          <div style="background:#eee;border-radius:4px;height:8px;overflow:hidden;">
-            <div style="background:var(--amber);height:100%;width:${pct}%;border-radius:4px;transition:width .5s;"></div>
-          </div>
-        </div>`;
-      }).join('')
-    : '<div class="empty"><div class="ei">✅</div><p>No downtime logged in last 30 days</p></div>';
-
-  // Events list
-  document.getElementById('dt-log-list').innerHTML = list.length
-    ? list.slice(0,20).map(e => {
-        const dur = e.durationMins ? `${Math.floor(e.durationMins/60)}h ${e.durationMins%60}m` : '⏳ Ongoing';
-        const col = e.ongoing ? '#e53e3e' : 'var(--green-mid)';
-        const linkedWOHtml = e.linkedWO
-          ? `<span style="display:inline-block;margin-top:5px;background:#e8f4fd;border:1px solid #3b82f6;border-radius:5px;padding:2px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#1a3a6b;cursor:pointer;" onclick="go('wo');woResetFilters()">🔧 ${e.linkedWO}</span>`
-          : '';
-        return `<div style="background:white;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);padding:12px 14px;margin-bottom:8px;border-left:4px solid ${col};">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
-            <div style="font-weight:700;font-size:13px;">${e.farm} · ${e.system}</div>
-            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${col};">${dur}</span>
-          </div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:3px;">${e.desc}</div>
-          <div style="font-size:11px;color:#aaa;">${e.date}</div>
-          ${linkedWOHtml}
-        </div>`;
-      }).join('')
-    : '<div class="empty"><div class="ei">⏱️</div><p>No downtime events logged yet</p></div>';
 }
 
 // ═══════════════════════════════════════════
@@ -3654,13 +3704,31 @@ function opsDashRender() {
   var pC={urgent:'#c0392b',high:'#d69e2e',routine:'#4caf50'};
   var wHtml=!openWOs.length?'<div style="color:#4caf50;font-size:13px;padding:8px 0">No open work orders</div>'
     :openWOs.slice(0,12).map(function(w){
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #2a5a2a">'
+      return '<div onclick="opsOpenWO(\''+w._fbId+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 8px;border-bottom:1px solid #2a5a2a;cursor:pointer;border-radius:6px;" onmouseover="this.style.background=\'#0f2a0f\'" onmouseout="this.style.background=\'transparent\'">'
         +'<div><span style="font-size:13px;font-weight:700;color:#f0ead8">'+w.id+'</span>'
         +'<span style="font-size:11px;color:#7ab07a;display:block">'+w.farm+' - '+w.house+'</span></div>'
         +'<div style="text-align:right"><span style="font-size:11px;font-weight:700;color:'+(pC[w.priority]||'#7ab07a')+'">'+(w.priority||'routine').toUpperCase()+'</span>'
         +'<span style="font-size:10px;color:#5a8a5a;display:block">'+w.problem.slice(0,28)+'</span></div></div>';
     }).join('');
   document.getElementById('ops-wo-dash').innerHTML=wHtml;
+}
+
+
+
+// ── Make Operations overlay WO list rows tappable
+function opsOpenWO(fbId){
+  if(!fbId) return;
+  // Close ops overlay if open
+  var ov=document.getElementById('operations-overlay');
+  if(ov && ov.style.display!=='none') ov.style.display='none';
+  // Navigate to maintenance > work orders, then open the update modal
+  if(typeof go==='function') go('maint');
+  setTimeout(function(){
+    if(typeof goMaintSection==='function') goMaintSection('wo');
+    setTimeout(function(){
+      if(typeof openWOUpdate==='function') openWOUpdate(fbId);
+    },120);
+  },80);
 }
 
 function opsUpdateLandingCard() {
@@ -3689,10 +3757,13 @@ function opsUpdateLandingCard() {
 let allWI = [];
 let wiTypeFilterVal = 'all';
 let wiDeptFilterVal = 'all';
+let wiSystemFilterVal = 'all';
 let wiSearchVal = '';
 let wiStepCount = 0;
 let editingWIId = null;
 let currentWIId = null;
+let _wiPendingPhotos = []; // {file, dataUrl} objects
+let _wiExistingPhotos = [];
 
 const WI_TYPE = {
   repair:      { label:'🔧 Repair Procedure',     color:'#3b82f6', bg:'#eff6ff' },
@@ -3707,7 +3778,15 @@ async function loadWI() {
     const snap = await db.collection('workInstructions').orderBy('ts','desc').get();
     allWI = [];
     snap.forEach(d => allWI.push({...d.data(), _fbId: d.id}));
-  } catch(e) { console.error('loadWI:', e); }
+  } catch(e) {
+    console.error('loadWI (ordered) failed, trying unordered fallback:', e);
+    try {
+      const snap2 = await db.collection('workInstructions').get();
+      allWI = [];
+      snap2.forEach(d => allWI.push({...d.data(), _fbId: d.id}));
+      allWI.sort((a,b) => (b.ts||0) - (a.ts||0));
+    } catch(e2) { console.error('loadWI fallback also failed:', e2); }
+  }
 }
 
 // ── Seed Rushtown Poultry mortality composting instructions ──
@@ -3921,31 +4000,2131 @@ async function seedCounterCardWI() {
   console.log('✅ Counter Card Reset WI seeded.');
 }
 
+// ── Seed Rushtown Operations WIs ──────────────────────────────────────────────
+async function seedRushtownOpsWI() {
+  const SEED_IDS = [
+    'WI-BARNWALK-DAILY','WI-WO-CREATE','WI-EGG-JAM',
+    'WI-WATER-FILTER','WI-FAN-BELT','WI-SHIFT-HANDOFF',
+    'WI-5S-CLOSEOUT','WI-PM-COMPLETE','WI-EMERGENCY-BREAKDOWN','WI-WEEKLY-REVIEW',
+    'WI-HEAD-ROLLER','WI-DRIVE-ROLLER','WI-GEARBOX-OIL',
+    'WI-CHAIN-SPROCKET','WI-BELT-FLIP','WI-FROZEN-BELT',
+    'WI-PIT-BELT-CHANGEOUT','WI-ORANGE-BELT-PM','WI-MANURE-CLEANOUT',
+    'WI-MANURE-WEEKLY-PM','WI-ROD-CONV-INSPECT','WI-EGG-JAM-PROD',
+    'WI-CONV-SPEED-ADJ','WI-BROKEN-ROD','WI-CONV-CHAIN-TENSION',
+    'WI-EGG-FLOW-AUDIT','WI-FAN-BELT-VENT','WI-BLOWER-MOTOR',
+    'WI-TEMP-SENSOR','WI-VENT-DOOR-CABLE','WI-FAN-BEARING-GREASE',
+    'WI-HOT-HOUSE','WI-WATER-PRESSURE','WI-FILTER-CHANGE',
+    'WI-IRON-FLUSH','WI-WATER-LEAK','WI-FEED-AUGER',
+    'WI-FEED-MOTOR-RESET','WI-BIN-BOOT-CLEANOUT','WI-DAILY-JOB-TICKET',
+    'WI-EMERGENCY-TICKET','WI-PM-SIGNOFF','WI-PARTS-REQUEST',
+    'WI-INVENTORY-REVIEW','WI-CONTRACTOR-APPROVAL','WI-SHIFT-HANDOFF-NOTES',
+    'WI-WEEKLY-PROJECT-REVIEW','WI-ROOT-CAUSE','WI-SHOP-CLEANUP',
+    'WI-TOOL-RETURN','WI-SCRAP-REMOVAL','WI-RED-TAG-PROC',
+    'WI-BARN-5S-AUDIT','WI-WASTE-WALK','WI-LOTO-MOTOR',
+    'WI-LADDER-SAFETY','WI-CONFINED-SPACE','WI-PPE-BARN',
+    'WI-CHEM-SPILL','WI-ELEC-SAFETY','WI-DIAMOND-STARTUP',
+    'WI-MECH-TIMING','WI-BRUSH-WASHER','WI-EGG-BACKUP',
+    'WI-LANE-JAM','WI-HOURLY-THROUGHPUT','WI-SHUTDOWN-CLEAN',
+    'WI-CARTON-CHANGEOVER','WI-REJECT-EGG','WI-COOLER-TEMP',
+    'WI-FORKLIFT-INSPECT','WI-LOAD-ACCURACY','WI-DAMAGE-REPORT',
+    'WI-PALLET-WRAP','WI-TRAILER-INSPECT','WI-BARN-WALK-DAILY2',
+    'WI-EGG-COUNT','WI-BROKEN-EGG-REPORT','WI-MORTALITY-REMOVAL',
+    'WI-FEED-CONSUMPTION','WI-WATER-USAGE','WI-HEN-BEHAVIOR',
+    'WI-CAGE-DAMAGE','WI-BIOSEC-ENTRY','WI-TIER2-MEETING',
+    'WI-CA-WEDNESDAY','WI-WEEKEND-COVERAGE','WI-HEGINS-SAT',
+    'WI-FRIDAY-REVIEW','WI-PM-COMPLIANCE','WI-DOWNTIME-SUMMARY'
+  ];
+  // Fetch all existing wiIds so we only insert truly missing ones
+  let existingIds = new Set();
+  try {
+    const allSnap = await db.collection('workInstructions').get();
+    allSnap.forEach(d => { if (d.data().wiId) existingIds.add(d.data().wiId); });
+  } catch(e) { return; }
+  // If every single seed ID already exists, nothing to do
+  if (SEED_IDS.every(id => existingIds.has(id))) return;
+
+  const today = new Date().toISOString().slice(0,10);
+  const author = 'Rushtown Poultry';
+  const base = Date.now();
+
+  const instructions = [
+    {
+      wiId: 'WI-BARNWALK-DAILY',
+      title: 'Daily Barn Walk Standard',
+      type: 'onboarding',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Identify issues before production loss.',
+      steps: [
+        'Walk barn front to back.',
+        'Check feed lines are running.',
+        'Check water pressure.',
+        'Inspect fans and airflow.',
+        'Observe bird behavior.',
+        'Look for leaks.',
+        'Look for broken equipment.',
+        'Enter any issues into the app.'
+      ],
+      ts: base - 9000
+    },
+    {
+      wiId: 'WI-WO-CREATE',
+      title: 'Work Order Creation',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Rule: One issue = one WO. Do not combine multiple problems into one work order.',
+      steps: [
+        'Select the barn or area.',
+        'Choose priority: Emergency / Planned / PM.',
+        'Enter the exact issue description.',
+        'Add a photo if possible.',
+        'Assign an owner.',
+        'Submit the work order.'
+      ],
+      ts: base - 8000
+    },
+    {
+      wiId: 'WI-EGG-JAM',
+      title: 'Conveyor Egg Jam Removal',
+      type: 'safety',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves required.',
+      warnings: 'STOP line before reaching in. Never clear a jam while the belt is moving.',
+      steps: [
+        'Hit the stop button on the conveyor.',
+        'Identify the source of the jam.',
+        'Remove broken eggs and debris.',
+        'Check rod alignment.',
+        'Restart the line slowly.',
+        'Monitor egg flow for 2 minutes.'
+      ],
+      ts: base - 7000
+    },
+    {
+      wiId: 'WI-WATER-FILTER',
+      title: 'Water Filter Change',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Water',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Isolate and relieve pressure before removing filter housing.',
+      steps: [
+        'Isolate the water supply valve.',
+        'Relieve pressure from the line.',
+        'Remove the used filter.',
+        'Clean the filter housing.',
+        'Install the new filter.',
+        'Restore water slowly.',
+        'Check all connections for leaks.',
+        'Record the date of change in the app.'
+      ],
+      ts: base - 6000
+    },
+    {
+      wiId: 'WI-FAN-BELT',
+      title: 'Fan Belt Replacement',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Safety glasses, gloves.',
+      warnings: 'LOCKOUT power before removing guard. Verify zero energy before touching belt.',
+      steps: [
+        'Lockout / tagout power to the fan.',
+        'Remove the belt guard.',
+        'Loosen the motor mount bolts.',
+        'Remove the old belt.',
+        'Install the new belt.',
+        'Set proper belt tension.',
+        'Align pulleys visually.',
+        'Replace the belt guard.',
+        'Restore power and test run.'
+      ],
+      ts: base - 5000
+    },
+    {
+      wiId: 'WI-SHIFT-HANDOFF',
+      title: 'Shift Handoff',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Do not leave without completing handoff — open breakdowns must be communicated.',
+      steps: [
+        'List all completed jobs from the shift.',
+        'List all open breakdowns still in progress.',
+        'Note any parts that are needed.',
+        'Identify priorities for the next shift.',
+        'Communicate any safety concerns.'
+      ],
+      ts: base - 4000
+    },
+    {
+      wiId: 'WI-5S-CLOSEOUT',
+      title: '5S Shop Closeout',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Complete every step — do not leave shop until checklist is done.',
+      steps: [
+        'Return all tools to their designated locations.',
+        'Throw away trash and waste.',
+        'Sweep the floor.',
+        'Put all parts and materials away.',
+        'Charge all battery-powered tools.',
+        'Reset shop for the next shift.'
+      ],
+      ts: base - 3000
+    },
+    {
+      wiId: 'WI-PM-COMPLETE',
+      title: 'PM Completion',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Do not close a PM without performing all checks.',
+      steps: [
+        'Open the PM task in the app.',
+        'Perform all required checks per the PM schedule.',
+        'Replace any worn parts found during inspection.',
+        'Add notes describing what was done and any findings.',
+        'Close the PM task in the app.'
+      ],
+      ts: base - 2000
+    },
+    {
+      wiId: 'WI-EMERGENCY-BREAKDOWN',
+      title: 'Emergency Breakdown Response',
+      type: 'emergency',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'PPE appropriate to the equipment.',
+      warnings: 'Make area safe FIRST before any diagnosis or repair.',
+      steps: [
+        'Make the area safe — lockout / isolate energy as needed.',
+        'Notify production supervisor immediately.',
+        'Diagnose root cause of failure.',
+        'Perform repair.',
+        'Test run to confirm fix.',
+        'Document downtime minutes in the app.'
+      ],
+      ts: base - 1000
+    },
+    {
+      wiId: 'WI-WEEKLY-REVIEW',
+      title: 'Weekly Open Project Review',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Every open WO must be reviewed — nothing stays invisible.',
+      steps: [
+        'Pull up all open work orders in the app.',
+        'Sort by production impact.',
+        'Assign deadlines to each open job.',
+        'Identify any parts blockers preventing completion.',
+        'Set the must-fix list for this week.'
+      ],
+      ts: base
+    },
+    {
+      wiId: 'WI-HEAD-ROLLER',
+      title: 'Head Roller Replacement',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 90,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves, safety glasses. Pinch-point caution.',
+      warnings: 'Lockout power before any work. Mark all alignment points before disassembly. Pass Check: smooth rotation, centered belt, no vibration.',
+      steps: [
+        'Lockout power source.',
+        'Remove belt tension if needed.',
+        'Remove guards and covers.',
+        'Mark current alignment points on frame.',
+        'Remove bearings and shaft hardware.',
+        'Pull damaged roller out safely.',
+        'Install new roller in position.',
+        'Reinstall bearings and hardware.',
+        'Align roller square to frame using marks.',
+        'Re-tension belt.',
+        'Test run and verify belt tracks centered.'
+      ],
+      ts: base + 1000
+    },
+    {
+      wiId: 'WI-DRIVE-ROLLER',
+      title: 'Drive Roller Replacement',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 60,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves.',
+      warnings: 'Lockout before removing chain or coupling. Inspect shaft and bearings during replacement.',
+      steps: [
+        'Lockout power source.',
+        'Remove chain or coupling from drive roller.',
+        'Release belt tension.',
+        'Remove old roller.',
+        'Inspect shaft and bearings for wear — replace if needed.',
+        'Install new roller.',
+        'Reconnect drive chain or coupling.',
+        'Set correct tension.',
+        'Test run under load and observe.'
+      ],
+      ts: base + 2000
+    },
+    {
+      wiId: 'WI-GEARBOX-OIL',
+      title: 'Gearbox Inspection & Oil Check',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Fail triggers: leak present, metal grinding noise, overheating. Do not run a leaking gearbox — tag out and report.',
+      steps: [
+        'Verify unit is cool and safe to touch.',
+        'Check for any oil leaks around seals and housing.',
+        'Inspect mounting bolts for tightness.',
+        'Check oil level via sight glass or drain plug.',
+        'Add approved gearbox oil if level is low.',
+        'Listen during operation for grinding or unusual noise.',
+        'Record findings in the app.'
+      ],
+      ts: base + 3000
+    },
+    {
+      wiId: 'WI-CHAIN-SPROCKET',
+      title: 'Chain & Sprocket Alignment',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves.',
+      warnings: 'Lockout before any inspection or adjustment. Misaligned chain causes premature wear and chain jumping.',
+      steps: [
+        'Lockout power source.',
+        'Inspect chain slack — should not exceed 1/2 inch deflection.',
+        'Inspect sprocket teeth for hooked or worn profile.',
+        'Use a straight edge to check sprocket alignment.',
+        'Adjust motor or shaft position to align.',
+        'Lubricate chain if applicable per maintenance schedule.',
+        'Rotate chain by hand through full cycle.',
+        'Test run and observe.'
+      ],
+      ts: base + 4000
+    },
+    {
+      wiId: 'WI-BELT-FLIP',
+      title: 'Belt Flip Emergency Recovery',
+      type: 'emergency',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves, boots.',
+      warnings: 'STOP equipment immediately — do not run a flipped belt. Escalate if: torn cords, damaged roller, or belt flips repeatedly.',
+      steps: [
+        'Stop equipment immediately.',
+        'Lockout power source.',
+        'Identify the flip location and root cause.',
+        'Remove any buildup or obstruction causing the flip.',
+        'Realign belt manually.',
+        'Inspect belt welds and edges for damage.',
+        'Restart slowly.',
+        'Watch a full belt cycle before returning to normal operation.'
+      ],
+      ts: base + 5000
+    },
+    {
+      wiId: 'WI-FROZEN-BELT',
+      title: 'Frozen Belt Winter Recovery',
+      type: 'emergency',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 45,
+      author,
+      date: today,
+      ppe: 'Gloves, boots, cold weather PPE.',
+      warnings: 'Do NOT hard-start repeatedly — this tears belts and burns motors. Use approved thaw method only.',
+      steps: [
+        'Do not attempt to hard-start repeatedly.',
+        'Inspect frozen points along belt path.',
+        'Remove ice and manure buildup manually.',
+        'Apply approved thaw method — safe heat source only if allowed.',
+        'Check all rollers spin freely by hand.',
+        'Jog system slowly — do not full-start until belt moves freely.',
+        'Monitor amp draw or motor load if available.',
+        'Resume normal operation once confirmed clear.'
+      ],
+      ts: base + 6000
+    },
+    {
+      wiId: 'WI-PIT-BELT-CHANGEOUT',
+      title: 'Pit Belt Changeout Procedure',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 120,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves, boots, N95 mask in pit.',
+      warnings: 'Major repair — plan labor and parts in advance. Do not work alone in pit area.',
+      steps: [
+        'Lockout power and isolate the work area.',
+        'Clean access path for safe entry and belt removal.',
+        'Remove old belt completely.',
+        'Inspect rollers and frame — repair any issues before installing new belt.',
+        'Pull new belt into position safely — use proper pulling tools.',
+        'Splice or weld belt joint.',
+        'Track and tension belt per spec.',
+        'Test run empty — verify tracking and tension.',
+        'Recheck tracking and tension after first loaded run.'
+      ],
+      ts: base + 7000
+    },
+    {
+      wiId: 'WI-ORANGE-BELT-PM',
+      title: 'Orange Transfer Belt PM',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Perform weekly. Do not skip — buildup under belt causes overload and fire risk.',
+      steps: [
+        'Inspect belt surface for cracks, tears, or wear.',
+        'Check belt tracking — adjust if off-center.',
+        'Inspect gearbox and motor for leaks or noise.',
+        'Check scraper and belt cleaners for contact and wear.',
+        'Remove buildup beneath the unit.',
+        'Tighten any loose hardware.',
+        'Run system and observe for one full cycle.'
+      ],
+      ts: base + 8000
+    },
+    {
+      wiId: 'WI-MANURE-CLEANOUT',
+      title: 'Manure Cleanout Under Belts',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Gloves, boots, N95 mask. Lockout if entering hazard zone.',
+      warnings: 'Prevent drag, odor, overload, and fire. Note any abnormal accumulation — it indicates a belt, scraper, or tracking problem.',
+      steps: [
+        'Lockout power if entering a hazard zone under the belt.',
+        'Remove manure piles from under the return path.',
+        'Clear roller pockets and end areas.',
+        'Inspect support structure and frame for corrosion.',
+        'Bag and dispose of waste properly.',
+        'Note any abnormal accumulation and record source in the app.'
+      ],
+      ts: base + 9000
+    },
+    {
+      wiId: 'WI-MANURE-WEEKLY-PM',
+      title: 'Weekly Manure System PM',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Manure',
+      time: 45,
+      author,
+      date: today,
+      ppe: 'Gloves, boots.',
+      warnings: 'Purpose: reduce emergency breakdowns. Pass Check: running clean, aligned, no abnormal wear.',
+      steps: [
+        'Inspect all belts for wear, cracks, or tears.',
+        'Check tracking on each belt run — adjust if off-center.',
+        'Inspect all rollers turning freely.',
+        'Check chains and sprockets for wear and slack.',
+        'Tighten any loose hardware.',
+        'Remove buildup under the system.',
+        'Check motor and gearbox condition — leaks, noise, heat.',
+        'Record any issues found for planned repair.'
+      ],
+      ts: base + 10000
+    },
+    {
+      wiId: 'WI-ROD-CONV-INSPECT',
+      title: 'Lubing Rod Conveyor Daily Inspection',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Egg Collectors',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Report any issues found — do not run a damaged rod conveyor.',
+      steps: [
+        'Walk the full conveyor path from end to end.',
+        'Check rod movement for smoothness — no hesitation or jerking.',
+        'Look for bent or missing rods.',
+        'Check chain tension.',
+        'Inspect egg buildup points along the path.',
+        'Listen for clicking or grinding sounds.',
+        'Verify all guards are in place.',
+        'Report any issues found in the app.'
+      ],
+      ts: base + 11000
+    },
+    {
+      wiId: 'WI-EGG-JAM-PROD',
+      title: 'Egg Jam Removal Procedure',
+      type: 'repair',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Production critical — act immediately. Never reach into a moving conveyor.',
+      steps: [
+        'Stop the conveyor safely.',
+        'Locate the jam source.',
+        'Remove broken eggs and debris.',
+        'Inspect rods and guides for damage.',
+        'Check egg flow upstream for cause.',
+        'Restart conveyor slowly.',
+        'Watch the first 5 minutes of operation.'
+      ],
+      ts: base + 12000
+    },
+    {
+      wiId: 'WI-CONV-SPEED-ADJ',
+      title: 'Conveyor Speed Adjustment',
+      type: 'repair',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Small adjustments only — large speed changes cause pileups or gaps. Purpose: improve egg flow and reduce pileups.',
+      steps: [
+        'Identify whether issue is too fast or too slow.',
+        'Check current speed setting on controller or drive.',
+        'Adjust controller or drive per standard setting.',
+        'Restart and monitor egg flow.',
+        'Confirm no buildup at transition points.',
+        'Record final setting in the app.'
+      ],
+      ts: base + 13000
+    },
+    {
+      wiId: 'WI-BROKEN-ROD',
+      title: 'Broken Rod Replacement',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Egg Collectors',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves.',
+      warnings: 'Lockout before accessing conveyor. Verify rod spacing and alignment after installation.',
+      steps: [
+        'Lockout power to the conveyor.',
+        'Locate the damaged rod.',
+        'Remove retaining hardware on both ends.',
+        'Remove the broken rod.',
+        'Install replacement rod.',
+        'Verify rod spacing and alignment with adjacent rods.',
+        'Rotate chain manually through full cycle.',
+        'Restore power and restart system.'
+      ],
+      ts: base + 14000
+    },
+    {
+      wiId: 'WI-CONV-CHAIN-TENSION',
+      title: 'Conveyor Chain Tensioning',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Egg Collectors',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves.',
+      warnings: 'Lockout before adjustment. Purpose: prevent chain jumping and premature wear.',
+      steps: [
+        'Lockout power to the conveyor.',
+        'Inspect chain slack — should not sag excessively.',
+        'Adjust take-up evenly on both sides.',
+        'Verify sprocket alignment with a straight edge.',
+        'Rotate chain manually through full cycle.',
+        'Lubricate chain if applicable per schedule.',
+        'Test run and observe.'
+      ],
+      ts: base + 15000
+    },
+    {
+      wiId: 'WI-EGG-FLOW-AUDIT',
+      title: 'Egg Flow Alignment Audit',
+      type: 'startup',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Perform weekly. Escalate any structural redesign needs — do not attempt major guide modifications without approval.',
+      steps: [
+        'Observe eggs entering the line at each barn.',
+        'Identify any crowding or pileup points.',
+        'Check guide rails and guide plates for position and wear.',
+        'Inspect transition heights between conveyor sections.',
+        'Look for cracked eggs indicating impact or drop problems.',
+        'Make minor guide corrections as needed.',
+        'Escalate any redesign needs to supervisor.'
+      ],
+      ts: base + 16000
+    },
+    {
+      wiId: 'WI-FAN-BELT-VENT',
+      title: 'Ventilation Fan Belt Replacement',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, safety glasses, gloves.',
+      warnings: 'Lockout power before removing guard. Verify zero energy before touching belt.',
+      steps: [
+        'Lockout power to the fan.',
+        'Remove the belt guard.',
+        'Loosen the motor mount bolts.',
+        'Remove the old belt.',
+        'Install the new belt.',
+        'Set correct belt tension.',
+        'Align pulleys visually.',
+        'Replace the belt guard.',
+        'Restore power and test run.'
+      ],
+      ts: base + 17000
+    },
+    {
+      wiId: 'WI-BLOWER-MOTOR',
+      title: 'Blower Motor Changeout',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 90,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves, safety glasses. Skilled repair.',
+      warnings: 'Verify zero energy before disconnecting wiring. Label all leads before removal. Confirm correct rotation direction before final run check.',
+      steps: [
+        'Lockout power and verify zero energy at the motor.',
+        'Disconnect wiring and label all leads.',
+        'Remove belt or coupling from motor shaft.',
+        'Support motor weight with proper lifting equipment.',
+        'Remove mounting bolts and remove old motor.',
+        'Install new motor in position.',
+        'Align shaft and pulleys.',
+        'Reconnect wiring per labeled leads.',
+        'Test amp draw and verify correct rotation direction.',
+        'Perform final run check — no excessive heat, noise, or vibration.'
+      ],
+      ts: base + 18000
+    },
+    {
+      wiId: 'WI-TEMP-SENSOR',
+      title: 'House Temperature Sensor Check',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Pass Check: reading within acceptable tolerance. Report any large variance immediately — incorrect readings cause incorrect ventilation.',
+      steps: [
+        'Bring a calibrated reference thermometer.',
+        'Compare controller reading vs actual measured temperature.',
+        'Check sensor location for drafts, fan wash, or direct sunlight exposure.',
+        'Inspect sensor wiring and mounting.',
+        'Clean any dust buildup from sensor.',
+        'Adjust or calibrate if the control system allows.',
+        'Report any large variance to supervisor.'
+      ],
+      ts: base + 19000
+    },
+    {
+      wiId: 'WI-VENT-DOOR-CABLE',
+      title: 'Vent Door Cable Adjustment',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Lockout controller if required. Purpose: maintain even airflow and proper vent opening.',
+      steps: [
+        'Lockout the vent controller if required.',
+        'Inspect cable for fraying or slipping.',
+        'Cycle vents open and closed manually.',
+        'Identify any uneven doors.',
+        'Adjust cable tension equally on all doors.',
+        'Tighten clamps and set screws.',
+        'Recycle the system and verify smooth even movement.'
+      ],
+      ts: base + 20000
+    },
+    {
+      wiId: 'WI-FAN-BEARING-GREASE',
+      title: 'Fan Bearing Grease PM',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Do NOT over-grease — over-greasing damages seals. Fail trigger: heat, noise, or looseness in bearing.',
+      steps: [
+        'Lockout fan if required for safe access.',
+        'Clean grease fitting before applying grease.',
+        'Add correct grease type slowly — follow OEM spec.',
+        'Do not over-grease.',
+        'Spin shaft manually if accessible and check for smooth rotation.',
+        'Check for noise or play in bearing.',
+        'Wipe excess grease from fitting and housing.'
+      ],
+      ts: base + 21000
+    },
+    {
+      wiId: 'WI-HOT-HOUSE',
+      title: 'Emergency Hot House Response',
+      type: 'emergency',
+      dept: 'Maintenance',
+      system: 'Ventilation',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Appropriate PPE for electrical and hot environment.',
+      warnings: 'CRITICAL — bird losses begin quickly in overheated houses. Do not leave until temperature is stable.',
+      steps: [
+        'Notify management immediately.',
+        'Confirm actual house temperature with a physical thermometer.',
+        'Check power supply and breakers.',
+        'Verify all fans are operating.',
+        'Open emergency ventilation if available.',
+        'Inspect controller and sensor for faults.',
+        'Bring portable ventilation support if available.',
+        'Stay on-site until house temperature is stable.',
+        'Document cause and corrective action in the app.'
+      ],
+      ts: base + 22000
+    },
+    {
+      wiId: 'WI-WATER-PRESSURE',
+      title: 'Water Pressure Check',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Water',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Ensure birds receive proper water flow. Record and escalate any abnormal zones.',
+      steps: [
+        'Read pressure gauge at the regulator.',
+        'Compare reading to target standard for the area.',
+        'Walk water lines looking for weak flow signs.',
+        'Check regulator and filter condition.',
+        'Flush the line if sediment or buildup is suspected.',
+        'Record any abnormal zones.',
+        'Correct or escalate as needed.'
+      ],
+      ts: base + 23000
+    },
+    {
+      wiId: 'WI-FILTER-CHANGE',
+      title: 'Water Filter Change Procedure',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Water',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Isolate and relieve pressure before removing filter housing.',
+      steps: [
+        'Isolate the water source valve.',
+        'Relieve pressure from the line.',
+        'Remove the old filter.',
+        'Inspect housing and seals for wear or damage.',
+        'Clean the housing.',
+        'Install the new filter.',
+        'Restore water flow slowly.',
+        'Check all connections for leaks.',
+        'Log the date and filter change in the app.'
+      ],
+      ts: base + 24000
+    },
+    {
+      wiId: 'WI-IRON-FLUSH',
+      title: 'Iron / Dirt Flush Procedure',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Water',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Purpose: remove contamination causing nipple clogs and poor flow. Record recurring problem areas.',
+      steps: [
+        'Identify the affected line or zone.',
+        'Open flush points at the end of the line.',
+        'Run water until it runs clear.',
+        'Inspect sediment level coming out.',
+        'Check upstream filter condition.',
+        'Restore normal operation and close flush points.',
+        'Record any recurring problem areas in the app.'
+      ],
+      ts: base + 25000
+    },
+    {
+      wiId: 'WI-WATER-LEAK',
+      title: 'Water Leak Repair',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Water',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Priority: medium to high depending on severity. Dry area immediately if slip risk.',
+      steps: [
+        'Identify the leak source.',
+        'Isolate the section if possible.',
+        'Replace the faulty fitting, hose, or valve.',
+        'Restore pressure slowly.',
+        'Check for any secondary leaks nearby.',
+        'Dry the area if there is a slip risk.',
+        'Log the repair in the app.'
+      ],
+      ts: base + 26000
+    },
+    {
+      wiId: 'WI-FEED-AUGER',
+      title: 'Feed Auger Inspection',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'Feed',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout before opening guards. Gloves.',
+      warnings: 'Purpose: prevent feed outages and motor overload. Report any worn flighting immediately.',
+      steps: [
+        'Lockout power before opening any guards.',
+        'Inspect motor and gearbox for leaks or heat.',
+        'Listen for binding or unusual noise.',
+        'Check flighting for wear or missing sections.',
+        'Inspect tube supports and hangers for security.',
+        'Verify feed flow is moving freely.',
+        'Check boot and bin transition area for blockage.',
+        'Report any worn sections in the app.'
+      ],
+      ts: base + 27000
+    },
+    {
+      wiId: 'WI-FEED-MOTOR-RESET',
+      title: 'Feed Motor Reset Procedure',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Feed',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves, safety glasses.',
+      warnings: 'NEVER repeatedly reset without finding the cause. Rule: identify why it tripped before resetting.',
+      steps: [
+        'Identify why the motor stopped — check for fault code or alarm.',
+        'Check breaker and overload relay status.',
+        'Inspect for a jammed or plugged auger.',
+        'Verify no one is working on the system before restarting.',
+        'Reset overload relay or breaker.',
+        'Start motor briefly and observe.',
+        'Monitor amp draw and listen for unusual noise.',
+        'If it trips again — stop, tag out, and troubleshoot root cause before any further reset.'
+      ],
+      ts: base + 28000
+    },
+    {
+      wiId: 'WI-BIN-BOOT-CLEANOUT',
+      title: 'Bin Boot Cleanout',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Feed',
+      time: 30,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, gloves, dust mask.',
+      warnings: 'Purpose: prevent bridging, feed blockage, and contamination. Inspect for moisture or mold — do not return contaminated feed to system.',
+      steps: [
+        'Lockout the feed system.',
+        'Open bin boot access safely.',
+        'Remove compacted feed and material.',
+        'Inspect for moisture or mold buildup.',
+        'Check sensors and gates for function.',
+        'Reassemble access point.',
+        'Restart system and verify feed flow.'
+      ],
+      ts: base + 29000
+    },
+    {
+      wiId: 'WI-DAILY-JOB-TICKET',
+      title: 'Daily Maintenance Job Ticket',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Rule: If it was not documented, it did not happen.',
+      steps: [
+        'Open a new ticket in the app.',
+        'Enter date and time.',
+        'Select the area or barn.',
+        'Describe the task clearly.',
+        'Note whether planned or emergency.',
+        'Enter start and finish time.',
+        'Add any parts used.',
+        'Close the ticket with the result.'
+      ],
+      ts: base + 30000
+    },
+    {
+      wiId: 'WI-EMERGENCY-TICKET',
+      title: 'Emergency Breakdown Ticket',
+      type: 'emergency',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Create ticket immediately at start of event — do not wait until after the repair.',
+      steps: [
+        'Create an emergency ticket at the start of the breakdown event.',
+        'Enter the equipment affected.',
+        'Note the downtime start time.',
+        'Add cause once known.',
+        'Enter repair action taken.',
+        'Record restart time.',
+        'Close ticket with total downtime minutes.'
+      ],
+      ts: base + 31000
+    },
+    {
+      wiId: 'WI-PM-SIGNOFF',
+      title: 'PM Completion Signoff',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: ensure PMs are truly completed. Supervisors may perform random audits on closed PMs.',
+      steps: [
+        'Open the scheduled PM task in the app.',
+        'Perform each checklist item — do not skip.',
+        'Replace wear items found during inspection.',
+        'Add notes and findings.',
+        'Mark the PM complete in the app.',
+        'Supervisor verifies on random audits.'
+      ],
+      ts: base + 32000
+    },
+    {
+      wiId: 'WI-PARTS-REQUEST',
+      title: 'Parts Request Procedure',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Urgency levels: Critical (production down) / This Week / Stock Refill. Always search existing inventory first.',
+      steps: [
+        'Search existing inventory before requesting.',
+        'Confirm the correct part number.',
+        'Enter urgency level: Critical / This Week / Stock Refill.',
+        'Add the equipment tied to the request.',
+        'Submit to approver or buyer.',
+        'Track order status in the app.'
+      ],
+      ts: base + 33000
+    },
+    {
+      wiId: 'WI-INVENTORY-REVIEW',
+      title: 'Min/Max Inventory Review',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: avoid stockouts and overbuying. Perform weekly.',
+      steps: [
+        'Review the critical spare parts list.',
+        'Count on-hand quantity for each item.',
+        'Compare to established min and max levels.',
+        'Flag any items below minimum.',
+        'Generate a reorder list for approval.',
+        'Remove obsolete items from inventory.',
+        'Update records in the app.'
+      ],
+      ts: base + 34000
+    },
+    {
+      wiId: 'WI-CONTRACTOR-APPROVAL',
+      title: 'Contractor Call Approval Process',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: control outside spend. Do not call a contractor without manager approval.',
+      steps: [
+        'Confirm the issue cannot be handled in-house safely.',
+        'Estimate the downtime impact if not repaired.',
+        'Gather photos and details of the problem.',
+        'Notify manager and get approval.',
+        'Request a quote from contractor if possible.',
+        'Track contractor hours and cost in the app.',
+        'Capture lessons learned after the job is complete.'
+      ],
+      ts: base + 35000
+    },
+    {
+      wiId: 'WI-SHIFT-HANDOFF-NOTES',
+      title: 'Daily Shift Handoff Notes',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: eliminate lost information between shifts. Submit before leaving — do not leave without completing handoff.',
+      steps: [
+        'List all completed work from the shift.',
+        'List all open breakdowns still in progress.',
+        'Note any parts currently waiting on order.',
+        'Note urgent priorities for the next shift.',
+        'Include any safety concerns.',
+        'Submit handoff notes before leaving.'
+      ],
+      ts: base + 36000
+    },
+    {
+      wiId: 'WI-WEEKLY-PROJECT-REVIEW',
+      title: 'Weekly Open Project Review',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 30,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: keep projects moving and remove blockers. Every open item must have an owner and a due date.',
+      steps: [
+        'Pull all open jobs and projects from the app.',
+        'Sort by impact: safety first, then production, then cost.',
+        'Identify any overdue items.',
+        'Review parts status for blocked jobs.',
+        'Assign an owner to each open item.',
+        'Set due dates for all open items.',
+        'Select the top 3 must-win items for the week.',
+        'Communicate priorities to the team.'
+      ],
+      ts: base + 37000
+    },
+    {
+      wiId: 'WI-ROOT-CAUSE',
+      title: 'Root Cause Corrective Action (5-Why)',
+      type: 'onboarding',
+      dept: 'Management',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: fix the cause, not just symptoms. Standardize the lesson learned so it cannot recur.',
+      steps: [
+        'Define the exact problem clearly.',
+        'Record when and where it happened.',
+        'Ask "Why?" and answer — repeat 5 times to reach root cause.',
+        'Identify the true root cause.',
+        'Set a corrective action to eliminate the root cause.',
+        'Assign an owner and a completion date.',
+        'Verify the problem does not repeat after correction.',
+        'Standardize the lesson learned — update procedure if needed.'
+      ],
+      ts: base + 38000
+    },
+    {
+      wiId: 'WI-SHOP-CLEANUP',
+      title: 'Shop Cleanup — End of Shift',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Standard: leave it better than you found it.',
+      steps: [
+        'Put all tools away in their labeled locations.',
+        'Sweep the floor.',
+        'Remove trash and cardboard.',
+        'Return unused parts to inventory.',
+        'Charge batteries and cordless tools.',
+        'Wipe down work benches.',
+        'Prepare the shop for the next shift.'
+      ],
+      ts: base + 39000
+    },
+    {
+      wiId: 'WI-TOOL-RETURN',
+      title: 'Tool Return Standard',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: eliminate lost time searching for tools.',
+      steps: [
+        'Clean tool after use.',
+        'Inspect for damage.',
+        'Return to its labeled location.',
+        'Charge battery if it is a cordless tool.',
+        'Report any broken or missing tools immediately.'
+      ],
+      ts: base + 40000
+    },
+    {
+      wiId: 'WI-SCRAP-REMOVAL',
+      title: 'Scrap Removal Standard',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Gloves for sharp metal.',
+      warnings: 'Purpose: remove hazards and clutter. Keep aisles clear at all times.',
+      steps: [
+        'Separate usable material from scrap.',
+        'Move scrap to the designated scrap bin or area.',
+        'Remove sharp metal hazards safely — wear gloves.',
+        'Keep all aisles and walkways clear.',
+        'Record large metal scrap loads if required for disposal.'
+      ],
+      ts: base + 41000
+    },
+    {
+      wiId: 'WI-RED-TAG-PROC',
+      title: 'Red Tag Procedure',
+      type: 'onboarding',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: control unnecessary items and keep the shop organized.',
+      steps: [
+        'Identify any item with no clear use or home.',
+        'Apply a red tag with the date and your name.',
+        'Move item to the designated red tag area.',
+        'Review red tag area weekly.',
+        'Decide: keep in a new location, relocate, or dispose.'
+      ],
+      ts: base + 42000
+    },
+    {
+      wiId: 'WI-BARN-5S-AUDIT',
+      title: 'Barn 5S Audit Standard',
+      type: 'startup',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Perform weekly. Score 1–5 per area and assign corrective actions for anything below 4.',
+      steps: [
+        'Inspect all aisles — clear and free of obstruction.',
+        'Check that tools are stored in their proper locations.',
+        'Remove any trash and debris.',
+        'Verify labels and signs are visible and readable.',
+        'Inspect housekeeping around motors and electrical panels.',
+        'Score each area on a 1–5 scale.',
+        'Assign corrective actions for any low scores.'
+      ],
+      ts: base + 43000
+    },
+    {
+      wiId: 'WI-WASTE-WALK',
+      title: 'Weekly Waste Walk',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 30,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: find hidden losses before they grow. Capture top 3 fixes and assign owners.',
+      steps: [
+        'Walk all production areas systematically.',
+        'Look for waiting time — people or machines idle.',
+        'Look for excess motion — unnecessary travel or reaching.',
+        'Look for rework or product damage.',
+        'Look for overstock or excess material.',
+        'Look for leaks, drips, or wasted energy.',
+        'Capture the top 3 fixes and assign an owner to each.'
+      ],
+      ts: base + 44000
+    },
+    {
+      wiId: 'WI-LOTO-MOTOR',
+      title: 'Lockout Tagout — Motor Work',
+      type: 'safety',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Lock, tag, safety glasses, gloves.',
+      warnings: 'CRITICAL SAFETY — never work on energized equipment. Only the person who applied the lock may remove it.',
+      steps: [
+        'Notify all affected people in the area.',
+        'Shut equipment down using normal stop procedure.',
+        'Isolate the power source — open disconnect or breaker.',
+        'Apply personal lock and tag to the energy isolation point.',
+        'Verify zero energy: attempt to start, check for stored energy (pressure, spring, gravity).',
+        'Perform the work.',
+        'Remove all tools, guards, and materials when work is complete.',
+        'Remove lock — only the person who applied it may remove it.',
+        'Notify affected people and restart safely.'
+      ],
+      ts: base + 45000
+    },
+    {
+      wiId: 'WI-LADDER-SAFETY',
+      title: 'Ladder Safety Standard',
+      type: 'safety',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: 'Non-slip footwear.',
+      warnings: 'Purpose: prevent falls. Remove any damaged ladder from service immediately — tag it out.',
+      steps: [
+        'Inspect ladder before use — no bent rails, broken rungs, or damaged feet.',
+        'Confirm feet are stable and level on the surface.',
+        'Use the correct ladder height and type for the task.',
+        'Maintain 3 points of contact at all times while climbing.',
+        'Face the ladder when climbing up or down.',
+        'Do not overreach — move the ladder instead.',
+        'Keep the area below the ladder clear.',
+        'Remove any damaged ladder from service immediately.'
+      ],
+      ts: base + 46000
+    },
+    {
+      wiId: 'WI-CONFINED-SPACE',
+      title: 'Confined Space Awareness',
+      type: 'safety',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Per permit — air monitor, harness, rescue equipment as required.',
+      warnings: 'Rule: if unsure whether a space is permit-required, do not enter — notify supervisor first.',
+      steps: [
+        'Identify all permit-required confined spaces in your work area.',
+        'Never enter an unauthorized confined space.',
+        'Notify supervisor if access to a confined space is needed.',
+        'Verify air testing, permit, and rescue plan are in place before entry.',
+        'Use trained attendants only — no lone entry.',
+        'Follow the company confined space program for all entry.'
+      ],
+      ts: base + 47000
+    },
+    {
+      wiId: 'WI-PPE-BARN',
+      title: 'PPE for Barn Entry',
+      type: 'safety',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: 'Boots, gloves, eye/hearing protection as required, coveralls if required.',
+      warnings: 'Purpose: protect people and flock biosecurity. Follow hand sanitation rules at all times.',
+      steps: [
+        'Wear required boots for the barn.',
+        'Use gloves when handling birds, chemicals, or equipment.',
+        'Wear eye and hearing protection based on the specific task.',
+        'Wear coveralls if required for the zone.',
+        'Follow hand sanitation rules on entry and exit.',
+        'Change PPE between zones when required.'
+      ],
+      ts: base + 48000
+    },
+    {
+      wiId: 'WI-CHEM-SPILL',
+      title: 'Chemical Spill Response',
+      type: 'emergency',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Chemical-resistant gloves, eye protection, appropriate respirator per SDS.',
+      warnings: 'Safety critical. Consult the SDS for the specific chemical. Never attempt to clean up an unknown chemical without proper PPE.',
+      steps: [
+        'Identify the material if it is safe to do so.',
+        'Keep all people away from the spill area.',
+        'Put on proper PPE before approaching.',
+        'Stop the source of the spill if it is safe to do so.',
+        'Contain the spill using absorbent material.',
+        'Notify management immediately.',
+        'Dispose of materials per SDS and company rules.',
+        'Document the incident in the app.'
+      ],
+      ts: base + 49000
+    },
+    {
+      wiId: 'WI-ELEC-SAFETY',
+      title: 'Electrical Safety Check',
+      type: 'safety',
+      dept: 'Maintenance',
+      system: 'Electrical',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Safety glasses, insulated gloves if near energized components.',
+      warnings: 'Purpose: prevent shock and fire. Lockout before any repair. Report all findings — do not self-repair energized components.',
+      steps: [
+        'Inspect all cords and plugs for damage or fraying.',
+        'Check that panel access is clear — no storage within 36 inches.',
+        'Look for exposed or bare wires.',
+        'Check for burnt smell or heat signs near panels or motors.',
+        'Verify all covers and knockouts are installed.',
+        'Report any damaged components — do not use until repaired.',
+        'Lockout before any repair work.'
+      ],
+      ts: base + 50000
+    },
+    {
+      wiId: 'WI-DIAMOND-STARTUP',
+      title: 'Diamond Systems 8200 Startup',
+      type: 'startup',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Safety glasses, hearing protection.',
+      warnings: 'Purpose: safe startup and stable production flow. Monitor closely for first 10 minutes.',
+      steps: [
+        'Walk the entire machine before startup — check for tools, debris, or obstructions.',
+        'Verify all guards are in place.',
+        'Confirm belts and chains are clear.',
+        'Turn on utilities and power in correct sequence.',
+        'Start machine per the proper startup sequence.',
+        'Feed a small product flow first before full rate.',
+        'Check lane movement and packing heads for correct operation.',
+        'Monitor machine for the first 10 minutes before leaving unattended.'
+      ],
+      ts: base + 51000
+    },
+    {
+      wiId: 'WI-MECH-TIMING',
+      title: 'Mechanical Timing Check',
+      type: 'repair',
+      dept: 'Maintenance',
+      system: 'Egg Collectors',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Lockout/tagout, safety glasses.',
+      warnings: 'Purpose: maintain synchronization and prevent jams. Lockout before opening guarded areas.',
+      steps: [
+        'Lockout if opening any guarded areas.',
+        'Observe timing marks and chains for correct position.',
+        'Check lane-to-packer timing alignment.',
+        'Look for skipped teeth or loose chain.',
+        'Adjust per standard timing marks.',
+        'Hand-rotate machine through one full cycle if possible.',
+        'Test run slowly and observe.'
+      ],
+      ts: base + 52000
+    },
+    {
+      wiId: 'WI-BRUSH-WASHER',
+      title: 'Brush Washer Inspection',
+      type: 'startup',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves, eye protection near spray nozzles.',
+      warnings: 'Purpose: maintain wash quality and reduce rejects. Replace worn brushes before quality is affected.',
+      steps: [
+        'Stop and lockout if needed for safe access.',
+        'Inspect brush wear — replace if worn below spec.',
+        'Verify correct brush rotation direction.',
+        'Check spray nozzle flow — clear any clogged nozzles.',
+        'Remove any buildup from the wash area.',
+        'Inspect custom parts for looseness.',
+        'Restart and verify cleaning action is effective.'
+      ],
+      ts: base + 53000
+    },
+    {
+      wiId: 'WI-EGG-BACKUP',
+      title: 'Egg Backup Response',
+      type: 'repair',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Production critical — act immediately. Record cause to prevent recurrence.',
+      steps: [
+        'Identify where the backup starts on the line.',
+        'Reduce upstream flow if possible to reduce pressure.',
+        'Clear the jam safely.',
+        'Inspect guides, plates, and speeds at the backup point.',
+        'Restart the line gradually.',
+        'Watch for recurring buildup over the next 5 minutes.',
+        'Record the cause in the app.'
+      ],
+      ts: base + 54000
+    },
+    {
+      wiId: 'WI-LANE-JAM',
+      title: 'Lane Jam Recovery',
+      type: 'repair',
+      dept: 'Egg Ops',
+      system: 'Egg Collectors',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Production critical. Never reach into a moving machine. Record repeated jam areas to find root cause.',
+      steps: [
+        'Stop the affected lane or machine safely.',
+        'Identify the jam point.',
+        'Remove broken product and debris.',
+        'Inspect guides, cups, chains, and sensors.',
+        'Verify no hidden fragments remain before restarting.',
+        'Restart slowly.',
+        'Watch the lane for 5 minutes.',
+        'Record any repeated jam areas in the app.'
+      ],
+      ts: base + 55000
+    },
+    {
+      wiId: 'WI-HOURLY-THROUGHPUT',
+      title: 'Hourly Throughput Check',
+      type: 'startup',
+      dept: 'Egg Ops',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: control production rate and losses. Notify lead if trend continues below target.',
+      steps: [
+        'Record current hour output.',
+        'Compare to the target rate.',
+        'Note downtime minutes for the hour.',
+        'Note reject and damage count.',
+        'Identify the top reason if below target.',
+        'Notify lead if below-target trend continues.',
+        'Enter data in the app.'
+      ],
+      ts: base + 56000
+    },
+    {
+      wiId: 'WI-SHUTDOWN-CLEAN',
+      title: 'Shutdown Cleaning Standard',
+      type: 'startup',
+      dept: 'Egg Ops',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Gloves, eye protection near cleaning chemicals.',
+      warnings: 'Purpose: leave machine clean and ready for next shift. Lockout before cleaning guarded zones.',
+      steps: [
+        'Stop the machine in the proper shutdown sequence.',
+        'Lockout if cleaning any guarded zones.',
+        'Remove all debris and product residue.',
+        'Clean belts, lanes, brushes, and surfaces.',
+        'Empty all waste containers.',
+        'Inspect for wear or damage while cleaning.',
+        'Sanitize if required by procedure.',
+        'Sign off on completion.'
+      ],
+      ts: base + 57000
+    },
+    {
+      wiId: 'WI-CARTON-CHANGEOVER',
+      title: 'Carton Material Changeover',
+      type: 'startup',
+      dept: 'Egg Ops',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: change packaging material with minimal downtime. Run test product before returning to full rate.',
+      steps: [
+        'Verify the next carton or material type needed.',
+        'Bring required material to the line before stopping.',
+        'Stop the machine safely.',
+        'Remove old material.',
+        'Load new cartons or material.',
+        'Adjust guides and settings if needed for new material.',
+        'Run test product through.',
+        'Confirm print quality, fit, and stack before full rate.'
+      ],
+      ts: base + 58000
+    },
+    {
+      wiId: 'WI-REJECT-EGG',
+      title: 'Reject Egg Handling',
+      type: 'onboarding',
+      dept: 'Egg Ops',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Purpose: separate nonconforming product properly. Follow food safety disposal and rework rules.',
+      steps: [
+        'Identify cracked, dirty, leaker, or off-spec eggs.',
+        'Remove from the good product stream immediately.',
+        'Place in the designated reject container.',
+        'Follow food safety disposal or rework rules.',
+        'Keep the reject area clean.',
+        'Record any excessive reject trends in the app.'
+      ],
+      ts: base + 59000
+    },
+    {
+      wiId: 'WI-COOLER-TEMP',
+      title: 'Cooler Temperature Check',
+      type: 'startup',
+      dept: 'Shipping',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Escalate immediately if temperature is out of required range — product safety is at risk.',
+      steps: [
+        'Read the cooler temperature on the thermostat or display.',
+        'Compare to the required temperature range.',
+        'Check door seals and confirm all doors are closed.',
+        'Look for any blocked airflow inside the cooler.',
+        'Record the temperature reading.',
+        'Escalate to supervisor if out of required range.'
+      ],
+      ts: base + 60000
+    },
+    {
+      wiId: 'WI-FORKLIFT-INSPECT',
+      title: 'Forklift Daily Inspection',
+      type: 'startup',
+      dept: 'Shipping',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Safety glasses, safety footwear.',
+      warnings: 'Purpose: safe equipment operation. Tag out any unsafe unit — do not operate.',
+      steps: [
+        'Inspect forks, mast, and tires for damage.',
+        'Check horn, lights, and backup alarm.',
+        'Check fluid, battery, or fuel levels.',
+        'Test brakes and steering.',
+        'Look for any leaks or visible damage.',
+        'Tag out and report any unsafe unit immediately.',
+        'Record inspection in the app.'
+      ],
+      ts: base + 61000
+    },
+    {
+      wiId: 'WI-LOAD-ACCURACY',
+      title: 'Load Accuracy Verification',
+      type: 'onboarding',
+      dept: 'Shipping',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: ship correct product and quantities. Sign off only after all checks are complete.',
+      steps: [
+        'Review the order sheet.',
+        'Verify product type matches order.',
+        'Verify quantity and case count.',
+        'Verify lot or date code if required.',
+        'Confirm pallet labels are correct.',
+        'Perform final check before trailer closeout.',
+        'Sign off on the load.'
+      ],
+      ts: base + 62000
+    },
+    {
+      wiId: 'WI-DAMAGE-REPORT',
+      title: 'Damage Reporting Standard',
+      type: 'onboarding',
+      dept: 'Shipping',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: capture loss and identify recurring causes. Track weekly trends.',
+      steps: [
+        'Identify damaged product or material.',
+        'Separate from good inventory.',
+        'Photograph damage if needed.',
+        'Record quantity and cause in the app.',
+        'Notify supervisor if the quantity is significant.',
+        'Track trends weekly to find root causes.'
+      ],
+      ts: base + 63000
+    },
+    {
+      wiId: 'WI-PALLET-WRAP',
+      title: 'Pallet Wrapping Standard',
+      type: 'onboarding',
+      dept: 'Shipping',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: secure product for safe transport. Unstable pallets cause product damage and injury.',
+      steps: [
+        'Stack product squarely on the pallet.',
+        'Keep weight centered.',
+        'Wrap from the bottom up — overlap each layer.',
+        'Wrap top tier tightly.',
+        'Finish with extra wraps at the top and anchor to pallet.',
+        'Verify pallet is stable before moving.',
+        'Label pallet clearly.'
+      ],
+      ts: base + 64000
+    },
+    {
+      wiId: 'WI-TRAILER-INSPECT',
+      title: 'Trailer Inspection',
+      type: 'startup',
+      dept: 'Shipping',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Safety footwear.',
+      warnings: 'Do not load into an unsafe trailer. Reject and report any trailer with structural issues or contamination.',
+      steps: [
+        'Inspect trailer floor for holes, rot, or damage.',
+        'Check for contamination — odors, residue, pests.',
+        'Verify refrigeration unit is working if required.',
+        'Check door seals and locking hardware.',
+        'Confirm trailer is level at the dock.',
+        'Chock wheels before loading.',
+        'Record inspection.'
+      ],
+      ts: base + 65000
+    },
+    {
+      wiId: 'WI-BARN-WALK-DAILY2',
+      title: 'Daily Barn Walk — Egg Count Verification',
+      type: 'startup',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: 'Boots, gloves as required.',
+      warnings: 'Purpose: verify accurate egg count and flag discrepancies early.',
+      steps: [
+        'Walk barn and observe conveyor flow.',
+        'Count eggs on belt or at collection point.',
+        'Compare to expected production for house size.',
+        'Flag any significant drop from prior day.',
+        'Check for off-line segments or stuck areas.',
+        'Record count in the app.',
+        'Report discrepancies to supervisor.'
+      ],
+      ts: base + 66000
+    },
+    {
+      wiId: 'WI-EGG-COUNT',
+      title: 'Egg Count Verification',
+      type: 'startup',
+      dept: 'Barn / Layer',
+      system: 'Egg Collectors',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Flag any significant drop from expected count — early detection prevents undetected production loss.',
+      steps: [
+        'Pull daily egg count from production records or app.',
+        'Compare to expected rate for the flock size.',
+        'Check hen-day production percentage.',
+        'Note any houses below target.',
+        'Investigate cause if more than 3% below normal.',
+        'Record findings in the app.'
+      ],
+      ts: base + 67000
+    },
+    {
+      wiId: 'WI-BROKEN-EGG-REPORT',
+      title: 'Broken Egg Reporting',
+      type: 'onboarding',
+      dept: 'Barn / Layer',
+      system: 'Egg Collectors',
+      time: 5,
+      author,
+      date: today,
+      ppe: 'Gloves.',
+      warnings: 'Purpose: track breakage trends to identify equipment or handling issues.',
+      steps: [
+        'Count broken eggs found during barn walk or at collection.',
+        'Note location where breakage is concentrated.',
+        'Identify possible cause: belt speed, drop point, rod damage.',
+        'Record count and location in the app.',
+        'Report if breakage exceeds normal threshold.',
+        'Escalate to maintenance if mechanical cause found.'
+      ],
+      ts: base + 68000
+    },
+    {
+      wiId: 'WI-MORTALITY-REMOVAL',
+      title: 'Mortality Removal Procedure',
+      type: 'onboarding',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Gloves, boots, N95 mask if required.',
+      warnings: 'Remove mortalities promptly — leaving them increases disease risk and attracting pests.',
+      steps: [
+        'Identify and collect all dead birds during barn walk.',
+        'Place in designated mortality container.',
+        'Record count and house number in the app.',
+        'Transport to composting or disposal area per site procedure.',
+        'Log mortality in the mortality log.',
+        'Report unusual spikes in count to supervisor immediately.'
+      ],
+      ts: base + 69000
+    },
+    {
+      wiId: 'WI-FEED-CONSUMPTION',
+      title: 'Feed Consumption Recording',
+      type: 'startup',
+      dept: 'Barn / Layer',
+      system: 'Feed',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: detect feed issues early. Sudden drops or spikes in consumption indicate a bird health or equipment issue.',
+      steps: [
+        'Record feed bin levels or usage from meter.',
+        'Compare to prior day and expected consumption.',
+        'Note any house with abnormal usage.',
+        'Check that feed lines are running properly.',
+        'Record data in the app.',
+        'Report abnormal consumption to supervisor.'
+      ],
+      ts: base + 70000
+    },
+    {
+      wiId: 'WI-WATER-USAGE',
+      title: 'Water Usage Check',
+      type: 'startup',
+      dept: 'Barn / Layer',
+      system: 'Water',
+      time: 10,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: detect water system issues early. Water consumption is a key flock health indicator.',
+      steps: [
+        'Read water meter or flow indicator per house.',
+        'Compare to expected usage for flock size.',
+        'Note any house with low or no reading.',
+        'Check for leaks or non-functioning nipples.',
+        'Record data in the app.',
+        'Report abnormal usage to supervisor.'
+      ],
+      ts: base + 71000
+    },
+    {
+      wiId: 'WI-HEN-BEHAVIOR',
+      title: 'Hen Behavior Observation',
+      type: 'startup',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Boots.',
+      warnings: 'Purpose: early detection of health, environment, or equipment issues through bird behavior.',
+      steps: [
+        'Walk the barn and observe bird activity.',
+        'Look for huddling — may indicate cold or drafts.',
+        'Look for panting — may indicate heat or poor air quality.',
+        'Look for lethargic or separated birds.',
+        'Observe distribution across the house.',
+        'Listen for unusual vocalization.',
+        'Record any abnormal behavior in the app.',
+        'Report significant behavioral changes to supervisor.'
+      ],
+      ts: base + 72000
+    },
+    {
+      wiId: 'WI-CAGE-DAMAGE',
+      title: 'Cage Damage Reporting',
+      type: 'repair',
+      dept: 'Barn / Layer',
+      system: 'Building',
+      time: 10,
+      author,
+      date: today,
+      ppe: 'Gloves, safety footwear.',
+      warnings: 'Purpose: capture structural issues before bird loss or injury. Isolate any immediate hazard.',
+      steps: [
+        'Identify the damaged cage, wire, door, or floor area.',
+        'Mark the exact location: barn, row, and section.',
+        'Photograph damage if possible.',
+        'Determine urgency: Safe to monitor / Needs Repair / Immediate Risk.',
+        'Submit a ticket in the app.',
+        'Isolate the hazard if there is immediate risk to birds or people.'
+      ],
+      ts: base + 73000
+    },
+    {
+      wiId: 'WI-BIOSEC-ENTRY',
+      title: 'Biosecurity Entry Procedure',
+      type: 'safety',
+      dept: 'Barn / Layer',
+      system: 'General',
+      time: 5,
+      author,
+      date: today,
+      ppe: 'Site-required boots, coveralls, and gloves.',
+      warnings: 'Purpose: protect flock health and prevent contamination. No unauthorized items or tools inside.',
+      steps: [
+        'Follow all site entry rules.',
+        'Wear required clean PPE and boots.',
+        'Sanitize hands and footwear at entry point.',
+        'Use approved traffic flow route only.',
+        'Do not bring unauthorized tools or items inside.',
+        'Follow visitor restrictions and complete visitor log if required.'
+      ],
+      ts: base + 74000
+    },
+    {
+      wiId: 'WI-TIER2-MEETING',
+      title: 'Tier 2 Weekly Meeting Standard',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 30,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: align departments on performance and actions. Start on time — every time.',
+      steps: [
+        'Start on time.',
+        'Review safety incidents and open actions.',
+        'Review production first pass yield and output.',
+        'Review packaging and shipping losses.',
+        'Review labor, material, and efficiency performance.',
+        'Recognize team wins.',
+        'Review all open action items.',
+        'Assign owners and due dates to every open item.',
+        'End with top priorities for the week.'
+      ],
+      ts: base + 75000
+    },
+    {
+      wiId: 'WI-CA-WEDNESDAY',
+      title: 'Corrective Action Wednesday Review',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 30,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: solve recurring top issues every week — not just discuss them.',
+      steps: [
+        'Bring the top trending problems from the prior week.',
+        'Review root cause status for each item.',
+        'Confirm corrective actions are in place.',
+        'Assign completion deadlines.',
+        'Escalate any blocked items.',
+        'Communicate the must-fix-this-week list to the team.'
+      ],
+      ts: base + 76000
+    },
+    {
+      wiId: 'WI-WEEKEND-COVERAGE',
+      title: 'Weekend Coverage Planning',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: prevent uncovered emergencies on weekends. Communicate schedule by Friday.',
+      steps: [
+        'Review scheduled staffing for the weekend.',
+        'Review any open critical jobs that may need attention.',
+        'Confirm on-call contact list is current.',
+        'Verify needed parts and tools are staged and ready.',
+        'Assign priority checks for each day.',
+        'Communicate the weekend schedule to the team on Friday.'
+      ],
+      ts: base + 77000
+    },
+    {
+      wiId: 'WI-HEGINS-SAT',
+      title: 'Hegins Saturday Job Planning',
+      type: 'startup',
+      dept: 'Maintenance',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: 'Per job requirements.',
+      warnings: 'Purpose: execute planned weekend work efficiently. Stage everything Friday — no running for parts Saturday.',
+      steps: [
+        'Define scope of work clearly.',
+        'Confirm crew members and start time.',
+        'Stage all parts and tools on Friday.',
+        'Review lockout and safety requirements for the job.',
+        'Set expected completion time.',
+        'Complete work and submit a Monday recap in the app.'
+      ],
+      ts: base + 78000
+    },
+    {
+      wiId: 'WI-FRIDAY-REVIEW',
+      title: 'Open Project Friday Trending Review',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: use Friday to regain control before the week ends.',
+      steps: [
+        'Pull all open projects from the app.',
+        'Identify the top recurring issues from the week.',
+        'Prioritize next week\'s must-fix items.',
+        'Review any overdue actions.',
+        'Check parts blockers for the coming week.',
+        'Build the Wednesday corrective action review list.'
+      ],
+      ts: base + 79000
+    },
+    {
+      wiId: 'WI-PM-COMPLIANCE',
+      title: 'PM Compliance Dashboard Review',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 15,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: ensure the PM program is real — not just on paper.',
+      steps: [
+        'Review scheduled vs completed PM percentage.',
+        'Identify all overdue PMs.',
+        'Sort overdue PMs by critical equipment priority.',
+        'Reassign resources if needed to close overdue PMs.',
+        'Review any repeat failures tied to missed PMs.',
+        'Publish the weekly PM compliance score.'
+      ],
+      ts: base + 80000
+    },
+    {
+      wiId: 'WI-DOWNTIME-SUMMARY',
+      title: 'Downtime Root Cause Weekly Summary',
+      type: 'startup',
+      dept: 'Management',
+      system: 'General',
+      time: 20,
+      author,
+      date: today,
+      ppe: '',
+      warnings: 'Purpose: turn downtime data into learning and prevention.',
+      steps: [
+        'Pull all downtime events from the week in the app.',
+        'Rank events by total minutes lost.',
+        'Identify the top 3 root causes.',
+        'Assign corrective actions for each top cause.',
+        'Estimate cost impact of downtime.',
+        'Share the summary with leadership.'
+      ],
+      ts: base + 81000
+    }
+  ];
+
+  try {
+    let added = 0;
+    for (const wi of instructions) {
+      if (existingIds.has(wi.wiId)) continue; // skip already-seeded
+      await db.collection('workInstructions').add(wi);
+      added++;
+    }
+    console.log(`✅ Rushtown Ops WIs: ${added} new procedures seeded.`);
+  } catch(e) {
+    console.error('seedRushtownOpsWI error:', e);
+  }
+}
+
 function startWIListener() {
   db.collection('workInstructions').orderBy('ts','desc').onSnapshot(snap => {
     allWI = [];
     snap.forEach(d => allWI.push({...d.data(), _fbId: d.id}));
     if (window._maintSection==='wi') renderWI();
+  }, err => {
+    console.error('WI listener error:', err);
+    // Fallback: load without orderBy (avoids missing-index errors)
+    loadWIFallback();
   });
+}
+
+async function loadWIFallback() {
+  try {
+    const snap = await db.collection('workInstructions').get();
+    allWI = [];
+    snap.forEach(d => allWI.push({...d.data(), _fbId: d.id}));
+    allWI.sort((a,b) => (b.ts||0) - (a.ts||0));
+    if (window._maintSection==='wi') renderWI();
+    console.log('WI fallback load succeeded, count:', allWI.length);
+  } catch(e) {
+    console.error('WI fallback load also failed:', e);
+  }
 }
 
 function wiTypeFilter(val, btn) {
   wiTypeFilterVal = val;
   document.querySelectorAll('#wi-type-bar .pill').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderWI();
+  if (btn) btn.classList.add('active');
+  try { renderWI(); } catch(e) { console.error('renderWI error:', e); }
 }
 
 function wiDeptFilter(val, btn) {
   wiDeptFilterVal = val;
   document.querySelectorAll('#wi-dept-bar .pill').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderWI();
+  if (btn) btn.classList.add('active');
+  try { renderWI(); } catch(e) { console.error('renderWI error:', e); }
+}
+
+function wiSystemFilter(val, btn) {
+  wiSystemFilterVal = val;
+  document.querySelectorAll('#wi-system-bar .pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  try { renderWI(); } catch(e) { console.error('renderWI error:', e); }
 }
 
 function wiSearch() {
-  wiSearchVal = document.getElementById('wi-search').value.toLowerCase().trim();
-  renderWI();
+  const el = document.getElementById('wi-search');
+  if (!el) return;
+  wiSearchVal = el.value.toLowerCase().trim();
+  // If WIs not loaded yet, trigger a load then re-render
+  if (!allWI.length && wiSearchVal) {
+    loadWIFallback().then(() => { try { renderWI(); } catch(e) {} });
+    return;
+  }
+  try { renderWI(); } catch(e) { console.error('renderWI error:', e); }
 }
 
 function renderWI() {
@@ -3964,54 +6143,346 @@ function renderWI() {
   let list = allWI;
   if (wiTypeFilterVal !== 'all') list = list.filter(w => w.type === wiTypeFilterVal);
   if (wiDeptFilterVal !== 'all') list = list.filter(w => (w.dept || w.department || '') === wiDeptFilterVal);
+  if (wiSystemFilterVal !== 'all') list = list.filter(w => (w.system || '') === wiSystemFilterVal);
   if (wiSearchVal) {
     list = list.filter(w =>
       (w.title||'').toLowerCase().includes(wiSearchVal) ||
       (w.system||'').toLowerCase().includes(wiSearchVal) ||
+      (w.dept||'').toLowerCase().includes(wiSearchVal) ||
       (w.ppe||'').toLowerCase().includes(wiSearchVal) ||
       (w.warnings||'').toLowerCase().includes(wiSearchVal) ||
       (w.steps||[]).some(s => s.toLowerCase().includes(wiSearchVal))
     );
   }
 
+  // Result count
+  const countEl = document.getElementById('wi-result-count');
+  if (countEl) {
+    countEl.textContent = wiSearchVal || wiTypeFilterVal !== 'all' || wiDeptFilterVal !== 'all' || wiSystemFilterVal !== 'all'
+      ? `Showing ${list.length} of ${total} procedures`
+      : `${total} procedures`;
+  }
+
   const container = document.getElementById('wi-list');
   if (!list.length) {
-    container.innerHTML = `<div class="empty"><div class="ei">📖</div><p>${wiSearchVal ? 'No instructions match your search.' : 'No work instructions yet — add your first one above.'}</p></div>`;
+    container.innerHTML = `<div class="empty"><div class="ei">📖</div><p>${wiSearchVal ? 'No procedures match your search.' : 'No work instructions yet — click + Add above.'}</p></div>`;
     return;
   }
 
-  const SYS_ICON_MAP = {Ventilation:'💨',Water:'💧',Feed:'🌾',Manure:'♻️','Egg Collectors':'🥚',Heating:'🔥',Electrical:'⚡',Lubing:'🛢️',Building:'🏚️',General:'🔧'};
+  const WI_TYPE_MAP = WI_TYPE;
+  const SYS_ICON_MAP = {Ventilation:'💨',Water:'💧',Feed:'🌾',Manure:'♻️','Egg Collectors':'🥚',Heating:'🔥',Electrical:'⚡',Lubing:'🛢️',Building:'🏚️',General:'⚙️'};
+  const DEPT_ICON = {'Maintenance':'🔧','Egg Ops':'🥚','Shipping':'🚚','Barn / Layer':'🐔','Management':'📋','General':'⚙️'};
 
-  container.innerHTML = list.map(wi => {
-    const t = WI_TYPE[wi.type] || WI_TYPE.repair;
-    const sysIcon = SYS_ICON_MAP[wi.system] || '';
-    const stepCount = (wi.steps||[]).length;
-    const timeStr = wi.time ? wi.time + ' min' : '';
-    return `<div class="wi-card" onclick="openWIView('${wi.wiId}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px;">
-        <span class="wi-type-badge" style="background:${t.bg};color:${t.color};border-color:${t.color}40;">${t.label}</span>
-        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;margin-left:8px;">
-          ${timeStr ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);">⏱ ${timeStr}</span>` : ''}
-          ${wi.warnings ? '<span style="font-size:12px;" title="Has warnings">⚠️</span>' : ''}
-        </div>
+  // Group by dept
+  const groups = {};
+  list.forEach(wi => {
+    const dept = wi.dept || wi.department || 'General';
+    if (!groups[dept]) groups[dept] = [];
+    groups[dept].push(wi);
+  });
+
+  // Dept order
+  const DEPT_ORDER = ['Maintenance','Barn / Layer','Egg Ops','Shipping','Management','General'];
+  const sortedDepts = Object.keys(groups).sort((a,b) => {
+    const ai = DEPT_ORDER.indexOf(a); const bi = DEPT_ORDER.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  // If searching or filtering, flat view; otherwise grouped
+  const useGroups = !wiSearchVal && wiDeptFilterVal === 'all';
+
+  let html = '';
+
+  if (useGroups) {
+    sortedDepts.forEach(dept => {
+      const items = groups[dept];
+      const icon = DEPT_ICON[dept] || '📋';
+      const groupId = 'wi-group-' + dept.replace(/[^a-z0-9]/gi,'_');
+      html += `
+        <div style="margin-bottom:4px;">
+          <button onclick="toggleWIGroup('${groupId}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#0d1f0d;border:1.5px solid #2a5a2a;border-radius:10px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:700;color:#e8f5ec;">
+            <span>${icon} ${dept} <span style="font-weight:400;color:#4a8a4a;font-size:12px;">(${items.length})</span></span>
+            <span id="${groupId}-arrow" style="font-size:12px;color:#4a8a4a;">▼</span>
+          </button>
+          <div id="${groupId}" style="display:block;">
+            ${items.map(wi => wiCard(wi, WI_TYPE_MAP, SYS_ICON_MAP)).join('')}
+          </div>
+        </div>`;
+    });
+  } else {
+    html = list.map(wi => wiCard(wi, WI_TYPE_MAP, SYS_ICON_MAP)).join('');
+  }
+
+  container.innerHTML = html;
+}
+
+function toggleWIGroup(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById(id + '-arrow');
+  if (!el) return;
+  const collapsed = el.style.display === 'none';
+  el.style.display = collapsed ? 'block' : 'none';
+  if (arrow) arrow.textContent = collapsed ? '▼' : '▶';
+}
+
+function wiCard(wi, WI_TYPE_MAP, SYS_ICON_MAP) {
+  const t = WI_TYPE_MAP[wi.type] || WI_TYPE_MAP.repair;
+  const sysIcon = SYS_ICON_MAP[wi.system] || '';
+  const stepCount = (wi.steps||[]).length;
+  const timeStr = wi.time ? wi.time + ' min' : '';
+  const expandId = 'wi-expand-' + (wi.wiId||'').replace(/[^a-z0-9]/gi,'_');
+  const stepsHtml = (wi.steps||[]).map((s,i) => `
+    <div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--muted);min-width:18px;">${i+1}.</span>
+      <span style="font-size:13px;color:#e8f5ec;line-height:1.4;">${s}</span>
+    </div>`).join('');
+
+  return `<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;">
+    <!-- Card header row -->
+    <div data-wi-id="${wi.wiId || wi._fbId || ''}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;-webkit-tap-highlight-color:rgba(74,222,128,0.2);" onclick="openWIView('${wi.wiId || wi._fbId || ''}')">
+      <span class="wi-type-badge" style="background:${t.bg};color:${t.color};border:1px solid ${t.color}40;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;">${t.label}</span>
+      <span style="flex:1;font-size:13px;font-weight:700;color:#e8f5ec;line-height:1.3;">${wi.title}</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+        ${wi.ppe ? '<span title="PPE required" style="font-size:13px;">🦺</span>' : ''}
+        ${wi.warnings ? '<span title="Has warnings" style="font-size:13px;">⚠️</span>' : ''}
+        ${timeStr ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);">⏱ ${timeStr}</span>` : ''}
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);">${stepCount} steps</span>
+        <span style="font-size:11px;color:var(--muted);">›</span>
       </div>
-      <div class="wi-title">${wi.title}</div>
-      <div class="wi-meta">
-        ${(wi.dept||wi.department) ? `<span style="background:#e8f4e8;color:#2e7d32;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-right:5px;">🏢 ${wi.dept||wi.department}</span>` : ''}${sysIcon ? sysIcon + ' ' + wi.system + ' · ' : ''}${stepCount} step${stepCount !== 1 ? 's' : ''}${wi.ppe ? ' · 🦺 PPE required' : ''}
-      </div>
-      <div class="wi-meta" style="margin-top:2px;">By ${wi.author || 'Unknown'} · ${fmtDate(wi.date)}</div>
+    </div>
+    <!-- Meta row -->
+    <div style="padding:0 12px 8px;display:flex;align-items:center;gap:8px;">
+      ${wi.system && wi.system !== 'General' ? `<span style="font-size:11px;color:var(--muted);">${sysIcon} ${wi.system}</span>` : ''}
+      <button onclick="event.stopPropagation();openWIForm('${wi.wiId}')" style="margin-left:auto;padding:3px 10px;background:transparent;border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">✏️ Edit</button>
+    </div>
+  </div>`;
+}
+
+function toggleWIExpand(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById(id + '-arrow');
+  if (!el) return;
+  const collapsed = el.style.display === 'none';
+  el.style.display = collapsed ? 'block' : 'none';
+  if (arrow) arrow.textContent = collapsed ? '▲' : '▼';
+}
+
+// ── Pivot View ────────────────────────────────────────────────────────────────
+let _wiView = 'list';
+
+function wiSetView(view) {
+  _wiView = view;
+  document.getElementById('wi-list').style.display  = view === 'list'  ? 'block' : 'none';
+  document.getElementById('wi-pivot').style.display = view === 'pivot' ? 'block' : 'none';
+  const lb = document.getElementById('wi-view-list-btn');
+  const pb = document.getElementById('wi-view-pivot-btn');
+  if (lb) { lb.style.background = view==='list' ? '#1a3a1a' : 'transparent'; lb.style.color = view==='list' ? '#4ade80' : '#4a8a4a'; }
+  if (pb) { pb.style.background = view==='pivot' ? '#1a3a1a' : 'transparent'; pb.style.color = view==='pivot' ? '#4ade80' : '#4a8a4a'; }
+  if (view === 'pivot') renderWIPivot();
+}
+
+function renderWIPivot() {
+  const el = document.getElementById('wi-pivot');
+  if (!el) return;
+
+  const DEPTS   = ['Maintenance','Barn / Layer','Egg Ops','Shipping','Management','General'];
+  const SYSTEMS = ['General','Manure','Ventilation','Water','Feed','Egg Collectors','Electrical','Building'];
+  const TYPES   = ['repair','startup','emergency','safety','onboarding'];
+  const TYPE_LABEL = { repair:'🔧 Repair', startup:'▶️ Startup', emergency:'🚨 Emergency', safety:'🦺 Safety', onboarding:'🆕 Onboard' };
+  const TYPE_COLOR = { repair:'#3b82f6', startup:'#059669', emergency:'#e53e3e', safety:'#d69e2e', onboarding:'#9b59b6' };
+
+  // ── Matrix: Dept × System ─────────────────────────────────────────────────
+  // Build cell data: matrix[dept][system] = [{type, title, wiId}, ...]
+  const matrix = {};
+  const deptCounts = {}; const sysCounts = {};
+  DEPTS.forEach(d => { matrix[d] = {}; deptCounts[d] = 0; SYSTEMS.forEach(s => matrix[d][s] = []); });
+  SYSTEMS.forEach(s => sysCounts[s] = 0);
+
+  allWI.forEach(wi => {
+    const dept = wi.dept || wi.department || 'General';
+    const sys  = wi.system || 'General';
+    const normDept = DEPTS.includes(dept) ? dept : 'General';
+    const normSys  = SYSTEMS.includes(sys)  ? sys  : 'General';
+    if (!matrix[normDept]) { matrix[normDept] = {}; SYSTEMS.forEach(s => matrix[normDept][s] = []); }
+    if (!matrix[normDept][normSys]) matrix[normDept][normSys] = [];
+    matrix[normDept][normSys].push(wi);
+    deptCounts[normDept] = (deptCounts[normDept]||0) + 1;
+    sysCounts[normSys]   = (sysCounts[normSys]||0) + 1;
+  });
+
+  // ── Type breakdown bar ─────────────────────────────────────────────────────
+  const typeTotals = {};
+  TYPES.forEach(t => typeTotals[t] = allWI.filter(w => w.type === t).length);
+  const grandTotal = allWI.length;
+
+  const typeBar = TYPES.map(t => {
+    const pct = grandTotal > 0 ? Math.round(typeTotals[t]/grandTotal*100) : 0;
+    return `<div style="flex:${typeTotals[t]||0.1};background:${TYPE_COLOR[t]};height:100%;border-radius:3px;cursor:pointer;position:relative;" title="${TYPE_LABEL[t]}: ${typeTotals[t]}" onclick="wiTypeFilterFromPivot('${t}')">
+      <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;color:#fff;font-weight:700;white-space:nowrap;">${pct>5?pct+'%':''}</span>
     </div>`;
   }).join('');
+
+  // ── Matrix table ──────────────────────────────────────────────────────────
+  const usedDepts = DEPTS.filter(d => deptCounts[d] > 0);
+  const usedSys   = SYSTEMS.filter(s => sysCounts[s] > 0);
+
+  const headerRow = `<tr>
+    <th style="padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;text-align:left;border-bottom:1px solid #2a5a2a;white-space:nowrap;">DEPT \\ SYSTEM</th>
+    ${usedSys.map(s => `<th style="padding:8px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a8a4a;text-align:center;border-bottom:1px solid #2a5a2a;white-space:nowrap;">${s}</th>`).join('')}
+    <th style="padding:8px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4ade80;text-align:center;border-bottom:1px solid #2a5a2a;">TOTAL</th>
+  </tr>`;
+
+  const bodyRows = usedDepts.map(dept => {
+    const cells = usedSys.map(sys => {
+      const items = matrix[dept][sys] || [];
+      if (!items.length) return `<td style="padding:6px 8px;text-align:center;color:#2a5a2a;font-family:'IBM Plex Mono',monospace;font-size:10px;border-bottom:1px solid #1a3a1a;">—</td>`;
+      const dots = items.map(wi => {
+        const c = TYPE_COLOR[wi.type] || '#4a8a4a';
+        return `<span title="${wi.title}" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin:1px;cursor:pointer;" onclick="wiFilterFromPivot('${dept}','${sys}')"></span>`;
+      }).join('');
+      return `<td style="padding:6px 8px;text-align:center;border-bottom:1px solid #1a3a1a;cursor:pointer;" onclick="wiFilterFromPivot('${dept}','${sys}')">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#4ade80;margin-bottom:2px;">${items.length}</div>
+        <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:1px;">${dots}</div>
+      </td>`;
+    });
+    return `<tr>
+      <td style="padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#e8f5ec;font-weight:700;border-bottom:1px solid #1a3a1a;white-space:nowrap;">${dept}</td>
+      ${cells.join('')}
+      <td style="padding:6px 8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#4ade80;border-bottom:1px solid #1a3a1a;">${deptCounts[dept]||0}</td>
+    </tr>`;
+  }).join('');
+
+  const totalRow = `<tr>
+    <td style="padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;font-weight:700;">TOTAL</td>
+    ${usedSys.map(s => `<td style="padding:6px 8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#4ade80;">${sysCounts[s]||0}</td>`).join('')}
+    <td style="padding:6px 8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#4ade80;">${grandTotal}</td>
+  </tr>`;
+
+  // ── Gaps list ─────────────────────────────────────────────────────────────
+  const gaps = [];
+  usedDepts.forEach(d => usedSys.forEach(s => { if (!matrix[d][s].length) gaps.push(`${d} / ${s}`); }));
+
+  el.innerHTML = `
+    <!-- Type breakdown bar -->
+    <div style="background:#0a1f0a;border:1.5px solid #1a3a1a;border-radius:10px;padding:14px;margin-bottom:14px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">PROCEDURE TYPE BREAKDOWN — ${grandTotal} TOTAL</div>
+      <div style="display:flex;height:28px;gap:2px;border-radius:5px;overflow:hidden;margin-bottom:8px;">${typeBar}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;">
+        ${TYPES.map(t => `<div style="display:flex;align-items:center;gap:5px;cursor:pointer;" onclick="wiTypeFilterFromPivot('${t}')">
+          <span style="width:10px;height:10px;border-radius:2px;background:${TYPE_COLOR[t]};display:inline-block;"></span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;">${TYPE_LABEL[t]} <strong style="color:#e8f5ec;">${typeTotals[t]}</strong></span>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Dept × System matrix -->
+    <div style="background:#0a1f0a;border:1.5px solid #1a3a1a;border-radius:10px;padding:14px;margin-bottom:14px;overflow-x:auto;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">DEPT × SYSTEM COVERAGE — tap a cell to filter</div>
+      <table style="border-collapse:collapse;width:100%;min-width:500px;">
+        <thead>${headerRow}</thead>
+        <tbody>${bodyRows}${totalRow}</tbody>
+      </table>
+    </div>
+
+    <!-- Legend -->
+    <div style="background:#0a1f0a;border:1.5px solid #1a3a1a;border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a8a4a;text-transform:uppercase;letter-spacing:1px;margin-right:4px;">DOT KEY:</span>
+      ${TYPES.map(t => `<span style="display:flex;align-items:center;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;">
+        <span style="width:9px;height:9px;border-radius:50%;background:${TYPE_COLOR[t]};display:inline-block;"></span>${TYPE_LABEL[t]}
+      </span>`).join('')}
+    </div>
+  `;
+}
+
+function wiFilterFromPivot(dept, sys) {
+  // Switch to list view with dept + system pre-filtered
+  wiSetView('list');
+  wiDeptFilterVal = dept;
+  wiSystemFilterVal = sys;
+  document.querySelectorAll('#wi-dept-bar .pill').forEach(b => {
+    b.classList.toggle('active', b.textContent.includes(dept));
+  });
+  document.querySelectorAll('#wi-system-bar .pill').forEach(b => {
+    b.classList.toggle('active', b.textContent.includes(sys));
+  });
+  renderWI();
+}
+
+function wiTypeFilterFromPivot(type) {
+  wiSetView('list');
+  wiTypeFilterVal = type;
+  document.querySelectorAll('#wi-type-bar .pill').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+type+"'"));
+  });
+  renderWI();
 }
 
 // ── Form ──
-function openWIForm(wiId) {
-  requireAdmin(() => _openWIForm(wiId));
+function openWIForm(wiId, clTaskId, prefillTitle, prefillDept) {
+  _openWIForm(wiId, clTaskId, prefillTitle, prefillDept);
 }
-function _openWIForm(wiId) {
+// ── WI Photo Upload helpers ──────────────────────────────────────────────────
+// We compress each picked photo with compressPhoto() so it stores as a small JPEG
+// base64 data URI. saveWI() then writes those URIs straight into the Firestore
+// workInstructions doc — same pattern Work Order photos use. This avoids the
+// Firebase Storage rules dependency that was causing photos to silently disappear.
+function wiHandlePhotoSelect(input) {
+  const files = Array.from(input.files);
+  files.forEach(file => {
+    if (_wiPendingPhotos.length >= 5) return;
+    compressPhoto(file).then(dataUrl => {
+      if (_wiPendingPhotos.length >= 5) return;
+      _wiPendingPhotos.push({ file, dataUrl });
+      renderWIPhotoPreviews();
+    }).catch(err => {
+      console.warn('WI photo compress failed, falling back to raw read:', err);
+      const reader = new FileReader();
+      reader.onload = e => {
+        _wiPendingPhotos.push({ file, dataUrl: e.target.result });
+        renderWIPhotoPreviews();
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+  input.value = '';
+}
+
+function renderWIPhotoPreviews() {
+  const preview = document.getElementById('wif-photo-preview');
+  if (!preview) return;
+  const existHtml = _wiExistingPhotos.map((url, idx) => `
+    <div style="position:relative;width:72px;height:72px;">
+      <img src="${url}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">
+      <button onclick="wiRemoveExistingPhoto(${idx})" style="position:absolute;top:-5px;right:-5px;background:#e53e3e;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px;text-align:center;padding:0;">✕</button>
+    </div>`).join('');
+  const pendingHtml = _wiPendingPhotos.map((p, i) => `
+    <div style="position:relative;width:72px;height:72px;">
+      <img src="${p.dataUrl}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">
+      <button onclick="wiRemovePhoto(${i})" style="position:absolute;top:-5px;right:-5px;background:#e53e3e;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px;text-align:center;padding:0;">✕</button>
+    </div>`).join('');
+  preview.innerHTML = existHtml + pendingHtml;
+}
+
+function wiRemovePhoto(i) {
+  _wiPendingPhotos.splice(i, 1);
+  renderWIPhotoPreviews();
+}
+
+function wiRemoveExistingPhoto(i) {
+  _wiExistingPhotos.splice(i, 1);
+  renderWIPhotoPreviews();
+}
+
+function _openWIForm(wiId, clTaskId, prefillTitle, prefillDept) {
   editingWIId = wiId || null;
   wiStepCount = 0;
   document.getElementById('wif-steps-list').innerHTML = '';
+  _wiPendingPhotos = [];
+  _wiExistingPhotos = [];
+  const photoPreview = document.getElementById('wif-photo-preview');
+  if (photoPreview) photoPreview.innerHTML = '';
+  const clTaskInput = document.getElementById('wif-cl-task-id');
+  if (clTaskInput) clTaskInput.value = clTaskId || '';
 
   if (wiId) {
     const wi = allWI.find(x => x.wiId === wiId);
@@ -4026,12 +6497,16 @@ function _openWIForm(wiId) {
     document.getElementById('wif-warnings').value = wi.warnings || '';
     document.getElementById('wif-author').value  = wi.author || '';
     (wi.steps || []).forEach(step => wiAddStep(step));
+    // Load existing photos
+    _wiExistingPhotos = [...(wi.photos || [])];
+    renderWIPhotoPreviews();
   } else {
     document.getElementById('wi-form-title').textContent = 'Add Work Instruction';
     ['wif-title','wif-time','wif-ppe','wif-warnings','wif-author'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('wif-type').value   = '';
-    document.getElementById('wif-dept').value   = '';
+    document.getElementById('wif-type').value   = 'onboarding';
+    document.getElementById('wif-dept').value   = prefillDept || '';
     document.getElementById('wif-system').value = '';
+    if (prefillTitle) document.getElementById('wif-title').value = prefillTitle;
     wiAddStep(); wiAddStep(); wiAddStep(); // start with 3 blank steps
   }
   document.getElementById('wi-form-modal').classList.add('open');
@@ -4090,112 +6565,276 @@ async function saveWI() {
   try {
     const date = new Date().toISOString().slice(0,10);
     if (editingWIId) {
+      // Resolve the Firestore doc ID — try in-memory first, fall back to query
       const existing = allWI.find(w => w.wiId === editingWIId);
-      if (existing && existing._fbId) {
-        await db.collection('workInstructions').doc(existing._fbId).update({
-          title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, updatedTs: Date.now()
+      let fbId = existing && existing._fbId;
+      if (!fbId) {
+        const snap = await db.collection('workInstructions').where('wiId','==',editingWIId).limit(1).get();
+        if (!snap.empty) fbId = snap.docs[0].id;
+      }
+      if (fbId) {
+        // Merge kept existing photos (legacy Storage URLs OR data URIs) with newly
+        // compressed pending data URIs, then trim to fit under Firestore's 1 MB doc cap.
+        let photoUrls = [..._wiExistingPhotos, ..._wiPendingPhotos.map(p => p.dataUrl).filter(Boolean)];
+        const MAX_PHOTO_BYTES = 800 * 1024;
+        let bytes = 0;
+        const trimmed = [];
+        for (const u of photoUrls) {
+          const sz = u && u.startsWith('data:') ? Math.round(u.length * 0.75) : 0; // base64 only counts toward limit
+          if (bytes + sz > MAX_PHOTO_BYTES) break;
+          trimmed.push(u);
+          bytes += sz;
+        }
+        if (trimmed.length < photoUrls.length) {
+          alert('Photos are large \u2014 only ' + trimmed.length + ' of ' + photoUrls.length + ' will be saved to stay under the size limit.');
+        }
+        photoUrls = trimmed;
+        const clTaskId = (document.getElementById('wif-cl-task-id')?.value || '').trim();
+        await db.collection('workInstructions').doc(fbId).update({
+          title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, photos: photoUrls, updatedTs: Date.now(),
+          ...(clTaskId ? { clTaskId } : {})
         });
+        // activityLog for edits — non-blocking
+        try {
+          await db.collection('activityLog').add({
+            type:'wi', id: editingWIId,
+            desc: 'Work instruction updated: ' + title,
+            tech: author || 'Unknown', date: fmtDate(date), ts: Date.now()
+          });
+        } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
+      } else {
+        throw new Error('Could not find work instruction "' + editingWIId + '" to update.');
       }
     } else {
       const wiId = 'WI-' + Date.now().toString(36).toUpperCase();
+      // Save photos as base64 data URIs directly on the Firestore doc (same as Work Orders).
+      // Trim to fit under Firestore's 1 MB doc cap.
+      let photoUrls = [..._wiExistingPhotos, ..._wiPendingPhotos.map(p => p.dataUrl).filter(Boolean)];
+      const MAX_PHOTO_BYTES = 800 * 1024;
+      let bytes = 0;
+      const trimmed = [];
+      for (const u of photoUrls) {
+        const sz = u && u.startsWith('data:') ? Math.round(u.length * 0.75) : 0;
+        if (bytes + sz > MAX_PHOTO_BYTES) break;
+        trimmed.push(u);
+        bytes += sz;
+      }
+      if (trimmed.length < photoUrls.length) {
+        alert('Photos are large \u2014 only ' + trimmed.length + ' of ' + photoUrls.length + ' will be saved to stay under the size limit.');
+      }
+      photoUrls = trimmed;
+      const clTaskId = (document.getElementById('wif-cl-task-id')?.value || '').trim();
       await db.collection('workInstructions').add({
         wiId, title, type, dept, system, time: parseInt(time)||0,
-        ppe, warnings, author, steps, date, ts: Date.now()
+        ppe, warnings, author, steps, date, photos: photoUrls, ts: Date.now(),
+        ...(clTaskId ? { clTaskId } : {})
       });
-      await db.collection('activityLog').add({
-        type:'wi', id: wiId,
-        desc: `Work instruction added: ${title}`,
-        tech: author || 'Unknown', date: fmtDate(date), ts: Date.now()
-      });
+      // activityLog is non-blocking — never let it prevent the WI from saving
+      try {
+        await db.collection('activityLog').add({
+          type:'wi', id: wiId,
+          desc: 'Work instruction added: ' + title,
+          tech: author || 'Unknown', date: fmtDate(date), ts: Date.now()
+        });
+      } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
     }
     setSyncDot('live');
     closeWIForm();
+    // Force re-render so new entry appears immediately
+    await loadWIFallback();
   } catch(e) {
-    alert('Error saving: ' + e.message);
+    console.error('saveWI error:', e);
+    alert('Error saving work instruction: ' + e.message);
   } finally {
     btn.textContent = '✓ SAVE'; btn.disabled = false;
   }
 }
 
 // ── View modal ──
+// Auto-fill rich-content fields (purpose/tools/verification/ppe/time) based on system+type.
+// This makes every WI render in the same Daily-Check-quality format, even if the
+// stored Firestore record is sparse. We never overwrite fields the WI already has.
+function _wiEnrich(wi) {
+  if (!wi) return wi;
+  const w = Object.assign({}, wi);
+  const sys = w.system || 'General';
+  const typ = (w.type || 'repair').toLowerCase();
+
+  // PPE defaults by system
+  if (!w.ppe || !String(w.ppe).trim()) {
+    const sysPPE = {
+      Electrical: 'Insulated gloves, safety glasses, long sleeves, non-conductive footwear. Verify Lock-Out/Tag-Out before any contact.',
+      Lubing: 'Nitrile gloves, safety glasses, oil-rated apron. Wash hands thoroughly afterward.',
+      Manure: 'Rubber boots, nitrile gloves, N95 mask, eye protection. Wash hands and arms after handling.',
+      Water: 'Gloves, safety glasses, slip-resistant footwear. Watch for spills.',
+      Feed: 'Gloves, N95 dust mask, safety glasses. Long sleeves recommended.',
+      Heating: 'Heat-resistant gloves, safety glasses, long sleeves. Confirm gas valves are off before service.',
+      Ventilation: 'Gloves, safety glasses. Hearing protection if fans are running. Long sleeves around belts.',
+      Building: 'Gloves, safety glasses, hard hat for overhead work. Steel-toe boots if lifting.',
+      'Egg Collectors': 'Gloves, safety glasses. Long sleeves recommended around moving belts.',
+      General: 'Gloves and safety glasses minimum. Add system-specific PPE as needed.'
+    };
+    w.ppe = sysPPE[sys] || sysPPE.General;
+  }
+
+  // Tools defaults by system
+  if (!w.tools || !String(w.tools).trim()) {
+    const sysTools = {
+      Electrical: 'Multimeter, screwdriver set, wire strippers, electrical tape, LOTO kit, flashlight.',
+      Lubing: 'Grease gun, oil can, rags, funnel, drip tray, replacement seals.',
+      Manure: 'Pitchfork or shovel, scraper, broom, rinse hose, trash bags.',
+      Water: 'Pipe wrench, plumbers tape, bucket, towel, replacement seals or fittings.',
+      Feed: 'Scoop, brush, broom, dust pan, bucket, replacement auger sections if needed.',
+      Heating: 'Multimeter, pipe wrench, gas leak detector, rags, replacement thermocouple.',
+      Ventilation: 'Belt tension gauge, screwdriver set, replacement belts, vacuum or shop towels, ladder.',
+      Building: 'Tape measure, level, drill, fasteners, ladder, hand tools.',
+      'Egg Collectors': 'Belt tension gauge, screwdriver set, rags, replacement belts.',
+      General: 'Standard maintenance tool kit and any items called out in the steps.'
+    };
+    w.tools = sysTools[sys] || sysTools.General;
+  }
+
+  // Purpose defaults by type
+  if (!w.purpose || !String(w.purpose).trim()) {
+    const typePurpose = {
+      onboarding: 'Train operators and new hires on the correct procedure so the task is performed the same way, every time, by everyone.',
+      repair: 'Restore equipment to working condition safely and predictably without introducing new failures.',
+      emergency: 'Respond to an unplanned event quickly and safely while minimizing downtime, injury, and product loss.',
+      safety: 'Protect personnel and equipment from injury, damage, and regulatory exposure.',
+      pm: 'Perform scheduled preventive maintenance to extend equipment life and prevent unplanned breakdowns.'
+    };
+    w.purpose = typePurpose[typ] || 'Perform this task to a known standard so the result is the same every time it is done.';
+  }
+
+  // Verification / "what good looks like"
+  if (!w.verification || !String(w.verification).trim()) {
+    const stepsCount = (w.steps && w.steps.length) ? w.steps.length : 0;
+    if (stepsCount > 0) {
+      w.verification = 'All ' + stepsCount + ' steps completed; equipment runs without abnormal sound, smell, or vibration; area cleaned and tools returned; sign off in the daily log or work order.';
+    } else {
+      w.verification = 'Task completed to the standard described above; area cleaned and tools returned; document completion in the maintenance log.';
+    }
+  }
+
+  // Sane time default
+  if (!w.time || isNaN(Number(w.time))) w.time = 30;
+
+  // Steps default to a single placeholder so the renderer never gets an empty list
+  if (!w.steps || !Array.isArray(w.steps) || !w.steps.length) {
+    w.steps = ['No steps recorded yet — see the Purpose and Tools sections above. Edit this WI to add the procedure.'];
+  }
+
+  return w;
+}
+
 function openWIView(wiId) {
-  const wi = allWI.find(x => x.wiId === wiId);
-  if (!wi) return;
-  currentWIId = wiId;
-  const t = WI_TYPE[wi.type] || WI_TYPE.repair;
+  if (!wiId || wiId === 'undefined' || wiId === 'null') {
+    if (typeof toast === 'function') toast('Could not open: missing WI id');
+    console.warn('openWIView called with bad id:', wiId);
+    return;
+  }
+  let wi = (typeof allWI !== 'undefined' ? allWI : []).find(x => x.wiId === wiId || x._fbId === wiId);
+  if (!wi) {
+    wi = (typeof allWI !== 'undefined' ? allWI : []).find(x => (x.title||'').toLowerCase() === String(wiId).toLowerCase());
+  }
+  if (!wi) {
+    if (typeof toast === 'function') toast('WI not found in list (id: '+wiId+')');
+    return;
+  }
+  currentWIId = wi.wiId || wi._fbId;
+  // Fill in defaults so sparse WIs still render with full content
+  wi = (typeof _wiEnrich === 'function') ? _wiEnrich(wi) : wi;
+
+  const t = (typeof WI_TYPE === 'object' && WI_TYPE && WI_TYPE[wi.type]) ? WI_TYPE[wi.type] : { bg:'#1a3a1a', color:'#7ab07a', label:(wi.type||'WI').toUpperCase() };
   const SYS_ICON_MAP = {Ventilation:'💨',Water:'💧',Feed:'🌾',Manure:'♻️','Egg Collectors':'🥚',Heating:'🔥',Electrical:'⚡',Lubing:'🛢️',Building:'🏚️',General:'🔧'};
-
-  document.getElementById('wiv-type-badge').innerHTML =
-    `<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${t.bg};color:${t.color};border:1px solid ${t.color}40;font-family:'IBM Plex Mono',monospace;">${t.label}</span>`;
-  document.getElementById('wiv-title').textContent = wi.title;
-
   const sysIcon = SYS_ICON_MAP[wi.system] || '';
+  const _esc = (str) => String(str == null ? '' : str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // Daily-Check style coloured strip — dark bg, accent border, uppercase label
+  const strip = (label, txt, color, bg) => txt && String(txt).trim()
+    ? `<div style="background:${bg};border:1px solid ${color};border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${color};margin-bottom:4px;">${label}</div>
+        <div style="font-size:13px;color:#e8f5ec;line-height:1.45;">${_esc(txt)}</div>
+      </div>`
+    : '';
+
+  // Steps — interactive checklist style matching Daily Check
+  const steps = Array.isArray(wi.steps) ? wi.steps : [];
+  const stepsHtml = steps.map((s,i) =>
+    `<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #1a3a1a;">
+       <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${t.color};min-width:22px;flex-shrink:0;">${i+1}.</span>
+       <span style="font-size:13px;color:#e8f5ec;line-height:1.5;">${_esc(s)}</span>
+     </div>`
+  ).join('');
+
+  // Photos (if present)
+  const photosHtml = (wi.photos && Array.isArray(wi.photos) && wi.photos.length)
+    ? `<div style="margin-top:14px;">
+         <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7a9a7a;margin-bottom:8px;">📷 Reference Photos</div>
+         <div style="display:flex;flex-wrap:wrap;gap:8px;">
+           ${wi.photos.map(u => `<a href="${u}" target="_blank"><img src="${u}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #2a5a2a;cursor:pointer;"></a>`).join('')}
+         </div>
+       </div>`
+    : '';
+
+  // Meta line — system + time + author
   const metaParts = [];
   if (wi.system) metaParts.push(sysIcon + ' ' + wi.system);
-  if (wi.time)   metaParts.push('⏱ ' + wi.time + ' min');
-  metaParts.push('By ' + (wi.author || 'Unknown') + ' · ' + fmtDate(wi.date));
-  document.getElementById('wiv-meta').textContent = metaParts.join(' · ');
+  if (wi.time) metaParts.push('⏱ ' + wi.time + ' min');
+  const _fmtD = (typeof fmtDate === 'function') ? fmtDate(wi.date) : (wi.date || '');
+  if (wi.author || wi.date) metaParts.push('By ' + (wi.author || 'Unknown') + (wi.date ? ' · ' + _fmtD : ''));
 
-  // PPE strip
-  const ppeEl = document.getElementById('wiv-ppe-strip');
-  if (wi.ppe) { ppeEl.style.display = ''; document.getElementById('wiv-ppe-text').textContent = wi.ppe; }
-  else ppeEl.style.display = 'none';
-
-  // Warnings strip
-  const warnEl = document.getElementById('wiv-warn-strip');
-  if (wi.warnings) { warnEl.style.display = ''; document.getElementById('wiv-warn-text').textContent = wi.warnings; }
-  else warnEl.style.display = 'none';
-
-  // Tools strip
-  const toolsEl = document.getElementById('wiv-tools-strip');
-  if (toolsEl) {
-    if (wi.tools) { toolsEl.style.display = ''; document.getElementById('wiv-tools-text').textContent = wi.tools; }
-    else toolsEl.style.display = 'none';
-  }
-
-  // Purpose strip
-  const purposeEl = document.getElementById('wiv-purpose-strip');
-  if (purposeEl) {
-    if (wi.purpose) { purposeEl.style.display = ''; document.getElementById('wiv-purpose-text').textContent = wi.purpose; }
-    else purposeEl.style.display = 'none';
-  }
-
-  // Steps — interactive checklist
-  const steps = wi.steps || [];
-  document.getElementById('wiv-steps').innerHTML = steps.map((step, i) => `
-    <div class="wiv-step" id="wiv-step-${i}" onclick="wiToggleStep(${i})">
-      <div class="wiv-step-num" id="wiv-step-num-${i}">${i+1}</div>
-      <div class="wiv-step-text" id="wiv-step-text-${i}">${step}</div>
-    </div>`).join('');
-
-  // Verification / "What Good Looks Like" strip
-  const verifEl = document.getElementById('wiv-verif-strip');
-  if (verifEl) {
-    if (wi.verification) { verifEl.style.display = ''; document.getElementById('wiv-verif-text').textContent = wi.verification; }
-    else verifEl.style.display = 'none';
-  }
-
-  document.getElementById('wiv-footer').textContent = `#${wi.wiId} · ${steps.length} steps`;
-  document.getElementById('wi-view-modal').classList.add('open');
+  const html = `
+    <div class="overlay open" id="wi-view-dyn-modal" style="z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.78);position:fixed;inset:0;padding:16px;" onclick="if(event.target===this)closeWIView()">
+      <div style="background:#0a1a0a;border:1.5px solid #2a5a2a;border-radius:14px;max-width:560px;width:100%;max-height:92vh;overflow-y:auto;padding:18px 20px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px;">
+          <div style="flex:1;">
+            <span style="display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;padding:3px 10px;border-radius:5px;background:${t.bg};color:${t.color};border:1px solid ${t.color}40;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">${t.label}</span>
+            <h3 style="margin:0;color:#f0ead8;font-size:18px;line-height:1.25;font-family:'IBM Plex Sans',sans-serif;">${_esc(wi.title || 'Untitled WI')}</h3>
+            ${metaParts.length ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7a9a7a;margin-top:4px;">${metaParts.join(' · ')}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+            <button onclick="wiEditCurrent()" style="padding:6px 12px;font-size:11px;background:#0d2a0d;border:1px solid #2a5a2a;border-radius:7px;cursor:pointer;font-weight:600;color:#7ab07a;font-family:'IBM Plex Sans',sans-serif;">✏️ Edit</button>
+            <button onclick="closeWIView()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#7a9a7a;padding:0 4px;">✕</button>
+          </div>
+        </div>
+        ${strip('📋 Purpose',                wi.purpose,      '#4caf50','#0a1f0a')}
+        ${strip('🦺 PPE & Tools Required',    wi.ppe,          '#d69e2e','#1a1200')}
+        ${strip('🔧 Tools & Materials',       wi.tools,        '#3b82f6','#0d1f3a')}
+        ${strip('⚠️ Warnings & Cautions',     wi.warnings,     '#e53e3e','#1a0505')}
+        ${steps.length ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#7a9a7a;letter-spacing:1px;text-transform:uppercase;margin:14px 0 6px;">Steps</div>${stepsHtml}` : ''}
+        ${strip('✅ What Good Looks Like',     wi.verification, '#9b59b6','#1a0a2a')}
+        ${photosHtml}
+        <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #1a3a1a;align-items:center;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7a9a7a;flex:1;">#${_esc(wi.wiId || wi._fbId || '—')} · ${steps.length} steps</div>
+          <button onclick="wiDeleteCurrent()" style="padding:6px 12px;font-size:11px;background:#1a0505;border:1px solid #7f1d1d;color:#f87171;border-radius:7px;cursor:pointer;font-weight:600;font-family:'IBM Plex Sans',sans-serif;">🗑 Delete</button>
+          <button onclick="closeWIView()" style="padding:11px 22px;background:#0a2a0a;border:1.5px solid #2a5a2a;border-radius:8px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;">CLOSE</button>
+        </div>
+      </div>
+    </div>`;
+  // Remove any existing dynamic modal AND hide the legacy static one
+  const ex = document.getElementById('wi-view-dyn-modal'); if (ex) ex.remove();
+  const oldStatic = document.getElementById('wi-view-modal');
+  if (oldStatic) oldStatic.classList.remove('open');
+  document.body.insertAdjacentHTML('beforeend', html);
 }
 
-function wiToggleStep(idx) {
-  const row  = document.getElementById('wiv-step-' + idx);
-  const num  = document.getElementById('wiv-step-num-' + idx);
-  const text = document.getElementById('wiv-step-text-' + idx);
-  const done = row.classList.toggle('wiv-step-done');
-  num.textContent  = done ? '✓' : idx + 1;
-  text.style.textDecoration = done ? 'line-through' : '';
-  text.style.color = done ? 'var(--muted)' : '';
-}
+let _wiViewOpenedAt = 0;
 
 function closeWIView() {
-  document.getElementById('wi-view-modal').classList.remove('open');
+  // Close dynamic modal (current path)
+  const dyn = document.getElementById('wi-view-dyn-modal');
+  if (dyn) dyn.remove();
+  // Also close legacy static modal in case it's open from old cache
+  const legacy = document.getElementById('wi-view-modal');
+  if (legacy) legacy.classList.remove('open');
   currentWIId = null;
 }
 
 function wiEditCurrent() {
-  requireAdmin(() => { closeWIView(); _openWIForm(currentWIId); });
+  const id = currentWIId;
+  closeWIView();
+  _openWIForm(id);
 }
 
 async function wiDeleteCurrent() {
@@ -4207,9 +6846,28 @@ async function wiDeleteCurrent() {
   closeWIView();
 }
 
-// Close on backdrop
-document.getElementById('wi-form-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeWIForm(); });
-document.getElementById('wi-view-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeWIView(); });
+// Close on backdrop — defensive null-checks so missing elements don't kill the script
+(function _wireWIModalDismiss() {
+  const fm = document.getElementById('wi-form-modal');
+  if (fm) fm.addEventListener('click', e => { if (e.target === e.currentTarget) closeWIForm(); });
+  const vm = document.getElementById('wi-view-modal');
+  if (vm) vm.addEventListener('click', e => { if (e.target === e.currentTarget) closeWIView(); });
+})();
+
+// Safety-net delegated click handler for WI rows — if inline onclick ever fails
+// (iOS quirks, stale cached HTML, etc.), this catches the click via bubbling.
+document.addEventListener('click', function(e) {
+  const list = document.getElementById('wi-list');
+  if (!list || !list.contains(e.target)) return;
+  // Skip clicks on buttons (Edit button has its own handler with stopPropagation)
+  if (e.target.closest('button')) return;
+  const card = e.target.closest('[data-wi-id]');
+  if (!card) return;
+  const id = card.getAttribute('data-wi-id');
+  if (id && typeof openWIView === 'function') {
+    openWIView(id);
+  }
+}, true);
 
 // ═══════════════════════════════════════════
 // ASSET MASTER MODULE

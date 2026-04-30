@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#0f1a0f" />
+<title>Rushtown — Barn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=Bebas+Neue&display=swap" />
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; background: #0f1a0f;
+  font-family: 'IBM Plex Mono', monospace;
+  color: #f0ead8; -webkit-tap-highlight-color: transparent;
+}
+input, textarea, select, button { font-family: 'IBM Plex Mono', monospace; }
+input[type=number]::-webkit-inner-spin-button { opacity: 1; }
+
+/* ── Screens ── */
+.screen { display: none; flex-direction: column; min-height: 100vh;
+          min-height: -webkit-fill-available; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+.screen.active { display: flex; }
+
+/* ── Header ── */
+.barn-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 10px; border-bottom: 1px solid #1a3a1a; flex-shrink: 0;
+}
+.barn-title { font-family: 'Bebas Neue', sans-serif; font-size: 22px;
+              letter-spacing: 2px; color: #4ade80; }
+.barn-back { background: none; border: 1px solid #2a5a2a; border-radius: 8px;
+             color: #7ab07a; font-size: 12px; padding: 6px 12px; cursor: pointer; }
+
+/* ── Body scroll area ── */
+.barn-body { flex: 1; overflow-y: auto; padding: 16px; }
+
+/* ── Big farm/house tiles ── */
+.tile-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tile-grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.tile-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+.big-tile {
+  background: #0a1a0a; border: 2.5px solid #1a4a2a; border-radius: 14px;
+  cursor: pointer; transition: all .12s; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px; padding: 20px 12px;
+  min-height: 100px;
+}
+.big-tile:active { transform: scale(0.97); }
+.big-tile.selected { background: #1a4a2a; border-color: #4ade80; }
+.big-tile .tile-icon { font-size: 32px; line-height: 1; }
+.big-tile .tile-label { font-family: 'Bebas Neue', sans-serif; font-size: 22px;
+                         letter-spacing: 2px; color: #c8e6c9; }
+.big-tile.selected .tile-label { color: #4ade80; }
+.big-tile .tile-sub { font-size: 9px; color: #4a8a4a; text-align: center; }
+
+.house-tile {
+  background: #0a1a0a; border: 2.5px solid #1a4a2a; border-radius: 12px;
+  cursor: pointer; transition: all .12s; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; aspect-ratio: 1; gap: 2px;
+}
+.house-tile:active { transform: scale(0.95); }
+.house-tile.selected { background: #1a4a2a; border-color: #4ade80; }
+.house-tile .house-num { font-family: 'Bebas Neue', sans-serif; font-size: 28px;
+                          letter-spacing: 1px; color: #c8e6c9; }
+.house-tile.selected .house-num { color: #4ade80; }
+.house-tile .house-lbl { font-size: 8px; color: #4a7a4a; }
+
+/* ── Form fields ── */
+.field-group { margin-bottom: 18px; }
+.field-label { font-size: 10px; color: #7ab07a; letter-spacing: 1px;
+               text-transform: uppercase; display: block; margin-bottom: 7px; }
+.field-input {
+  width: 100%; padding: 14px 12px; background: #0a1a0a;
+  border: 2px solid #2a5a2a; border-radius: 10px; color: #f0ead8;
+  font-size: 16px; outline: none; -webkit-appearance: none; transition: border-color .15s;
+}
+.field-input:focus { border-color: #4ade80; }
+.field-input.big { font-size: 26px; text-align: center; font-weight: 700; }
+.field-input.warn { border-color: #ef4444; background: #1a0505; color: #fca5a5; }
+.field-input.good { border-color: #4ade80; background: #0a1f0a; }
+.field-input.amber { border-color: #d97706; }
+.field-feedback { font-size: 10px; margin-top: 5px; text-align: center; min-height: 14px; }
+
+/* ── Yes/No toggles ── */
+.yn-row { display: flex; gap: 10px; }
+.yn-btn {
+  flex: 1; padding: 14px; border-radius: 10px; border: 2px solid #2a5a2a;
+  background: transparent; color: #4a7a4a; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all .1s; letter-spacing: .5px;
+}
+.yn-btn.yes-sel { border-color: #4ade80; background: #14532d; color: #4ade80; }
+.yn-btn.no-sel  { border-color: #ef4444; background: #7f1d1d; color: #f87171; }
+.yn-btn:active  { transform: scale(0.97); }
+
+/* ── Section header ── */
+.section-head {
+  font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px;
+  color: #e8f5ec; margin-bottom: 4px;
+}
+.section-sub { font-size: 9px; color: #4a8a4a; margin-bottom: 18px; }
+
+/* ── Badges ── */
+.badge-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 16px; }
+.badge {
+  background: #1a3a1a; border: 1px solid #2a6a2a; border-radius: 20px;
+  padding: 4px 12px; font-size: 10px; color: #4ade80; font-weight: 700;
+}
+
+/* ── Footer button ── */
+.barn-footer { padding: 12px 16px; border-top: 1px solid #1a3a1a; flex-shrink: 0; }
+.btn-primary {
+  width: 100%; padding: 16px; background: #2D6A4F; border: 2px solid #4ade80;
+  border-radius: 12px; color: #fff; font-size: 15px; font-weight: 700;
+  cursor: pointer; letter-spacing: 1px; transition: all .15s;
+}
+.btn-primary:disabled { background: #1a3a1a; border-color: #2a5a2a; color: #4a7a4a; cursor: not-allowed; }
+.btn-primary:active:not(:disabled) { transform: scale(0.99); }
+.btn-secondary {
+  width: 100%; padding: 14px; background: #0a1a0a; border: 1.5px solid #2a5a2a;
+  border-radius: 12px; color: #7ab07a; font-size: 13px; cursor: pointer;
+  letter-spacing: .5px; margin-top: 10px; transition: all .15s;
+}
+
+/* ── Sign-off checklist ── */
+.check-row {
+  display: flex; align-items: flex-start; gap: 12px; padding: 10px 0;
+  border-bottom: 1px solid #0f2a0f; cursor: pointer;
+}
+.check-box {
+  width: 22px; height: 22px; border: 2px solid #2a5a2a; border-radius: 5px;
+  background: #0a1a0a; flex-shrink: 0; display: flex; align-items: center;
+  justify-content: center; font-size: 14px; transition: all .1s; margin-top: 1px;
+}
+.check-box.checked { background: #14532d; border-color: #4ade80; }
+.check-text { font-size: 11px; color: #7ab07a; line-height: 1.5; }
+
+/* ── Issue/part chips ── */
+.chip {
+  display: flex; align-items: center; gap: 8px; background: #1a1a00;
+  border: 1px solid #854d0e; border-radius: 7px; padding: 6px 10px; margin-bottom: 5px;
+}
+.chip span { font-size: 10px; color: #fde68a; flex: 1; }
+.chip button { background: none; border: none; color: #f87171; font-size: 12px;
+               cursor: pointer; padding: 0 2px; }
+
+/* ── Done screen ── */
+.done-icon { font-size: 72px; text-align: center; margin: 20px 0 12px; }
+.done-title { font-family: 'Bebas Neue', sans-serif; font-size: 36px;
+              letter-spacing: 3px; color: #4ade80; text-align: center; margin-bottom: 8px; }
+.done-sub { font-size: 11px; color: #7ab07a; text-align: center; margin-bottom: 6px; }
+.flag-box { background: #1a0a0a; border: 1px solid #7f1d1d; border-radius: 10px;
+            padding: 12px; margin: 16px 0; }
+.flag-item { font-size: 11px; color: #fca5a5; padding: 2px 0; }
+.clear-box { background: #0a2a14; border: 1px solid #166534; border-radius: 10px;
+             padding: 12px; margin: 16px 0; text-align: center; font-size: 11px; color: #4ade80; }
+
+/* ── Progress bar ── */
+.prog-bar-wrap { margin-bottom: 4px; }
+.prog-bar-row { display: flex; justify-content: space-between; font-size: 9px;
+                color: #4a8a4a; margin-bottom: 3px; letter-spacing: 1px; text-transform: uppercase; }
+.prog-bar-track { background: #0a1a0a; border-radius: 3px; height: 4px; overflow: hidden; }
+.prog-bar-fill { height: 100%; background: #4ade80; border-radius: 3px; transition: width .3s; }
+
+/* ── Nav tabs (home screen) ── */
+.nav-tabs { display: flex; gap: 0; border-bottom: 2px solid #1a3a1a; flex-shrink: 0; }
+.nav-tab {
+  flex: 1; padding: 12px 8px; background: none; border: none; color: #4a7a4a;
+  font-size: 10px; font-weight: 700; cursor: pointer; letter-spacing: .5px;
+  border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .15s;
+  text-align: center; text-transform: uppercase;
+}
+.nav-tab.active { color: #4ade80; border-bottom-color: #4ade80; }
+
+/* ── Input add row ── */
+.add-row { display: flex; gap: 8px; }
+.add-row input { flex: 1; min-width: 0; }
+.add-btn {
+  padding: 10px 14px; background: #1a3a1a; border: 1.5px solid #4ade80;
+  border-radius: 8px; color: #4ade80; font-size: 11px; font-weight: 700;
+  cursor: pointer; flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ SCREEN: HOME ═══ -->
+<div id="screen-home" class="screen active">
+  <div class="barn-header">
+    <div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:#4ade80;">🐓 RUSHTOWN</div>
+      <div id="home-clock" style="font-size:10px;color:#4a8a4a;letter-spacing:2px;"></div>
+    </div>
+    <div id="home-name-badge" style="font-size:11px;color:#7ab07a;cursor:pointer;" onclick="showScreen('screen-name')"></div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="homeTab('log')">🐓 Log Walk</button>
+    <button class="nav-tab" onclick="homeTab('eos')">📋 EOS</button>
+    <button class="nav-tab" onclick="homeTab('signoff')">✅ Sign Off</button>
+    <button class="nav-tab" onclick="homeTab('today')">📊 Today</button>
+  </div>
+
+  <!-- Tab: Log Walk -->
+  <div id="home-tab-log" class="barn-body">
+    <div style="margin-bottom:20px;">
+      <div class="section-head">LOG BARN WALK</div>
+      <div class="section-sub">Tap to start your walk entry</div>
+    </div>
+    <button class="btn-primary" style="margin-bottom:12px;font-size:18px;padding:22px;"
+      onclick="startWalk()">🐓 START WALK ENTRY</button>
+    <button class="btn-secondary" onclick="showScreen('screen-signoff')">✅ End-of-Shift Sign-Off →</button>
+  </div>
+
+  <!-- Tab: EOS Report -->
+  <div id="home-tab-eos" class="barn-body" style="display:none;">
+    <div id="eos-content">
+      <div style="text-align:center;padding:30px;color:#2a5a2a;font-size:12px;">Loading report…</div>
+    </div>
+  </div>
+
+  <!-- Tab: Sign Off -->
+  <div id="home-tab-signoff" class="barn-body" style="display:none;">
+    <div style="margin-bottom:16px;">
+      <div class="section-head">SHIFT SIGN-OFF</div>
+      <div class="section-sub">Complete before leaving for the day</div>
+    </div>
+    <div id="home-signoff-status"></div>
+    <button class="btn-primary" style="font-size:16px;padding:20px;"
+      onclick="showScreen('screen-signoff')">✅ OPEN SIGN-OFF FORM</button>
+  </div>
+
+  <!-- Tab: Today -->
+  <div id="home-tab-today" class="barn-body" style="display:none;">
+    <div style="margin-bottom:16px;">
+      <div class="section-head">TODAY'S SUMMARY</div>
+      <div class="section-sub" id="today-farm-label"></div>
+    </div>
+    <div id="today-summary-content">
+      <div style="text-align:center;padding:30px;color:#2a5a2a;font-size:12px;">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCREEN: NAME SETUP ═══ -->
+<div id="screen-name" class="screen">
+  <div class="barn-header">
+    <div class="barn-title">WHO ARE YOU?</div>
+  </div>
+  <div class="barn-body">
+    <div style="text-align:center;padding:24px 0 20px;">
+      <div style="font-size:48px;margin-bottom:10px;">👋</div>
+      <div style="font-size:11px;color:#4a8a4a;">Your name is saved on this device</div>
+    </div>
+    <input id="name-input" class="field-input big" type="text" placeholder="Your name"
+      autocomplete="name" oninput="checkNameReady()"
+      onkeydown="if(event.key==='Enter')saveName()"
+      style="margin-bottom:16px;" />
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">
+      ${['Joe','Mike','Dave','Tim','Chris','Brad','Ryan','Scott'].map(n=>`
+      <button class="big-tile" style="padding:14px;min-height:50px;" onclick="pickName('${n}')">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#c8e6c9;">${n}</span>
+      </button>`).join('')}
+    </div>
+  </div>
+  <div class="barn-footer">
+    <button id="name-save-btn" class="btn-primary" onclick="saveName()" disabled>SAVE →</button>
+  </div>
+</div>
+
+<!-- ═══ SCREEN: FARM SELECT ═══ -->
+<div id="screen-farm" class="screen">
+  <div class="barn-header">
+    <button class="barn-back" onclick="showScreen('screen-home')">← Back</button>
+    <div class="barn-title">PICK FARM</div>
+    <div style="width:60px;"></div>
+  </div>
+  <div class="barn-body">
+    <div style="text-align:center;padding:20px 0 24px;">
+      <div style="font-size:40px;margin-bottom:8px;">🏭</div>
+      <div style="font-size:11px;color:#4a8a4a;">Where are you today?</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <button class="big-tile" id="farm-danville" style="padding:28px 20px;flex-direction:row;gap:16px;text-align:left;"
+        onclick="selectFarm('Danville')">
+        <span style="font-size:36px;">🌾</span>
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;color:#c8e6c9;">DANVILLE</div>
+          <div style="font-size:10px;color:#4a8a4a;margin-top:2px;">5 houses</div>
+        </div>
+      </button>
+      <button class="big-tile" id="farm-hegins" style="padding:28px 20px;flex-direction:row;gap:16px;text-align:left;"
+        onclick="selectFarm('Hegins')">
+        <span style="font-size:36px;">🌿</span>
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;color:#c8e6c9;">HEGINS</div>
+          <div style="font-size:10px;color:#4a8a4a;margin-top:2px;">8 houses</div>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCREEN: HOUSE SELECT ═══ -->
+<div id="screen-house" class="screen">
+  <div class="barn-header">
+    <button class="barn-back" onclick="showScreen('screen-farm')">← Back</button>
+    <div class="barn-title">PICK HOUSE</div>
+    <div style="width:60px;"></div>
+  </div>
+  <div class="barn-body">
+    <div style="text-align:center;padding:16px 0 20px;">
+      <div style="font-size:11px;color:#4a8a4a;" id="house-farm-label"></div>
+    </div>
+    <div id="house-grid" class="tile-grid-5"></div>
+  </div>
+</div>
+
+<!-- ═══ SCREEN: MORNING WALK ═══ -->
+<div id="screen-morning" class="screen">
+  <div class="barn-header">
+    <button class="barn-back" onclick="showScreen('screen-house')">← Back</button>
+    <div class="barn-title">MORNING WALK</div>
+    <div style="width:60px;"></div>
+  </div>
+  <div class="barn-body">
+    <div class="badge-row" id="morning-badges"></div>
+
+    <!-- PSI -->
+    <div class="field-group">
+      <label class="field-label">💧 Water PSI *</label>
+      <input id="mw-psi" class="field-input big" type="number" inputmode="decimal"
+        placeholder="e.g. 35" oninput="mwCheckPSI(this.value)" />
+      <div id="mw-psi-fb" class="field-feedback" style="color:#4a8a4a;">Normal: 10 – 60 PSI</div>
+    </div>
+
+    <!-- Temp + Headcount -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="field-group">
+        <label class="field-label">🌡 Temp (°F)</label>
+        <input id="mw-temp" class="field-input big" type="number" inputmode="decimal" placeholder="72" />
+      </div>
+      <div class="field-group">
+        <label class="field-label">👥 Headcount</label>
+        <input id="mw-ee" class="field-input big" type="number" inputmode="numeric" placeholder="0" />
+      </div>
+    </div>
+
+    <!-- Bin A + Bin B -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="field-group">
+        <label class="field-label">🌾 Bin A (tons)</label>
+        <input id="mw-bina" class="field-input big" type="number" inputmode="decimal"
+          placeholder="0.0" step="0.1" oninput="mwCheckBin('mw-bina','mw-bina-fb')" />
+        <div id="mw-bina-fb" class="field-feedback" style="color:#4a8a4a;"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">🌾 Bin B (tons)</label>
+        <input id="mw-binb" class="field-input big" type="number" inputmode="decimal"
+          placeholder="0.0" step="0.1" oninput="mwCheckBin('mw-binb','mw-binb-fb')" />
+        <div id="mw-binb-fb" class="field-feedback" style="color:#4a8a4a;"></div>
+      </div>
+    </div>
+
+    <!-- Equipment toggles -->
+    <div style="margin-bottom:6px;font-size:10px;color:#7ab07a;letter-spacing:1px;text-transform:uppercase;">Equipment Status</div>
+    <div id="mw-toggles" style="display:flex;flex-direction:column;gap:10px;margin-bottom:8px;"></div>
+  </div>
+  <div class="barn-footer">
+    <button id="mw-next-btn" class="btn-primary" onclick="goToBarnWalk()" disabled>NEXT → BARN WALK</button>
+  </div>
+</div>
+
+<!-- ═══ SCREEN: BARN WALK ═══ -->
+<div id="screen-barn" class="screen">
+  <div class="barn-header">
+    <button class="barn-back" onclick="showScreen('screen-morning')">← Back</button>
+    <div class="barn-title">BARN WALK</div>
+    <div style="width:60px;"></div>
+  </div>
+  <div class="barn-body">
+    <div class="badge-row" id="barn-badges"></div>
+
+    <!-- Dead birds -->
+    <div class="field-group">
+      <label class="field-label">💀 Dead Birds *</label>
+      <input id="bw-mort" class="field-input big" type="number" inputmode="numeric"
+        placeholder="0" oninput="bwCheckMort(this.value)" />
+      <div id="bw-mort-fb" class="field-feedback" style="color:#4a8a4a;">Enter 0 if none found</div>
+    </div>
+
+    <!-- Loose birds -->
+    <div class="field-group">
+      <label class="field-label">🐔 Loose Birds</label>
+      <input id="bw-loose" class="field-input big" type="number" inputmode="numeric" placeholder="0" />
+    </div>
+
+    <!-- Toggles -->
+    <div style="margin-bottom:6px;font-size:10px;color:#7ab07a;letter-spacing:1px;text-transform:uppercase;">Conditions</div>
+    <div id="bw-toggles" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;"></div>
+
+    <!-- Notes -->
+    <div class="field-group">
+      <label class="field-label">📝 Notes (optional)</label>
+      <textarea id="bw-notes" class="field-input" rows="3"
+        placeholder="Any issues, observations, follow-ups…"
+        style="resize:none;font-size:13px;"></textarea>
+    </div>
+  </div>
+  <div class="barn-footer">
+    <button id="bw-save-btn" class="btn-primary" onclick="saveWalk()">✓ SAVE BARN WALK</button>
+  </div>
+</div>
+
+<!-- ═══ SCREEN: DONE ═══ -->
+<div id="screen-done" class="screen">
+  <div class="barn-header">
+    <div class="barn-title">SAVED</div>
+  </div>
+  <div class="barn-body">
+    <div id="done-content"></div>
+  </div>
+  <div class="barn-footer">
+    <button class="btn-primary" onclick="logAnother()">🐓 LOG ANOTHER HOUSE</button>
+    <button class="btn-secondary" onclick="showScreen('screen-home')">← BACK TO HOME</button>
+  </div>
+</div>
+
+<!-- ═══ SCREEN: SIGN-OFF ═══ -->
+<div id="screen-signoff" class="screen">
+  <div class="barn-header">
+    <button class="barn-back" onclick="showScreen('screen-home')">← Back</button>
+    <div class="barn-title">SIGN-OFF</div>
+    <div style="width:60px;"></div>
+  </div>
+  <div class="barn-body">
+    <div id="signoff-content">
+      <div style="text-align:center;padding:30px;color:#2a5a2a;font-size:12px;">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// FIREBASE
+// ═══════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyBRPjACWaVeHXw4ztydZVB-_MTMwEWfWmY",
+  authDomain: "rushtown-poultry.firebaseapp.com",
+  projectId: "rushtown-poultry",
+  storageBucket: "rushtown-poultry.firebasestorage.app",
+  messagingSenderId: "1050651051862",
+  appId: "1:1050651051862:web:c83d671abaec7f4c8378f7"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+const FARMS = { Danville: 5, Hegins: 8 };
+const LABOR_RATE = 30;
+let _name  = localStorage.getItem('barn_name') || '';
+let _farm  = localStorage.getItem('barn_farm') || '';
+let _house = null;
+let _mwData = {};
+let _bwData = {};
+let _saving = false;
+let _todayWalks = [];
+let _signoffChecks = [false,false,false,false,false];
+let _signoffIssues = [];
+let _signoffLaborRows = [];
+let _signoffParts = [];
+const today = new Date().toISOString().slice(0,10);
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  clockTick();
+  setInterval(clockTick, 30000);
+  updateNameBadge();
+  if (!_name) showScreen('screen-name');
+  loadTodayWalks();
+});
+
+function clockTick() {
+  const el = document.getElementById('home-clock');
+  if (!el) return;
+  const now = new Date();
+  el.textContent = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) + ' · ' +
+    now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+}
+
+// ═══════════════════════════════════════════
+// SCREENS
+// ═══════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) { el.classList.add('active'); el.scrollTop = 0; }
+  if (id === 'screen-home') refreshHomeTabs();
+  if (id === 'screen-signoff') renderSignoff();
+}
+
+// ═══════════════════════════════════════════
+// NAME
+// ═══════════════════════════════════════════
+function checkNameReady() {
+  const v = document.getElementById('name-input')?.value.trim();
+  const btn = document.getElementById('name-save-btn');
+  if (btn) btn.disabled = !v;
+}
+function pickName(n) {
+  const inp = document.getElementById('name-input');
+  if (inp) { inp.value = n; checkNameReady(); }
+}
+function saveName() {
+  const v = document.getElementById('name-input')?.value.trim();
+  if (!v) return;
+  _name = v;
+  localStorage.setItem('barn_name', v);
+  updateNameBadge();
+  showScreen('screen-home');
+}
+function updateNameBadge() {
+  const el = document.getElementById('home-name-badge');
+  if (el) el.textContent = _name ? '👤 ' + _name : 'Tap to set name';
+}
+
+// ═══════════════════════════════════════════
+// HOME TABS
+// ═══════════════════════════════════════════
+function homeTab(tab) {
+  ['log','eos','signoff','today'].forEach(t => {
+    const body = document.getElementById('home-tab-' + t);
+    if (body) body.style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.nav-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', ['log','eos','signoff','today'][i] === tab);
+  });
+  if (tab === 'today') renderTodaySummary();
+  if (tab === 'eos')   renderEOS();
+}
+
+function refreshHomeTabs() {
+  // Keep currently visible tab active, just refresh content
+  renderTodaySummary();
+}
+
+// ═══════════════════════════════════════════
+// WALK FLOW
+// ═══════════════════════════════════════════
+function startWalk() {
+  if (!_name) { showScreen('screen-name'); return; }
+  _mwData = {}; _bwData = {};
+  showScreen('screen-farm');
+}
+
+function selectFarm(farm) {
+  _farm = farm;
+  localStorage.setItem('barn_farm', farm);
+  // Render house grid
+  const n = FARMS[farm];
+  const grid = document.getElementById('house-grid');
+  const cols = n <= 5 ? n : 4;
+  grid.className = 'tile-grid-' + (cols === 5 ? '5' : '4');
+  grid.innerHTML = Array.from({length:n},(_,i)=>i+1).map(h => `
+    <button class="house-tile" id="htile-${h}" onclick="selectHouse(${h})">
+      <span class="house-num">${h}</span>
+      <span class="house-lbl">HOUSE</span>
+    </button>`).join('');
+  document.getElementById('house-farm-label').textContent = farm + ' — ' + n + ' houses';
+  showScreen('screen-house');
+}
+
+function selectHouse(h) {
+  _house = h;
+  // Build morning walk screen
+  document.getElementById('morning-badges').innerHTML = buildBadges();
+  document.getElementById('barn-badges').innerHTML = buildBadges();
+  // Clear fields
+  ['mw-psi','mw-temp','mw-ee','mw-bina','mw-binb'].forEach(id => {
+    const el = document.getElementById(id); if (el) { el.value=''; el.className='field-input big'; }
+  });
+  ['mw-psi-fb','mw-bina-fb','mw-binb-fb'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = '';
+  });
+  _mwData = {}; _bwData = {};
+  renderMWToggles();
+  renderBWToggles();
+  document.getElementById('mw-next-btn').disabled = true;
+  showScreen('screen-morning');
+}
+
+function buildBadges() {
+  return `<span class="badge">${_farm}</span><span class="badge">House ${_house}</span>${_name?`<span class="badge" style="background:#0a1a0a;border-color:#1a4a1a;color:#7ab07a;">${_name}</span>`:''}`;
+}
+
+// ── Morning Walk toggles ──────────────────────────────────────────────────────
+const MW_TOGGLES = [
+  { key:'feed',    label:'🌾 Feeders Running?', good:'yes', bad:'no', goodLbl:'OK', badLbl:'Issue' },
+  { key:'fans',    label:'💨 Fans OK?',          good:'yes', bad:'no', goodLbl:'OK', badLbl:'Issue' },
+  { key:'blowers', label:'🌬 Blowers OK?',        good:'yes', bad:'no', goodLbl:'OK', badLbl:'Issue' },
+];
+function renderMWToggles() {
+  document.getElementById('mw-toggles').innerHTML = MW_TOGGLES.map(t => buildToggle('mw',t)).join('');
+}
+function mwToggle(key, val) {
+  _mwData[key] = _mwData[key] === val ? undefined : val;
+  renderMWToggles();
+  checkMWReady();
+}
+
+// ── Barn Walk toggles ─────────────────────────────────────────────────────────
+const BW_TOGGLES = [
+  { key:'water',  label:'💧 Water OK?',           good:'yes', bad:'no',    goodLbl:'OK',   badLbl:'Issue' },
+  { key:'rodent', label:'🐀 Rodent Activity?',     good:'no',  bad:'yes',   goodLbl:'None', badLbl:'Seen'  },
+];
+function renderBWToggles() {
+  document.getElementById('bw-toggles').innerHTML = BW_TOGGLES.map(t => buildToggle('bw',t)).join('');
+}
+function bwToggle(key, val) {
+  _bwData[key] = _bwData[key] === val ? undefined : val;
+  renderBWToggles();
+}
+
+function buildToggle(group, t) {
+  const data = group === 'mw' ? _mwData : _bwData;
+  const cur = data[t.key];
+  return `
+    <div style="background:#0a1a0a;border:1.5px solid #1a3a1a;border-radius:12px;padding:12px 14px;
+                display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <span style="font-size:12px;color:#c8e6c9;flex:1;">${t.label}</span>
+      <div style="display:flex;gap:8px;flex-shrink:0;">
+        <button onclick="${group}Toggle('${t.key}','${t.good}')"
+          class="yn-btn ${cur===t.good?'yes-sel':''}" style="min-width:54px;">${t.goodLbl}</button>
+        <button onclick="${group}Toggle('${t.key}','${t.bad}')"
+          class="yn-btn ${cur===t.bad?'no-sel':''}" style="min-width:54px;">${t.badLbl}</button>
+      </div>
+    </div>`;
+}
+
+// ── Validation ────────────────────────────────────────────────────────────────
+function mwCheckPSI(val) {
+  const inp = document.getElementById('mw-psi');
+  const fb  = document.getElementById('mw-psi-fb');
+  const n   = Number(val);
+  if (val === '') { inp.className='field-input big'; fb.style.color='#4a8a4a'; fb.textContent='Normal: 10 – 60 PSI'; }
+  else if (n < 10 || n > 60) { inp.className='field-input big warn'; fb.style.color='#ef4444'; fb.textContent='⚠ OUT OF RANGE — Normal is 10–60 PSI'; }
+  else { inp.className='field-input big good'; fb.style.color='#4ade80'; fb.textContent='✓ PSI looks good'; }
+  checkMWReady();
+}
+function mwCheckBin(inpId, fbId) {
+  const inp = document.getElementById(inpId);
+  const fb  = document.getElementById(fbId);
+  const n   = Number(inp?.value);
+  if (!inp?.value) { inp.className='field-input big'; if(fb)fb.textContent=''; return; }
+  if (n < 2)       { inp.className='field-input big warn'; if(fb){fb.style.color='#ef4444';fb.textContent='⚠ Low — order feed';} }
+  else if (n < 5)  { inp.className='field-input big amber'; if(fb){fb.style.color='#fbbf24';fb.textContent='↓ Getting low';} }
+  else             { inp.className='field-input big good';  if(fb){fb.style.color='#4ade80';fb.textContent='✓ OK';} }
+}
+function checkMWReady() {
+  const psi = document.getElementById('mw-psi')?.value;
+  const rdy = psi && psi !== '';
+  document.getElementById('mw-next-btn').disabled = !rdy;
+}
+function bwCheckMort(val) {
+  const inp = document.getElementById('bw-mort');
+  const fb  = document.getElementById('bw-mort-fb');
+  const n   = Number(val);
+  if (val===''||val===null) { inp.className='field-input big'; fb.style.color='#4a8a4a'; fb.textContent='Enter 0 if none found'; return; }
+  if (n > 0) { inp.className='field-input big warn'; fb.style.color='#ef4444'; fb.textContent=`⚠ ${n} ${n===1?'bird':'birds'} — will be flagged`; }
+  else       { inp.className='field-input big good'; fb.style.color='#4ade80'; fb.textContent='✓ No mortality — all clear'; }
+}
+
+function goToBarnWalk() {
+  document.getElementById('barn-badges').innerHTML = buildBadges();
+  showScreen('screen-barn');
+  // Clear barn fields
+  ['bw-mort','bw-loose','bw-notes'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value='';
+  });
+  const mortInp = document.getElementById('bw-mort');
+  if(mortInp) { mortInp.className='field-input big'; }
+  document.getElementById('bw-mort-fb').textContent='Enter 0 if none found';
+  document.getElementById('bw-mort-fb').style.color='#4a8a4a';
+  _bwData = {};
+  renderBWToggles();
+}
+
+// ═══════════════════════════════════════════
+// SAVE
+// ═══════════════════════════════════════════
+async function saveWalk() {
+  if (_saving) return;
+  const mort = document.getElementById('bw-mort')?.value;
+  if (mort === '' || mort === undefined || mort === null) {
+    document.getElementById('bw-mort').style.borderColor = '#ef4444';
+    return;
+  }
+  _saving = true;
+  const btn = document.getElementById('bw-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ SAVING…'; }
+
+  const now  = new Date();
+  const time = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  const ts   = now.getTime();
+
+  // Morning walk record
+  const psi    = Number(document.getElementById('mw-psi')?.value) || 0;
+  const temp   = document.getElementById('mw-temp')?.value ? Number(document.getElementById('mw-temp').value) : null;
+  const ee     = document.getElementById('mw-ee')?.value ? Number(document.getElementById('mw-ee').value) : null;
+  const binA   = document.getElementById('mw-bina')?.value !== '' ? Number(document.getElementById('mw-bina').value) : null;
+  const binB   = document.getElementById('mw-binb')?.value !== '' ? Number(document.getElementById('mw-binb').value) : null;
+  const mwFlags = [];
+  if (psi < 10 || psi > 60) mwFlags.push('Water pressure out of range (' + psi + ' PSI)');
+  if (_mwData.feed === 'no')    mwFlags.push('Feeders not running');
+  if (_mwData.fans === 'no')    mwFlags.push('Fan issue');
+  if (_mwData.blowers === 'no') mwFlags.push('Blower issue');
+  if (binA !== null && binA < 2) mwFlags.push('Bin A low: ' + binA + ' tons');
+  if (binB !== null && binB < 2) mwFlags.push('Bin B low: ' + binB + ' tons');
+
+  const mwRecord = {
+    farm: _farm, house: String(_house), date: today, ts, time,
+    employee: _name, waterPSI: psi, temp, eeCount: ee, binA, binB,
+    feed: _mwData.feed||null, fans: _mwData.fans||null, blowers: _mwData.blowers||null,
+    flags: mwFlags, source: 'barn-app'
+  };
+
+  // Barn walk record
+  const mortCount  = Number(document.getElementById('bw-mort')?.value) || 0;
+  const looseCount = document.getElementById('bw-loose')?.value ? Number(document.getElementById('bw-loose').value) : null;
+  const notes      = document.getElementById('bw-notes')?.value.trim() || '';
+  const bwFlags = [];
+  if (mortCount > 0)           bwFlags.push('Mortality: ' + mortCount);
+  if (_bwData.water === 'no')  bwFlags.push('Water issue');
+  if (_bwData.rodent === 'yes') bwFlags.push('Rodent activity');
+  if (looseCount > 0)          bwFlags.push('Loose birds: ' + looseCount);
+  if (notes)                   bwFlags.push('Note: ' + notes);
+
+  const bwRecord = {
+    farm: _farm, house: String(_house), date: today, ts: ts+1, time,
+    employee: _name, mortCount, looseCount,
+    water: _bwData.water||null, rodent: _bwData.rodent||null,
+    notes, flags: bwFlags, source: 'barn-app'
+  };
+
+  try {
+    await Promise.all([
+      db.collection('morningWalks').add(mwRecord),
+      db.collection('barnWalks').add(bwRecord)
+    ]);
+    _todayWalks.push({ farm:_farm, house:_house, flags:[...mwFlags,...bwFlags] });
+    showDoneScreen([...mwFlags,...bwFlags]);
+  } catch(e) {
+    alert('Save failed: ' + e.message);
+    if(btn){ btn.disabled=false; btn.textContent='✓ SAVE BARN WALK'; }
+  }
+  _saving = false;
+}
+
+function showDoneScreen(flags) {
+  const hasFlags = flags.length > 0;
+  document.getElementById('done-content').innerHTML = `
+    <div class="done-icon">${hasFlags ? '⚠️' : '✅'}</div>
+    <div class="done-title">SAVED!</div>
+    <div class="done-sub">${_farm} · House ${_house} · ${_name}</div>
+    ${hasFlags ? `
+      <div class="flag-box">
+        <div style="font-size:9px;color:#f87171;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">⚑ Flags Logged</div>
+        ${flags.map(f=>`<div class="flag-item">• ${f}</div>`).join('')}
+      </div>` :
+      `<div class="clear-box">✓ All clear — no issues flagged</div>`}
+  `;
+  showScreen('screen-done');
+}
+
+function logAnother() {
+  _house = null; _mwData = {}; _bwData = {};
+  showScreen('screen-house');
+}
+
+// ═══════════════════════════════════════════
+// TODAY SUMMARY
+// ═══════════════════════════════════════════
+let _todayMW = [];
+async function loadTodayWalks() {
+  try {
+    const [bwSnap, mwSnap] = await Promise.all([
+      db.collection('barnWalks').where('date','==',today).get(),
+      db.collection('morningWalks').where('date','==',today).get()
+    ]);
+    _todayWalks = bwSnap.docs.map(d => d.data());
+    _todayMW    = mwSnap.docs.map(d => d.data());
+  } catch(e) {}
+}
+
+function renderTodaySummary() {
+  const el = document.getElementById('today-summary-content');
+  const farm = _farm || 'Danville';
+  document.getElementById('today-farm-label').textContent = farm;
+  const walks = _todayWalks.filter(w => w.farm === farm);
+  const houses = FARMS[farm];
+  const dead   = walks.reduce((s,w) => s + Number(w.mortCount||0), 0);
+  const walked = new Set(walks.map(w=>w.house)).size;
+  const flags  = walks.filter(w => w.flags?.length > 0).length;
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      ${miniCard('🏠','Houses Walked', walked+'/'+houses, walked===houses?'#4ade80':'#fbbf24')}
+      ${miniCard('💀','Dead Birds', dead, dead===0?'#4ade80':dead>20?'#f87171':'#fbbf24')}
+      ${miniCard('⚑','Flagged Houses', flags, flags===0?'#4ade80':'#f87171')}
+      ${miniCard('📋','Remaining', Math.max(0,houses-walked), houses-walked===0?'#4ade80':'#fbbf24')}
+    </div>
+    ${walks.length === 0 ? `
+      <div style="text-align:center;padding:20px;color:#2a5a2a;font-size:12px;">
+        No walks logged yet today
+      </div>` : `
+      <div style="font-size:9px;color:#4a8a4a;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Logged Today</div>
+      ${[...new Set(walks.map(w=>w.house))].sort((a,b)=>Number(a)-Number(b)).map(h => {
+        const w = walks.find(x=>x.house===String(h)||x.house===h);
+        const hasFlag = w?.flags?.length > 0;
+        return `<div style="background:#0a1a0a;border:1.5px solid ${hasFlag?'#854d0e':'#1a3a1a'};border-radius:10px;
+                             padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:12px;color:#c8e6c9;font-weight:700;">House ${h}</div>
+            <div style="font-size:9px;color:#4a8a4a;margin-top:2px;">${w?.time||''} · ${w?.employee||''}</div>
+          </div>
+          <div style="font-size:11px;color:${hasFlag?'#fbbf24':'#4ade80'};">${hasFlag?'⚠ '+w.flags.length+' flag(s)':'✓ Clear'}</div>
+        </div>`;
+      }).join('')}`}
+    <div style="margin-top:16px;">
+      <button class="btn-secondary" onclick="showScreen('screen-farm');_farm=_farm||'Danville';">
+        + Log Another House
+      </button>
+    </div>
+  `;
+}
+
+function miniCard(icon, label, val, color) {
+  return `<div style="background:#0a1a0a;border:1.5px solid #1a3a1a;border-radius:10px;padding:12px;text-align:center;">
+    <div style="font-size:18px;margin-bottom:4px;">${icon}</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:${color};line-height:1;">${val}</div>
+    <div style="font-size:8px;color:#4a8a4a;margin-top:2px;text-transform:uppercase;">${label}</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// SIGN-OFF
+// ═══════════════════════════════════════════
+const SO_CHECKS = [
+  'All house walks completed',
+  'Water systems checked — no issues',
+  'Feed bins checked — levels adequate',
+  'Dead birds removed and counted',
+  'Work area cleaned and tools returned'
+];
+
+async function renderSignoff() {
+  const el = document.getElementById('signoff-content');
+  // Check if already signed off today
+  const docId = (_farm||'Danville') + '-' + today;
+  try {
+    const snap = await db.collection('shiftSignoffs').doc(docId).get();
+    if (snap.exists) {
+      const d = snap.data();
+      el.innerHTML = soSignedView(d);
+      return;
+    }
+  } catch(e) {}
+  el.innerHTML = soForm();
+  soRenderIssues(); soRenderParts(); soRenderLabor(); soRenderChecks();
+}
+
+function soSignedView(d) {
+  return `
+    <div style="background:#0a2a0a;border:2px solid #166534;border-radius:14px;padding:16px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+        <span style="font-size:28px;">✅</span>
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:#4ade80;">SHIFT SIGNED OFF</div>
+          <div style="font-size:9px;color:#2a8a2a;margin-top:2px;">${d.barnLeader} · ${d.time||''}</div>
+        </div>
+      </div>
+      ${d.labor?.totalHours > 0 ? `<div style="font-size:10px;color:#4ade80;margin-bottom:4px;">👷 ${d.labor.totalHours}h · $${d.labor.totalCost} labor</div>` : ''}
+      ${d.tomorrow?.focus ? `<div style="font-size:10px;color:#7ab0f6;margin-bottom:4px;">🎯 ${d.tomorrow.focus}</div>` : ''}
+      ${d.openIssues?.length ? `<div style="font-size:10px;color:#fbbf24;margin-top:8px;">${d.openIssues.map(i=>`⚑ ${i}`).join('<br/>')}</div>` : ''}
+    </div>
+    <button class="btn-secondary" onclick="soUndo()">Edit / Redo Sign-Off</button>
+  `;
+}
+
+function soForm() {
+  return `
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:#c8e6c9;margin-bottom:14px;">
+      END-OF-SHIFT — ${(_farm||'').toUpperCase()}
+    </div>
+
+    <!-- Leader name -->
+    <div class="field-group">
+      <label class="field-label">Barn Leader / Shift Lead *</label>
+      <input id="so-leader" class="field-input" type="text" placeholder="Your name"
+        value="${_name}" style="font-size:16px;" />
+    </div>
+
+    <!-- Checks -->
+    <div class="field-group">
+      <div class="field-label">Confirm before sign-off:</div>
+      <div id="so-checks"></div>
+    </div>
+
+    <!-- Issues -->
+    <div class="field-group">
+      <div class="field-label">Issues / Carry-Forwards</div>
+      <div id="so-issues-list"></div>
+      <div class="add-row" style="margin-top:6px;">
+        <input id="so-issue-inp" class="field-input add-row" type="text"
+          placeholder="e.g. H3 fan belt needs follow up"
+          style="font-size:13px;" onkeydown="if(event.key==='Enter')soAddIssue()" />
+        <button class="add-btn" onclick="soAddIssue()">+</button>
+      </div>
+    </div>
+
+    <!-- Labor -->
+    <div class="field-group" style="background:#080f08;border:1.5px solid #1a4a1a;border-radius:12px;padding:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="field-label" style="margin:0;">👷 Labor Tracking</div>
+        <button class="add-btn" onclick="soAddLabor()">+ Add Person</button>
+      </div>
+      <div style="font-size:9px;color:#2a5a2a;margin-bottom:8px;">Name · Hours · Task/WO</div>
+      <div id="so-labor-rows"></div>
+      <div id="so-labor-total" style="font-size:10px;text-align:right;margin-top:6px;padding-top:6px;border-top:1px solid #1a3a1a;min-height:16px;"></div>
+    </div>
+
+    <!-- Tomorrow -->
+    <div class="field-group" style="background:#0a0d1a;border:1.5px solid #1e3a6a;border-radius:12px;padding:14px;">
+      <div class="field-label" style="color:#7ab0f6;">📅 Tomorrow Planning</div>
+      <div class="field-group">
+        <label class="field-label">Who's on tomorrow?</label>
+        <input id="so-crew" class="field-input" type="text"
+          placeholder="e.g. Mike, Dave, Chris" style="font-size:14px;" />
+      </div>
+      <div class="field-group" style="margin-bottom:10px;">
+        <label class="field-label">#1 Priority for Next Shift</label>
+        <input id="so-focus" class="field-input" type="text"
+          placeholder="e.g. Get H4 fan replaced before 7am"
+          style="font-size:14px;color:#7ab0f6;font-weight:700;" />
+      </div>
+      <div class="field-label">Parts to Order</div>
+      <div id="so-parts-list"></div>
+      <div class="add-row" style="margin-top:6px;">
+        <input id="so-part-inp" class="field-input" type="text"
+          placeholder="e.g. Fan belt H3 — 1/2 inch"
+          style="font-size:13px;" onkeydown="if(event.key==='Enter')soAddPart()" />
+        <button class="add-btn" style="border-color:#3b82f6;color:#7ab0f6;" onclick="soAddPart()">+</button>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="field-group">
+      <label class="field-label">Notes (optional)</label>
+      <textarea id="so-notes" class="field-input" rows="3"
+        placeholder="Anything the next shift needs to know…"
+        style="resize:none;font-size:13px;"></textarea>
+    </div>
+
+    <button class="btn-primary" style="font-size:18px;padding:20px;" onclick="soSubmit()">
+      ✓ SIGN OFF SHIFT
+    </button>
+  `;
+}
+
+function soRenderChecks() {
+  const el = document.getElementById('so-checks');
+  if (!el) return;
+  el.innerHTML = SO_CHECKS.map((lbl,i) => `
+    <div class="check-row" onclick="soToggleCheck(${i})">
+      <div class="check-box ${_signoffChecks[i]?'checked':''}" id="so-chk-${i}">
+        ${_signoffChecks[i]?'✓':''}
+      </div>
+      <span class="check-text">${lbl}</span>
+    </div>`).join('');
+}
+function soToggleCheck(i) {
+  _signoffChecks[i] = !_signoffChecks[i];
+  const box = document.getElementById('so-chk-' + i);
+  if (box) { box.className='check-box'+(_signoffChecks[i]?' checked':''); box.textContent=_signoffChecks[i]?'✓':''; }
+}
+
+function soAddIssue() {
+  const inp = document.getElementById('so-issue-inp');
+  const v = inp?.value.trim(); if(!v) return;
+  _signoffIssues.push(v); inp.value = '';
+  soRenderIssues();
+}
+function soRemoveIssue(i) { _signoffIssues.splice(i,1); soRenderIssues(); }
+function soRenderIssues() {
+  const el = document.getElementById('so-issues-list');
+  if (!el) return;
+  el.innerHTML = _signoffIssues.map((s,i) => `
+    <div class="chip"><span>⚑ ${s}</span><button onclick="soRemoveIssue(${i})">✕</button></div>`).join('');
+}
+
+function soAddLabor() {
+  _signoffLaborRows.push({name:'',hours:'',task:''});
+  soRenderLabor();
+}
+function soRemoveLabor(i) { _signoffLaborRows.splice(i,1); soRenderLabor(); }
+function soUpdateLabor(i, field, val) {
+  if (_signoffLaborRows[i]) _signoffLaborRows[i][field] = val;
+  const total = _signoffLaborRows.reduce((s,r)=>s+(Number(r.hours)||0),0);
+  const cost  = total * LABOR_RATE;
+  const el = document.getElementById('so-labor-total');
+  if (el && total > 0) el.innerHTML = `<span style="color:#7ab07a;">${total.toFixed(1)}h</span> · <span style="color:#4ade80;font-weight:700;">$${cost.toFixed(0)} labor</span>`;
+  else if (el) el.textContent = '';
+}
+function soRenderLabor() {
+  const el = document.getElementById('so-labor-rows');
+  if (!el) return;
+  el.innerHTML = _signoffLaborRows.length === 0
+    ? `<div style="font-size:10px;color:#2a5a2a;text-align:center;padding:8px 0;">Tap + Add Person to track crew</div>`
+    : _signoffLaborRows.map((r,i) => `
+        <div style="display:grid;grid-template-columns:1fr 64px 1fr auto;gap:5px;align-items:center;margin-bottom:6px;">
+          <input type="text" placeholder="Name" value="${r.name}"
+            oninput="soUpdateLabor(${i},'name',this.value)"
+            style="padding:8px;background:#091209;border:1.5px solid #1a3a1a;border-radius:7px;color:#c8e6c9;font-size:11px;outline:none;min-width:0;" />
+          <input type="number" placeholder="Hrs" value="${r.hours}" min="0" max="24" step="0.5"
+            oninput="soUpdateLabor(${i},'hours',this.value)"
+            style="padding:8px;background:#091209;border:1.5px solid #1a3a1a;border-radius:7px;color:#4ade80;font-size:13px;font-weight:700;outline:none;text-align:center;min-width:0;" />
+          <input type="text" placeholder="WO# or task" value="${r.task}"
+            oninput="soUpdateLabor(${i},'task',this.value)"
+            style="padding:8px;background:#091209;border:1.5px solid #1a3a1a;border-radius:7px;color:#c8e6c9;font-size:11px;outline:none;min-width:0;" />
+          <button onclick="soRemoveLabor(${i})"
+            style="background:none;border:none;color:#f87171;font-size:14px;cursor:pointer;padding:4px;">✕</button>
+        </div>`).join('');
+}
+
+function soAddPart() {
+  const inp = document.getElementById('so-part-inp');
+  const v = inp?.value.trim(); if(!v) return;
+  _signoffParts.push(v); inp.value = '';
+  soRenderParts();
+}
+function soRemovePart(i) { _signoffParts.splice(i,1); soRenderParts(); }
+function soRenderParts() {
+  const el = document.getElementById('so-parts-list');
+  if (!el) return;
+  el.innerHTML = _signoffParts.map((p,i) => `
+    <div class="chip" style="background:#1a1000;border-color:#854d0e;">
+      <span style="color:#fde68a;">📦 ${p}</span>
+      <button onclick="soRemovePart(${i})">✕</button>
+    </div>`).join('');
+}
+
+async function soSubmit() {
+  const leader = document.getElementById('so-leader')?.value.trim();
+  if (!leader) { alert('Please enter your name.'); return; }
+
+  const laborRows  = _signoffLaborRows.filter(r => r.name || r.hours);
+  const totalHrs   = laborRows.reduce((s,r)=>s+(Number(r.hours)||0),0);
+  const totalCost  = totalHrs * LABOR_RATE;
+  const crew       = document.getElementById('so-crew')?.value.trim() || '';
+  const focus      = document.getElementById('so-focus')?.value.trim() || '';
+  const notes      = document.getElementById('so-notes')?.value.trim() || '';
+  const time       = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  const farm       = _farm || 'Danville';
+
+  const record = {
+    farm, date: today, time, barnLeader: leader, notes,
+    openIssues: _signoffIssues,
+    checks: { walks:_signoffChecks[0], water:_signoffChecks[1], feed:_signoffChecks[2], dead:_signoffChecks[3], clean:_signoffChecks[4] },
+    labor: { rows: laborRows, totalHours: totalHrs, totalCost },
+    tomorrow: { crew, focus, partsToOrder: _signoffParts },
+    ts: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  const btn = document.querySelector('#screen-signoff .btn-primary');
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Saving…'; }
+
+  try {
+    await db.collection('shiftSignoffs').doc(farm + '-' + today).set(record);
+    _signoffChecks = [false,false,false,false,false];
+    _signoffIssues = []; _signoffLaborRows = []; _signoffParts = [];
+    renderSignoff();
+  } catch(e) {
+    alert('Sign-off failed: ' + e.message);
+    if(btn){btn.disabled=false;btn.textContent='✓ SIGN OFF SHIFT';}
+  }
+}
+
+function soUndo() {
+  _signoffChecks=[false,false,false,false,false];
+  _signoffIssues=[]; _signoffLaborRows=[]; _signoffParts=[];
+  renderSignoff();
+}
+
+// ═══════════════════════════════════════════
+// EOS REPORT
+// ═══════════════════════════════════════════
+async function renderEOS() {
+  const el = document.getElementById('eos-content');
+  if (!el) return;
+  el.innerHTML = `<div style="text-align:center;padding:30px;color:#2a5a2a;font-size:12px;">🔄 Loading report…</div>`;
+
+  // Always pull fresh data
+  try {
+    const [bwSnap, mwSnap] = await Promise.all([
+      db.collection('barnWalks').where('date','==',today).get(),
+      db.collection('morningWalks').where('date','==',today).get()
+    ]);
+    _todayWalks = bwSnap.docs.map(d => d.data());
+    _todayMW    = mwSnap.docs.map(d => d.data());
+  } catch(e) {
+    el.innerHTML = `<div style="text-align:center;padding:30px;color:#f87171;font-size:12px;">⚠ Could not load data<br/><span style="color:#4a8a4a;">${e.message}</span></div>`;
+    return;
+  }
+
+  const farm   = _farm || 'Danville';
+  const houses = FARMS[farm];
+
+  // Filter to this farm
+  const bws = _todayWalks.filter(w => w.farm === farm);
+  const mws = _todayMW.filter(w => w.farm === farm);
+
+  // No walks yet
+  if (bws.length === 0 && mws.length === 0) {
+    el.innerHTML = `
+      <div style="text-align:center;padding:40px 20px;">
+        <div style="font-size:48px;margin-bottom:12px;">📋</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:#2a5a2a;">NO WALKS LOGGED YET</div>
+        <div style="font-size:11px;color:#2a5a2a;margin-top:8px;">Check back after the shift has started</div>
+        <button class="btn-secondary" style="margin-top:24px;" onclick="homeTab('log')">← Go Log a Walk</button>
+      </div>`;
+    return;
+  }
+
+  // Build per-house lookup (most recent entry per house)
+  const bwByHouse = {};
+  bws.forEach(w => {
+    const h = String(w.house);
+    if (!bwByHouse[h] || (w.ts > bwByHouse[h].ts)) bwByHouse[h] = w;
+  });
+  const mwByHouse = {};
+  mws.forEach(w => {
+    const h = String(w.house);
+    if (!mwByHouse[h] || (w.ts > mwByHouse[h].ts)) mwByHouse[h] = w;
+  });
+
+  // Summary stats
+  const walkedHouses  = new Set([...Object.keys(bwByHouse), ...Object.keys(mwByHouse)]);
+  const walkedCount   = walkedHouses.size;
+  const totalDead     = bws.reduce((s,w) => s + Number(w.mortCount||0), 0);
+  const allFlags      = [];
+  walkedHouses.forEach(h => {
+    const bw = bwByHouse[h]; const mw = mwByHouse[h];
+    if (bw?.flags?.length) allFlags.push(...bw.flags.map(f=>`H${h}: ${f}`));
+    if (mw?.flags?.length) allFlags.push(...mw.flags.map(f=>`H${h}: ${f}`));
+  });
+  const flagCount     = [...walkedHouses].filter(h => (bwByHouse[h]?.flags?.length||0)+(mwByHouse[h]?.flags?.length||0) > 0).length;
+  const binLow        = [...walkedHouses].filter(h => {
+    const mw = mwByHouse[h];
+    return (mw?.binA !== null && mw?.binA < 2) || (mw?.binB !== null && mw?.binB < 2);
+  });
+
+  const pctDone = Math.round((walkedCount / houses) * 100);
+
+  // Build HTML
+  let html = `
+    <!-- EOS Header -->
+    <div style="margin-bottom:16px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:#4ade80;">
+        EOS REPORT
+      </div>
+      <div style="font-size:10px;color:#4a8a4a;letter-spacing:1px;">${farm.toUpperCase()} · ${new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="prog-bar-wrap" style="margin-bottom:16px;">
+      <div class="prog-bar-row">
+        <span>Shift Progress</span><span>${walkedCount}/${houses} houses · ${pctDone}%</span>
+      </div>
+      <div class="prog-bar-track">
+        <div class="prog-bar-fill" style="width:${pctDone}%;background:${pctDone===100?'#4ade80':'#fbbf24'};"></div>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+      ${eosCard('🏠','Walked',walkedCount+'/'+houses, walkedCount===houses?'#4ade80':'#fbbf24')}
+      ${eosCard('💀','Dead Birds',totalDead, totalDead===0?'#4ade80':totalDead>20?'#f87171':'#fbbf24')}
+      ${eosCard('⚑','Flagged',flagCount, flagCount===0?'#4ade80':'#f87171')}
+      ${eosCard('🌾','Bins Low',binLow.length, binLow.length===0?'#4ade80':'#ef4444')}
+    </div>
+  `;
+
+  // Bin alert bar
+  if (binLow.length > 0) {
+    html += `
+    <div style="background:#1a0505;border:1.5px solid #7f1d1d;border-radius:10px;padding:10px 12px;margin-bottom:14px;">
+      <div style="font-size:9px;color:#f87171;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">⚠ Feed Order Needed</div>
+      ${binLow.map(h => {
+        const mw = mwByHouse[h];
+        const parts = [];
+        if (mw?.binA !== null && mw?.binA < 2) parts.push(`Bin A: ${mw.binA}t`);
+        if (mw?.binB !== null && mw?.binB < 2) parts.push(`Bin B: ${mw.binB}t`);
+        return `<div style="font-size:11px;color:#fca5a5;padding:2px 0;">🏚 House ${h} — ${parts.join(' · ')}</div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // Per-house cards
+  html += `<div style="font-size:9px;color:#4a8a4a;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">House-by-House Breakdown</div>`;
+
+  const sortedHouses = Array.from({length:houses},(_,i)=>String(i+1));
+  sortedHouses.forEach(h => {
+    const bw = bwByHouse[h];
+    const mw = mwByHouse[h];
+    if (!bw && !mw) {
+      html += `
+        <div style="background:#080f08;border:1.5px dashed #1a3a1a;border-radius:10px;padding:10px 12px;margin-bottom:7px;
+                    display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:12px;color:#2a5a2a;font-weight:700;">House ${h}</div>
+          <div style="font-size:10px;color:#2a5a2a;">Not walked yet</div>
+        </div>`;
+      return;
+    }
+
+    const hFlags = [...(mw?.flags||[]), ...(bw?.flags||[])];
+    const hasFlag = hFlags.length > 0;
+    const dead = bw ? Number(bw.mortCount||0) : null;
+    const psi  = mw ? Number(mw.waterPSI||0) : null;
+    const temp = mw?.temp ?? null;
+    const binA = mw?.binA ?? null;
+    const binB = mw?.binB ?? null;
+    const ee   = mw?.eeCount ?? null;
+
+    // Status color
+    const borderColor = hasFlag ? '#854d0e' : '#1a4a2a';
+    const bgColor     = hasFlag ? '#140800' : '#0a1a0a';
+
+    html += `
+      <div style="background:${bgColor};border:1.5px solid ${borderColor};border-radius:12px;padding:12px 14px;margin-bottom:8px;">
+        <!-- House header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div>
+            <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:${hasFlag?'#fbbf24':'#4ade80'};">
+              House ${h}
+            </span>
+            ${mw?.employee ? `<span style="font-size:9px;color:#4a8a4a;margin-left:8px;">· ${mw.employee} · ${mw.time||bw?.time||''}</span>` : ''}
+          </div>
+          <div style="font-size:11px;color:${hasFlag?'#fbbf24':'#4ade80'};font-weight:700;">
+            ${hasFlag ? '⚠ '+hFlags.length+' flag'+(hFlags.length!==1?'s':'') : '✓ Clear'}
+          </div>
+        </div>
+
+        <!-- Stats grid -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:${hasFlag?'10px':'0'};">
+          ${psi !== null ? eosStat('💧','PSI', psi, (psi<10||psi>60)?'#f87171':'#4ade80') : ''}
+          ${temp !== null ? eosStat('🌡','Temp', temp+'°', '') : ''}
+          ${ee !== null ? eosStat('👥','Birds', ee, '') : ''}
+          ${dead !== null ? eosStat('💀','Dead', dead, dead===0?'#4ade80':dead>10?'#f87171':'#fbbf24') : ''}
+          ${binA !== null ? eosStat('🌾','Bin A', binA+'t', binA<2?'#f87171':binA<5?'#fbbf24':'#4ade80') : ''}
+          ${binB !== null ? eosStat('🌾','Bin B', binB+'t', binB<2?'#f87171':binB<5?'#fbbf24':'#4ade80') : ''}
+        </div>
+
+        <!-- Equipment row -->
+        ${(mw?.feed || mw?.fans || mw?.blowers || bw?.water || bw?.rodent) ? `
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:${hasFlag?'8px':'0'};">
+          ${mw?.feed ? eosEquip('Feeders', mw.feed==='yes') : ''}
+          ${mw?.fans ? eosEquip('Fans', mw.fans==='yes') : ''}
+          ${mw?.blowers ? eosEquip('Blowers', mw.blowers==='yes') : ''}
+          ${bw?.water ? eosEquip('Water', bw.water==='yes') : ''}
+          ${bw?.rodent ? eosEquip('Rodent-Free', bw.rodent==='no') : ''}
+        </div>` : ''}
+
+        <!-- Flags -->
+        ${hasFlag ? `
+        <div style="border-top:1px solid #2a2000;padding-top:8px;">
+          ${hFlags.map(f=>`<div style="font-size:10px;color:#fca5a5;padding:1px 0;">⚑ ${f}</div>`).join('')}
+        </div>` : ''}
+
+        <!-- Notes -->
+        ${bw?.notes ? `
+        <div style="border-top:1px solid #1a3a1a;margin-top:8px;padding-top:6px;font-size:10px;color:#7ab07a;">
+          📝 ${bw.notes}
+        </div>` : ''}
+      </div>`;
+  });
+
+  // All flags summary
+  if (allFlags.length > 0) {
+    html += `
+    <div style="background:#1a0505;border:1.5px solid #7f1d1d;border-radius:10px;padding:12px;margin-bottom:16px;margin-top:4px;">
+      <div style="font-size:9px;color:#f87171;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">📋 All Flags This Shift</div>
+      ${allFlags.map(f=>`<div style="font-size:10px;color:#fca5a5;padding:2px 0;">⚑ ${f}</div>`).join('')}
+    </div>`;
+  }
+
+  // Proceed to sign-off
+  html += `
+    <div style="margin-top:8px;margin-bottom:16px;">
+      <button class="btn-primary" style="font-size:16px;padding:18px;" onclick="homeTab('signoff')">
+        ✅ PROCEED TO SIGN-OFF →
+      </button>
+      <button class="btn-secondary" onclick="renderEOS()">🔄 Refresh Report</button>
+    </div>`;
+
+  el.innerHTML = html;
+}
+
+function eosCard(icon, label, val, color) {
+  return `<div style="background:#0a1a0a;border:1.5px solid #1a3a1a;border-radius:10px;padding:12px;text-align:center;">
+    <div style="font-size:20px;margin-bottom:3px;">${icon}</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:${color||'#c8e6c9'};line-height:1.1;">${val}</div>
+    <div style="font-size:8px;color:#4a8a4a;margin-top:2px;text-transform:uppercase;">${label}</div>
+  </div>`;
+}
+
+function eosStat(icon, label, val, color) {
+  return `<div style="background:#060d06;border:1px solid #1a2a1a;border-radius:8px;padding:7px 6px;text-align:center;">
+    <div style="font-size:14px;">${icon}</div>
+    <div style="font-size:${String(val).length>4?'13px':'15px'};font-weight:700;color:${color||'#c8e6c9'};line-height:1.2;">${val}</div>
+    <div style="font-size:7px;color:#3a6a3a;text-transform:uppercase;margin-top:1px;">${label}</div>
+  </div>`;
+}
+
+function eosEquip(label, isOk) {
+  return `<span style="font-size:9px;padding:3px 8px;border-radius:12px;font-weight:700;
+    background:${isOk?'#0a2a14':'#2a0a0a'};border:1px solid ${isOk?'#166534':'#7f1d1d'};
+    color:${isOk?'#4ade80':'#f87171'};">${isOk?'✓':'✗'} ${label}</span>`;
+}
+</script>
+</body>
+</html>

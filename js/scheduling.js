@@ -178,6 +178,8 @@ function openSchedModal(dept, day, entryId) {
     document.getElementById('sched-del-btn').style.display = 'none';
   }
 
+  const wwCb = document.getElementById('sched-whole-week');
+  if (wwCb) wwCb.checked = false;
   document.getElementById('sched-modal-bg').style.display = 'block';
   document.getElementById('sched-person').focus();
   applyFormTextTranslation();
@@ -188,30 +190,52 @@ function closeSchedModal() {
 }
 
 async function saveSchedEntry() {
-  const person = document.getElementById('sched-person').value.trim();
+  const person    = document.getElementById('sched-person').value.trim();
   if (!person) { alert('Person name is required.'); return; }
-  const record = {
+  const wholeWeek = document.getElementById('sched-whole-week')?.checked;
+  const base = {
     weekOf:   _schedWeekOf,
     facility: _schedFacility,
     dept:     _schedModalDept,
-    day:      _schedModalDay,
     person,
     role:   '',
     shift:  document.getElementById('sched-shift').value,
     notes:  document.getElementById('sched-notes').value.trim(),
     ts:     Date.now()
   };
+
   try {
-    if (_schedEditId) {
-      await db.collection('teamSchedule').doc(_schedEditId).update(record);
-      const idx = _schedData.findIndex(r => r._id === _schedEditId);
-      if (idx > -1) _schedData[idx] = { _id: _schedEditId, ...record };
+    if (wholeWeek) {
+      // Write one entry per day for the whole week
+      const batch = db.batch();
+      SCHED_DAYS.forEach(day => {
+        // Remove any existing entry for this person/dept/day first isn't needed —
+        // just add; duplicates are visible and can be deleted individually
+        const ref = db.collection('teamSchedule').doc();
+        batch.set(ref, { ...base, day });
+      });
+      await batch.commit();
+      await loadSchedule();
     } else {
-      const ref = await db.collection('teamSchedule').add(record);
-      _schedData.push({ _id: ref.id, ...record });
+      const record = { ...base, day: _schedModalDay };
+      if (_schedEditId) {
+        await db.collection('teamSchedule').doc(_schedEditId).update(record);
+        const idx = _schedData.findIndex(r => r._id === _schedEditId);
+        if (idx > -1) _schedData[idx] = { _id: _schedEditId, ...record };
+      } else {
+        const ref = await db.collection('teamSchedule').add(record);
+        _schedData.push({ _id: ref.id, ...record });
+      }
+      renderSchedule();
     }
     closeSchedModal();
-    renderSchedule();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'SCHED',
+        desc: (_schedEditId ? 'Schedule updated: ' : 'Schedule assigned: ') + person + ' — ' + _schedFacility + ' ' + _schedModalDept + ' (' + _schedModalDay + ', wk ' + _schedWeekOf + ')',
+        tech: person, date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) {
     console.error('Schedule save error:', e);
     alert('Error saving: ' + e.message);
@@ -226,6 +250,13 @@ async function deleteSchedEntry() {
     _schedData = _schedData.filter(r => r._id !== _schedEditId);
     closeSchedModal();
     renderSchedule();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'SCHED',
+        desc: 'Schedule entry removed — ' + _schedFacility + ' ' + _schedModalDept + ' (' + _schedModalDay + ', wk ' + _schedWeekOf + ')',
+        tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) {
     console.error('Schedule delete error:', e);
     alert('Error deleting: ' + e.message);
@@ -248,6 +279,13 @@ async function copyLastWeek() {
     });
     await batch.commit();
     await loadSchedule();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'SCHED',
+        desc: 'Schedule copied from wk ' + prevWeekOf + ' → wk ' + _schedWeekOf + ' (' + _schedFacility + ')',
+        tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) {
     console.error('Copy last week error:', e);
     alert('Error copying: ' + e.message);
@@ -304,13 +342,17 @@ function _showUpdateBanner() {
   var banner = document.getElementById('sw-update-banner');
   if (!banner) return;
   banner.style.display = 'flex';
-  banner.onclick = function() {
-    banner.innerHTML = '⏳ Refreshing...';
-    // Tell the waiting SW to take over, then reload
-    navigator.serviceWorker.ready.then(function(reg) {
-      if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-    });
-    setTimeout(function() { location.reload(true); }, 400);
-  };
+  banner.innerHTML = '🆕 App updated — reloading in 3s… (tap to reload now)';
+  // Auto-reload after 3 seconds so users always get fresh code
+  var t = setTimeout(function() { _doReload(); }, 3000);
+  banner.onclick = function() { clearTimeout(t); _doReload(); };
+}
+function _doReload() {
+  var banner = document.getElementById('sw-update-banner');
+  if (banner) banner.innerHTML = '⏳ Reloading…';
+  navigator.serviceWorker.ready.then(function(reg) {
+    if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+  });
+  setTimeout(function() { location.reload(true); }, 400);
 }
 

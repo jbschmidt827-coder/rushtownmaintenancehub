@@ -5,7 +5,9 @@ let staffList = [];
 let _staffFilter = 'active';
 let _staffFarmFilter = 'all';
 
-const STAFF_ROLES = ['Technician','Lead','WNO','Director','Driver','Feed Mill','Other'];
+const STAFF_ROLES = ['Technician','Lead','WNO','Barn Worker','Director','Driver','Feed Mill','Other'];
+const MAINTENANCE_ROLES = ['Technician','Lead','Director','Driver'];
+const BARN_ROLES        = ['WNO','Barn Worker','Other'];
 
 // ── Firestore listener ──────────────────────
 function startStaffListener() {
@@ -18,19 +20,25 @@ function startStaffListener() {
   } catch(e) { console.error('Staff listener error:', e); }
 }
 
-// ── Fallback team list used until staff are added via the Staff panel ──
-const FALLBACK_TEAM = [
-  'Josh','Steve','Mike','Chris','Dave','Dan','Tom','Joe','Kyle','Brian',
-  'Ryan','Tyler','Jake','Zach','Derek','Adam','Kevin','Scott','Eric','Matt'
-];
+// ── Canonical name source for the entire app ──
+// Returns ONLY active staff added via the Staff panel. No fallback names.
+function getActiveStaff(farm, role) {
+  if (typeof staffList === 'undefined' || !Array.isArray(staffList)) return [];
+  let list = staffList.filter(s => s && s.active !== false);
+  if (farm) {
+    list = list.filter(s => !s.farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All');
+  }
+  if (role) {
+    list = list.filter(s => !s.role || s.role === role);
+  }
+  return list.map(s => s.name).filter(Boolean).sort((a,b) => a.localeCompare(b));
+}
 
 // ── Populate all name datalists and selects in the app ──
 function updateStaffDropdowns() {
   const active = staffList.filter(s => s.active !== false);
-  // If Firestore staff collection is empty, use the fallback list
-  const names = active.length
-    ? active.map(s => s.name)
-    : FALLBACK_TEAM;
+  // Staff list is the SINGLE SOURCE OF TRUTH — no fallback names.
+  const names = active.map(s => s.name).filter(Boolean);
 
   // Datalist for text inputs with list="staff-datalist"
   const datalistOpts = names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">`).join('');
@@ -166,6 +174,13 @@ async function addStaff() {
   try {
     const ref = await db.collection('staff').add({ name, role: role||'Technician', farm: farm||'', phone, active: true, ts: Date.now() });
     await createOnboarding(ref.id, name);
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'STAFF',
+        desc: 'Staff added: ' + name + ' (' + (role||'Technician') + ')' + (farm ? ' — ' + farm : ''),
+        tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
     document.getElementById('staff-new-fname').value = '';
     document.getElementById('staff-new-lname').value = '';
     document.getElementById('staff-new-phone').value = '';
@@ -188,7 +203,16 @@ async function toggleStaff(id, active) {
 // ── Delete Employee ─────────────────────────
 async function deleteStaff(id, name) {
   if (!confirm(`Remove ${name} from the staff list?`)) return;
-  try { await db.collection('staff').doc(id).delete(); } catch(e) { alert('Error: ' + e.message); }
+  try {
+    await db.collection('staff').doc(id).delete();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'STAFF',
+        desc: 'Staff removed: ' + name,
+        tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 // ── Edit Employee ───────────────────────────
@@ -219,6 +243,13 @@ async function saveStaffEdit() {
   try {
     await db.collection('staff').doc(id).update({ name, role, farm, phone });
     closeStaffEdit();
+    try {
+      await db.collection('activityLog').add({
+        type: 'wo', id: 'STAFF',
+        desc: 'Staff updated: ' + name + ' (' + role + ')' + (farm ? ' — ' + farm : ''),
+        tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Error: ' + e.message); }
   btn.disabled = false; btn.textContent = 'Save Changes';
 }
@@ -409,6 +440,8 @@ async function addCustomOnboardItem(staffId) {
 // ═══════════════════════════════════════════
 let _staffSchedWeekOf = '';
 let _staffSchedFac = 'all';
+let _staffSchedType = 'maintenance'; // 'maintenance' | 'barn'
+let _staffSchedLoc  = 'Danville';   // 'Danville' | 'Hegins'
 
 const STAFF_SCHED_DAYS       = ['mon','tue','wed','thu','fri','sat','sun'];
 const STAFF_SCHED_DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -457,6 +490,36 @@ function staffSchedFacFilter(val, btn) {
   renderStaffSched();
 }
 
+function staffSchedTypeFilter(type, btn) {
+  _staffSchedType = type;
+  document.querySelectorAll('.sched-type-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderStaffSched();
+}
+
+function staffSchedLocFilter(loc, btn) {
+  _staffSchedLoc = loc;
+  document.querySelectorAll('.sched-loc-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderStaffSched();
+}
+
+async function setBarnLeader(staffId, staffName) {
+  try {
+    await db.collection('barnLeaders').doc(_staffSchedLoc).set({
+      staffId, staffName, location: _staffSchedLoc, ts: Date.now()
+    });
+    renderStaffSched();
+  } catch(e) { console.error('Leader set error:', e); }
+}
+
+async function clearBarnLeader() {
+  try {
+    await db.collection('barnLeaders').doc(_staffSchedLoc).delete();
+    renderStaffSched();
+  } catch(e) { console.error('Leader clear error:', e); }
+}
+
 async function renderStaffSched() {
   if (!_staffSchedWeekOf) _staffSchedWeekOf = _schedGetMonday(new Date());
 
@@ -472,14 +535,39 @@ async function renderStaffSched() {
   const grid = document.getElementById('staff-sched-grid');
   if (!grid) return;
 
-  let staff = staffList.filter(s => s.active !== false);
-  if (_staffSchedFac !== 'all') {
-    staff = staff.filter(s =>
-      s.farm === _staffSchedFac ||
-      s.farm === 'Both' ||
-      s.farm === 'All Farms' ||
-      s.farm === 'All'
-    );
+  // Filter by worker type
+  const roleSet = _staffSchedType === 'barn' ? BARN_ROLES : MAINTENANCE_ROLES;
+  let staff = staffList.filter(s => s.active !== false && roleSet.includes(s.role));
+
+  // Filter by location
+  staff = staff.filter(s =>
+    s.farm === _staffSchedLoc ||
+    s.farm === 'Both' ||
+    s.farm === 'All Farms' ||
+    s.farm === 'All'
+  );
+
+  // Load barn leader for this location (barn tab only)
+  let barnLeaderId = null;
+  if (_staffSchedType === 'barn') {
+    try {
+      const leaderDoc = await db.collection('barnLeaders').doc(_staffSchedLoc).get();
+      if (leaderDoc.exists) {
+        barnLeaderId = leaderDoc.data().staffId;
+        const bannerEl = document.getElementById('barn-leader-banner');
+        const nameEl   = document.getElementById('barn-leader-name');
+        if (bannerEl && nameEl) {
+          nameEl.textContent = leaderDoc.data().staffName + ' — ' + _staffSchedLoc;
+          bannerEl.style.display = 'flex';
+        }
+      } else {
+        const bannerEl = document.getElementById('barn-leader-banner');
+        if (bannerEl) bannerEl.style.display = 'none';
+      }
+    } catch(e) { /* ignore */ }
+  } else {
+    const bannerEl = document.getElementById('barn-leader-banner');
+    if (bannerEl) bannerEl.style.display = 'none';
   }
 
   if (!staff.length) {
@@ -518,16 +606,46 @@ async function renderStaffSched() {
   html += '</tr></thead>';
 
   // Rows
+  const SITE_OPTS = ['', 'Hegins', 'Danville', 'Rushtown', 'Feed Mill'];
+  const SITE_COLOR = { Hegins:'#4a8a4a', Danville:'#4a70aa', Rushtown:'#9a6a2a', 'Feed Mill':'#7a5a2a', '':'#2a4a2a' };
+
   html += '<tbody>';
   staff.forEach(s => {
     const row = schedData[s._fbId] || {};
-    html += '<tr style="border-top:1px solid #121e12;">';
-    html += `<td style="padding:6px 10px;color:#c0d8c0;white-space:nowrap;">${s.name}<br><span style="font-size:9px;color:#3a5a3a;">${s.role || ''}</span></td>`;
+    const site = s.farm || '';
+    const siteColor = SITE_COLOR[site] || SITE_COLOR[''];
+    const siteLabel = site || 'No site';
+    const safeId = s._fbId.replace(/['"]/g, '');
+    const siteOptsHtml = SITE_OPTS.map(o =>
+      `<option value="${o}"${o===site?' selected':''}>${o||'— No site —'}</option>`
+    ).join('');
+    const safeName = s.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const onCall   = !!row.onCall;
+    const isLeader = _staffSchedType === 'barn' && s._fbId === barnLeaderId;
+    html += `<tr style="border-top:1px solid #121e12;${onCall ? 'background:#0d1a0d;' : ''}${isLeader ? 'border-left:3px solid #4ade80;' : ''}">`;
+    html += `<td style="padding:6px 10px;color:#c0d8c0;white-space:nowrap;">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span>${s.name}</span>
+        ${isLeader ? '<span style="font-size:9px;background:#1a4a1a;border:1px solid #4ade80;border-radius:4px;padding:1px 5px;color:#4ade80;font-family:\'IBM Plex Mono\',monospace;font-weight:700;">👑 LEADER</span>' : ''}
+        ${onCall ? '<span style="font-size:9px;background:#1a4a1a;border:1px solid #4ade80;border-radius:4px;padding:1px 5px;color:#4ade80;font-family:\'IBM Plex Mono\',monospace;font-weight:700;">ON CALL</span>' : ''}
+      </div>
+      <span style="font-size:9px;color:#3a5a3a;">${s.role || ''}</span><br>
+      <div style="display:flex;gap:4px;margin-top:3px;align-items:center;flex-wrap:wrap;">
+        <select onchange="setStaffSite('${safeId}',this.value)"
+          style="background:#0a1a0a;border:1px solid ${siteColor};border-radius:4px;color:${siteColor};font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 4px;cursor:pointer;max-width:90px;">
+          ${siteOptsHtml}
+        </select>
+        <button onclick="toggleOnCall('${safeId}','${safeName}',${onCall})"
+          title="${onCall ? 'Remove on-call' : 'Set on-call'}"
+          style="background:${onCall ? '#1a4a1a' : '#0a1a0a'};border:1px solid ${onCall ? '#4ade80' : '#2a4a2a'};border-radius:4px;color:${onCall ? '#4ade80' : '#4a6a4a'};font-size:9px;padding:2px 5px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-weight:700;">📞</button>
+        ${_staffSchedType === 'barn' ? `<button onclick="${isLeader ? 'clearBarnLeader()' : `setBarnLeader('${safeId}','${safeName.replace(/'/g,"\\'")}')`}"
+          title="${isLeader ? 'Remove as leader' : 'Set as leader'}"
+          style="background:${isLeader ? '#1a4a1a' : '#0a1a0a'};border:1px solid ${isLeader ? '#4ade80' : '#3a4a2a'};border-radius:4px;color:${isLeader ? '#4ade80' : '#4a6a4a'};font-size:9px;padding:2px 5px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-weight:700;">👑</button>` : ''}
+      </div>
+    </td>`;
     STAFF_SCHED_DAYS.forEach(day => {
       const shift = row[day] || '';
       const st    = SHIFT_STYLES[shift] || SHIFT_STYLES[''];
-      const safeId = s._fbId.replace(/['"]/g, '');
-      const safeName = s.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       html += `<td style="padding:3px;text-align:center;"><button onclick="cycleShift('${safeId}','${safeName}','${day}','${shift}')" style="${st};border-radius:5px;padding:5px 2px;font-size:10px;font-weight:700;cursor:pointer;width:100%;min-width:38px;font-family:'IBM Plex Mono',monospace;">${shift || '–'}</button></td>`;
     });
     html += '</tr>';
@@ -548,6 +666,26 @@ async function cycleShift(staffId, staffName, day, currentShift) {
     );
     renderStaffSched();
   } catch(e) { console.error('Shift save error:', e); }
+}
+
+async function toggleOnCall(staffId, staffName, currentlyOnCall) {
+  try {
+    const docId = `${staffId}_${_staffSchedWeekOf}`;
+    await db.collection('staffSchedule').doc(docId).set(
+      { staffId, staffName, weekOf: _staffSchedWeekOf, onCall: !currentlyOnCall, ts: Date.now() },
+      { merge: true }
+    );
+    renderStaffSched();
+  } catch(e) { console.error('On-call save error:', e); }
+}
+
+async function setStaffSite(staffId, site) {
+  try {
+    await db.collection('staff').doc(staffId).update({ farm: site });
+    const s = staffList.find(x => x._fbId === staffId);
+    if (s) s.farm = site;
+    renderStaffSched();
+  } catch(e) { console.error('Site save error:', e); }
 }
 
 // ═══════════════════════════════════════════

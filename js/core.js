@@ -11,6 +11,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const storage = firebase.storage();
 
 // ═══════════════════════════════════════════
 // ADMIN PIN SYSTEM
@@ -345,6 +346,8 @@ let woPriorityFilters = new Set();
 let woStatusFilters = new Set();
 let pmLocFilter = 'all', pmStatFilter = 'all';
 let logFilterVal = 'all';
+let logFarmFilter = 'all';
+let logHouseFilter = 'all';
 let modalPMId   = null;
 let woCounter   = 1;
 let flocks        = [];   // flock placement records
@@ -1018,6 +1021,7 @@ async function initApp() {
     await seedWaterRegulatorWI();
     await seedAugerRollerWI();
     await seedCounterCardWI();
+    await seedRushtownOpsWI();
     assignRHNumbers();
 
     // Real-time listeners
@@ -1058,12 +1062,16 @@ async function initApp() {
     startStaffListener();
     startStaffCertsListener();
     startStaffOnboardListener();
+    startOnCallListener();
+    startOnCallSchedListener();
+    if (typeof startSignoffListener === 'function') startSignoffListener();
     await loadOpsData();
     startOpsListeners();
 
     setTimeout(() => {
       document.getElementById('loading-screen').classList.add('hidden');
       renderDash();
+      if (typeof initNotifications === 'function') initNotifications();
     }, 600);
 
   } catch(err) {
@@ -1089,7 +1097,6 @@ function refreshCurrentPanel() {
     else if (s==='parts')   renderParts();
     else if (s==='log')     renderLog();
     else if (s==='assets')  renderAssets();
-    else if (s==='downtime')renderDowntime();
     return;
   }
   // Packaging sub-sections
@@ -1112,7 +1119,7 @@ function refreshCurrentPanel() {
 function go(tab) {
   const fab = document.getElementById('fab-btn');
   // Backward compat aliases
-  const maintSections = {wo:'wo', pm:'pm', parts:'parts', downtime:'downtime', log:'log', assets:'assets', wi:'wi', '5s':'5s', calendar:'calendar'};
+  const maintSections = {wo:'wo', pm:'pm', parts:'parts', log:'log', assets:'assets', wi:'wi', '5s':'5s', calendar:'calendar'};
   if (maintSections[tab] !== undefined) {
     go('maint');
     setTimeout(()=>goMaintSection(tab), 50);
@@ -1135,24 +1142,26 @@ function go(tab) {
   closeAssetForm();
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports', sched:'panel-sched', staff:'panel-staff', check:'panel-check', mw:'panel-mw'};
-  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports', sched:'tab-sched', staff:'tab-staff', check:'tab-check', mw:'tab-mw'};
+  const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports', sched:'panel-sched', staff:'panel-staff', check:'panel-check', mw:'panel-mw', oncall:'panel-oncall', daily:'panel-daily'};
+  const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports', sched:'tab-sched', staff:'tab-staff', check:'tab-check', mw:'tab-mw', oncall:'tab-oncall', daily:'tab-daily'};
   if (!pm[tab]) return;
   document.getElementById(pm[tab]).classList.add('active');
   const tabEl = document.getElementById(tm[tab]);
   if (tabEl) tabEl.classList.add('active');
   if (tab === 'dash')  renderDash();
-  if (tab === 'prod')  renderProdPanel();
+  if (tab === 'prod')  { renderProdPanel(); goProdSection('overview'); }
   if (tab === 'maint') { goMaintSection(window._maintSection || 'wo'); }
   if (tab === 'pkg')   { goPkgSection(window._pkgSection || 'packing'); }
   if (tab === 'feed')  { goFeedSection(window._feedSection || 'dashboard'); }
   if (tab === 'ship')  { goShipSection(window._shipSection || 'shipping'); }
-  if (tab === 'check') renderProdCheck();
+  if (tab === 'check') { renderProdCheck(); if (typeof startChecklistDashboard==='function') startChecklistDashboard(); if (typeof loadWI==='function') loadWI(); }
   if (tab === 'mw')    renderProdMW();
   if (tab === 'kpi')   { goKpiSection(window._kpiSection || 'dashboard'); }
   if (tab === 'reports') renderReports();
   if (tab === 'sched')   loadSchedule();
   if (tab === 'staff')   renderStaff();
+  if (tab === 'oncall')  renderOnCallPanel();
+  if (tab === 'daily')   { if (typeof renderDailyReport === 'function') renderDailyReport(); }
 }
 
 // ═══════════════════════════════════════════

@@ -310,6 +310,9 @@ function renderDash() {
       </div>`).join('')
     : '';
 
+  // ── Packing Performance Summary ──
+  renderPackingSummary(todayStr);
+
   // ── Egg KPI Hero ──
   renderDashEggKPI(todayStr);
 
@@ -328,6 +331,79 @@ function renderDash() {
     : '<div class="empty"><div class="ei">✅</div><p>All parts stocked</p></div>';
 }
 
+
+function renderPackingSummary(todayStr) {
+  const el = document.getElementById('dash-packing-summary');
+  if (!el) return;
+
+  const breakColor = r => r >= 2 ? '#e53e3e' : r >= 1 ? '#d69e2e' : '#4caf50';
+  const breakBg    = r => r >= 2 ? '#1a0505' : r >= 1 ? '#1a1200' : '#0a1a0a';
+  const breakBdr   = r => r >= 2 ? '#5a1010' : r >= 1 ? '#4a3500' : '#1a3a1a';
+
+  const calcLoc = recs => {
+    const dz     = recs.reduce((s,r) => s + (Number(r.qty)||0), 0);
+    const broken = recs.reduce((s,r) => s + (Number(r.brokenEggs)||0), 0);
+    const rate   = dz > 0 ? Math.round((broken / (dz * 12)) * 1000) / 10 : null;
+    return { dz, broken, rate };
+  };
+
+  const mainRecs = (typeof opsPackData !== 'undefined' ? opsPackData : []).filter(r => r.date === todayStr);
+  const hgRecs   = (typeof locationPackData !== 'undefined' ? locationPackData.hegins  : []).filter(r => r.date === todayStr);
+  const dvRecs   = (typeof locationPackData !== 'undefined' ? locationPackData.danville : []).filter(r => r.date === todayStr);
+
+  const locs = [
+    { label: 'Rushtown',  data: calcLoc(mainRecs), entries: mainRecs.length },
+    { label: 'Hegins',    data: calcLoc(hgRecs),   entries: hgRecs.length   },
+    { label: 'Danville',  data: calcLoc(dvRecs),   entries: dvRecs.length   },
+  ];
+
+  const totalDz     = locs.reduce((s,l) => s + l.data.dz, 0);
+  const totalBroken = locs.reduce((s,l) => s + l.data.broken, 0);
+  const totalRate   = totalDz > 0 ? Math.round((totalBroken / (totalDz * 12)) * 1000) / 10 : null;
+
+  const locCard = (loc) => {
+    const { dz, broken, rate } = loc.data;
+    const hasData = loc.entries > 0;
+    const rc = rate !== null ? breakColor(rate) : '#5a7a5a';
+    const rb = rate !== null ? breakBg(rate)    : '#0a1a0a';
+    const rd = rate !== null ? breakBdr(rate)   : '#1a2a1a';
+    return `
+      <div style="background:${rb};border:1.5px solid ${rd};border-radius:10px;padding:10px 12px;cursor:pointer;" onclick="go('pkg');setTimeout(()=>goPkgSection('packing'),50)">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#7a9a7a;margin-bottom:8px;">${loc.label}</div>
+        ${hasData ? `
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
+            <div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;line-height:1;">${fmtNum(dz)}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#5a7a5a;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Doz</div>
+            </div>
+            <div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:${broken>0?'#e07070':'#f0ead8'};line-height:1;">${broken||'0'}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#5a7a5a;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Broken</div>
+            </div>
+            <div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:${rc};line-height:1;">${rate !== null ? rate+'%' : '—'}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#5a7a5a;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Break</div>
+            </div>
+          </div>` :
+          `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#2a4a2a;">No entries today</div>`
+        }
+      </div>`;
+  };
+
+  const hasAnyData = totalDz > 0;
+  const tc = totalRate !== null ? breakColor(totalRate) : '#5a7a5a';
+
+  el.innerHTML = `
+    <div style="background:#050f05;border:1.5px solid #1a3a1a;border-radius:14px;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 8px;background:#0a1a0a;border-bottom:1px solid #1a2a1a;">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#9a9a6a;">📦 Today's Packing</span>
+        ${hasAnyData ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:${tc};">${fmtNum(totalDz)} dz total${totalRate !== null ? ' · '+totalRate+'% break' : ''}</span>` : ''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:10px 12px;">
+        ${locs.map(locCard).join('')}
+      </div>
+    </div>`;
+}
 
 function renderDashEggKPI(todayStr) {
   const el = document.getElementById('dash-egg-kpi');

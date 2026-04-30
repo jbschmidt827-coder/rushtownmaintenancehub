@@ -118,8 +118,20 @@ function goMaintSection(section) {
   document.querySelectorAll('#panel-maint .sub-btn').forEach(b => {
     if (b.dataset.section === section) b.classList.add('active');
   });
-  const renders = {wo:renderWO, pm:renderPM, parts:renderParts, downtime:renderDowntime, log:renderLog, assets:renderAssets, wi:renderWI, calendar:renderMaintCalendar};
-  if (renders[section]) renders[section]();
+  const renders = {wo:renderWO, pm:renderPM, parts:renderParts, log:renderLog, assets:renderAssets, wi:renderWI, calendar:renderMaintCalendar, contractor:renderContractor, cost:renderCostDashboard, 'weekly-agenda':renderWeeklyAgenda, redtags:renderRedTags};
+  if (section === 'wi') {
+    // Clear any stale search so the list always shows fresh when navigating here
+    if (typeof wiSearchVal !== 'undefined') wiSearchVal = '';
+    const wiSearchEl = document.getElementById('wi-search');
+    if (wiSearchEl) wiSearchEl.value = '';
+    // If the real-time listener hasn't populated allWI yet (e.g. index error), force a fetch
+    if (typeof allWI !== 'undefined' && allWI.length === 0) {
+      if (typeof loadWIFallback === 'function') { loadWIFallback(); return; }
+    }
+    renderWI();
+  } else if (renders[section]) {
+    renders[section]();
+  }
   // Handle WO form state
   if (section === 'wo') {
     const d = document.getElementById('wo-dash-section');
@@ -175,6 +187,16 @@ function goPkgSection(section) {
     if (!document.getElementById('cool-date').value) document.getElementById('cool-date').value = today;
     renderCooler();
   }
+  if (section === 'hegins') {
+    const today = new Date().toISOString().slice(0,10);
+    const el = document.getElementById('hg-date'); if(el&&!el.value) el.value=today;
+    loadLocationPack('hegins');
+  }
+  if (section === 'danville') {
+    const today = new Date().toISOString().slice(0,10);
+    const el = document.getElementById('dv-date'); if(el&&!el.value) el.value=today;
+    loadLocationPack('danville');
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -218,10 +240,15 @@ function renderEfficiency() {
   const totalRunMin = withTime.reduce((s,r)=>s+(Number(r.runMin)||0),0);
   const totalDtMin  = rows.reduce((s,r)=>s+(Number(r.downtimeMin)||0),0);
   const effPct   = (totalRunMin+totalDtMin)>0 ? Math.round((totalRunMin/(totalRunMin+totalDtMin))*100) : null;
+  const totalBroken = rows.reduce((s,r) => s+(Number(r.brokenEggs)||0), 0);
+  const brokenRate  = totalDz>0 ? Math.round((totalBroken/(totalDz*12))*1000)/10 : null;
   if (statsEl) statsEl.innerHTML =
     sc('s-blue',  fmtNum(totalDz)+' dz', '📦 Total Packed') +
     sc(avgDzHr>0?'s-green':'s-blue', avgDzHr?fmtNum(avgDzHr)+' dz/hr':'—', '⚡ Avg Dz/Hr') +
     sc(effPct!==null?(effPct>=90?'s-green':effPct>=75?'s-amber':'s-red'):'s-blue', effPct!==null?effPct+'%':'—', '🎯 Line Efficiency') +
+    sc(totalDtMin>0?'s-amber':'s-blue', totalDtMin>0?totalDtMin+'m':'—', '⏱️ Total Downtime') +
+    sc(totalBroken>0?(brokenRate>=2?'s-red':brokenRate>=1?'s-amber':'s-green'):'s-blue', totalBroken?fmtNum(totalBroken):'—', '🥚 Broken Eggs') +
+    sc(brokenRate!==null&&totalBroken>0?(brokenRate>=2?'s-red':brokenRate>=1?'s-amber':'s-green'):'s-blue', brokenRate!==null&&totalBroken>0?brokenRate+'%':'—', '📉 Break Rate') +
     sc('s-amber', rows.length, '📋 Entries');
 
   // Daily sparkline
@@ -274,19 +301,20 @@ function renderEfficiency() {
     rows.forEach(r => {
       const d = new Date(r.date); d.setDate(d.getDate() - d.getDay());
       const wk = d.toISOString().slice(0,10);
-      if (!weeks[wk]) weeks[wk] = {dz:0, runMin:0, dtMin:0, dzhr:[], stops:0, entries:0};
+      if (!weeks[wk]) weeks[wk] = {dz:0, runMin:0, dtMin:0, dzhr:[], stops:0, broken:0, entries:0};
       weeks[wk].dz    += Number(r.qty)||0;
       weeks[wk].runMin+= Number(r.runMin)||0;
       weeks[wk].dtMin += Number(r.downtimeMin)||0;
       if (r.dzPerHr>0) weeks[wk].dzhr.push(Number(r.dzPerHr));
-      weeks[wk].stops += Number(r.stops)||0;
+      weeks[wk].stops  += Number(r.stops)||0;
+      weeks[wk].broken += Number(r.brokenEggs)||0;
       weeks[wk].entries++;
     });
     const weekEntries = Object.entries(weeks).sort((a,b)=>b[0].localeCompare(a[0]));
     if (!weekEntries.length) {
-      tbl.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);">No data in range.</td></tr>';
+      tbl.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted);">No data in range.</td></tr>';
     } else {
-      tbl.innerHTML = `<thead><tr><th>Week Of</th><th>Total Dz</th><th>Avg Dz/Hr</th><th>Run Time</th><th>Downtime</th><th>Stops</th></tr></thead><tbody>
+      tbl.innerHTML = `<thead><tr><th>Week Of</th><th>Total Dz</th><th>Avg Dz/Hr</th><th>Run Time</th><th>Downtime</th><th>Stops</th><th>Broken Eggs</th></tr></thead><tbody>
         ${weekEntries.map(([wk, w]) => {
           const avgHr = w.dzhr.length ? Math.round(w.dzhr.reduce((s,v)=>s+v,0)/w.dzhr.length) : 0;
           const runH  = Math.floor(w.runMin/60), runM = w.runMin%60;
@@ -298,6 +326,7 @@ function renderEfficiency() {
             <td style="font-family:'IBM Plex Mono',monospace;">${runH>0?runH+'h ':''} ${runM}m</td>
             <td style="color:${w.dtMin>60?'#e53e3e':'#4caf50'};font-family:'IBM Plex Mono',monospace;">${dtH>0?dtH+'h ':''} ${dtM}m</td>
             <td style="font-weight:700;${w.stops>5?'color:#e53e3e;':''}">${w.stops||'—'}</td>
+            <td style="font-weight:700;color:${w.broken>0?'#e53e3e':'var(--muted)'};">${w.broken||'—'}</td>
           </tr>`;
         }).join('')}
       </tbody>`;
@@ -367,6 +396,14 @@ async function saveDowntime() {
     renderDowntime();
     updateDtBadge();
     alert('✅ Downtime logged.');
+    try {
+      await db.collection('activityLog').add({
+        type: 'downtime', id: 'DT',
+        desc: 'Downtime: ' + reason + (line ? ' — Line ' + line : '') + ' — ' + duration + ' min' + (wo ? ' (WO: ' + wo + ')' : ''),
+        tech: by, date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Error: '+e.message); }
 }
 
@@ -474,6 +511,14 @@ async function saveWaste() {
     clearWasteForm();
     renderWaste();
     alert('✅ Waste logged.');
+    try {
+      await db.collection('activityLog').add({
+        type: 'ops-exc', id: 'WSTE',
+        desc: 'Waste logged: ' + farm + (house ? ' Barn ' + house : '') + ' — ' + qty + ' eggs (' + category + ')',
+        tech: by, date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Error: '+e.message); }
 }
 
@@ -557,6 +602,14 @@ async function saveCooler() {
     clearCoolerForm();
     renderCooler();
     alert('✅ Cooler entry saved.');
+    try {
+      await db.collection('activityLog').add({
+        type: 'ops-pack', id: 'COOL',
+        desc: 'Cooler: ' + cases + ' cases ' + product + (location ? ' @ ' + location : '') + ' — Status: ' + status,
+        tech: by, date: new Date(date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+        ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
   } catch(e) { alert('Error: '+e.message); }
 }
 
@@ -655,5 +708,111 @@ async function loadPkgExtras() {
     pkgCooler   = []; cSnap.forEach(d=>pkgCooler.push({...d.data(),_fbId:d.id}));
     updateDtBadge();
   } catch(e) { console.error('pkgExtras load:',e); }
+}
+
+// ── Multiple Houses (dynamic house inputs) ──
+function addPackHouse() {
+  const list = document.getElementById('pf-houses-list');
+  if (!list) return;
+  const inp = document.createElement('div');
+  inp.style.cssText = 'display:flex;align-items:center;gap:4px;';
+  inp.innerHTML = `<input type="text" class="pf-house-input" placeholder="House #" style="width:90px;" oninput="calcPack()">
+    <button type="button" onclick="this.parentElement.remove();calcPack();" style="background:none;border:none;color:#e53e3e;font-size:14px;cursor:pointer;padding:0 2px;">✕</button>`;
+  list.appendChild(inp);
+}
+
+function getPackHouses() {
+  const inputs = document.querySelectorAll('.pf-house-input');
+  const vals = [...inputs].map(i=>i.value.trim()).filter(Boolean);
+  const hidden = document.getElementById('pf-houses');
+  if (hidden) hidden.value = vals.length;
+  return vals;
+}
+
+// ── Location Packing (Hegins / Danville) ──
+var locationPackData = { hegins: [], danville: [] };
+
+const LOC_CFG = {
+  hegins:   { prefix:'hg', label:'Hegins',   collection:'pkgHegins',   tableId:'hg-table', statsId:'hg-stats' },
+  danville: { prefix:'dv', label:'Danville',  collection:'pkgDanville', tableId:'dv-table', statsId:'dv-stats' },
+};
+
+async function loadLocationPack(loc) {
+  const cfg = LOC_CFG[loc]; if (!cfg) return;
+  try {
+    const snap = await db.collection(cfg.collection).orderBy('ts','desc').limit(500).get();
+    locationPackData[loc] = [];
+    snap.forEach(d => locationPackData[loc].push({...d.data(), _fbId: d.id}));
+    renderLocationPack(loc);
+  } catch(e) { console.error('loadLocationPack',loc,e); }
+}
+
+async function saveLocationPack(loc) {
+  const cfg = LOC_CFG[loc]; if (!cfg) return;
+  const p = cfg.prefix;
+  const date    = document.getElementById(`${p}-date`)?.value;
+  const barn    = document.getElementById(`${p}-barn`)?.value;
+  const product = document.getElementById(`${p}-product`)?.value;
+  const qty     = parseInt(document.getElementById(`${p}-qty`)?.value||'0')||0;
+  const broken  = parseInt(document.getElementById(`${p}-broken`)?.value||'0')||0;
+  const shift   = document.getElementById(`${p}-shift`)?.value||'AM';
+  const by      = document.getElementById(`${p}-by`)?.value?.trim()||'Unknown';
+  const notes   = document.getElementById(`${p}-notes`)?.value?.trim()||'';
+  if (!date||!barn||!product||!qty) { alert('Date, Barn, Product, and Total Dz are required.'); return; }
+  const record = { loc: cfg.label, date, barn, product, qty, brokenEggs:broken, shift, by, notes, ts: Date.now() };
+  try {
+    const ref = await db.collection(cfg.collection).add(record);
+    record._fbId = ref.id;
+    locationPackData[loc].unshift(record);
+    clearLocationForm(loc);
+    renderLocationPack(loc);
+  } catch(e) { console.error(e); alert('Error saving: '+e.message); }
+}
+
+function clearLocationForm(loc) {
+  const cfg = LOC_CFG[loc]; if (!cfg) return;
+  const p = cfg.prefix;
+  const today = opsToday(), shift = shiftFromTime();
+  [`${p}-date`,`${p}-barn`,`${p}-product`,`${p}-qty`,`${p}-broken`,`${p}-shift`,`${p}-by`,`${p}-notes`].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    if (id===`${p}-date`) el.value = today;
+    else if (id===`${p}-shift`) el.value = shift;
+    else el.value = '';
+  });
+}
+
+function renderLocationPack(loc) {
+  const cfg = LOC_CFG[loc]; if (!cfg) return;
+  const today = opsToday();
+  const rows = locationPackData[loc].filter(r => r.date === today);
+  const statsEl = document.getElementById(cfg.statsId);
+  const tbl     = document.getElementById(cfg.tableId);
+  const totalDz = rows.reduce((s,r)=>s+(Number(r.qty)||0),0);
+  const totalBroken = rows.reduce((s,r)=>s+(Number(r.brokenEggs)||0),0);
+  if (statsEl) statsEl.innerHTML =
+    sc('s-green', fmtNum(totalDz)+' dz', '📦 Total Dz Today') +
+    sc(totalBroken>0?'s-red':'s-blue', totalBroken||'—', '🥚 Broken Eggs') +
+    sc('s-amber', rows.length, '📋 Entries');
+  if (!tbl) return;
+  if (!rows.length) { tbl.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">No entries for today.</td></tr>`; return; }
+  tbl.innerHTML = `<thead><tr><th>Barn</th><th>Product</th><th>Total Dz</th><th>Broken Eggs</th><th>Shift</th><th>By</th><th></th></tr></thead><tbody>
+    ${rows.map(r=>`<tr>
+      <td style="font-weight:700;">${r.barn}</td>
+      <td>${r.product}</td>
+      <td style="font-weight:700;">${fmtNum(r.qty)}</td>
+      <td style="font-weight:700;color:${r.brokenEggs>0?'#e53e3e':'var(--muted)'};">${r.brokenEggs||'—'}</td>
+      <td><span class="badge ${r.shift==='AM'?'open':r.shift==='PM'?'in-progress':'on-hold'}" style="font-size:9px;">${r.shift}</span></td>
+      <td>${r.by||'—'}</td>
+      <td><button class="ops-action-btn danger" onclick="deleteLocationPack('${loc}','${r._fbId}')">✕</button></td>
+    </tr>`).join('')}
+  </tbody>`;
+}
+
+async function deleteLocationPack(loc, fbId) {
+  if (!confirm('Delete this entry?')) return;
+  const cfg = LOC_CFG[loc]; if (!cfg) return;
+  if (!fbId.startsWith('demo-')) await db.collection(cfg.collection).doc(fbId).delete();
+  locationPackData[loc] = locationPackData[loc].filter(r=>r._fbId!==fbId);
+  renderLocationPack(loc);
 }
 

@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Rushtown Poultry — Operations Hub</title>
+<script>
+(function(){var V='20260427n';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
+</script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0f1a0f">
 <meta name="mobile-web-app-capable" content="yes">
@@ -24,6 +27,8 @@
 <!-- Firebase Compat (no type=module needed) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
 
 <style>
 :root {
@@ -130,7 +135,7 @@ body { font-family: 'IBM Plex Sans', sans-serif; background: var(--dark); min-he
 .stat-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin-top: 3px; }
 
 .pill-bar { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
-.pill { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 1px; padding: 7px 13px; border-radius: 50px; border: 2px solid rgba(255,255,255,0.18); background: transparent; color: rgba(255,255,255,0.55); cursor: pointer; transition: all 0.2s; }
+.pill { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 1px; padding: 7px 13px; border-radius: 50px; border: 2px solid rgba(255,255,255,0.18); background: transparent; color: rgba(255,255,255,0.55); cursor: pointer; transition: all 0.2s; touch-action: manipulation; }
 .pill.active, .pill:hover { background: var(--green-bright); border-color: var(--green-bright); color: #fff; }
 .loc-pill { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 1px; padding: 9px 18px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.15); background: transparent; color: rgba(255,255,255,0.45); cursor: pointer; transition: all 0.2s; }
 .loc-pill.active { background: #fff; border-color: #fff; color: var(--green-dark); }
@@ -255,7 +260,7 @@ textarea { resize: vertical; min-height: 85px; }
 .success-wo { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--muted); margin: 7px 0 22px; }
 .btn-new { padding: 11px 28px; background: var(--green-bright); color: #fff; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; border: none; border-radius: 7px; cursor: pointer; }
 
-.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 300; align-items: center; justify-content: center; padding: 16px; }
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 700; align-items: center; justify-content: center; padding: 16px; }
 .overlay.open { display: flex; }
 .modal { background: var(--cream); border-radius: 13px; padding: 26px 22px; width: 100%; max-width: 460px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto; }
 .modal h3 { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--green-mid); letter-spacing: 2px; margin-bottom: 3px; }
@@ -674,7 +679,22 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <button id="landing-staff-btn" onclick="enterApp('staff')" style="padding:16px 14px;background:#1a2a3a;border:2px solid #4a90d9;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
           <span style="font-size:28px;line-height:1;">👥</span>
           <div data-i18n="landing.staff" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#7ab0f6;letter-spacing:1px;text-transform:uppercase;">Staff</div>
-          <div data-i18n="landing.staff_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5a90c9;line-height:1.4;">Team directory · Add employees</div>
+          <div data-i18n="landing.staff_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5a90c9;line-height:1.4;">Directory · Schedule · Onboarding · Certs</div>
+        </button>
+
+        <!-- On Call -->
+        <button onclick="enterApp('oncall')" style="padding:16px 14px;background:#2a0a0a;border:2px solid #e53e3e;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:28px;line-height:1;">📞</span>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">On Call</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#e57a7a;line-height:1.4;">Log · History · Calendar by site</div>
+          <div id="ls-oncall" style="font-family:'IBM Plex Mono',monospace;font-size:10px;min-height:14px;"></div>
+        </button>
+
+        <!-- Daily End-of-Shift Report -->
+        <button onclick="enterApp('daily')" style="padding:16px 14px;background:#0a1f0a;border:2px solid #4ade80;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:28px;line-height:1;">📋</span>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#4ade80;letter-spacing:1px;text-transform:uppercase;">Daily Report</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab07a;line-height:1.4;">End-of-shift summary &amp; sign-off</div>
         </button>
 
       </div>
@@ -682,10 +702,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <!-- Quick Actions -->
       <div style="border-top:1px solid #1e3a1e;padding-top:12px;">
         <div data-i18n="landing.quick_actions" style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:8px;">⚡ QUICK ACTIONS</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="display:grid;grid-template-columns:1fr;gap:8px;">
           <button data-i18n="landing.new_wo" onclick="enterApp('wo-submit')" style="padding:13px 10px;background:#0d1f3a;border:1.5px solid #3b82f6;border-radius:10px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🔧 New Work Order</button>
-          <button data-i18n="landing.log_barn" onclick="enterApp('prod');setTimeout(function(){openECSection&&openECSection()},300)" style="padding:13px 10px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:10px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🐓 Log Barn Walk</button>
-          <button data-i18n="landing.enter_egg" onclick="enterApp('kpi');setTimeout(function(){go('kpi')},100)" style="padding:13px 10px;background:#1a1400;border:1.5px solid #d69e2e;border-radius:10px;color:#d69e2e;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🥚 Enter Egg Data</button>
         </div>
       </div>
 
@@ -848,6 +866,18 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <!-- END OPERATIONS OVERLAY -->
 
 <style>
+
+/* iPad/touch-friendly feedback for landing dash cards (replaces removed onmouseover/onmouseout) */
+#dash-prod-card:hover, #dash-prod-card:active, #dash-prod-card:focus { border-color:#4caf50 !important; }
+#dash-maint-card:hover, #dash-maint-card:active, #dash-maint-card:focus { border-color:#3b82f6 !important; }
+#dash-pkg-card:hover, #dash-pkg-card:active, #dash-pkg-card:focus { border-color:#d69e2e !important; }
+#dash-ship-card:hover, #dash-ship-card:active, #dash-ship-card:focus { border-color:#9b59b6 !important; }
+#dash-feed-card:hover, #dash-feed-card:active, #dash-feed-card:focus { border-color:#4caf50 !important; }
+#dash-prod-card, #dash-maint-card, #dash-pkg-card, #dash-ship-card, #dash-feed-card {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
 .landing-card { cursor:pointer; transition: border-color 0.2s; }
 .landing-card:hover { border-color: #4caf50 !important; }
 </style>
@@ -881,14 +911,35 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="nav-tab" id="tab-ship" onclick="go('ship')" data-i18n="nav.ship" style="display:none;">🚚 Shipping</button>
       <button class="nav-tab" id="tab-kpi" onclick="go('kpi')" data-i18n="nav.kpi" style="display:none;">🥚 KPI</button>
       <button class="nav-tab" id="tab-reports" onclick="go('reports')" data-i18n="nav.reports" style="display:none;">📊 Reports</button>
+      <button class="nav-tab" id="tab-daily" onclick="go('daily')" style="display:none;">📋 Daily Report</button>
       <button class="nav-tab" id="tab-sched" onclick="go('sched')" data-i18n="nav.sched" style="display:none;">📅 Schedule</button>
       <button class="nav-tab" id="tab-staff" onclick="go('staff')" style="display:none;">👥 Staff</button>
 <button class="nav-tab" id="tab-check" onclick="go('check')" style="display:none;">🐓 Daily Check</button>
       <button class="nav-tab" id="tab-mw" onclick="go('mw')" style="display:none;">☀️ Morning Walk</button>
+      <button class="nav-tab" id="tab-brief" onclick="go('brief')" style="display:none;">🚨 Brief</button>
+      <button class="nav-tab" id="tab-oncall" onclick="go('oncall')" style="display:none;">📞 On Call</button>
     </nav>
     <button onclick="goHome()" class="header-home-btn" style="padding:10px 20px;background:#163016;border:2px solid #4caf50;border-radius:10px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">⌂ HOME</button>
     <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
     <button id="lang-toggle-btn" onclick="toggleLang()" title="Switch Language / Cambiar Idioma" style="padding:7px 13px;background:#0a1a2a;border:1.5px solid #3b82f6;border-radius:9px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;flex-shrink:0;">🌐 ES</button>
+
+    <!-- 🔔 Notification bell -->
+    <div style="position:relative;flex-shrink:0;" id="notif-bell-wrap">
+      <button id="notif-bell-btn" onclick="toggleNotifPanel()" title="Notifications"
+        style="position:relative;padding:7px 11px;background:#0f2a0f;border:1.5px solid #2a5a2a;border-radius:9px;color:#7ab07a;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s;">
+        🔔
+        <span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;background:#e53e3e;border-radius:9px;font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#fff;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--green-dark,#0a1a0a);"></span>
+      </button>
+
+      <!-- Dropdown panel -->
+      <div id="notif-panel" style="display:none;position:absolute;top:calc(100% + 8px);right:0;width:320px;max-height:420px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.7);z-index:800;overflow:hidden;flex-direction:column;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #1a3a1a;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7ab07a;">🔔 Notifications</div>
+          <button onclick="_markAllRead()" style="background:none;border:none;font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;cursor:pointer;padding:2px 6px;">Mark all read</button>
+        </div>
+        <div id="notif-list" style="overflow-y:auto;max-height:360px;"></div>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -925,12 +976,15 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
   <!-- Department summary cards -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
-    <div id="dash-prod-card" onclick="go('prod')" style="cursor:pointer;background:#0f2a0f;border:1.5px solid #2a5a2a;border-radius:12px;padding:14px 12px;transition:border-color .15s;" onmouseover="this.style.borderColor='#4caf50'" onmouseout="this.style.borderColor='#2a5a2a'"></div>
-    <div id="dash-maint-card" onclick="go('maint')" style="cursor:pointer;background:#0d1f3a;border:1.5px solid #1e3a6a;border-radius:12px;padding:14px 12px;transition:border-color .15s;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#1e3a6a'"></div>
-    <div id="dash-pkg-card" onclick="go('pkg')" style="cursor:pointer;background:#1a1400;border:1.5px solid #4a3a00;border-radius:12px;padding:14px 12px;transition:border-color .15s;" onmouseover="this.style.borderColor='#d69e2e'" onmouseout="this.style.borderColor='#4a3a00'"></div>
-    <div id="dash-ship-card" onclick="go('ship')" style="cursor:pointer;background:#1a0a2a;border:1.5px solid #3a1a5a;border-radius:12px;padding:14px 12px;transition:border-color .15s;" onmouseover="this.style.borderColor='#9b59b6'" onmouseout="this.style.borderColor='#3a1a5a'"></div>
-    <div id="dash-feed-card" onclick="go('feed')" style="cursor:pointer;grid-column:1/-1;background:#0c1f0c;border:1.5px solid #2a5a2a;border-radius:12px;padding:14px 12px;transition:border-color .15s;" onmouseover="this.style.borderColor='#4caf50'" onmouseout="this.style.borderColor='#2a5a2a'"></div>
+    <div id="dash-prod-card" onclick="go('prod')" style="cursor:pointer;background:#0f2a0f;border:1.5px solid #2a5a2a;border-radius:12px;padding:14px 12px;transition:border-color .15s;"></div>
+    <div id="dash-maint-card" onclick="go('maint')" style="cursor:pointer;background:#0d1f3a;border:1.5px solid #1e3a6a;border-radius:12px;padding:14px 12px;transition:border-color .15s;"></div>
+    <div id="dash-pkg-card" onclick="go('pkg')" style="cursor:pointer;background:#1a1400;border:1.5px solid #4a3a00;border-radius:12px;padding:14px 12px;transition:border-color .15s;"></div>
+    <div id="dash-ship-card" onclick="go('ship')" style="cursor:pointer;background:#1a0a2a;border:1.5px solid #3a1a5a;border-radius:12px;padding:14px 12px;transition:border-color .15s;"></div>
+    <div id="dash-feed-card" onclick="go('feed')" style="cursor:pointer;grid-column:1/-1;background:#0c1f0c;border:1.5px solid #2a5a2a;border-radius:12px;padding:14px 12px;transition:border-color .15s;"></div>
   </div>
+
+  <!-- Packing Performance Summary -->
+  <div id="dash-packing-summary" style="margin-bottom:20px;"></div>
 
   <!-- Critical alerts -->
   <div class="recent-hdr">🔴 Open Urgent Work Orders</div>
@@ -964,7 +1018,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 <!-- ═══ PART ADD / EDIT MODAL ═══ -->
 <div class="overlay" id="part-form-modal">
-  <div class="modal" style="max-width:480px;">
+  <div class="modal" style="max-width:480px;max-height:92vh;overflow-y:auto;">
     <h3 id="part-form-title">Add Part</h3>
     <p class="modal-sub">Add a part to the inventory master list</p>
 
@@ -1429,6 +1483,370 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <div id="panel-mw-body"></div>
 </div>
 
+<!-- ═══ DAILY END-OF-SHIFT REPORT PANEL ═══ -->
+<div class="panel" id="panel-daily"></div>
+
+<!-- ═══ DIRECTOR'S BRIEF PANEL ═══ -->
+<div class="panel" id="panel-brief"></div>
+
+<!-- ═══ EC SECTION PLACEHOLDER ═══ -->
+<div style="display:none;">
+<div style="max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:24px;">
+
+  <!-- Header -->
+  <div style="border-radius:24px;border:1px solid #fed7aa;background:rgba(255,255,255,0.95);box-shadow:0 4px 24px rgba(0,0,0,0.08);padding:24px 32px;">
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;justify-content:space-between;">
+      <div>
+        <p style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#ea580c;margin:0;">Weekly Leadership Operating System</p>
+        <h1 style="font-size:36px;font-weight:900;letter-spacing:-1px;margin:8px 0 0;color:#0f172a;">Cluckingham Palace Tier 2</h1>
+        <p style="margin:10px 0 0;font-size:15px;color:#475569;max-width:600px;">One shared weekly leadership board built to keep the chickens moving, the eggs clean, and the excuses out of the room.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;min-width:260px;">
+        <div style="border-radius:14px;border:1px solid #e2e8f0;background:#f8fafc;padding:14px;">
+          <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#94a3b8;margin:0;">Meeting Cadence</p>
+          <p style="margin:8px 0 0;font-size:16px;font-weight:900;color:#0f172a;">Weekly</p>
+        </div>
+        <div style="border-radius:14px;border:1px solid #e2e8f0;background:#f8fafc;padding:14px;">
+          <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#94a3b8;margin:0;">Board Style</p>
+          <p style="margin:8px 0 0;font-size:16px;font-weight:900;color:#0f172a;">Shared</p>
+        </div>
+        <div style="border-radius:14px;border:1px solid #e2e8f0;background:#f8fafc;padding:14px;">
+          <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#94a3b8;margin:0;">Main Flow</p>
+          <p style="margin:8px 0 0;font-size:16px;font-weight:900;color:#0f172a;">Barn to Ship</p>
+        </div>
+        <div style="border-radius:14px;border:1px solid #e2e8f0;background:#f8fafc;padding:14px;">
+          <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#94a3b8;margin:0;">Focus</p>
+          <p style="margin:8px 0 0;font-size:16px;font-weight:900;color:#0f172a;">User Friendly</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metric Banners -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+    <div style="border-radius:24px;background:#fff;border:1px solid #fed7aa;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:20px;">
+      <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#94a3b8;margin:0;">Red KPIs</p>
+      <p style="margin:8px 0 0;font-size:32px;font-weight:900;color:#0f172a;">2</p>
+      <p style="margin:4px 0 0;font-size:13px;color:#64748b;">Quality and Efficiency</p>
+    </div>
+    <div style="border-radius:24px;background:#fff;border:1px solid #fed7aa;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:20px;">
+      <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#94a3b8;margin:0;">Open Actions</p>
+      <p style="margin:8px 0 0;font-size:32px;font-weight:900;color:#0f172a;">4</p>
+      <p style="margin:4px 0 0;font-size:13px;color:#64748b;">1 escalated</p>
+    </div>
+    <div style="border-radius:24px;background:#fff;border:1px solid #fed7aa;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:20px;">
+      <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#94a3b8;margin:0;">Biggest Risk</p>
+      <p style="margin:8px 0 0;font-size:28px;font-weight:900;color:#0f172a;">Conveyor</p>
+      <p style="margin:4px 0 0;font-size:13px;color:#64748b;">Repeat flow delays</p>
+    </div>
+    <div style="border-radius:24px;background:#fff;border:1px solid #fed7aa;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:20px;">
+      <p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#94a3b8;margin:0;">This Week's Ask</p>
+      <p style="margin:8px 0 0;font-size:28px;font-weight:900;color:#0f172a;">Cross-Help</p>
+      <p style="margin:4px 0 0;font-size:13px;color:#64748b;">Support beats silos</p>
+    </div>
+  </div>
+
+  <!-- Scoreboard + Departments -->
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;">
+
+    <!-- Scoreboard -->
+    <div style="border-radius:24px;background:#fff;border:1px solid #fed7aa;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:20px 24px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+        <div>
+          <h2 style="font-size:22px;font-weight:800;margin:0;color:#0f172a;">Tier 2 Scoreboard</h2>
+          <p style="color:#64748b;margin:4px 0 0;font-size:14px;">Shared KPI view for the weekly meeting. Keep it simple. Review misses, risks, and support needs.</p>
+        </div>
+        <div style="border-radius:14px;background:#fff7ed;padding:8px 16px;border:1px solid #fed7aa;font-size:13px;font-weight:700;color:#c2410c;">Week 16 · 2026</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+        <div style="border-radius:16px;border:1px solid #fcd34d;background:#fef3c7;padding:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <h3 style="font-size:17px;font-weight:800;margin:0;color:#92400e;">Safety</h3>
+            <span style="border-radius:999px;background:rgba(255,255,255,0.7);padding:2px 10px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#92400e;">yellow</span>
+          </div>
+          <div style="margin-top:14px;font-size:13px;color:#78350f;">
+            <p style="margin:0 0 6px;"><strong>Target:</strong> 0 incidents / 3+ near misses reported</p>
+            <p style="margin:0 0 6px;"><strong>Actual:</strong> 1 near miss, 0 incidents</p>
+            <p style="margin:0;line-height:1.5;">Review hazards, fixes, and open concerns across all departments.</p>
+          </div>
+        </div>
+        <div style="border-radius:16px;border:1px solid #fda4af;background:#ffe4e6;padding:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <h3 style="font-size:17px;font-weight:800;margin:0;color:#9f1239;">Quality</h3>
+            <span style="border-radius:999px;background:rgba(255,255,255,0.7);padding:2px 10px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#9f1239;">red</span>
+          </div>
+          <div style="margin-top:14px;font-size:13px;color:#881337;">
+            <p style="margin:0 0 6px;"><strong>Target:</strong> Egg quality on target</p>
+            <p style="margin:0 0 6px;"><strong>Actual:</strong> 2 red issues</p>
+            <p style="margin:0;line-height:1.5;">Track quality from barns through packaging and out the door.</p>
+          </div>
+        </div>
+        <div style="border-radius:16px;border:1px solid #fcd34d;background:#fef3c7;padding:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <h3 style="font-size:17px;font-weight:800;margin:0;color:#92400e;">Unity</h3>
+            <span style="border-radius:999px;background:rgba(255,255,255,0.7);padding:2px 10px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#92400e;">yellow</span>
+          </div>
+          <div style="margin-top:14px;font-size:13px;color:#78350f;">
+            <p style="margin:0 0 6px;"><strong>Target:</strong> All support requests owned</p>
+            <p style="margin:0 0 6px;"><strong>Actual:</strong> 3 open support needs</p>
+            <p style="margin:0;line-height:1.5;">What do you need from me and how can I help?</p>
+          </div>
+        </div>
+        <div style="border-radius:16px;border:1px solid #fcd34d;background:#fef3c7;padding:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <h3 style="font-size:17px;font-weight:800;margin:0;color:#92400e;">Labor</h3>
+            <span style="border-radius:999px;background:rgba(255,255,255,0.7);padding:2px 10px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#92400e;">yellow</span>
+          </div>
+          <div style="margin-top:14px;font-size:13px;color:#78350f;">
+            <p style="margin:0 0 6px;"><strong>Target:</strong> 97% attendance</p>
+            <p style="margin:0 0 6px;"><strong>Actual:</strong> 95% attendance</p>
+            <p style="margin:0;line-height:1.5;">Coverage, attendance, training, and team health.</p>
+          </div>
+        </div>
+        <div style="border-radius:16px;border:1px solid #fcd34d;background:#fef3c7;padding:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <h3 style="font-size:17px;font-weight:800;margin:0;color:#92400e;">Materials</h3>
+            <span style="border-radius:999px;background:rgba(255,255,255,0.7);padding:2px 10px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#92400e;">yellow</span>
+          </div>
+          <div style="margin-top:14px;font-size:13px;color:#78350f;">
+            <p style="margin:0 0 6px;"><strong>Target:</strong> 0 stockouts</p>
+            <p style="margin:0 0 6px;"><strong>Actual:</strong> 1 packaging shortage</p>
+            <p style="margin:0;line-height:1.5;">Parts, supplies, packaging, and inventory risk.</p>
+          </div>
+        </div>
+        <div style="border-radius:16px;border:1px solid #fda4af;background:#ffe4e6;padding:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <h3 style="font-size:17px;font-weight:800;margin:0;color:#9f1239;">Efficiency</h3>
+            <span style="border-radius:999px;background:rgba(255,255,255,0.7);padding:2px 10px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#9f1239;">red</span>
+          </div>
+          <div style="margin-top:14px;font-size:13px;color:#881337;">
+            <p style="margin:0 0 6px;"><strong>Target:</strong> Downtime under weekly target</p>
+            <p style="margin:0 0 6px;"><strong>Actual:</strong> Conveyor delays up</p>
+            <p style="margin:0;line-height:1.5;">Track bottlenecks, downtime, and lost throughput.</p>
+          </div>
+        </div>
+        <div style="border-radius:16px;border:1px solid #fcd34d;background:#fef3c7;padding:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <h3 style="font-size:17px;font-weight:800;margin:0;color:#92400e;">Forecasting</h3>
+            <span style="border-radius:999px;background:rgba(255,255,255,0.7);padding:2px 10px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#92400e;">yellow</span>
+          </div>
+          <div style="margin-top:14px;font-size:13px;color:#78350f;">
+            <p style="margin:0 0 6px;"><strong>Target:</strong> Plan next week cleanly</p>
+            <p style="margin:0 0 6px;"><strong>Actual:</strong> 2 scheduling risks</p>
+            <p style="margin:0;line-height:1.5;">Upcoming workload, bird movement, staffing, and maintenance plans.</p>
+          </div>
+        </div>
+        <div style="border-radius:16px;border:1px solid #fcd34d;background:#fef3c7;padding:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <h3 style="font-size:17px;font-weight:800;margin:0;color:#92400e;">Procurement</h3>
+            <span style="border-radius:999px;background:rgba(255,255,255,0.7);padding:2px 10px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#92400e;">yellow</span>
+          </div>
+          <div style="margin-top:14px;font-size:13px;color:#78350f;">
+            <p style="margin:0 0 6px;"><strong>Target:</strong> Critical purchases approved</p>
+            <p style="margin:0 0 6px;"><strong>Actual:</strong> 1 delayed approval</p>
+            <p style="margin:0;line-height:1.5;">Capital, vendor delays, and critical parts waiting for action.</p>
+          </div>
+        </div>
+        <div style="border-radius:16px;border:1px solid #6ee7b7;background:#d1fae5;padding:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <h3 style="font-size:17px;font-weight:800;margin:0;color:#065f46;">Customer</h3>
+            <span style="border-radius:999px;background:rgba(255,255,255,0.7);padding:2px 10px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#065f46;">green</span>
+          </div>
+          <div style="margin-top:14px;font-size:13px;color:#064e3b;">
+            <p style="margin:0 0 6px;"><strong>Target:</strong> 0 complaints</p>
+            <p style="margin:0 0 6px;"><strong>Actual:</strong> 0 complaints</p>
+            <p style="margin:0;line-height:1.5;">Shipping performance, cold chain, and out-the-door quality.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Departments Sidebar -->
+    <div style="border-radius:24px;background:#0f172a;color:#fff;box-shadow:0 2px 12px rgba(0,0,0,0.15);padding:20px 24px;">
+      <h2 style="font-size:22px;font-weight:800;margin:0;">Recommended Departments</h2>
+      <p style="color:#94a3b8;margin:8px 0 0;font-size:13px;line-height:1.6;">You started with Production, Packaging, Storage, Shipping, and HR. For a real Tier 2 that protects the whole flow, these are the missing seats you should add.</p>
+      <div style="margin-top:20px;display:flex;flex-direction:column;gap:10px;">
+        <div style="border-radius:14px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.1);padding:12px 16px;font-size:14px;font-weight:500;">Production</div>
+        <div style="border-radius:14px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.1);padding:12px 16px;font-size:14px;font-weight:500;">Packaging</div>
+        <div style="border-radius:14px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.1);padding:12px 16px;font-size:14px;font-weight:500;">Storage</div>
+        <div style="border-radius:14px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.1);padding:12px 16px;font-size:14px;font-weight:500;">Shipping</div>
+        <div style="border-radius:14px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.1);padding:12px 16px;font-size:14px;font-weight:500;">Maintenance</div>
+        <div style="border-radius:14px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.1);padding:12px 16px;font-size:14px;font-weight:500;">Quality</div>
+        <div style="border-radius:14px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.1);padding:12px 16px;font-size:14px;font-weight:500;">HR</div>
+        <div style="border-radius:14px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.1);padding:12px 16px;font-size:14px;font-weight:500;">Materials / Inventory</div>
+      </div>
+      <div style="margin-top:20px;border-radius:14px;background:#fbbf24;color:#0f172a;padding:16px;">
+        <p style="font-weight:700;margin:0;">Best choice on structure</p>
+        <p style="font-size:13px;margin:6px 0 0;line-height:1.6;">Use one shared board first. It is easier to train, easier to run weekly, and harder for departments to hide behind separate views.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Facility Flow + Weekly Prep -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+
+    <div style="border-radius:24px;background:#fff;border:1px solid #fed7aa;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:20px 24px;">
+      <h2 style="font-size:22px;font-weight:800;margin:0;color:#0f172a;">Facility Flow</h2>
+      <p style="color:#64748b;margin:8px 0 0;font-size:14px;">This is the flow your weekly Tier 2 should protect every single week.</p>
+      <div style="margin-top:20px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
+        <div style="border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;padding:10px 14px;font-size:13px;font-weight:700;color:#0f172a;">Barns / Layers</div>
+        <div style="color:#f97316;font-size:20px;font-weight:900;">&#8594;</div>
+        <div style="border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;padding:10px 14px;font-size:13px;font-weight:700;color:#0f172a;">Lubing Rod Conveyor</div>
+        <div style="color:#f97316;font-size:20px;font-weight:900;">&#8594;</div>
+        <div style="border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;padding:10px 14px;font-size:13px;font-weight:700;color:#0f172a;">Cleaning / Grading</div>
+        <div style="color:#f97316;font-size:20px;font-weight:900;">&#8594;</div>
+        <div style="border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;padding:10px 14px;font-size:13px;font-weight:700;color:#0f172a;">Packaging</div>
+        <div style="color:#f97316;font-size:20px;font-weight:900;">&#8594;</div>
+        <div style="border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;padding:10px 14px;font-size:13px;font-weight:700;color:#0f172a;">Cold Storage</div>
+        <div style="color:#f97316;font-size:20px;font-weight:900;">&#8594;</div>
+        <div style="border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;padding:10px 14px;font-size:13px;font-weight:700;color:#0f172a;">Shipping</div>
+        <div style="color:#f97316;font-size:20px;font-weight:900;">&#8594;</div>
+        <div style="border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;padding:10px 14px;font-size:13px;font-weight:700;color:#0f172a;">Customer</div>
+      </div>
+    </div>
+
+    <div style="border-radius:24px;background:#fff;border:1px solid #fed7aa;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:20px 24px;">
+      <h2 style="font-size:22px;font-weight:800;margin:0;color:#0f172a;">Weekly Prep</h2>
+      <p style="color:#64748b;margin:8px 0 0;font-size:14px;">Each department should show up with wins, risks, and support needs already filled out.</p>
+      <div style="margin-top:20px;display:flex;flex-direction:column;gap:12px;">
+        <div style="border-radius:14px;border:1px solid #e2e8f0;padding:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="font-size:16px;font-weight:700;margin:0;color:#0f172a;">Production</h3>
+            <span style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#ea580c;">Ready for Tier 2</span>
+          </div>
+          <div style="margin-top:10px;font-size:13px;color:#475569;display:flex;flex-direction:column;gap:4px;">
+            <p style="margin:0;"><strong>Win:</strong> Improved egg flow in 2 houses</p>
+            <p style="margin:0;"><strong>Risk:</strong> Dirty egg trend in Barn 4</p>
+            <p style="margin:0;"><strong>Support Needed:</strong> Maintenance support on conveyor alignment</p>
+          </div>
+        </div>
+        <div style="border-radius:14px;border:1px solid #e2e8f0;padding:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="font-size:16px;font-weight:700;margin:0;color:#0f172a;">Packaging</h3>
+            <span style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#ea580c;">Ready for Tier 2</span>
+          </div>
+          <div style="margin-top:10px;font-size:13px;color:#475569;display:flex;flex-direction:column;gap:4px;">
+            <p style="margin:0;"><strong>Win:</strong> Reduced pack damage on day shift</p>
+            <p style="margin:0;"><strong>Risk:</strong> Material shortage risk next week</p>
+            <p style="margin:0;"><strong>Support Needed:</strong> Inventory confirmation by Tuesday</p>
+          </div>
+        </div>
+        <div style="border-radius:14px;border:1px solid #e2e8f0;padding:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="font-size:16px;font-weight:700;margin:0;color:#0f172a;">Storage</h3>
+            <span style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#ea580c;">Ready for Tier 2</span>
+          </div>
+          <div style="margin-top:10px;font-size:13px;color:#475569;display:flex;flex-direction:column;gap:4px;">
+            <p style="margin:0;"><strong>Win:</strong> Cold hold stayed stable</p>
+            <p style="margin:0;"><strong>Risk:</strong> Space pressure on high volume days</p>
+            <p style="margin:0;"><strong>Support Needed:</strong> Shipping timing coordination</p>
+          </div>
+        </div>
+        <div style="border-radius:14px;border:1px solid #e2e8f0;padding:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="font-size:16px;font-weight:700;margin:0;color:#0f172a;">Shipping</h3>
+            <span style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#ea580c;">Ready for Tier 2</span>
+          </div>
+          <div style="margin-top:10px;font-size:13px;color:#475569;display:flex;flex-direction:column;gap:4px;">
+            <p style="margin:0;"><strong>Win:</strong> All loads out on time</p>
+            <p style="margin:0;"><strong>Risk:</strong> Trailer readiness gap</p>
+            <p style="margin:0;"><strong>Support Needed:</strong> HR and ops coverage planning</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Action Rail -->
+  <div style="border-radius:24px;background:#fff;border:1px solid #fed7aa;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:20px 24px;">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;">
+      <div>
+        <h2 style="font-size:22px;font-weight:800;margin:0;color:#0f172a;">Action Rail</h2>
+        <p style="color:#64748b;margin:4px 0 0;font-size:14px;">Problems do not leave this board until they are owned, fixed, and verified.</p>
+      </div>
+      <div style="border-radius:14px;background:#f1f5f9;padding:8px 16px;font-size:13px;font-weight:700;color:#475569;border:1px solid #e2e8f0;">Rule: No owner = not a real action</div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;min-width:900px;font-size:13px;border-collapse:collapse;color:#0f172a;">
+        <thead>
+          <tr style="border-bottom:2px solid #e2e8f0;text-align:left;">
+            <th style="padding:10px 14px 10px 0;font-weight:700;">ID</th>
+            <th style="padding:10px 14px 10px 0;font-weight:700;">Department</th>
+            <th style="padding:10px 14px 10px 0;font-weight:700;">Category</th>
+            <th style="padding:10px 14px 10px 0;font-weight:700;">Issue</th>
+            <th style="padding:10px 14px 10px 0;font-weight:700;">Owner</th>
+            <th style="padding:10px 14px 10px 0;font-weight:700;">Support</th>
+            <th style="padding:10px 14px 10px 0;font-weight:700;">Due</th>
+            <th style="padding:10px 14px 10px 0;font-weight:700;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f1f5f9;vertical-align:top;">
+            <td style="padding:14px 14px 14px 0;font-weight:700;color:#c2410c;">T2-001</td>
+            <td style="padding:14px 14px 14px 0;">Production</td>
+            <td style="padding:14px 14px 14px 0;">Quality</td>
+            <td style="padding:14px 14px 14px 0;max-width:300px;">Dirty eggs increasing in Barn 4</td>
+            <td style="padding:14px 14px 14px 0;">Production Lead</td>
+            <td style="padding:14px 14px 14px 0;">Maintenance + Quality</td>
+            <td style="padding:14px 14px 14px 0;">Apr 22</td>
+            <td style="padding:14px 14px 14px 0;"><span style="border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;background:#ffe4e6;color:#be123c;">Open</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f1f5f9;vertical-align:top;">
+            <td style="padding:14px 14px 14px 0;font-weight:700;color:#c2410c;">T2-002</td>
+            <td style="padding:14px 14px 14px 0;">Maintenance</td>
+            <td style="padding:14px 14px 14px 0;">Efficiency</td>
+            <td style="padding:14px 14px 14px 0;max-width:300px;">Lubing rod conveyor alignment causing repeat stops</td>
+            <td style="padding:14px 14px 14px 0;">Maintenance Lead</td>
+            <td style="padding:14px 14px 14px 0;">Production</td>
+            <td style="padding:14px 14px 14px 0;">Apr 19</td>
+            <td style="padding:14px 14px 14px 0;"><span style="border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;background:#fef3c7;color:#b45309;">In Progress</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f1f5f9;vertical-align:top;">
+            <td style="padding:14px 14px 14px 0;font-weight:700;color:#c2410c;">T2-003</td>
+            <td style="padding:14px 14px 14px 0;">Packaging</td>
+            <td style="padding:14px 14px 14px 0;">Materials</td>
+            <td style="padding:14px 14px 14px 0;max-width:300px;">Carton inventory running tight</td>
+            <td style="padding:14px 14px 14px 0;">Packaging Lead</td>
+            <td style="padding:14px 14px 14px 0;">Materials / Inventory</td>
+            <td style="padding:14px 14px 14px 0;">Apr 18</td>
+            <td style="padding:14px 14px 14px 0;"><span style="border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;background:#f3e8ff;color:#7e22ce;">Escalated</span></td>
+          </tr>
+          <tr style="vertical-align:top;">
+            <td style="padding:14px 14px 14px 0;font-weight:700;color:#c2410c;">T2-004</td>
+            <td style="padding:14px 14px 14px 0;">HR</td>
+            <td style="padding:14px 14px 14px 0;">Labor</td>
+            <td style="padding:14px 14px 14px 0;max-width:300px;">Weekend coverage gap in shipping support</td>
+            <td style="padding:14px 14px 14px 0;">HR</td>
+            <td style="padding:14px 14px 14px 0;">Operations</td>
+            <td style="padding:14px 14px 14px 0;">Apr 21</td>
+            <td style="padding:14px 14px 14px 0;"><span style="border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;background:#ffe4e6;color:#be123c;">Open</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Bottom 3 Cards -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+    <div style="border-radius:24px;background:#fff;border:1px solid #fed7aa;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:20px;">
+      <h3 style="font-size:18px;font-weight:800;margin:0;color:#0f172a;">Best Answer to "Am I Missing Anything?"</h3>
+      <p style="color:#475569;margin:12px 0 0;font-size:13px;line-height:1.7;">Yes. If you leave out Maintenance, Quality, and Materials / Inventory, your Tier 2 will miss the exact causes that hurt egg flow, packaging stability, and shipping performance.</p>
+    </div>
+    <div style="border-radius:24px;background:#fff;border:1px solid #fed7aa;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:20px;">
+      <h3 style="font-size:18px;font-weight:800;margin:0;color:#0f172a;">Best User-Friendly Setup</h3>
+      <p style="color:#475569;margin:12px 0 0;font-size:13px;line-height:1.7;">One shared weekly board, one action rail, one prep form. Keep the meeting simple: review red KPIs, review support needs, assign owners, move on.</p>
+    </div>
+    <div style="border-radius:24px;background:#fff;border:1px solid #fed7aa;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:20px;">
+      <h3 style="font-size:18px;font-weight:800;margin:0;color:#0f172a;">Why this color theme</h3>
+      <p style="color:#475569;margin:12px 0 0;font-size:13px;line-height:1.7;">Warm orange and gold pull attention fast, feel energetic, and fit the chicken theme without looking childish. It should get eyes on the board.</p>
+    </div>
+  </div>
+
+</div>
+</div>
+
 <!-- ═══ EC SECTION (Employee Daily Check) ═══ -->
 <div id="ec-section" style="display:none;position:fixed;inset:0;background:#0a1a0a;z-index:500;overflow-y:auto;">
   <div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 40px;">
@@ -1462,6 +1880,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button class="prod-tab-btn"        id="staff-tab-sched"   onclick="goStaffSection('sched')">📅 Schedule</button>
     <button class="prod-tab-btn"        id="staff-tab-certs"   onclick="goStaffSection('certs')">🏆 Certifications</button>
     <button class="prod-tab-btn"        id="staff-tab-onboard" onclick="goStaffSection('onboard')">📋 Onboarding</button>
+    <button class="prod-tab-btn"        id="staff-tab-oncal"   onclick="goStaffSection('oncal')">📞 On-Call Cal</button>
   </div>
 
   <!-- Directory Tab -->
@@ -1476,6 +1895,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="pill active" onclick="staffFarmFilter('all',this)">All Farms</button>
       <button class="pill" onclick="staffFarmFilter('Hegins',this)">📍 Hegins</button>
       <button class="pill" onclick="staffFarmFilter('Danville',this)">📍 Danville</button>
+      <button class="pill" onclick="staffFarmFilter('Rushtown',this)">📍 Rushtown</button>
     </div>
     <div id="staff-list"></div>
   </div>
@@ -1500,6 +1920,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
             <option value="Technician">Technician</option>
             <option value="Lead">Lead</option>
             <option value="WNO">WNO</option>
+            <option value="Barn Worker">Barn Worker</option>
             <option value="Director">Director</option>
             <option value="Driver">Driver</option>
             <option value="Feed Mill">Feed Mill</option>
@@ -1544,20 +1965,39 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div id="onboard-list"></div>
   </div>
 
+  <!-- On-Call Calendar Tab -->
+  <div id="staff-sec-oncal" style="display:none;">
+    <div style="font-size:11px;color:#4a6a4a;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;">Click any day to assign who is on call. Changes sync across the app.</div>
+    <div id="staff-oncall-cal-grid"></div>
+  </div>
+
   <!-- Schedule Tab -->
   <div id="staff-sec-sched" style="display:none;">
+    <!-- Worker Type Tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <button class="prod-tab-btn active sched-type-btn" id="sched-type-maint" onclick="staffSchedTypeFilter('maintenance',this)">🔧 Maintenance</button>
+      <button class="prod-tab-btn sched-type-btn" id="sched-type-barn" onclick="staffSchedTypeFilter('barn',this)">🐔 Barn Workers</button>
+    </div>
+    <!-- Location Tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
+      <button class="prod-tab-btn active sched-loc-btn" id="sched-loc-danville" onclick="staffSchedLocFilter('Danville',this)">📍 Danville</button>
+      <button class="prod-tab-btn sched-loc-btn" id="sched-loc-hegins" onclick="staffSchedLocFilter('Hegins',this)">📍 Hegins</button>
+      <button class="prod-tab-btn sched-loc-btn" id="sched-loc-rushtown" onclick="staffSchedLocFilter('Rushtown',this)">📍 Rushtown</button>
+    </div>
+    <!-- Week Navigation -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
       <button onclick="staffSchedPrevWeek()" style="padding:6px 12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:13px;cursor:pointer;">◀</button>
       <span id="sched-week-label" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#c0d8c0;font-weight:700;min-width:180px;text-align:center;"></span>
       <button onclick="staffSchedNextWeek()" style="padding:6px 12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:13px;cursor:pointer;">▶</button>
       <button onclick="staffSchedThisWeek()" style="padding:6px 12px;background:#1a3a1a;border:1px solid #2a5a2a;border-radius:6px;color:#7ac57a;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">This Week</button>
     </div>
-    <div id="staff-sched-fac-bar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
-      <button class="pill active" onclick="staffSchedFacFilter('all',this)">All</button>
-      <button class="pill" onclick="staffSchedFacFilter('Hegins',this)">📍 Hegins</button>
-      <button class="pill" onclick="staffSchedFacFilter('Danville',this)">📍 Danville</button>
-      <button class="pill" onclick="staffSchedFacFilter('Rushtown',this)">📍 Rushtown</button>
-      <button class="pill" onclick="staffSchedFacFilter('Feed Mill',this)">🌾 Feed Mill</button>
+    <!-- Barn Leader Banner -->
+    <div id="barn-leader-banner" style="display:none;background:#1a2a0a;border:1.5px solid #4ade80;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-family:'IBM Plex Mono',monospace;">
+      <span style="font-size:16px;">👑</span>
+      <div>
+        <div style="font-size:9px;color:#4ade80;letter-spacing:2px;font-weight:700;text-transform:uppercase;">Location Leader</div>
+        <div id="barn-leader-name" style="font-size:13px;color:#f0ead8;font-weight:700;"></div>
+      </div>
     </div>
     <div id="staff-sched-grid" style="overflow-x:auto;"></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6a4a;">
@@ -1608,6 +2048,144 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 </div>
 
+<!-- ═══ ON CALL PANEL ═══ -->
+<div class="panel" id="panel-oncall">
+  <div class="section-title">📞 On Call</div>
+
+  <!-- Site Tabs -->
+  <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
+    <button class="prod-tab-btn active" id="oc-site-danville" onclick="setOcSite('Danville',this)">📍 Danville</button>
+    <button class="prod-tab-btn"        id="oc-site-hegins"   onclick="setOcSite('Hegins',this)">📍 Hegins</button>
+    <button class="prod-tab-btn"        id="oc-site-rushtown" onclick="setOcSite('Rushtown',this)">📍 Rushtown</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid g4" id="oc-stats" style="margin-bottom:14px;"></div>
+
+  <!-- Today Banner -->
+  <div id="oc-today-banner" style="display:none;background:#0a2a0a;border:1.5px solid #4ade80;border-radius:10px;padding:10px 14px;margin-bottom:14px;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;"></div>
+
+  <!-- Section Tabs -->
+  <div style="display:flex;gap:6px;margin-bottom:16px;">
+    <button class="prod-tab-btn active" id="oc-tab-log"      onclick="goOcSection('log')">📋 Log Event</button>
+    <button class="prod-tab-btn"        id="oc-tab-history"  onclick="goOcSection('history')">📜 History</button>
+    <button class="prod-tab-btn"        id="oc-tab-calendar" onclick="goOcSection('calendar')">📅 Calendar</button>
+  </div>
+
+  <!-- ── LOG SECTION ── -->
+  <div id="oc-sec-log">
+    <!-- WO-style form -->
+    <div style="background:#0d180d;border:1.5px solid #4a1a0a;border-radius:14px;padding:18px;margin-bottom:18px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#e53e3e;text-transform:uppercase;margin-bottom:14px;">🚨 Log On-Call Event</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <label style="font-size:11px;color:#7a5a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Who Was On Call *</label>
+          <input type="text" id="oc-who" list="staff-datalist" placeholder="Name" autocomplete="off" style="width:100%;background:#060e06;border:1px solid #4a1a0a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#7a5a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Called By</label>
+          <input type="text" id="oc-called-by" list="staff-datalist" placeholder="Who made the call" autocomplete="off" style="width:100%;background:#060e06;border:1px solid #4a1a0a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#7a5a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Reason *</label>
+          <select id="oc-reason" style="width:100%;background:#060e06;border:1px solid #4a1a0a;border-radius:6px;color:#f0ead8;padding:10px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+            <option value="">— Select reason —</option>
+            <option>Equipment Failure</option>
+            <option>Animal Health</option>
+            <option>Safety Issue</option>
+            <option>Power Outage</option>
+            <option>Water / Feed Issue</option>
+            <option>Weather Emergency</option>
+            <option>After-Hours Work Order</option>
+            <option>Biosecurity</option>
+            <option>Injury / Accident</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#7a5a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Date &amp; Time Called</label>
+          <div style="display:flex;gap:6px;">
+            <input type="datetime-local" id="oc-called-at" style="flex:1;background:#060e06;border:1px solid #4a1a0a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:12px;font-family:inherit;box-sizing:border-box;">
+            <button onclick="ocSetNow()" style="padding:8px 10px;background:#1a2a1a;border:1px solid #2a5a2a;border-radius:6px;color:#7ac57a;font-size:10px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;white-space:nowrap;">Now</button>
+          </div>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:11px;color:#7a5a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">What Happened *</label>
+          <textarea id="oc-desc" rows="3" placeholder="Describe the issue in detail..." style="width:100%;background:#060e06;border:1px solid #4a1a0a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;"></textarea>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:11px;color:#7a5a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Actions Taken</label>
+          <textarea id="oc-actions" rows="2" placeholder="What was done to address the issue..." style="width:100%;background:#060e06;border:1px solid #4a1a0a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;"></textarea>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#7a5a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:4px;">Equipment / Animals Involved</label>
+          <input type="text" id="oc-equipment" placeholder="e.g. House 3 auger, 200 birds" style="width:100%;background:#060e06;border:1px solid #4a1a0a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding-top:18px;">
+          <input type="checkbox" id="oc-urgent" style="width:18px;height:18px;accent-color:#e53e3e;cursor:pointer;">
+          <label for="oc-urgent" style="font-size:13px;color:#e53e3e;font-family:'IBM Plex Mono',monospace;font-weight:700;cursor:pointer;">🚨 URGENT</label>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button id="oc-submit-btn" onclick="submitOnCallEvent()" style="padding:12px 28px;background:#3a0a0a;border:2px solid #e53e3e;border-radius:10px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">+ Log On-Call Event</button>
+        <div id="oc-submit-result" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#4caf50;">✓ Event logged!</div>
+      </div>
+    </div>
+    <!-- Open events for this site -->
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:#e53e3e;text-transform:uppercase;margin-bottom:10px;">● Open Events</div>
+    <div id="oc-open-list"></div>
+  </div>
+
+  <!-- ── HISTORY SECTION ── -->
+  <div id="oc-sec-history" style="display:none;">
+    <div id="oc-hist-filter-bar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="pill active" onclick="ocHistFilter('all',this)">All</button>
+      <button class="pill" onclick="ocHistFilter('open',this)">● Open</button>
+      <button class="pill" onclick="ocHistFilter('resolved',this)">✓ Resolved</button>
+    </div>
+    <div id="oc-history-list"></div>
+  </div>
+
+  <!-- ── CALENDAR SECTION ── -->
+  <div id="oc-sec-calendar" style="display:none;">
+    <div style="font-size:11px;color:#4a6a4a;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;">Click any day to assign who is on call for that entire week.</div>
+    <div id="oc-cal-grid"></div>
+  </div>
+</div>
+
+<!-- On-Call Resolve Modal -->
+<div id="oc-resolve-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:900;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:16px;padding:24px;width:100%;max-width:420px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:#f0ead8;margin-bottom:14px;">✓ Resolve On-Call Event</div>
+    <input type="hidden" id="oc-resolve-id">
+    <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:6px;">Resolution Notes</label>
+    <textarea id="oc-resolve-notes" rows="3" placeholder="How was it resolved? Parts used, follow-up needed..." style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px 12px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical;margin-bottom:14px;"></textarea>
+    <div style="display:flex;gap:10px;">
+      <button id="oc-resolve-save-btn" onclick="saveResolve()" style="flex:1;padding:12px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:10px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">Mark Resolved</button>
+      <button onclick="closeResolveModal()" style="padding:12px 18px;background:#1a1a1a;border:1px solid #3a3a3a;border-radius:10px;color:#888;font-size:13px;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- On-Call Day Assignment Modal -->
+<div id="oc-day-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:900;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:16px;padding:24px;width:100%;max-width:380px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;margin-bottom:4px;">📅 Assign On-Call Week</div>
+    <div id="oc-day-label" style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;margin-bottom:16px;"></div>
+    <input type="hidden" id="oc-day-date-val">
+    <input type="hidden" id="oc-day-ctx">
+    <input type="hidden" id="oc-day-site-val">
+    <div style="margin-bottom:16px;">
+      <label style="font-size:11px;color:#4a7a4a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:5px;">Who is On Call</label>
+      <select id="oc-day-staff" style="width:100%;background:#0a140a;border:1px solid #2a5a2a;border-radius:6px;color:#f0ead8;padding:10px;font-size:13px;font-family:inherit;box-sizing:border-box;"></select>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button id="oc-day-save-btn" onclick="saveOcDay()" style="flex:1;padding:12px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:10px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">Save Week</button>
+      <button onclick="closeOcDayModal()" style="padding:12px 18px;background:#1a1a1a;border:1px solid #3a3a3a;border-radius:10px;color:#888;font-size:13px;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Staff Edit Modal -->
 <div id="staff-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:800;align-items:center;justify-content:center;padding:20px;">
   <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:16px;padding:24px;width:100%;max-width:400px;">
@@ -1625,6 +2203,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
             <option value="Technician">Technician</option>
             <option value="Lead">Lead</option>
             <option value="WNO">WNO</option>
+            <option value="Barn Worker">Barn Worker</option>
             <option value="Director">Director</option>
             <option value="Driver">Driver</option>
             <option value="Feed Mill">Feed Mill</option>
@@ -1728,10 +2307,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     </table>
   </div>
 
-  <!-- Add Position button (shown for pkg/feed/ship) -->
-  <div id="sched-add-pos-wrap" style="display:none;margin-top:12px;">
-    <button class="sched-copy-btn" onclick="openSchedNewPosition()">➕ Add Position to This Dept</button>
-  </div>
+  <!-- Add Position button removed — use + buttons in each schedule cell -->
 </div>
 
 <!-- Schedule Assignment Modal -->
@@ -1761,6 +2337,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <div class="sched-modal-label">Notes</div>
         <input class="sched-modal-input" id="sched-notes" type="text" placeholder="Optional">
       </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;background:#0d2a0d;border:1px solid #2a5a2a;border-radius:8px;padding:10px 14px;">
+      <input type="checkbox" id="sched-whole-week" style="width:18px;height:18px;accent-color:#4a9b6f;cursor:pointer;">
+      <label for="sched-whole-week" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#7ac57a;cursor:pointer;font-weight:700;">📅 Assign whole week (Mon – Sun)</label>
     </div>
     <div class="sched-modal-btns">
       <button class="sched-save-btn" onclick="saveSchedEntry()">✓ Save</button>
@@ -1936,12 +2516,9 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         🔧 Work Order will be auto-created when you submit.
       </div>
     </div>
-    <div style="margin-bottom:12px;">
-      <div class="bw-row-label">Manure Belts</div>
-      <div class="bw-yn-row">
-        <button class="bw-yn-btn" id="bw-manure-run"  onclick="bwSet('manure','run')">✅ Running</button>
-        <button class="bw-yn-btn" id="bw-manure-stop" onclick="bwSet('manure','stop')">❌ Not Running</button>
-      </div>
+    <div style="margin-top:12px;">
+      <div class="bw-row-label">Egg count (approx. total today)</div>
+      <input type="number" id="bw-egg-count" class="bw-input" placeholder="e.g. 134500" min="0">
     </div>
   </div>
 
@@ -1970,92 +2547,182 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <input type="number" id="bw-fly-count" class="bw-input" placeholder="Enter fly count" min="0">
       </div>
     </div>
+    <div style="margin-top:12px;">
+      <div class="bw-row-label">Weekly rodent trap count</div>
+      <input type="number" id="bw-weekly-rodent-count" class="bw-input" placeholder="Total rodents caught this week" min="0">
+    </div>
   </div>
 
   <!-- Daily Checklist -->
   <div class="bw-card">
     <div class="bw-card-title">✅ Daily Checklist</div>
-    <div style="font-size:10px;color:#5a8a5a;margin-bottom:12px;font-family:'IBM Plex Mono',monospace;">MARK EACH ITEM PASS OR FAIL</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;">MARK EACH ITEM PASS OR FAIL — IN ORDER</div>
+      <div id="bw-time-badge" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:8px;padding:3px 8px;">⏱ ~7h 10m remaining</div>
+    </div>
     <div id="bw-checklist-items">
 
-      <div class="bw-cl-row" id="bw-cl-waterleaks">
-        <div class="bw-cl-top"><div class="bw-cl-label">Check for water leaks — notify manager if found</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('waterleaks','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('waterleaks','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-waterleaks"><input type="text" placeholder="Describe location / issue..." id="bw-cl-note-waterleaks"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+      <div class="bw-cl-row" id="bw-cl-fwv" data-minutes="0">
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">1</span>
+            <div><div class="bw-cl-label">Monitor feed, water &amp; ventilation throughout the shift</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ time varies · ongoing</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('fwv','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('fwv','fail',this)">❌ Fail</button><button onclick="clOpenTaskWI('fwv','Monitor Feed Water Ventilation')" style="padding:5px 8px;border-radius:6px;border:1px solid #2a3a5a;background:#0a0f1a;color:#5a7a9a;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:4px;touch-action:manipulation;min-width:44px;min-height:44px;">📖</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-fwv">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ LOG THE ISSUE &amp; NOTIFY MANAGER</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Note the specific system (feed/water/ventilation), any readings, and action taken. Contact manager immediately if feed is powdery, water pressure is low, or ventilation cannot keep up.</div></div>
+          <input type="text" placeholder="System affected, readings, action taken..." id="bw-cl-note-fwv">
+        </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-cagebirdcheck">
-        <div class="bw-cl-top"><div class="bw-cl-label">Check all cages — cull any injured or sick birds</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('cagebirdcheck','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('cagebirdcheck','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-cagebirdcheck"><input type="text" placeholder="Describe issue (location, count)..." id="bw-cl-note-cagebirdcheck"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+      <div class="bw-cl-row" id="bw-cl-birdcheck" data-minutes="120">
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">2</span>
+            <div><div class="bw-cl-label">Full bird check — mortality, chute, sick/loose birds, egg belt &amp; cage damage</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 2 hrs · daily</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('birdcheck','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('birdcheck','fail',this)">❌ Fail</button><button onclick="clOpenTaskWI('bird','Full Bird Check')" style="padding:5px 8px;border-radius:6px;border:1px solid #2a3a5a;background:#0a0f1a;color:#5a7a9a;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:4px;touch-action:manipulation;min-width:44px;min-height:44px;">📖</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-birdcheck">
+          <div style="background:#1a0505;border-left:3px solid #e53e3e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#e53e3e;letter-spacing:1px;margin-bottom:3px;">⚠ LOG ALL ISSUES — NOTIFY MANAGER</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c07070;">Record each issue: mortality count + location, loose birds, sick/injured birds (move to isolation), chute fill level, belt or cage damage. Work orders auto-created for equipment.</div></div>
+          <input type="text" placeholder="Mortality count, cage row, belt issue, loose birds, chute level..." id="bw-cl-note-birdcheck"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div>
+        </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-mortchute">
-        <div class="bw-cl-top"><div class="bw-cl-label">All dead birds placed in white chute (back of barn, top floor)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('mortchute','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('mortchute','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-mortchute"><input type="text" placeholder="Notes..." id="bw-cl-note-mortchute"></div>
+      <div class="bw-cl-row" id="bw-cl-watertubes" data-minutes="30">
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">3</span>
+            <div><div class="bw-cl-label">Water tubes cleaned — front &amp; back of house</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 30 min · daily</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('watertubes','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('watertubes','fail',this)">❌ Fail</button><button onclick="clOpenTaskWI('tubes','Clean Water Tubes')" style="padding:5px 8px;border-radius:6px;border:1px solid #2a3a5a;background:#0a0f1a;color:#5a7a9a;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:4px;touch-action:manipulation;min-width:44px;min-height:44px;">📖</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-watertubes">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ MUST COMPLETE — RETURN TO FINISH</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Dirty water tubes cause disease spread. Cannot be skipped. Log which section was missed and finish before end of shift.</div></div>
+          <input type="text" placeholder="What was incomplete, reason..." id="bw-cl-note-watertubes">
+        </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-chutefull">
-        <div class="bw-cl-top"><div class="bw-cl-label">White chute checked — getting full?</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('chutefull','pass',this)">✅ OK</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('chutefull','fail',this)">⚠️ Full</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-chutefull"><input type="text" placeholder="Notes..." id="bw-cl-note-chutefull"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+      <div class="bw-cl-row" id="bw-cl-frontofhouse" data-minutes="45">
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">4</span>
+            <div><div class="bw-cl-label">Front of house cleaned after egg run</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 45 min · daily</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('frontofhouse','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('frontofhouse','fail',this)">❌ Fail</button><button onclick="clOpenTaskWI('front','Clean Front of House')" style="padding:5px 8px;border-radius:6px;border:1px solid #2a3a5a;background:#0a0f1a;color:#5a7a9a;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:4px;touch-action:manipulation;min-width:44px;min-height:44px;">📖</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-frontofhouse">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ COMPLETE BEFORE SHIFT END</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Egg residue and debris at front of house creates food safety risk and fly attractant. Log what was left undone and the reason.</div></div>
+          <input type="text" placeholder="What was not cleaned, reason..." id="bw-cl-note-frontofhouse">
+        </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-damagedcages">
-        <div class="bw-cl-top"><div class="bw-cl-label">Damaged cages &amp; egg belts — any damage found?</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('damagedcages','pass',this)">✅ None</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('damagedcages','fail',this)">❌ Found</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-damagedcages"><input type="text" placeholder="Describe damage location..." id="bw-cl-note-damagedcages"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+      <div class="bw-cl-row" id="bw-cl-blowoff" data-minutes="210">
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">5</span>
+            <div><div class="bw-cl-label">Full blow-off — walls, cages, egg collectors &amp; floors (top &amp; bottom of house)</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 3h 30min · daily / every other day</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('blowoff','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('blowoff','fail',this)">❌ Fail</button><button onclick="clOpenTaskWI('blowoff','Full Blow-Off')" style="padding:5px 8px;border-radius:6px;border:1px solid #2a3a5a;background:#0a0f1a;color:#5a7a9a;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:4px;touch-action:manipulation;min-width:44px;min-height:44px;">📖</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-blowoff">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ LOG WHAT WAS MISSED</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Buildup on fan screens reduces airflow and raises ammonia. Log which areas were skipped — supervisor will schedule catch-up on next shift.</div></div>
+          <input type="text" placeholder="Which areas not completed (top floor, fan screens, collectors...)..." id="bw-cl-note-blowoff">
+        </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-watertubes">
-        <div class="bw-cl-top"><div class="bw-cl-label">Water tubes cleaned (front &amp; back of house)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('watertubes','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('watertubes','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-watertubes"><input type="text" placeholder="Notes on issue..." id="bw-cl-note-watertubes"><div class="bw-wo-badge">🔧 Work Order will be auto-created</div></div>
+      <div class="bw-cl-row" id="bw-cl-wheelbarrow" data-minutes="25">
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">6</span>
+            <div><div class="bw-cl-label">Wheelbarrow emptied &amp; back of house tidied</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 25 min · daily</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('wheelbarrow','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('wheelbarrow','fail',this)">❌ Fail</button><button onclick="clOpenTaskWI('wheelbarrow','Wheelbarrow Back Cleanup')" style="padding:5px 8px;border-radius:6px;border:1px solid #2a3a5a;background:#0a0f1a;color:#5a7a9a;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:4px;touch-action:manipulation;min-width:44px;min-height:44px;">📖</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-wheelbarrow">
+          <div style="background:#1a0505;border-left:3px solid #e53e3e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#e53e3e;letter-spacing:1px;margin-bottom:3px;">⚠ DO NOT LEAVE FULL</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c07070;">Wheelbarrow must be emptied before you leave. Log the reason if unable to complete the full back-of-house tidy.</div></div>
+          <input type="text" placeholder="What was left, reason..." id="bw-cl-note-wheelbarrow">
+        </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-dustblown">
-        <div class="bw-cl-top"><div class="bw-cl-label">Dust &amp; dander blown off — ceiling, walls, cages &amp; fan screens (top &amp; bottom)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('dustblown','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('dustblown','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-dustblown"><input type="text" placeholder="Notes..." id="bw-cl-note-dustblown"></div>
+      <div class="bw-cl-row" id="bw-cl-undercages" data-minutes="180">
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">7</span>
+            <div><div class="bw-cl-label">Under cage cleaning — all rows, both floors</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 3 hrs · min 2x/week</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('undercages','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('undercages','fail',this)">❌ Fail</button><button onclick="clOpenTaskWI('undercage','Under Cage Cleaning')" style="padding:5px 8px;border-radius:6px;border:1px solid #2a3a5a;background:#0a0f1a;color:#5a7a9a;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:4px;touch-action:manipulation;min-width:44px;min-height:44px;">📖</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-undercages">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ LOG WHICH SECTION WAS SKIPPED</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Note which cage rows were not cleaned. Supervisor will reschedule for the next available shift to maintain the 2x/week minimum.</div></div>
+          <input type="text" placeholder="Which rows/section not completed, reason..." id="bw-cl-note-undercages">
+        </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-aislesblown">
-        <div class="bw-cl-top"><div class="bw-cl-label">All aisles blown out on bottom floor (under cages &amp; egg collectors)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('aislesblown','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('aislesblown','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-aislesblown"><input type="text" placeholder="Notes..." id="bw-cl-note-aislesblown"></div>
+      <div class="bw-cl-row" id="bw-cl-hallways" data-minutes="45">
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">8</span>
+            <div><div class="bw-cl-label">Designated hallways cleaned (swept &amp; tidied)</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 45 min · every other day</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('hallways','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('hallways','fail',this)">❌ Fail</button><button onclick="clOpenTaskWI('hallway','Hallway Cleaning')" style="padding:5px 8px;border-radius:6px;border:1px solid #2a3a5a;background:#0a0f1a;color:#5a7a9a;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:4px;touch-action:manipulation;min-width:44px;min-height:44px;">📖</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-hallways">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ LOG WHICH HALLWAY WAS SKIPPED</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Supervisor will assign catch-up at the start of the next shift. Log which hallway and the reason.</div></div>
+          <input type="text" placeholder="Which hallway(s) not completed, reason..." id="bw-cl-note-hallways">
+        </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-eggcollblown">
-        <div class="bw-cl-top"><div class="bw-cl-label">Front &amp; back of egg collectors blown off</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('eggcollblown','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('eggcollblown','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-eggcollblown"><input type="text" placeholder="Notes..." id="bw-cl-note-eggcollblown"></div>
+      <div class="bw-cl-row" id="bw-cl-flycheck" data-minutes="15">
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">9</span>
+            <div><div class="bw-cl-label">Fly check — inspect all traps &amp; bait stations</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 15 min · weekly</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('flycheck','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('flycheck','fail',this)">❌ Fail</button><button onclick="clOpenTaskWI('fly','Fly Check')" style="padding:5px 8px;border-radius:6px;border:1px solid #2a3a5a;background:#0a0f1a;color:#5a7a9a;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:4px;touch-action:manipulation;min-width:44px;min-height:44px;">📖</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-flycheck">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ REPORT HIGH ACTIVITY TO MANAGER</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Document trap locations with heavy activity. Manager will schedule treatment. Log trap location and estimated activity level.</div></div>
+          <input type="text" placeholder="Trap location, activity level (low/med/high)..." id="bw-cl-note-flycheck">
+        </div>
       </div>
 
-      <div class="bw-cl-row" id="bw-cl-eggspills">
-        <div class="bw-cl-top"><div class="bw-cl-label">Egg spills cleaned up after egg collector run</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('eggspills','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('eggspills','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-eggspills"><input type="text" placeholder="Notes..." id="bw-cl-note-eggspills"></div>
-      </div>
-
-      <div class="bw-cl-row" id="bw-cl-wheelbarrow">
-        <div class="bw-cl-top"><div class="bw-cl-label">Wheelbarrow emptied behind manure belts — NOT on pit belt</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('wheelbarrow','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('wheelbarrow','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-wheelbarrow"><input type="text" placeholder="Notes..." id="bw-cl-note-wheelbarrow"></div>
-      </div>
-
-      <div class="bw-cl-row" id="bw-cl-toolsback">
-        <div class="bw-cl-top"><div class="bw-cl-label">All tools returned to designated spots</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('toolsback','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('toolsback','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-toolsback"><input type="text" placeholder="What is missing?" id="bw-cl-note-toolsback"></div>
-      </div>
-
-      <div class="bw-cl-row" id="bw-cl-hallways">
-        <div class="bw-cl-top"><div class="bw-cl-label">Designated hallways cleaned (swept &amp; tidied)</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('hallways','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('hallways','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-hallways"><input type="text" placeholder="Notes on what was missed..." id="bw-cl-note-hallways"></div>
-      </div>
-
-      <div class="bw-cl-row" id="bw-cl-backofhouse">
-        <div class="bw-cl-top"><div class="bw-cl-label">Back of house cleaned — dusting, sweeping &amp; general cleanup</div><div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('backofhouse','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('backofhouse','fail',this)">❌ Fail</button></div></div>
-        <div class="bw-cl-fail-detail" id="bw-cl-det-backofhouse"><input type="text" placeholder="Notes on what was missed..." id="bw-cl-note-backofhouse"></div>
+      <div class="bw-cl-row" id="bw-cl-rodentcheck" data-minutes="30">
+        <div class="bw-cl-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#3a6a3a;background:#0a2a0a;border:1px solid #1a4a1a;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">10</span>
+            <div><div class="bw-cl-label">Rodent check — inspect stations, add poison if needed</div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a7a3a;margin-top:2px;">⏱ 30 min · weekly</div></div>
+          </div>
+          <div class="bw-cl-btns"><button class="bw-cl-pass" onclick="bwSetCheck('rodentcheck','pass',this)">✅ Pass</button><button class="bw-cl-fail-btn" onclick="bwSetCheck('rodentcheck','fail',this)">❌ Fail</button><button onclick="clOpenTaskWI('rodent','Rodent Check')" style="padding:5px 8px;border-radius:6px;border:1px solid #2a3a5a;background:#0a0f1a;color:#5a7a9a;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:4px;touch-action:manipulation;min-width:44px;min-height:44px;">📖</button></div>
+        </div>
+        <div class="bw-cl-fail-detail" id="bw-cl-det-rodentcheck">
+          <div style="background:#1a0a00;border-left:3px solid #d69e2e;padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:8px;"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#d69e2e;letter-spacing:1px;margin-bottom:3px;">⚠ REPORT EVIDENCE TO MANAGER</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c09040;">Document locations where evidence was found. Add poison as needed. Alert manager immediately if evidence found near feed or water systems.</div></div>
+          <input type="text" placeholder="Station location, evidence found, poison added (y/n)..." id="bw-cl-note-rodentcheck">
+        </div>
       </div>
 
     </div>
-    <div id="bw-checklist-progress" style="margin-top:10px;font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-align:right;">0 / 14 reviewed</div>
+    <div id="bw-checklist-progress" style="margin-top:10px;font-size:11px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-align:right;">0 / 10 reviewed</div>
   </div>
 
   <!-- Weekly Tasks (day-conditional) -->
   <div class="bw-card" id="bw-weekly-card" style="display:none;">
     <div class="bw-card-title" id="bw-weekly-title">📅 Weekly Task</div>
     <div id="bw-weekly-content"></div>
+  </div>
+
+  <!-- Clean Under Cages (House 1: Sun/Thu · House 2: Mon/Sat) -->
+  <div class="bw-card" id="bw-cage-clean-card" style="display:none;border-color:#3a6a8a;">
+    <div class="bw-card-title" style="color:#7ab8d9;">🧹 Clean Under Cages</div>
+    <div id="bw-cage-clean-note" style="font-size:11px;color:#5a8aaa;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;"></div>
+    <div style="font-size:12px;color:#a0c8e0;margin-bottom:10px;line-height:1.5;">Scheduled deep-clean task: sweep and remove buildup from under all cage rows on both floors.</div>
+    <div class="bw-row-label" style="color:#7ab8d9;">Was this completed?</div>
+    <div class="bw-yn-row" style="margin-top:8px;">
+      <button class="bw-yn-btn" id="bw-cageclean-complete"   onclick="bwSet('cageclean','complete')"   style="border-color:#3a6a8a;">✅ COMPLETE</button>
+      <button class="bw-yn-btn" id="bw-cageclean-incomplete" onclick="bwSet('cageclean','incomplete')" style="border-color:#3a6a8a;">❌ INCOMPLETE</button>
+    </div>
+    <div id="bw-cage-clean-status" style="display:none;margin-top:12px;padding:10px 12px;border-radius:8px;background:#0f2a3a;border:1px solid #3a6a8a;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#7ab8d9;"></div>
   </div>
 
   <!-- Notes -->
@@ -2139,6 +2806,19 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <input type="number" id="mw-feed-meter" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter total lbs remaining" min="0" onchange="liveUpdateFeedBin('mw-feed-meter','mw-feed-meter-status',_mwFarm,_mwHouse)">
       <div id="mw-feed-meter-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:6px;min-height:18px;"></div>
     </div>
+    <!-- Bin A / Bin B -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+      <div>
+        <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">🌾 Bin A (tons)</div>
+        <input type="number" id="mw-bin-a" class="bw-input" style="border-color:#1e3a6a;background:#091529;text-align:center;font-size:18px;" placeholder="0.0" min="0" step="0.1" oninput="mwCheckBinLevel('mw-bin-a','mw-bin-a-status')">
+        <div id="mw-bin-a-status" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:4px;min-height:14px;text-align:center;"></div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">🌾 Bin B (tons)</div>
+        <input type="number" id="mw-bin-b" class="bw-input" style="border-color:#1e3a6a;background:#091529;text-align:center;font-size:18px;" placeholder="0.0" min="0" step="0.1" oninput="mwCheckBinLevel('mw-bin-b','mw-bin-b-status')">
+        <div id="mw-bin-b-status" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:4px;min-height:14px;text-align:center;"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Systems -->
@@ -2202,7 +2882,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 60px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #3a2a1a;">
       <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">🐀 Pest Log</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;letter-spacing:1px;">💀 Mortality &amp; Pest Log</div>
         <div id="pest-log-count" style="font-size:11px;color:#8a7a5a;font-family:'IBM Plex Mono',monospace;margin-top:2px;"></div>
       </div>
       <button onclick="closePestLog()" style="background:#1a1a0a;border:1px solid #3a2a1a;color:#c8a05a;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Close</button>
@@ -2213,14 +2893,16 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
     <!-- Filters -->
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;">
-      <button class="pill active" onclick="pestLogFilter('all',this)">All Farms</button>
-      <button class="pill" onclick="pestLogFilter('Hegins',this)">📍 Hegins</button>
-      <button class="pill" onclick="pestLogFilter('Danville',this)">📍 Danville</button>
+      <button class="pill active" data-farm="all" onclick="pestLogFilter('all',this)">All Farms</button>
+      <button class="pill" data-farm="Hegins" onclick="pestLogFilter('Hegins',this)">📍 Hegins</button>
+      <button class="pill" data-farm="Danville" onclick="pestLogFilter('Danville',this)">📍 Danville</button>
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
-      <button class="pill active" onclick="pestLogTypeFilter('all',this)">🐀 & 🪰 All</button>
-      <button class="pill" onclick="pestLogTypeFilter('rodent',this)">🐀 Rodents</button>
-      <button class="pill" onclick="pestLogTypeFilter('fly',this)">🪰 Flies</button>
+      <button class="pill active" data-type="all" onclick="pestLogTypeFilter('all',this)">All Types</button>
+      <button class="pill" data-type="mort" onclick="pestLogTypeFilter('mort',this)">💀 Mortality</button>
+      <button class="pill" data-type="loose" onclick="pestLogTypeFilter('loose',this)">🐔 Loose Birds</button>
+      <button class="pill" data-type="rodent" onclick="pestLogTypeFilter('rodent',this)">🐀 Rodents</button>
+      <button class="pill" data-type="fly" onclick="pestLogTypeFilter('fly',this)">🪰 Flies</button>
     </div>
 
     <div id="pest-log-list"></div>
@@ -2252,11 +2934,13 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button class="sub-btn active" data-section="wo"       onclick="goMaintSection('wo')"       data-i18n="sub.wo">🔧 Work Orders</button>
     <button class="sub-btn"        data-section="pm"       onclick="goMaintSection('pm')"       data-i18n="sub.pm">📋 PM Schedule</button>
     <button class="sub-btn"        data-section="parts"    onclick="goMaintSection('parts')"    data-i18n="sub.parts">🔩 Parts <span id="parts-alert-badge" style="display:none;background:#e53e3e;color:white;border-radius:50%;font-size:10px;padding:1px 5px;margin-left:3px;"></span></button>
-    <button class="sub-btn"        data-section="downtime" onclick="goMaintSection('downtime')" data-i18n="sub.downtime">⏱️ Downtime</button>
     <button class="sub-btn"        data-section="assets"   onclick="goMaintSection('assets')"   data-i18n="sub.assets">🏭 Assets</button>
     <button class="sub-btn"        data-section="wi"       onclick="goMaintSection('wi')"       data-i18n="sub.wi">📖 Work Instructions</button>
     <button class="sub-btn"        data-section="log"      onclick="goMaintSection('log')"      data-i18n="sub.log">📁 Log</button>
-    <button class="sub-btn"        data-section="calendar" onclick="goMaintSection('calendar')">📅 Calendar</button>
+    <button class="sub-btn"        data-section="calendar"    onclick="goMaintSection('calendar')">📅 Calendar</button>
+    <button class="sub-btn"        data-section="contractor"    onclick="goMaintSection('contractor')">🏗️ Contractors</button>
+    <button class="sub-btn"        data-section="weekly-agenda" onclick="goMaintSection('weekly-agenda')">📅 Weekly Agenda</button>
+    <button class="sub-btn"        data-section="redtags"       onclick="goMaintSection('redtags')">🏷️ Red Tags</button>
   </div>
 
   <!-- Work Orders section -->
@@ -2304,7 +2988,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
               <div class="fg"><label>Date <span class="req">*</span></label><input type="date" id="wo-date"></div>
             </div>
             <div class="form-row">
-              <div class="fg"><label>Your Name <span class="req">*</span></label><input type="text" id="wo-tech" placeholder="Your name" list="staff-datalist" autocomplete="off"></div>
+              <div class="fg"><label>Your Name <span class="req">*</span></label><select id="wo-tech" style="width:100%;background:#0a1a0a;border:1px solid var(--border);border-radius:8px;color:#f0ead8;padding:9px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;"><option value="">— Select Name —</option></select></div>
               <div class="fg"><label>House / Area</label><select id="wo-house"><option value="">— Select Farm First —</option></select></div>
             </div>
             <div class="fg"><label>Problem / System <span class="req">*</span></label>
@@ -2420,33 +3104,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div id="parts-container"></div>
   </div>
 
-  <!-- Downtime section -->
-  <div class="maint-section" id="maint-downtime">
-    <div class="section-sub">Log equipment downtime — track trends by farm and system</div>
-    <div class="pill-bar">
-      <button class="pill active" onclick="dtFarmFilter('all',this)">All Farms</button>
-      <button class="pill" onclick="dtFarmFilter('Hegins',this)">📍 Hegins</button>
-      <button class="pill" onclick="dtFarmFilter('Danville',this)">📍 Danville</button>
-    </div>
-    <div id="dt-stats" class="stats-grid g4" style="margin-bottom:16px;"></div>
-    <div style="background:#fff8e1;border:1px solid var(--amber);border-radius:10px;padding:14px 16px;margin-bottom:16px;">
-      <div style="font-weight:700;font-size:13px;margin-bottom:10px;">➕ Log Downtime Event</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-        <div><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Farm</label><select id="dt-farm" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;" onchange="loadDtHouses();populateDtWOList()"><option value="">— Select Farm —</option><option>Hegins</option><option>Danville</option></select></div>
-        <div><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">System / Area</label><select id="dt-system" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;"><option value="">— Select System —</option><option>Ventilation / Fans</option><option>Watering System</option><option>Feed System</option><option>Heating / Brooders</option><option>Manure System</option><option>Egg Collection</option><option>Electrical</option><option>Generator</option><option>Other</option></select></div>
-        <div><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Start Time</label><input type="datetime-local" id="dt-start" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></div>
-        <div><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">End Time (leave blank if ongoing)</label><input type="datetime-local" id="dt-end" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></div>
-      </div>
-      <div style="margin-bottom:10px;"><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Description / Root Cause</label><textarea id="dt-desc" placeholder="What failed? What caused it?" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;min-height:50px;resize:vertical;"></textarea></div>
-      <div style="margin-bottom:10px;"><label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Linked Work Order # (optional)</label><select id="dt-linked-wo" style="width:100%;margin-top:4px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;" onclick="populateDtWOList()"><option value="">— None —</option></select></div>
-      <button onclick="submitDowntime()" style="width:100%;padding:12px;background:var(--green-mid);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">✓ LOG DOWNTIME</button>
-    </div>
-    <div class="recent-hdr">📊 Downtime by System (Last 30 Days)</div>
-    <div id="dt-by-system" style="margin-bottom:16px;"></div>
-    <div class="recent-hdr">📋 Recent Downtime Events</div>
-    <div id="dt-log-list"></div>
-  </div>
-
   <!-- Assets section -->
   <div class="maint-section" id="maint-assets">
     <div class="section-sub">All equipment registered across Hegins &amp; Danville — click any asset to view full history</div>
@@ -2481,22 +3138,28 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <!-- Work Instructions section -->
   <div class="maint-section" id="maint-wi">
     <div class="section-sub">Step-by-step procedures, SOPs, safety rules, and onboarding guides</div>
+
+    <!-- Search + Add -->
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
-      <div style="flex:1;position:relative;">
-        <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span>
-        <input type="text" id="wi-search" placeholder="Search procedures, equipment, keywords..." oninput="wiSearch()" style="width:100%;padding:10px 12px 10px 36px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'IBM Plex Sans',sans-serif;box-sizing:border-box;">
-      </div>
-      <button onclick="openWIForm()" style="padding:10px 18px;background:var(--green-mid);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.5px;">➕ Add</button>
+      <form onsubmit="return false;" style="flex:1;position:relative;margin:0;">
+        <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;z-index:1;">🔍</span>
+        <input type="search" name="wi-search" id="wi-search" placeholder="Search work instructions..." oninput="wiSearch()" onkeyup="wiSearch()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:10px 12px 10px 36px;border:1.5px solid var(--border);border-radius:9px;font-size:16px;font-family:'IBM Plex Sans',sans-serif;box-sizing:border-box;background:var(--card-bg);touch-action:manipulation;-webkit-user-select:text;user-select:text;pointer-events:auto;-webkit-appearance:none;">
+      </form>
+      <button onclick="openWIForm()" style="padding:10px 18px;background:var(--green-mid);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.5px;touch-action:manipulation;">+ Add</button>
     </div>
-    <div class="pill-bar" id="wi-type-bar">
-      <button class="pill active" onclick="wiTypeFilter('all',this)">All</button>
+
+    <!-- Type filter -->
+    <div class="pill-bar" id="wi-type-bar" style="margin-bottom:6px;">
+      <button class="pill active" onclick="wiTypeFilter('all',this)">All Types</button>
       <button class="pill" onclick="wiTypeFilter('repair',this)">🔧 Repair</button>
       <button class="pill" onclick="wiTypeFilter('startup',this)">▶️ Startup/Shutdown</button>
       <button class="pill" onclick="wiTypeFilter('emergency',this)">🚨 Emergency</button>
       <button class="pill" onclick="wiTypeFilter('safety',this)">🦺 Safety &amp; PPE</button>
       <button class="pill" onclick="wiTypeFilter('onboarding',this)">🆕 Onboarding</button>
     </div>
-    <div class="pill-bar" id="wi-dept-bar">
+
+    <!-- Dept filter -->
+    <div class="pill-bar" id="wi-dept-bar" style="margin-bottom:6px;">
       <button class="pill active" onclick="wiDeptFilter('all',this)">All Depts</button>
       <button class="pill" onclick="wiDeptFilter('Maintenance',this)">🔧 Maintenance</button>
       <button class="pill" onclick="wiDeptFilter('Egg Ops',this)">🥚 Egg Ops</button>
@@ -2505,8 +3168,35 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="pill" onclick="wiDeptFilter('Management',this)">📋 Management</button>
       <button class="pill" onclick="wiDeptFilter('General',this)">⚙️ General</button>
     </div>
-    <div class="stats-grid g4" id="wi-stats" style="margin-bottom:16px;"></div>
+
+    <!-- System filter -->
+    <div class="pill-bar" id="wi-system-bar" style="margin-bottom:12px;">
+      <button class="pill active" onclick="wiSystemFilter('all',this)">All Systems</button>
+      <button class="pill" onclick="wiSystemFilter('Manure',this)">♻️ Manure</button>
+      <button class="pill" onclick="wiSystemFilter('Ventilation',this)">💨 Ventilation</button>
+      <button class="pill" onclick="wiSystemFilter('Water',this)">💧 Water</button>
+      <button class="pill" onclick="wiSystemFilter('Feed',this)">🌾 Feed</button>
+      <button class="pill" onclick="wiSystemFilter('Egg Collectors',this)">🥚 Egg Collectors</button>
+      <button class="pill" onclick="wiSystemFilter('Electrical',this)">⚡ Electrical</button>
+      <button class="pill" onclick="wiSystemFilter('Building',this)">🏚️ Building</button>
+      <button class="pill" onclick="wiSystemFilter('General',this)">⚙️ General</button>
+    </div>
+
+    <!-- Stats + result count -->
+    <div class="stats-grid g4" id="wi-stats" style="margin-bottom:10px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div id="wi-result-count" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#4a8a4a;padding-left:2px;"></div>
+      <div style="display:flex;gap:6px;">
+        <button id="wi-view-list-btn" onclick="wiSetView('list')" style="padding:5px 14px;border-radius:7px;border:1.5px solid #2a5a2a;background:#1a3a1a;color:#4ade80;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;">≡ LIST</button>
+        <button id="wi-view-pivot-btn" onclick="wiSetView('pivot')" style="padding:5px 14px;border-radius:7px;border:1.5px solid #2a5a2a;background:transparent;color:#4a8a4a;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;">⊞ PIVOT</button>
+      </div>
+    </div>
+
+    <!-- List view -->
     <div id="wi-list"></div>
+
+    <!-- Pivot view -->
+    <div id="wi-pivot" style="display:none;"></div>
   </div>
 
   <!-- 5S section -->
@@ -2541,6 +3231,12 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="pill" onclick="logFilter('ops-ship',this)">🚚 Shipping</button>
       <button class="pill" onclick="logFilter('ops-exc',this)">⚠️ Exceptions</button>
     </div>
+    <div class="pill-bar" id="log-farm-bar" style="margin-top:8px;">
+      <button class="pill active" onclick="logSetFarm('all',this)">All Plants</button>
+      <button class="pill" onclick="logSetFarm('Hegins',this)">📍 Hegins</button>
+      <button class="pill" onclick="logSetFarm('Danville',this)">📍 Danville</button>
+    </div>
+    <div class="pill-bar" id="log-house-bar" style="margin-top:6px;display:none;"></div>
     <div id="log-container"></div>
   </div>
 
@@ -2554,6 +3250,18 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     </div>
     <div id="maint-calendar-container"></div>
   </div>
+
+  <!-- Contractor Tracker section -->
+  <div class="maint-section" id="maint-contractor" style="display:none;"></div>
+
+  <!-- Cost Dashboard section -->
+  <div class="maint-section" id="maint-cost" style="display:none;"></div>
+
+  <!-- Weekly Agenda section -->
+  <div class="maint-section" id="maint-weekly-agenda" style="display:none;"></div>
+
+  <!-- Red Tags section -->
+  <div class="maint-section" id="maint-redtags" style="display:none;padding:14px;"></div>
 </div>
 
 <!-- ═══ PACKAGING PANEL ═══ -->
@@ -2562,10 +3270,9 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <div class="sub-nav">
     <button class="sub-btn active" data-section="packing" onclick="goPkgSection('packing')" data-i18n="sub.packing">📦 Packing</button>
     <button class="sub-btn" data-section="eggs" onclick="goPkgSection('eggs')" data-i18n="sub.eggs">🥚 Eggs by Barn</button>
-    <button class="sub-btn" data-section="quality" onclick="goPkgSection('quality')" data-i18n="sub.quality">🏅 Egg Quality</button>
     <button class="sub-btn" data-section="efficiency" onclick="goPkgSection('efficiency')">📈 Efficiency</button>
-    <button class="sub-btn" data-section="downtime" onclick="goPkgSection('downtime')">⏱️ Downtime <span id="pkg-dt-badge" style="display:none;background:#e53e3e;color:#fff;border-radius:50%;font-size:10px;padding:1px 5px;margin-left:3px;vertical-align:middle;"></span></button>
-    <button class="sub-btn" data-section="waste" onclick="goPkgSection('waste')">🗑️ Waste</button>
+    <button class="sub-btn" data-section="hegins" onclick="goPkgSection('hegins')">📍 Hegins</button>
+    <button class="sub-btn" data-section="danville" onclick="goPkgSection('danville')">📍 Danville</button>
   </div>
   <!-- Packing -->
   <div class="pkg-section" id="pkg-packing" style="display:block;">
@@ -2580,9 +3287,16 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <div class="fg"><label>End Time</label><input type="time" id="pf-end" oninput="calcPack()"></div>
         <div class="fg"><label>Break (min)</label><input type="number" id="pf-break" min="0" placeholder="0" oninput="calcPack()"></div>
         <div class="fg"><label>Downtime (min)</label><input type="number" id="pf-downtime" min="0" placeholder="0" oninput="calcPack()"></div>
-        <div class="fg"><label>Houses Packed</label><input type="number" id="pf-houses" min="1" placeholder="0" oninput="calcPack()"></div>
+        <div class="fg ops-form-full" id="pf-houses-wrap">
+          <label>Houses Ran</label>
+          <div id="pf-houses-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+            <input type="text" class="pf-house-input" placeholder="House #" style="width:90px;" oninput="calcPack()">
+          </div>
+          <button type="button" onclick="addPackHouse()" style="margin-top:6px;padding:4px 10px;font-size:11px;background:#1a3a1a;border:1px solid #2a5a2a;color:#7ab07a;border-radius:6px;cursor:pointer;">+ Add House</button>
+          <input type="hidden" id="pf-houses" value="0">
+        </div>
         <div class="fg"><label>Total Stops</label><input type="number" id="pf-stops" min="0" placeholder="0"></div>
-        <div class="fg"><label>Line / Area</label><input type="text" id="pf-line" placeholder="e.g. Line 1"></div>
+        <div class="fg"><label>Broken Eggs</label><input type="number" id="pf-line" min="0" placeholder="0" oninput="calcPack()"></div>
         <div class="fg"><label>Shift</label><select id="pf-shift"><option>AM</option><option>PM</option><option>Night</option></select></div>
         <div class="fg"><label>Entered By</label><input type="text" id="pf-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
         <div class="fg ops-form-full"><label>Notes</label><input type="text" id="pf-notes" placeholder="Optional notes"></div>
@@ -2747,6 +3461,77 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div style="overflow-x:auto;"><table class="ops-table" id="eff-weekly-table"></table></div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin:16px 0 8px;">Product Mix Breakdown</div>
     <div id="eff-product-mix" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:16px;"></div>
+  </div>
+
+  <!-- ── Hegins ── -->
+  <div class="pkg-section" id="pkg-hegins" style="display:none;">
+    <div class="ops-quick-form">
+      <div class="ops-qf-title">📍 Log Hegins Packing</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label>Date *</label><input type="date" id="hg-date"></div>
+        <div class="fg"><label>Barn *</label>
+          <select id="hg-barn">
+            <option value="">— Select Barn —</option>
+            <option>Barn 1</option><option>Barn 2</option><option>Barn 3</option>
+            <option>Barn 4</option><option>Barn 5</option><option>Barn 6</option>
+            <option>Barn 7</option><option>Barn 8</option>
+          </select>
+        </div>
+        <div class="fg"><label>Product Type *</label>
+          <select id="hg-product">
+            <option value="">— Select —</option>
+            <option>Jumbo</option><option>XL</option><option>Large</option>
+            <option>Medium</option><option>Small</option><option>Pullet</option><option>Nest Run</option>
+          </select>
+        </div>
+        <div class="fg"><label>Total Dz *</label><input type="number" id="hg-qty" min="0" placeholder="0"></div>
+        <div class="fg"><label>Broken Eggs</label><input type="number" id="hg-broken" min="0" placeholder="0"></div>
+        <div class="fg"><label>Shift</label><select id="hg-shift"><option>AM</option><option>PM</option><option>Night</option></select></div>
+        <div class="fg"><label>Entered By</label><input type="text" id="hg-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
+        <div class="fg ops-form-full"><label>Notes</label><input type="text" id="hg-notes" placeholder="Optional notes"></div>
+      </div>
+      <div class="ops-form-actions">
+        <button class="ops-save-btn" onclick="saveLocationPack('hegins')">✓ Save Hegins Entry</button>
+        <button class="ops-cancel-btn" onclick="clearLocationForm('hegins')">Clear</button>
+      </div>
+    </div>
+    <div class="stats-grid g4" id="hg-stats" style="margin:14px 0;"></div>
+    <div style="overflow-x:auto;"><table class="ops-table" id="hg-table"></table></div>
+  </div>
+
+  <!-- ── Danville ── -->
+  <div class="pkg-section" id="pkg-danville" style="display:none;">
+    <div class="ops-quick-form">
+      <div class="ops-qf-title">📍 Log Danville Packing</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label>Date *</label><input type="date" id="dv-date"></div>
+        <div class="fg"><label>Barn *</label>
+          <select id="dv-barn">
+            <option value="">— Select Barn —</option>
+            <option>Barn 1</option><option>Barn 2</option><option>Barn 3</option>
+            <option>Barn 4</option><option>Barn 5</option>
+          </select>
+        </div>
+        <div class="fg"><label>Product Type *</label>
+          <select id="dv-product">
+            <option value="">— Select —</option>
+            <option>Jumbo</option><option>XL</option><option>Large</option>
+            <option>Medium</option><option>Small</option><option>Pullet</option><option>Nest Run</option>
+          </select>
+        </div>
+        <div class="fg"><label>Total Dz *</label><input type="number" id="dv-qty" min="0" placeholder="0"></div>
+        <div class="fg"><label>Broken Eggs</label><input type="number" id="dv-broken" min="0" placeholder="0"></div>
+        <div class="fg"><label>Shift</label><select id="dv-shift"><option>AM</option><option>PM</option><option>Night</option></select></div>
+        <div class="fg"><label>Entered By</label><input type="text" id="dv-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
+        <div class="fg ops-form-full"><label>Notes</label><input type="text" id="dv-notes" placeholder="Optional notes"></div>
+      </div>
+      <div class="ops-form-actions">
+        <button class="ops-save-btn" onclick="saveLocationPack('danville')">✓ Save Danville Entry</button>
+        <button class="ops-cancel-btn" onclick="clearLocationForm('danville')">Clear</button>
+      </div>
+    </div>
+    <div class="stats-grid g4" id="dv-stats" style="margin:14px 0;"></div>
+    <div style="overflow-x:auto;"><table class="ops-table" id="dv-table"></table></div>
   </div>
 
   <!-- ── Downtime ── -->
@@ -3194,7 +3979,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button class="sub-btn active" data-section="shipping"       onclick="goShipSection('shipping')">🚛 Active Loads</button>
     <button class="sub-btn"        data-section="farms"          onclick="goShipSection('farms')">🏚️ Farms</button>
     <button class="sub-btn"        data-section="reconciliation" onclick="goShipSection('reconciliation')">⚖️ Reconciliation</button>
-    <button class="sub-btn"        data-section="exceptions"     onclick="goShipSection('exceptions')">⚠️ Exceptions <span id="ops-exc-badge" style="display:none;background:#e53e3e;color:#fff;border-radius:50%;font-size:10px;padding:1px 5px;margin-left:3px;vertical-align:middle;"></span></button>
   </div>
 
   <!-- Shipping -->
@@ -3309,10 +4093,11 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 </main>
 
 <!-- ═══ ADD / EDIT WORK INSTRUCTION MODAL ═══ -->
-<div class="overlay" id="wi-form-modal">
+<div class="overlay" id="wi-form-modal" style="z-index:5000;">
   <div class="modal" style="max-width:540px;max-height:92vh;overflow-y:auto;">
     <h3 id="wi-form-title">Add Work Instruction</h3>
     <p class="modal-sub">Write a clear procedure anyone on the crew can follow</p>
+    <input type="hidden" id="wif-cl-task-id" value="">
 
     <div class="modal-field">
       <label>Title <span class="req">*</span></label>
@@ -3379,6 +4164,23 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <input type="text" id="wif-author" placeholder="Your name" list="staff-datalist" autocomplete="off">
     </div>
 
+    <!-- Photos -->
+    <div class="modal-field" style="margin-top:12px;">
+      <label>📷 Reference Photos (optional)</label>
+      <div id="wif-photo-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;min-height:0;"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <label for="wif-photo-input" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f0f4ff;border:1.5px dashed #3b82f6;border-radius:8px;cursor:pointer;font-size:12px;color:#1e40af;font-weight:600;">
+          🖼 Choose Photo
+          <input type="file" id="wif-photo-input" accept="image/*" multiple style="display:none;" onchange="wiHandlePhotoSelect(this)">
+        </label>
+        <label for="wif-camera-input" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f0fff4;border:1.5px dashed #16a34a;border-radius:8px;cursor:pointer;font-size:12px;color:#15803d;font-weight:600;">
+          📷 Take Photo
+          <input type="file" id="wif-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="wiHandlePhotoSelect(this)">
+        </label>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px;">Add reference photos or take one live with your camera. Max 5 photos.</div>
+    </div>
+
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeWIForm()">Cancel</button>
       <button class="btn-confirm" id="wif-save-btn" onclick="saveWI()">✓ SAVE</button>
@@ -3387,7 +4189,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 </div>
 
 <!-- ═══ VIEW WORK INSTRUCTION MODAL ═══ -->
-<div class="overlay" id="wi-view-modal">
+<div class="overlay" id="wi-view-modal" style="z-index:10000;">
   <div class="modal" style="max-width:560px;max-height:92vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
       <div style="flex:1;padding-right:12px;">
@@ -3419,6 +4221,11 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div id="wiv-purpose-strip" style="display:none;background:#f0fdf4;border:1px solid #4caf50;border-radius:8px;padding:10px 14px;margin-bottom:14px;">
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#166534;margin-bottom:4px;">📋 Purpose</div>
       <div id="wiv-purpose-text" style="font-size:13px;color:var(--ink);"></div>
+    </div>
+
+    <div id="wiv-photos" style="display:none;margin-bottom:16px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">📷 Reference Photos</div>
+      <div id="wiv-photos-grid" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
     </div>
 
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Steps</div>
@@ -3826,6 +4633,16 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <div class="modal">
     <h3>Mark Task Complete</h3>
     <p class="modal-sub" id="modal-desc"></p>
+
+    <!-- Linked Work Instruction button (shown when a matching WI exists) -->
+    <div id="pm-modal-wi-strip" style="display:none;background:#f0f4ff;border:1px solid #3b82f6;border-radius:7px;padding:8px 12px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:14px;">📖</span>
+        <div style="flex:1;font-size:12px;color:#1e3a8a;font-weight:600;" id="pm-modal-wi-label">Procedure available</div>
+        <button type="button" id="pm-modal-wi-btn" onclick="_pmOpenLinkedWI()" style="padding:6px 12px;border-radius:6px;border:1px solid #3b82f6;background:#3b82f6;color:#fff;font-size:11px;font-weight:700;cursor:pointer;min-height:32px;">Open WI</button>
+      </div>
+    </div>
+
     <div class="modal-field">
       <label>Completed By <span class="req">*</span></label>
       <select id="modal-tech">
@@ -3842,8 +4659,9 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <option value="yes">Yes — create a work order too</option>
       </select>
     </div>
-    <div class="modal-btns">
+    <div class="modal-btns" style="flex-wrap:wrap;gap:6px;">
       <button class="btn-cancel" onclick="closePMModal()">Cancel</button>
+      <button type="button" onclick="skipPM()" style="padding:10px 14px;border-radius:8px;border:1px solid #6b7280;background:#374151;color:#e5e7eb;font-weight:700;cursor:pointer;min-height:44px;">⊘ Skip — N/A this cycle</button>
       <button class="btn-confirm" onclick="confirmPM()">✓ MARK DONE</button>
     </div>
   </div>
@@ -4037,20 +4855,53 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script src="js/core.js?v=20260403"></script>
-<script src="js/dashboard.js?v=20260403"></script>
-<script src="js/maintenance.js?v=20260403"></script>
-<script src="js/packaging.js?v=20260403"></script>
-<script src="js/shipping.js?v=20260403"></script>
-<script src="js/production.js?v=20260403"></script>
-<script src="js/feed-mill.js?v=20260403"></script>
-<script src="js/egg-quality.js?v=20260403"></script>
-<script src="js/biosecurity.js?v=20260403"></script>
-<script src="js/scheduling.js?v=20260403"></script>
-<script src="js/tv-scoreboard.js?v=20260403"></script>
-<script src="js/staff.js?v=20260403"></script>
-<script src="js/enhancements.js?v=20260403"></script>
+<script src="js/core.js?v=20260424"></script>
+<script src="js/dashboard.js?v=20260424"></script>
+<script src="js/maintenance.js?v=20260428b"></script>
+<script src="js/packaging.js?v=20260427k"></script>
+<script src="js/shipping.js?v=20260424"></script>
+<script src="js/production.js?v=20260427n"></script>
+<script src="js/feed-mill.js?v=20260424"></script>
+<script src="js/egg-quality.js?v=20260424"></script>
+<script src="js/biosecurity.js?v=20260424"></script>
+<script src="js/scheduling.js?v=20260427a"></script>
+<script src="js/tv-scoreboard.js?v=20260424"></script>
+<script src="js/staff.js?v=20260424"></script>
+<script src="js/enhancements.js?v=20260428"></script>
+<script src="js/contractor.js?v=20260424"></script>
+<script src="js/cost-dashboard.js?v=20260424"></script>
+<script src="js/weekly-agenda.js?v=20260424"></script>
+<script src="js/shift-signoff.js?v=20260424"></script>
+<script src="js/red-tags.js?v=20260424"></script>
+<script src="js/director-brief.js?v=20260424"></script>
+<script src="js/barn-entry.js?v=20260424"></script>
+<script src="js/notifications.js?v=20260424"></script>
+<script src="js/oncall.js?v=20260424"></script>
+<script src="js/daily-checklist.js?v=20260428"></script>
+<script src="js/daily-report.js?v=20260428a"></script>
+<style>
+@keyframes notif-slide-in {
+  from { opacity:0; transform:translateX(20px); }
+  to   { opacity:1; transform:translateX(0);    }
+}
+</style>
 
+
+<!-- ═══ BARN ENTRY OVERLAY ═══ -->
+<div id="barn-entry-overlay" style="display:none;position:fixed;inset:0;z-index:9990;background:#0f1a0f;flex-direction:column;overflow:hidden;">
+  <div id="barn-entry-body" style="display:flex;flex-direction:column;height:100%;max-width:520px;margin:0 auto;width:100%;"></div>
+</div>
+
+<!-- ── Barn entry shake animation ── -->
+<style>
+@keyframes beShake {
+  0%,100% { transform: translateX(0); }
+  20%     { transform: translateX(-8px); }
+  40%     { transform: translateX(8px); }
+  60%     { transform: translateX(-6px); }
+  80%     { transform: translateX(6px); }
+}
+</style>
 
 <!-- Easter egg elements — chicken animation -->
 <div id="chicken-runner">🐔</div>

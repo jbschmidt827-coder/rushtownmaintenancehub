@@ -161,7 +161,7 @@ function renderTVMode() {
 // ═══════════════════════════════════════════
 let s5Records = [];
 let s5LocFilter = 'all';
-let redTags = [];
+let _tvRedTags = [];
 
 function s5Loc(v, btn) {
   s5LocFilter = v;
@@ -179,15 +179,15 @@ function start5SListener() {
   }, err => console.error('5sAudits listener:', err));
 
   db.collection('redTags').orderBy('ts','desc').limit(200).onSnapshot(snap => {
-    redTags = [];
-    snap.forEach(d => redTags.push({...d.data(), _fbId: d.id}));
+    _tvRedTags = [];
+    snap.forEach(d => _tvRedTags.push({...d.data(), _fbId: d.id}));
     if (window._maintSection==='5s') render5S();
   }, err => console.error('redTags listener:', err));
 }
 
 function render5S() {
   const base = s5LocFilter==='all' ? s5Records : s5Records.filter(r=>r.farm===s5LocFilter);
-  const rtBase = s5LocFilter==='all' ? redTags : redTags.filter(r=>r.farm===s5LocFilter);
+  const rtBase = s5LocFilter==='all' ? _tvRedTags : _tvRedTags.filter(r=>r.farm===s5LocFilter);
 
   // Stats
   const avgScore = base.length ? Math.round(base.reduce((s,r)=>s+(r.totalScore||0),0)/base.length) : 0;
@@ -468,8 +468,8 @@ function close5SRedTag() {
 async function loadRedTags() {
   try {
     const snap = await db.collection('redTags').orderBy('ts','desc').limit(100).get();
-    redTags = [];
-    snap.forEach(d=>redTags.push({...d.data(),_fbId:d.id}));
+    _tvRedTags = [];
+    snap.forEach(d=>_tvRedTags.push({...d.data(),_fbId:d.id}));
     renderRedTagList();
   } catch(e){ renderRedTagList(); }
 }
@@ -477,8 +477,8 @@ async function loadRedTags() {
 function renderRedTagList() {
   const el = document.getElementById('rt-list');
   if (!el) return;
-  const active = redTags.filter(r=>!r.resolved);
-  const resolved = redTags.filter(r=>r.resolved);
+  const active = _tvRedTags.filter(r=>!r.resolved);
+  const resolved = _tvRedTags.filter(r=>r.resolved);
   const rows = [...active,...resolved.slice(0,5)];
   if (!rows.length){ el.innerHTML='<div class="empty"><div class="ei">🏷️</div><p>No red tags yet</p></div>'; return; }
   const actionLabel={remove:'Remove',repair:'Repair',relocate:'Relocate',evaluate:'Evaluate'};
@@ -507,7 +507,7 @@ async function addRedTag() {
   setSyncDot('saving');
   const ref = await db.collection('redTags').add(record);
   record._fbId = ref.id;
-  redTags.unshift(record);
+  _tvRedTags.unshift(record);
   setSyncDot('live');
   document.getElementById('rt-item').value = '';
   renderRedTagList();
@@ -516,7 +516,7 @@ async function addRedTag() {
 async function resolveRedTag(fbId) {
   setSyncDot('saving');
   await db.collection('redTags').doc(fbId).update({resolved:true,resolvedDate:new Date().toISOString().slice(0,10)});
-  const r = redTags.find(r=>r._fbId===fbId);
+  const r = _tvRedTags.find(r=>r._fbId===fbId);
   if (r) r.resolved = true;
   setSyncDot('live');
   renderRedTagList();
@@ -764,64 +764,84 @@ async function submitBulkPM() {
   if (!bulkPMSelected.size) { alert('No tasks selected.'); return; }
 
   const ids = Array.from(bulkPMSelected);
-  document.getElementById('bulk-pm-submit-btn').disabled = true;
+  const submitBtn = document.getElementById('bulk-pm-submit-btn');
+  submitBtn.disabled = true;
   document.getElementById('bulk-pm-progress').style.display = 'block';
+  document.getElementById('bulk-pm-bar').style.background = 'var(--green-mid)';
 
-  let done = 0;
-  const batch = db.batch();
   const historyDocs = [];
+  const batch = db.batch();
 
-  for (const pmId of ids) {
+  ids.forEach((pmId, i) => {
     const t = ALL_PM.find(x=>x.id===pmId);
-    if (!t) continue;
-    // Update latest completion
-    const ref = db.collection('pmCompletions').doc(pmId);
-    batch.set(ref, {tech, date, parts:'', notes, ts:Date.now()});
-    // Prepare history record
+    if (!t) return;
+    batch.set(db.collection('pmCompletions').doc(pmId), {tech, date, parts:'', notes, ts:Date.now()});
     historyDocs.push({pmId, farm:t.farm, sys:t.sys, task:t.task, freq:t.freq, tech, date, parts:'', notes, ts:Date.now()});
-    done++;
-    document.getElementById('bulk-pm-bar').style.width = (done/ids.length*100)+'%';
-    document.getElementById('bulk-pm-status').textContent = `Saving ${done}/${ids.length}...`;
-  }
-
-  setSyncDot('saving');
-  await batch.commit();
-
-  // Write history records in batches of 500
-  const histBatch = db.batch();
-  historyDocs.forEach(h=>{ histBatch.set(db.collection('pmHistory').doc(), h); });
-  await histBatch.commit();
-
-  // Activity log
-  await db.collection('activityLog').add({
-    type:'pm', id:'BULK',
-    desc:`Bulk PM catch-up: ${ids.length} tasks marked done by ${tech} for date ${date}`,
-    tech, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), ts:Date.now()
+    document.getElementById('bulk-pm-bar').style.width = ((i+1)/ids.length*100)+'%';
+    document.getElementById('bulk-pm-status').textContent = `Saving ${i+1}/${ids.length}...`;
   });
 
-  setSyncDot('live');
-  document.getElementById('bulk-pm-status').textContent = `✅ ${ids.length} tasks marked complete!`;
-  document.getElementById('bulk-pm-bar').style.background = '#4caf50';
+  try {
+    setSyncDot('saving');
+    await batch.commit();
 
-  // Reload PM completions
-  const snap = await db.collection('pmCompletions').get();
-  pmComps = {};
-  snap.forEach(d=>{ pmComps[d.id] = d.data(); });
+    // Write history in chunks of 499 (Firestore batch limit is 500)
+    for (let i = 0; i < historyDocs.length; i += 499) {
+      const chunk = historyDocs.slice(i, i + 499);
+      const hBatch = db.batch();
+      chunk.forEach(h => hBatch.set(db.collection('pmHistory').doc(), h));
+      await hBatch.commit();
+    }
 
-  setTimeout(()=>{
-    closeBulkPM();
-    renderPM();
-    renderDash();
-  }, 1500);
+    try {
+      await db.collection('activityLog').add({
+        type:'pm', id:'BULK',
+        desc:`Bulk PM catch-up: ${ids.length} tasks marked done by ${tech} for date ${date}`,
+        tech, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), ts:Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
+
+    setSyncDot('live');
+    document.getElementById('bulk-pm-status').textContent = `✅ ${ids.length} tasks marked complete!`;
+    document.getElementById('bulk-pm-bar').style.width = '100%';
+
+    // Reload PM completions
+    const snap = await db.collection('pmCompletions').get();
+    pmComps = {};
+    snap.forEach(d=>{ pmComps[d.id] = d.data(); });
+
+    setTimeout(()=>{
+      closeBulkPM();
+      renderPM();
+      renderDash();
+    }, 1500);
+
+  } catch(err) {
+    console.error('submitBulkPM error:', err);
+    setSyncDot('live');
+    document.getElementById('bulk-pm-status').textContent = `❌ Save failed — please try again`;
+    document.getElementById('bulk-pm-bar').style.background = '#e53e3e';
+    submitBtn.disabled = false;
+  }
 }
 
 // ═══════════════════════════════════════════
 // MULTI-SITE SELECTOR (Phase 9 foundation)
 // ═══════════════════════════════════════════
+// SITES — houses are static, techs/lead are pulled live from the Staff panel
+// (no hardcoded names anywhere in the app).
 const SITES = {
-  Hegins:   { houses: 8, techs: ['Nathan','Adam','Carlos','Randy','Steve'], lead: 'Nathan' },
-  Danville: { houses: 5, techs: ['Josh','Cain','Celia','Deb','Steve'], lead: 'Josh' },
+  Hegins:   { houses: 8, get techs(){ return (typeof getActiveStaff==='function') ? getActiveStaff('Hegins')   : []; }, get lead(){ return _siteLeadFor('Hegins'); } },
+  Danville: { houses: 5, get techs(){ return (typeof getActiveStaff==='function') ? getActiveStaff('Danville') : []; }, get lead(){ return _siteLeadFor('Danville'); } },
 };
+function _siteLeadFor(farm) {
+  if (typeof staffList !== 'undefined' && Array.isArray(staffList)) {
+    const lead = staffList.find(s => s && s.active !== false && s.role === 'Lead' &&
+                                     (!s.farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All'));
+    if (lead && lead.name) return lead.name;
+  }
+  return '';
+}
 
 // Landing page site filter
 let activeSite = 'all';

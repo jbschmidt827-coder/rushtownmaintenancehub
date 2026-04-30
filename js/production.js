@@ -31,6 +31,24 @@ async function renderLandingStatus() {
       : `${count} open work order${count!==1?'s':''}`;
     badge('ls-maint', `<span style="color:${color};font-weight:700;">${txt}</span>`);
   } catch(e) { badge('ls-maint',''); }
+
+  // On-Call: today's scheduled people across sites
+  try {
+    const ocSnap = await db.collection('onCallSchedule').where('date','==',today).get();
+    const ocDocs = ocSnap.docs.map(d => d.data());
+    // Also count any open (unresolved) on-call log entries today
+    const ocLogSnap = await db.collection('onCallLog').where('resolved','==',false).get();
+    const openCount = ocLogSnap.docs.length;
+    if (ocDocs.length > 0) {
+      const names = ocDocs.map(d => `${d.site}: ${d.staffName}`).join(' · ');
+      const suffix = openCount > 0 ? ` · <span style="color:#e53e3e;">${openCount} open</span>` : '';
+      badge('ls-oncall', `<span style="color:#4caf50;font-weight:700;">${names}</span>${suffix}`);
+    } else if (openCount > 0) {
+      badge('ls-oncall', `<span style="color:#e53e3e;font-weight:700;">${openCount} open event${openCount!==1?'s':''}</span>`);
+    } else {
+      badge('ls-oncall', `<span style="color:#4a4a4a;">No assignments today</span>`);
+    }
+  } catch(e) { badge('ls-oncall',''); }
 }
 const EGG_KPI_RATE       = 0.90;
 const EGG_TARGET         = Math.round(EGG_BIRDS_PER_BARN * EGG_KPI_RATE); // 135,000
@@ -301,7 +319,7 @@ function renderMWContent() {
 }
 
 // ── Employee Daily Barn Check ──
-var _bwFarm = '', _bwHouse = 0, _bwData = {}, _bwChecklist = {};
+var _bwFarm = '', _bwHouse = 0, _bwData = {}, _bwChecklist = {}, _bwDocId = null;
 
 const _BW_WEEKLY = {
   2: { // Tuesday
@@ -340,7 +358,23 @@ function bwInitChecklist() {
   });
   document.querySelectorAll('#bw-checklist-items .bw-cl-fail-detail').forEach(el => el.style.display='none');
   document.querySelectorAll('#bw-checklist-items input[id^="bw-cl-note-"]').forEach(el => el.value='');
-  document.getElementById('bw-checklist-progress').textContent = '0 / 14 reviewed';
+  bwUpdateTimeBadge();
+
+  // Clean Under Cages — House 1: Sun(0)/Thu(4), House 2: Mon(1)/Sat(6)
+  const _CAGE_CLEAN_DAYS = { 1: [0, 4], 2: [1, 6] };
+  const cageCard = document.getElementById('bw-cage-clean-card');
+  const cageStatus = document.getElementById('bw-cage-clean-status');
+  if (cageStatus) { cageStatus.style.display = 'none'; cageStatus.textContent = ''; }
+  const todayDay = new Date().getDay();
+  const scheduledDays = _CAGE_CLEAN_DAYS[_bwHouse];
+  if (scheduledDays && scheduledDays.includes(todayDay)) {
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    document.getElementById('bw-cage-clean-note').textContent =
+      'Scheduled for House ' + _bwHouse + ' on ' + scheduledDays.map(d => dayNames[d]).join(' & ') + ' each week';
+    cageCard.style.display = 'block';
+  } else {
+    cageCard.style.display = 'none';
+  }
 
   const day = new Date().getDay();
   const weekly = _BW_WEEKLY[day];
@@ -364,13 +398,146 @@ function bwInitChecklist() {
   }
 }
 
+// ── Checklist time badge ──
+function bwUpdateTimeBadge() {
+  const badge = document.getElementById('bw-time-badge');
+  const prog  = document.getElementById('bw-checklist-progress');
+  const rows  = document.querySelectorAll('#bw-checklist-items .bw-cl-row');
+  let remaining = 0, total = 0, done = 0;
+  rows.forEach(row => {
+    const mins = parseInt(row.dataset.minutes || '0');
+    total += mins;
+    const checked = _bwChecklist[row.id.replace('bw-cl-','')];
+    if (checked) { done++; } else { remaining += mins; }
+  });
+  const fmt = m => m >= 60 ? Math.floor(m/60) + 'h ' + (m%60 ? (m%60) + 'm' : '') : m + 'm';
+  if (badge) {
+    if (done === rows.length) {
+      badge.textContent = '✅ All tasks reviewed';
+      badge.style.color = '#4caf50'; badge.style.borderColor = '#2a5a2a';
+    } else {
+      badge.textContent = '⏱ ~' + fmt(remaining).trim() + ' remaining';
+      badge.style.color = '#3a6a3a'; badge.style.borderColor = '#1a4a1a';
+    }
+  }
+  if (prog) {
+    const fails = Object.values(_bwChecklist).filter(v => v === 'fail').length;
+    prog.textContent = done + ' / ' + rows.length + ' reviewed' + (fails ? ' · ' + fails + ' ⚠️ FAIL' : '');
+    prog.style.color = fails ? '#e53e3e' : done === rows.length ? '#4caf50' : '#5a8a5a';
+  }
+}
+
+// ── Barn Walk Draft Persistence ──
+function bwSaveDraft() {
+  if (!_bwFarm) return;
+  const today = new Date().toISOString().slice(0,10);
+  const fields = {};
+  ['bw-employee','bw-notes','bw-mort-count','bw-loose-count','bw-rodent-count',
+   'bw-fly-count','bw-egg-count','bw-weekly-rodent-count','bw-feed-bin-reading'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) fields[id] = el.value;
+  });
+  const clNotes = {};
+  document.querySelectorAll('#bw-checklist-items input[id^="bw-cl-note-"]').forEach(el => {
+    clNotes[el.id.replace('bw-cl-note-', '')] = el.value;
+  });
+  try {
+    localStorage.setItem('bwDraft-' + _bwFarm + '-' + _bwHouse + '-' + today,
+      JSON.stringify({ fields, bwData: _bwData, bwChecklist: _bwChecklist, clNotes, ts: Date.now() }));
+  } catch(e) {}
+}
+
+function bwRestoreFromData(data) {
+  if (data.fields) {
+    Object.entries(data.fields).forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val;
+    });
+  }
+  if (data.bwData) {
+    Object.entries(data.bwData).forEach(([key, val]) => {
+      if (val == null) return;
+      if (key.startsWith('_')) { _bwData[key] = val; return; }
+      bwSet(key, val);
+    });
+  }
+  if (data.bwChecklist) {
+    Object.entries(data.bwChecklist).forEach(([key, val]) => {
+      _bwChecklist[key] = val;
+      const row    = document.getElementById('bw-cl-' + key);
+      const detail = document.getElementById('bw-cl-det-' + key);
+      if (!row) return;
+      row.querySelectorAll('.bw-cl-pass').forEach(b => b.classList.remove('active'));
+      row.querySelectorAll('.bw-cl-fail-btn').forEach(b => b.classList.remove('active'));
+      const btn = row.querySelector(val === 'pass' ? '.bw-cl-pass' : '.bw-cl-fail-btn');
+      if (btn) btn.classList.add('active');
+      row.classList.remove('bw-pass','bw-fail');
+      row.classList.add(val === 'pass' ? 'bw-pass' : 'bw-fail');
+      if (detail) detail.style.display = val === 'fail' ? 'block' : 'none';
+    });
+    const total    = document.querySelectorAll('#bw-checklist-items .bw-cl-row').length;
+    const reviewed = Object.keys(_bwChecklist).length;
+    const fails    = Object.values(_bwChecklist).filter(v => v === 'fail').length;
+    const prog     = document.getElementById('bw-checklist-progress');
+    if (prog) {
+      prog.textContent = reviewed + ' / ' + total + ' reviewed' + (fails ? ' · ' + fails + ' ⚠️ FAIL' : '');
+      prog.style.color = fails ? '#e53e3e' : (reviewed === total ? '#4caf50' : '#5a8a5a');
+    }
+  }
+  if (data.clNotes) {
+    Object.entries(data.clNotes).forEach(([key, val]) => {
+      const el = document.getElementById('bw-cl-note-' + key);
+      if (el) el.value = val;
+    });
+  }
+  bwUpdateTimeBadge();
+  // Restore cage clean status display if present
+  if (_bwData._cageCleanEmployee && _bwData.cageclean) {
+    const statusEl = document.getElementById('bw-cage-clean-status');
+    if (statusEl) {
+      const v = _bwData.cageclean;
+      statusEl.textContent = (v === 'complete' ? '✅ Completed' : '❌ Incomplete')
+        + ' · ' + _bwData._cageCleanEmployee + ' · ' + (_bwData._cageCleanTime || '');
+      statusEl.style.background  = v === 'complete' ? '#0f3a1a' : '#2d1a1a';
+      statusEl.style.borderColor = v === 'complete' ? '#4caf50' : '#e53e3e';
+      statusEl.style.color       = v === 'complete' ? '#7ad07a' : '#e57373';
+      statusEl.style.display = 'block';
+    }
+  }
+  checkBWReady();
+}
+
+function bwRecordToDraft(rec) {
+  return {
+    fields: {
+      'bw-employee':            rec.employee   || '',
+      'bw-notes':               rec.notes      || '',
+      'bw-mort-count':          rec.mortCount  != null ? String(rec.mortCount)  : '',
+      'bw-loose-count':         rec.looseCount != null ? String(rec.looseCount) : '',
+      'bw-rodent-count':        rec.rodentCount!= null ? String(rec.rodentCount): '',
+      'bw-fly-count':           rec.flyCount   != null ? String(rec.flyCount)   : '',
+      'bw-egg-count':           rec.eggCount   != null ? String(rec.eggCount)   : '',
+      'bw-weekly-rodent-count': rec.weeklyRodentCount != null ? String(rec.weeklyRodentCount) : '',
+      'bw-feed-bin-reading':    rec.feedBinReading    != null ? String(rec.feedBinReading)    : '',
+    },
+    bwData: {
+      mort: rec.mort, feather: rec.feather, air: rec.air, feed: rec.feed,
+      rodent: rec.rodent, loose: rec.loose, dryers: rec.dryers,
+      eggbelt: rec.eggbelt, stand: rec.stand,
+      fly: rec.fly, mortrem: rec.mortrem, doors: rec.doors, cageclean: rec.cageClean,
+      footpan: rec.footpan, waste: rec.waste,
+      _cageCleanEmployee: rec.cageCleanEmployee || '',
+      _cageCleanTime:     rec.cageCleanTime     || '',
+    },
+    bwChecklist: rec.checklist || {},
+    clNotes:     rec.checklistNotes || {},
+  };
+}
+
 // items that auto-generate a WO on fail
 const _BW_WO_ITEMS = {
-  waterleaks:    { desc:'Water leak found',                   problem:'Watering System',       priority:'urgent' },
-  cagebirdcheck: { desc:'Injured/sick birds found in cages',  problem:'Building / Structure',  priority:'urgent' },
-  chutefull:     { desc:'Mortality chute getting full',        problem:'Building / Structure',  priority:'high'   },
-  damagedcages:  { desc:'Damaged cages or egg belts found',   problem:'Egg Collection',        priority:'high'   },
-  watertubes:    { desc:'Water tubes not cleaned / issue',    problem:'Watering System',       priority:'normal' },
+  birdcheck:  { desc:'Issues found during bird check — see notes', problem:'Building / Structure', priority:'urgent' },
+  watertubes: { desc:'Water tubes not cleaned / issue',            problem:'Watering System',      priority:'normal' },
 };
 
 function bwSetCheck(key, val, btn) {
@@ -386,17 +553,12 @@ function bwSetCheck(key, val, btn) {
   row.classList.add(val === 'pass' ? 'bw-pass' : 'bw-fail');
   // Show/hide fail detail
   if (detail) detail.style.display = val === 'fail' ? 'block' : 'none';
-  // Update progress
-  const total   = document.querySelectorAll('#bw-checklist-items .bw-cl-row').length;
-  const reviewed = Object.keys(_bwChecklist).length;
-  const fails   = Object.values(_bwChecklist).filter(v => v === 'fail').length;
-  const prog    = document.getElementById('bw-checklist-progress');
-  prog.textContent = reviewed + ' / ' + total + ' reviewed' + (fails ? ' · ' + fails + ' ⚠️ FAIL' : '');
-  prog.style.color = fails ? '#e53e3e' : (reviewed === total ? '#4caf50' : '#5a8a5a');
+  bwUpdateTimeBadge();
+  bwSaveDraft();
 }
 
 function openBarnWalk(farm, house) {
-  _bwFarm = farm; _bwHouse = house; _bwData = {};
+  _bwFarm = farm; _bwHouse = house; _bwData = {}; _bwDocId = null;
   document.getElementById('bw-title').textContent = farm + ' — Barn ' + house;
   document.getElementById('bw-subtitle').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
   ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count','bw-egg-count'].forEach(id => {
@@ -409,23 +571,134 @@ function openBarnWalk(farm, house) {
   document.getElementById('bw-eggbelt-wo-note').style.display   = 'none';
   document.querySelectorAll('#barn-walk-modal .bw-yn-btn').forEach(b => b.className = 'bw-yn-btn');
   bwInitChecklist();
-  document.getElementById('bw-submit-btn').disabled = true;
+
+  // Remove any stale submitted banner and reset submit button
+  const oldBanner = document.getElementById('bw-submitted-banner');
+  if (oldBanner) oldBanner.remove();
+  const submitBtn = document.getElementById('bw-submit-btn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submit';
+  submitBtn.style.background = '';
+
   document.getElementById('barn-walk-modal').style.display = 'block';
   document.getElementById('barn-walk-modal').scrollTop = 0;
   applyFormTextTranslation();
-  // Pre-populate employee from last submission for this barn
-  db.collection('barnWalks').where('farm','==',farm).where('house','==',String(house))
-    .orderBy('ts','desc').limit(1).get()
+
+  // Auto-save on any text input inside the modal
+  const modal = document.getElementById('barn-walk-modal');
+  modal._bwInputHandler = modal._bwInputHandler || function() { bwSaveDraft(); };
+  modal.removeEventListener('input', modal._bwInputHandler);
+  modal.addEventListener('input', modal._bwInputHandler);
+
+  const today = new Date().toISOString().slice(0,10);
+  const draftKey = 'bwDraft-' + farm + '-' + house + '-' + today;
+
+  // 1. Check for an in-progress draft first
+  try {
+    const draftStr = localStorage.getItem(draftKey);
+    if (draftStr) {
+      const draft = JSON.parse(draftStr);
+      bwRestoreFromData(draft);
+      return;
+    }
+  } catch(e) {}
+
+  // 2. Check Firestore for today's already-submitted walk
+  db.collection('barnWalks')
+    .where('farm','==',farm).where('house','==',String(house)).where('date','==',today)
+    .limit(1).get()
     .then(snap => {
-      if (snap.empty) return;
-      const l = snap.docs[0].data();
-      const e = document.getElementById('bw-employee');
-      if (e && !e.value) { e.value = l.employee || ''; checkBWReady(); }
+      if (!snap.empty) {
+        _bwDocId = snap.docs[0].id;
+        bwRestoreFromData(bwRecordToDraft(snap.docs[0].data()));
+        // Show "editing previous submission" banner
+        let banner = document.getElementById('bw-submitted-banner');
+        if (!banner) {
+          banner = document.createElement('div');
+          banner.id = 'bw-submitted-banner';
+          banner.style.cssText = 'background:#0f2a3a;border:1px solid #3a8ac0;border-radius:8px;padding:10px 14px;margin:0 0 12px;color:#7ab8d0;font-size:12px;font-family:"IBM Plex Mono",monospace;text-align:center;';
+          const sb = document.getElementById('bw-submit-btn');
+          if (sb) sb.parentNode.insertBefore(banner, sb);
+        }
+        banner.textContent = '✏️ Editing today\'s submission — changes will update the existing record';
+        const sb = document.getElementById('bw-submit-btn');
+        if (sb) { sb.textContent = 'Update Submission'; sb.style.background = '#1a3a4a'; }
+        return;
+      }
+      // 3. No draft, no submission — pre-fill employee from last barn walk
+      db.collection('barnWalks').where('farm','==',farm).where('house','==',String(house))
+        .limit(20).get()
+        .then(snap2 => {
+          if (snap2.empty) return;
+          const docs = snap2.docs.map(d => d.data()).sort((a,b) => (b.ts||0) - (a.ts||0));
+          const e = document.getElementById('bw-employee');
+          if (e && !e.value) { e.value = docs[0].employee || ''; checkBWReady(); }
+        }).catch(()=>{});
     }).catch(()=>{});
 }
 
 function closeBarnWalk() {
   document.getElementById('barn-walk-modal').style.display = 'none';
+}
+
+async function clOpenTaskWI(taskId, taskLabel) {
+  // Exact title map — taskId → WI title as it appears in Firestore
+  const WI_TITLE_MAP = {
+    undercage:   'Cleaning Under Cages',
+    blowoff:     'House Dust and Dander Removal',
+    hallway:     'Cleaning Designated Hallways',
+    rodent:      'Rodents and Rodent Bait',
+    fly:         'Fly Test',
+  };
+
+  // Load WIs if not yet loaded (barn walk stays open underneath)
+  try {
+    if (!allWI || !allWI.length) {
+      if (typeof loadWIFallback === 'function') await loadWIFallback();
+      else if (typeof loadWI === 'function') await loadWI();
+    }
+  } catch(e) {}
+
+  // Find match — exact title first, then partial
+  const wi = (typeof allWI !== 'undefined' ? allWI : []);
+  const targetTitle = (WI_TITLE_MAP[taskId] || '').toLowerCase();
+  let match = null;
+  if (targetTitle) {
+    match = wi.find(w => (w.title || '').trim().toLowerCase() === targetTitle);
+    if (!match) match = wi.find(w => (w.title || '').toLowerCase().includes(targetTitle));
+    if (!match) match = wi.find(w => targetTitle.includes((w.title || '').toLowerCase().trim()) && (w.title||'').length > 3);
+  }
+
+  // Debug toast — tap to dismiss
+  const _dbg = document.createElement('div');
+  _dbg.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a3a1a;color:#a0e0a0;padding:10px 16px;border-radius:10px;font-size:13px;z-index:20000;max-width:90vw;text-align:center;border:1px solid #4a9b6f;';
+  _dbg.textContent = `WI debug: ${wi.length} loaded | target="${WI_TITLE_MAP[taskId]||'none'}" | match=${match?match.title:'NONE'} | id=${match?(match.wiId||match._fbId||'?'):'—'}`;
+  document.body.appendChild(_dbg);
+  setTimeout(() => _dbg.remove(), 8000);
+
+  setTimeout(() => {
+    if (match) {
+      const id = match.wiId || match._fbId;
+      if (!match.wiId && match._fbId) match.wiId = match._fbId;
+      try {
+        if (typeof openWIView === 'function') openWIView(id);
+      } catch(err) {
+        _dbg.textContent += ' ERR:' + err.message;
+      }
+      const m = document.getElementById('wi-view-modal');
+      const hasOpen = m && m.classList.contains('open');
+      _dbg.textContent += hasOpen ? ' ✓OPEN' : ' ✗NOTOPEN';
+      // Force-show if openWIView didn't open it
+      if (m && !hasOpen) m.classList.add('open');
+    } else {
+      // No WI mapped — close barn walk and go to WI section
+      if (typeof closeBarnEntry === 'function') closeBarnEntry();
+      const beOverlay = document.getElementById('barn-entry-overlay');
+      if (beOverlay) { beOverlay.style.display = 'none'; document.body.style.overflow = ''; }
+      if (typeof go === 'function') go('maint');
+      setTimeout(() => { if (typeof goMaintSection === 'function') goMaintSection('wi'); }, 80);
+    }
+  }, 100);
 }
 
 function bwSet(key, val) {
@@ -443,9 +716,10 @@ function bwSet(key, val) {
     waste:   {yes:'bw-warn-sel',no:'bw-yes-sel'},
     stand:   {clean:'bw-yes-sel',dirty:'bw-no-sel'},
     eggbelt: {working:'bw-yes-sel',down:'bw-no-sel'},
-    manure:  {run:'bw-yes-sel', stop:'bw-no-sel'},
-    rodent:  {yes:'bw-no-sel',  no:'bw-yes-sel'},
-    fly:     {yes:'bw-warn-sel',no:'bw-yes-sel'},
+
+    rodent:    {yes:'bw-no-sel',  no:'bw-yes-sel'},
+    fly:       {yes:'bw-warn-sel',no:'bw-yes-sel'},
+    cageclean: {complete:'bw-yes-sel', incomplete:'bw-no-sel'},
   };
   document.querySelectorAll(`#barn-walk-modal .bw-yn-btn[id^="bw-${key}-"]`).forEach(b => b.className = 'bw-yn-btn');
   const sel = document.getElementById(`bw-${key}-${val}`);
@@ -455,7 +729,22 @@ function bwSet(key, val) {
   if (key === 'rodent')  document.getElementById('bw-rodent-count-row').style.display  = val==='yes'  ? 'block' : 'none';
   if (key === 'fly')     document.getElementById('bw-fly-count-row').style.display     = val==='yes'  ? 'block' : 'none';
   if (key === 'eggbelt') document.getElementById('bw-eggbelt-wo-note').style.display   = val==='down' ? 'block' : 'none';
+  if (key === 'cageclean') {
+    const emp  = (document.getElementById('bw-employee')?.value || '').trim() || 'Unknown';
+    const time = new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+    _bwData._cageCleanEmployee = emp;
+    _bwData._cageCleanTime     = time;
+    const statusEl = document.getElementById('bw-cage-clean-status');
+    if (statusEl) {
+      statusEl.textContent = (val === 'complete' ? '✅ Completed' : '❌ Incomplete') + ' · ' + emp + ' · ' + time;
+      statusEl.style.background = val === 'complete' ? '#0f3a1a' : '#2d1a1a';
+      statusEl.style.borderColor = val === 'complete' ? '#4caf50' : '#e53e3e';
+      statusEl.style.color = val === 'complete' ? '#7ad07a' : '#e57373';
+      statusEl.style.display = 'block';
+    }
+  }
   checkBWReady();
+  bwSaveDraft();
 }
 
 function checkBWReady() {
@@ -478,18 +767,14 @@ async function submitBarnWalk() {
   const feedBinReading    = document.getElementById('bw-feed-bin-reading')?.value ? Number(document.getElementById('bw-feed-bin-reading').value) : null;
 
   const flags = [];
-  if (_bwData.mort === 'yes')           flags.push('Mortality found' + (mortCount ? ' (' + mortCount + ')' : ''));
-  if (_bwData.mortrem === 'no')         flags.push('Mortality not removed');
+  // NOTE: Mortality and Loose Birds are logged to mortalityLog only — never create a WO
   if (_bwData.dryers === 'off')         flags.push('Manure dryers off');
   if (_bwData.feather === 'poor')       flags.push('Poor feathering');
-  if (_bwData.loose === 'yes')          flags.push('Loose birds' + (looseCount ? ' (' + looseCount + ')' : ''));
   if (_bwData.air === 'poor')           flags.push('Air quality anomaly');
   if (_bwData.feed === 'empty')         flags.push('Feeders empty');
   if (_bwData.eggbelt === 'down')       flags.push('Egg belt not working');
-  if (_bwData.manure === 'stop')        flags.push('Manure belts not running');
-  // Water PSI and House Temp fields removed from Daily Employee Check form
+
   // Pest observations are saved to pestLog — not added to flags/WO queue
-  // (WO is only created below if rodentCount >= threshold)
   if (_bwData.doors === 'open')         flags.push('House doors open');
 
   const checklistTotal  = document.querySelectorAll('#bw-checklist-items .bw-cl-row').length;
@@ -508,21 +793,87 @@ async function submitBarnWalk() {
     waterPSI, temp, mortCount, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading,
     mort: _bwData.mort, feather: _bwData.feather, air: _bwData.air,
     feed: _bwData.feed, rodent: _bwData.rodent, loose: _bwData.loose,
-    dryers: _bwData.dryers, eggbelt: _bwData.eggbelt, manure: _bwData.manure,
+    dryers: _bwData.dryers, eggbelt: _bwData.eggbelt,
     stand: _bwData.stand, fly: _bwData.fly, mortrem: _bwData.mortrem,
     doors: _bwData.doors,
     checklist: _bwChecklist, checklistNotes,
     checklistFails: checklistFails.length, checklistTotal,
+    cageClean: _bwData.cageclean || null,
+    cageCleanEmployee: _bwData._cageCleanEmployee || null,
+    cageCleanTime: _bwData._cageCleanTime || null,
     date: new Date().toISOString().slice(0,10),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
     ts: Date.now()
   };
 
-  try { await db.collection('barnWalks').add(record); } catch(e) { console.error(e); }
+  try {
+    if (_bwDocId) {
+      await db.collection('barnWalks').doc(_bwDocId).set(record);
+    } else {
+      const docRef = await db.collection('barnWalks').add(record);
+      _bwDocId = docRef.id;
+    }
+  } catch(e) { console.error(e); }
+
+  // ── Activity Log ──
+  try {
+    const statusDesc = flags.length > 0
+      ? flags.length + ' flag' + (flags.length !== 1 ? 's' : '')
+      : 'All Clear';
+    await db.collection('activityLog').add({
+      type: 'barnwalk',
+      id: 'BW-' + _bwFarm + '-H' + _bwHouse,
+      desc: 'Daily barn check: ' + _bwFarm + ' Barn ' + _bwHouse + ' — ' + statusDesc
+        + (_bwData.feed === 'empty' ? ' ⚠ Feed Empty' : '')
+        + (_bwData.mort === 'yes' ? ' ⚠ Mortality' + (mortCount ? ' (' + mortCount + ')' : '') : '')
+        + (flags.length > 0 ? ' · Flags: ' + flags.slice(0, 2).join(', ') + (flags.length > 2 ? '…' : '') : ''),
+      tech: employee,
+      farm: _bwFarm,
+      house: String(_bwHouse),
+      feed: _bwData.feed,
+      water: _bwData.stand,
+      fans: _bwData.air,
+      mort: _bwData.mort,
+      mortCount: mortCount || 0,
+      flagCount: flags.length,
+      date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+      ts: Date.now()
+    });
+  } catch(e) { console.warn('activityLog write failed:', e); }
+
+  // ── Mortality Log ──
+  // Always log mortality — never creates a WO
+  // Log mortality — never creates a WO
+  if (_bwData.mort === 'yes') {
+    const mortEntry = {
+      farm: _bwFarm, house: String(_bwHouse), employee,
+      date: new Date().toISOString().slice(0,10),
+      time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+      type: 'mortality',
+      mortCount: mortCount || 0,
+      mortrem: _bwData.mortrem || 'yes',
+      notes: notes || '',
+      ts: Date.now()
+    };
+    try { await db.collection('mortalityLog').add(mortEntry); } catch(e) { console.error('mortalityLog write failed:', e); }
+  }
+
+  // Log loose birds — never creates a WO
+  if (_bwData.loose === 'yes') {
+    const looseEntry = {
+      farm: _bwFarm, house: String(_bwHouse), employee,
+      date: new Date().toISOString().slice(0,10),
+      time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+      type: 'loose',
+      looseCount: looseCount || 0,
+      notes: notes || '',
+      ts: Date.now()
+    };
+    try { await db.collection('mortalityLog').add(looseEntry); } catch(e) { console.error('looseLog write failed:', e); }
+  }
 
   // ── Pest Log ──
-  // Always save a pest log entry if rodents or flies were observed
-  const RODENT_WO_THRESHOLD = 3; // create a WO only if rodent count >= this
+  // Always log pest observations — never creates a WO
   const hasPest = _bwData.rodent === 'yes' || _bwData.fly === 'yes';
   if (hasPest) {
     const pestEntry = {
@@ -535,23 +886,6 @@ async function submitBarnWalk() {
       ts: Date.now()
     };
     try { await db.collection('pestLog').add(pestEntry); } catch(e) { console.error('pestLog write failed:', e); }
-
-    // Only create a WO if rodent count hits the threshold
-    if (_bwData.rodent === 'yes' && rodentCount >= RODENT_WO_THRESHOLD) {
-      try {
-        const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
-        woCounter = (woCounter || 900) + 1;
-        await db.collection('workOrders').add({
-          id: woId, farm: _bwFarm, house: String(_bwHouse),
-          problem: 'Building / Structure', priority: 'high', status: 'open',
-          desc: 'High rodent count during daily check — ' + rodentCount + ' rodents observed.',
-          tech: employee,
-          notes: 'Auto-created from pest log — ' + _bwFarm + ' Barn ' + _bwHouse + '. Count: ' + rodentCount + '. Threshold: ' + RODENT_WO_THRESHOLD + '+.',
-          submitted: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-          date: new Date().toISOString().slice(0,10), ts: Date.now()
-        });
-      } catch(e) { console.error('Pest WO create failed:', e); }
-    }
   }
 
   // Feed bin reading is saved live via liveUpdateFeedBin (onchange) — no duplicate save needed here.
@@ -593,24 +927,28 @@ async function submitBarnWalk() {
   BARN_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
   if (mortCount) _todayMortTotal += mortCount;
 
-  // Map each flag to a problem category and priority
+  // Map each flag to a problem category and priority.
+  // Mortality, loose birds, and pest are logged to their own collections — never WOs.
+  // Checklist failures are handled individually above (_BW_WO_ITEMS loop) — skip here.
   const flagProblemMap = {
-    'Mortality found':            {problem:'Manure System',      priority:'high'},
-    'Mortality not removed':      {problem:'Manure System',      priority:'urgent'},
-    'Manure dryers off':          {problem:'Manure System',      priority:'high'},
-    'Manure belts not running':   {problem:'Manure System',      priority:'high'},
-    'Poor feathering':            {problem:'Building / Structure',priority:'normal'},
-    'House doors open':           {problem:'Building / Structure',priority:'high'},
-    'Loose birds':                {problem:'Building / Structure',priority:'high'},
-    'Air quality anomaly':        {problem:'Ventilation / Fans', priority:'urgent'},
-    'Feeders empty':              {problem:'Feed System',        priority:'urgent'},
-    'Egg belt not working':       {problem:'Egg Collection',     priority:'urgent'},
-    // Rodents and Fly activity are handled by the Pest Log — not auto-WO
+    'Manure dryers off':          {problem:'Manure System',       priority:'high'},
+
+    'Poor feathering':            {problem:'Building / Structure', priority:'normal'},
+    'House doors open':           {problem:'Building / Structure', priority:'high'},
+    'Air quality anomaly':        {problem:'Ventilation / Fans',  priority:'urgent'},
+    'Feeders empty':              {problem:'Feed System',         priority:'urgent'},
+    'Egg belt not working':       {problem:'Egg Collection',      priority:'urgent'},
   };
   for (const flag of flags) {
+    // Checklist failures already handled above — skip to avoid duplicate WOs
+    if (flag.startsWith('Checklist failures')) continue;
+    // Mortality and loose birds go to mortalityLog only — never WOs
+    if (flag.toLowerCase().includes('mort') || flag.toLowerCase().includes('loose')) continue;
+    // Only create WOs for flags we explicitly recognise
+    const mapKey = Object.keys(flagProblemMap).find(k => flag.startsWith(k));
+    if (!mapKey) continue; // unknown flag — log it but don't create a WO
     try {
-      const mapKey = Object.keys(flagProblemMap).find(k => flag.startsWith(k)) || flag;
-      const {problem, priority} = flagProblemMap[mapKey] || {problem:'Other',priority:'high'};
+      const {problem, priority} = flagProblemMap[mapKey];
       const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
       woCounter = (woCounter || 900) + 1;
       await db.collection('workOrders').add({
@@ -624,7 +962,27 @@ async function submitBarnWalk() {
     } catch(e) { console.error(e); }
   }
 
-  closeBarnWalk();
+  // Clear localStorage draft — data is now in Firestore
+  const draftKey = 'bwDraft-' + _bwFarm + '-' + _bwHouse + '-' + record.date;
+  try { localStorage.removeItem(draftKey); } catch(e) {}
+
+  // Keep form open for editing; show success banner and update button label
+  const sBtn = document.getElementById('bw-submit-btn');
+  if (sBtn) {
+    sBtn.disabled = false;
+    sBtn.textContent = '✅ Submitted — Tap to Update';
+    sBtn.style.background = '#1a4a1a';
+  }
+  let banner = document.getElementById('bw-submitted-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'bw-submitted-banner';
+    banner.style.cssText = 'background:#0f3a1a;border:1px solid #4caf50;border-radius:8px;padding:10px 14px;margin:0 0 12px;color:#7ad07a;font-size:12px;font-family:"IBM Plex Mono",monospace;text-align:center;';
+    if (sBtn) sBtn.parentNode.insertBefore(banner, sBtn);
+  }
+  banner.style.cssText = 'background:#0f3a1a;border:1px solid #4caf50;border-radius:8px;padding:10px 14px;margin:0 0 12px;color:#7ad07a;font-size:12px;font-family:"IBM Plex Mono",monospace;text-align:center;';
+  banner.textContent = '✅ Saved at ' + record.time + ' — edit any field above and tap Update to re-save';
+
   renderProdPanel();
   renderECContent();
   if (document.getElementById('panel-dash')?.classList.contains('active')) renderDash();
@@ -645,10 +1003,11 @@ function openMorningWalk(farm, house) {
   document.getElementById('morning-walk-modal').scrollTop = 0;
   // Pre-populate employee from last submission for this barn
   db.collection('morningWalks').where('farm','==',farm).where('house','==',String(house))
-    .orderBy('ts','desc').limit(1).get()
+    .limit(20).get()
     .then(snap => {
       if (snap.empty) return;
-      const l = snap.docs[0].data();
+      const docs = snap.docs.map(d => d.data()).sort((a,b) => (b.ts||0) - (a.ts||0));
+      const l = docs[0];
       const e = document.getElementById('mw-employee');
       if (e && !e.value) { e.value = l.employee || ''; checkMWReady(); }
     }).catch(()=>{});
@@ -656,6 +1015,18 @@ function openMorningWalk(farm, house) {
 
 function closeMorningWalk() {
   document.getElementById('morning-walk-modal').style.display = 'none';
+}
+
+function mwCheckBinLevel(inputId, statusId) {
+  const input = document.getElementById(inputId);
+  const status = document.getElementById(statusId);
+  if (!input || !status) return;
+  const val = parseFloat(input.value);
+  if (isNaN(val) || input.value === '') { status.textContent = ''; return; }
+  if (val < 1)        { status.style.color = '#e53e3e'; status.textContent = '🔴 CRITICAL — Order feed now'; }
+  else if (val < 2.5) { status.style.color = '#d69e2e'; status.textContent = '🟡 Low — Order soon'; }
+  else if (val < 5)   { status.style.color = '#4ade80'; status.textContent = '🟢 Moderate'; }
+  else                { status.style.color = '#4ade80'; status.textContent = '🟢 Good'; }
 }
 
 function mwSet(key, val) {
@@ -694,9 +1065,13 @@ async function submitMorningWalk() {
   if (_mwData.blowers === 'no')        flags.push('Blower issue');
 
   const feedMeterReading = document.getElementById('mw-feed-meter')?.value ? Number(document.getElementById('mw-feed-meter').value) : null;
+  const binA = document.getElementById('mw-bin-a')?.value !== '' ? Number(document.getElementById('mw-bin-a').value) : null;
+  const binB = document.getElementById('mw-bin-b')?.value !== '' ? Number(document.getElementById('mw-bin-b').value) : null;
+  if (binA !== null && binA < 1)   flags.push('Bin A critically low (' + binA + ' tons)');
+  if (binB !== null && binB < 1)   flags.push('Bin B critically low (' + binB + ' tons)');
   const record = {
     farm: _mwFarm, house: String(_mwHouse), employee, notes, flags,
-    waterPSI, temp, eeCount, feedMeterReading,
+    waterPSI, temp, eeCount, feedMeterReading, binA, binB,
     feed: _mwData.feed, fans: _mwData.fans, blowers: _mwData.blowers,
     date: new Date().toISOString().slice(0,10),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
@@ -704,6 +1079,31 @@ async function submitMorningWalk() {
   };
 
   try { await db.collection('morningWalks').add(record); } catch(e) { console.error(e); }
+
+  // ── Activity Log ──
+  try {
+    const statusDesc = flags.length > 0
+      ? flags.length + ' flag' + (flags.length !== 1 ? 's' : '')
+      : 'All Clear';
+    await db.collection('activityLog').add({
+      type: 'barnwalk',
+      id: 'BW-' + _mwFarm + '-H' + _mwHouse,
+      desc: 'Morning walk: ' + _mwFarm + ' Barn ' + _mwHouse + ' — ' + statusDesc
+        + (_mwData.feed === 'no' ? ' ⚠ Feeders not running' : '')
+        + (_mwData.fans === 'no' ? ' ⚠ Fan issue' : '')
+        + (flags.length > 0 ? ' · Flags: ' + flags.slice(0, 2).join(', ') + (flags.length > 2 ? '…' : '') : ''),
+      tech: employee,
+      farm: _mwFarm,
+      house: String(_mwHouse),
+      feed: _mwData.feed,
+      fans: _mwData.fans,
+      blowers: _mwData.blowers,
+      waterPSI,
+      flagCount: flags.length,
+      date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+      ts: Date.now()
+    });
+  } catch(e) { console.warn('activityLog write failed:', e); }
 
   const key = _mwFarm + '-' + _mwHouse;
   MORNING_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
@@ -1133,35 +1533,123 @@ function renderProdEggTrends() {
   el.innerHTML = '<div style="padding:20px;text-align:center;color:#a0c060;font-family:\'IBM Plex Mono\',monospace;">📈 Egg Trends — coming soon</div>';
 }
 
+let _walkDetailData = {}; // docId → full walk record
+
 function renderProdWalkHistory() {
   const el = document.getElementById('prod-sec-history');
   if (!el) return;
   el.innerHTML = '<div style="color:#aaa;font-family:\'IBM Plex Mono\',monospace;font-size:12px;margin-bottom:12px;">Loading walk history…</div>';
-  const farms = [{name:'Hegins',houses:8},{name:'Danville',houses:5}];
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+  const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
   db.collection('barnWalks').where('ts','>=',cutoff).orderBy('ts','desc').get().then(snap => {
     if (snap.empty) { el.innerHTML = '<div style="color:#888;padding:20px;text-align:center;">No walks in the last 30 days.</div>'; return; }
+    _walkDetailData = {};
     const rows = snap.docs.map(d => {
       const r = d.data();
-      const date = r.ts ? new Date(r.ts.seconds*1000).toLocaleDateString() : '—';
-      const flags = r.flags && r.flags.length ? '<span style="color:#e53e3e;">⚑ '+r.flags.length+'</span>' : '<span style="color:#4caf50;">✓</span>';
-      return `<tr style="border-bottom:1px solid #1a2a1a;">
+      _walkDetailData[d.id] = r;
+      const date  = r.ts ? new Date(r.ts).toLocaleDateString() : '—';
+      const flags = r.flags && r.flags.length ? `<span style="color:#e53e3e;">⚑ ${r.flags.length}</span>` : '<span style="color:#4caf50;">✓</span>';
+      return `<tr onclick="openWalkDetail('${d.id}')" style="border-bottom:1px solid #1a2a1a;cursor:pointer;" onmouseover="this.style.background='#1a2a1a'" onmouseout="this.style.background=''">
         <td style="padding:8px 6px;color:#f0ead8;">${date}</td>
         <td style="padding:8px 6px;color:#7ab07a;">${r.farm||'—'}</td>
         <td style="padding:8px 6px;color:#aaa;">H${r.house||'—'}</td>
         <td style="padding:8px 6px;">${flags}</td>
         <td style="padding:8px 6px;color:#aaa;">${r.employee||'—'}</td>
+        <td style="padding:8px 6px;color:#3a6a8a;font-size:10px;">→</td>
       </tr>`;
     }).join('');
-    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+    el.innerHTML = `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6a4a;margin-bottom:8px;">Tap any row to see full details</div>
+      <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
       <thead><tr style="border-bottom:1px solid #2a4a2a;">
         <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Date</th>
         <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Farm</th>
         <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">House</th>
         <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Flags</th>
         <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Employee</th>
+        <th style="padding:6px;"></th>
       </tr></thead><tbody>${rows}</tbody></table>`;
   }).catch(e => { el.innerHTML = '<div style="color:#e53e3e;padding:20px;">Error: '+e.message+'</div>'; });
+}
+
+function openWalkDetail(id) {
+  const r = _walkDetailData[id];
+  if (!r) return;
+  const hasFlagsArr = r.flags && r.flags.length > 0;
+  const date = r.ts ? new Date(r.ts).toLocaleString() : (r.date || '—');
+  const yn = v => v === 'yes' ? '<span style="color:#e53e3e;">⚠ YES</span>' : v === 'no' ? '<span style="color:#4caf50;">✓ NO</span>' : v ? `<span style="color:#d69e2e;">${v}</span>` : '—';
+  const field = (label, val) => val != null && val !== '' && val !== '—'
+    ? `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a2a1a;">
+        <span style="color:#5a8a5a;font-size:11px;">${label}</span>
+        <span style="color:#f0ead8;font-size:11px;font-weight:600;text-align:right;max-width:60%;">${val}</span>
+       </div>` : '';
+
+  let html = `
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;overflow-y:auto;padding:16px;">
+  <div style="max-width:520px;margin:0 auto;background:#0d1a0d;border:1.5px solid ${hasFlagsArr?'#4a1a1a':'#1a3a1a'};border-radius:16px;padding:20px;">
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#f0ead8;">${r.farm} — House ${r.house}</div>
+        <div style="font-size:11px;color:#5a8a5a;margin-top:3px;">📅 ${date} · 👤 ${r.employee||'—'}</div>
+      </div>
+      <button onclick="closeWalkDetail()" style="background:#1a1a1a;border:1px solid #3a3a3a;border-radius:8px;padding:8px 14px;color:#888;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;flex-shrink:0;">✕ Close</button>
+    </div>
+    <!-- Status banner -->
+    <div style="background:${hasFlagsArr?'#1a0a0a':'#0a1a0a'};border:1px solid ${hasFlagsArr?'#e53e3e':'#4caf50'};border-radius:8px;padding:10px 14px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;color:${hasFlagsArr?'#e53e3e':'#4caf50'};">${hasFlagsArr?'⚠ '+r.flags.length+' Flag'+(r.flags.length!==1?'s':''):'✓ All Clear'}</div>
+      ${hasFlagsArr?`<div style="font-size:11px;color:#c07070;margin-top:6px;line-height:1.7;">${r.flags.map(f=>'• '+f).join('<br>')}</div>`:''}
+    </div>
+    <!-- Readings -->
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;color:#4a7a4a;text-transform:uppercase;margin-bottom:8px;">Readings</div>
+    <div style="background:#0a140a;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;">
+      ${field('Water PSI', r.waterPSI != null ? r.waterPSI + ' PSI' : null)}
+      ${field('House Temp', r.temp != null ? r.temp + '°F' : null)}
+      ${field('Feed Bin', r.feedBinReading != null ? r.feedBinReading + ' lbs' : null)}
+      ${field('Mortality Count', r.mortCount || null)}
+      ${field('Loose Birds', r.looseCount || null)}
+      ${field('Rodents Found', r.rodentCount || null)}
+      ${field('Fly Count', r.flyCount || null)}
+    </div>
+    <!-- Observations -->
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;color:#4a7a4a;text-transform:uppercase;margin-bottom:8px;">Observations</div>
+    <div style="background:#0a140a;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;">
+      ${field('Mortality Found', yn(r.mort))}
+      ${field('All Mortality Removed', yn(r.mortrem))}
+      ${field('Loose Birds', yn(r.loose))}
+      ${field('Feathering', r.feather||null)}
+      ${field('Air Quality', yn(r.air))}
+      ${field('Feeders', r.feed||null)}
+      ${field('Rodents', yn(r.rodent))}
+      ${field('Manure Dryers', r.dryers||null)}
+      ${field('Egg Belt', r.eggbelt||null)}
+
+      ${field('Standpipes', r.stand||null)}
+      ${field('Fly Traps', r.fly||null)}
+      ${field('House Doors', r.doors||null)}
+    </div>
+    ${r.checklist && Object.keys(r.checklist).length ? `
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;color:#4a7a4a;text-transform:uppercase;margin-bottom:8px;">Checklist <span style="color:${r.checklistFails>0?'#e53e3e':'#4caf50'};">(${r.checklistFails||0} fail${r.checklistFails!==1?'s':''})</span></div>
+    <div style="background:#0a140a;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;">
+      ${Object.entries(r.checklist).map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1a2a1a;font-size:11px;">
+        <span style="color:#5a8a5a;max-width:70%;">${k}</span>
+        <span style="color:${v==='pass'||v==='ok'?'#4caf50':v==='fail'?'#e53e3e':'#d69e2e'};font-weight:700;">${(v||'').toUpperCase()}</span>
+      </div>`).join('')}
+    </div>` : ''}
+    ${r.notes ? `<div style="background:#0a1a0a;border-radius:8px;padding:10px 12px;font-size:12px;color:#7ab07a;font-style:italic;font-family:'IBM Plex Mono',monospace;">📝 ${r.notes}</div>` : ''}
+  </div></div>`;
+
+  let overlay = document.getElementById('walk-detail-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'walk-detail-overlay';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = html;
+  overlay.style.display = 'block';
+}
+
+function closeWalkDetail() {
+  const el = document.getElementById('walk-detail-overlay');
+  if (el) el.style.display = 'none';
 }
 
 function renderProdBiosec() {
@@ -1328,18 +1816,25 @@ async function mwTabCreateWOs() {
 // PEST LOG
 // ═══════════════════════════════════════════
 var _pestLogData = [];
+var _mortLogData = [];
 var _pestFarmFilter = 'all';
 var _pestTypeFilter = 'all';
 
 async function openPestLog() {
   document.getElementById('pest-log-overlay').style.display = 'block';
   document.getElementById('pest-log-count').textContent = 'Loading…';
+  const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
   try {
-    const snap = await db.collection('pestLog').orderBy('ts','desc').limit(200).get();
+    const [pestSnap, mortSnap] = await Promise.all([
+      db.collection('pestLog').where('ts','>=',cutoff).orderBy('ts','desc').get(),
+      db.collection('mortalityLog').where('ts','>=',cutoff).orderBy('ts','desc').get()
+    ]);
     _pestLogData = [];
-    snap.forEach(d => _pestLogData.push({...d.data(), _fbId: d.id}));
+    _mortLogData = [];
+    pestSnap.forEach(d => _pestLogData.push({...d.data(), _type:'pest', _fbId: d.id}));
+    mortSnap.forEach(d => _mortLogData.push({...d.data(), _type:'mort', _fbId: d.id}));
   } catch(e) {
-    console.error('pestLog load error:', e);
+    console.error('pest/mortality log load error:', e);
   }
   renderPestLog();
 }
@@ -1352,53 +1847,94 @@ function closePestLog() {
 
 function pestLogFilter(farm, btn) {
   _pestFarmFilter = farm;
-  document.querySelectorAll('#pest-log-overlay .pill').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#pest-log-overlay .pill[data-farm]').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   renderPestLog();
 }
 
 function pestLogTypeFilter(type, btn) {
   _pestTypeFilter = type;
-  // Only toggle the type pills (2nd row)
-  const allPills = document.querySelectorAll('#pest-log-overlay .pill');
-  // Farm pills are first 3, type pills are next 3
-  allPills.forEach((b, i) => { if (i >= 3) b.classList.remove('active'); });
+  document.querySelectorAll('#pest-log-overlay .pill[data-type]').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   renderPestLog();
 }
 
 function renderPestLog() {
-  const RODENT_WO_THRESHOLD = 3;
-  let data = _pestLogData.slice();
-  if (_pestFarmFilter !== 'all') data = data.filter(r => r.farm === _pestFarmFilter);
-  if (_pestTypeFilter === 'rodent') data = data.filter(r => r.rodent === 'yes');
-  if (_pestTypeFilter === 'fly')    data = data.filter(r => r.fly === 'yes');
+  // Merge pest + mortality, sorted newest first
+  let pestData = _pestLogData.slice();
+  let mortData = _mortLogData.slice();
 
-  document.getElementById('pest-log-count').textContent = data.length + ' records';
+  if (_pestFarmFilter !== 'all') {
+    pestData = pestData.filter(r => r.farm === _pestFarmFilter);
+    mortData = mortData.filter(r => r.farm === _pestFarmFilter);
+  }
+  if (_pestTypeFilter === 'rodent') { mortData = []; pestData = pestData.filter(r => r.rodent === 'yes'); }
+  if (_pestTypeFilter === 'fly')    { mortData = []; pestData = pestData.filter(r => r.fly === 'yes'); }
+  if (_pestTypeFilter === 'mort')   { pestData = []; mortData = mortData.filter(r => r.type === 'mortality' || !r.type); }
+  if (_pestTypeFilter === 'loose')  { pestData = []; mortData = mortData.filter(r => r.type === 'loose'); }
+
+  const combined = [...pestData, ...mortData].sort((a,b) => (b.ts||0) - (a.ts||0));
+  document.getElementById('pest-log-count').textContent = combined.length + ' records · last 30 days';
 
   // Summary stats
-  const totalRodent = data.filter(r => r.rodent === 'yes').length;
-  const totalFly    = data.filter(r => r.fly === 'yes').length;
-  const totalRodentCount = data.reduce((s,r) => s + (r.rodentCount||0), 0);
-  const statStyle = 'background:#1a1200;border:1px solid #3a2a0a;border-radius:10px;padding:12px;text-align:center;';
+  const totalRodent    = pestData.filter(r => r.rodent === 'yes').length;
+  const totalFly       = pestData.filter(r => r.fly === 'yes').length;
+  const totalMortBirds = _mortLogData.filter(r => r.type === 'mortality' || !r.type).reduce((s,r) => s + (r.mortCount||0), 0);
+  const totalLooseBirds = _mortLogData.filter(r => r.type === 'loose').reduce((s,r) => s + (r.looseCount||0), 0);
+  const statStyle = 'background:#1a0a0a;border:1px solid #3a1a0a;border-radius:10px;padding:12px;text-align:center;';
   document.getElementById('pest-log-stats').innerHTML =
-    '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#e07070;">'+totalRodent+'</div><div style="font-size:10px;color:#8a7a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">🐀 Rodent Sightings</div></div>' +
-    '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#c8a05a;">'+totalRodentCount+'</div><div style="font-size:10px;color:#8a7a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Total Caught</div></div>' +
+    '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#e07070;">'+totalMortBirds+'</div><div style="font-size:10px;color:#8a5a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">💀 Mortality (30d)</div></div>' +
+    '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#f59e0b;">'+totalLooseBirds+'</div><div style="font-size:10px;color:#8a7a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">🐔 Loose Birds (30d)</div></div>' +
+    '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#c8a05a;">'+totalRodent+'</div><div style="font-size:10px;color:#8a7a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">🐀 Rodent Sightings</div></div>' +
     '<div style="'+statStyle+'"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:24px;font-weight:700;color:#d69e2e;">'+totalFly+'</div><div style="font-size:10px;color:#8a7a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">🪰 Fly Sightings</div></div>';
 
-  if (!data.length) {
+  if (!combined.length) {
     document.getElementById('pest-log-list').innerHTML =
-      '<div style="text-align:center;padding:40px 20px;color:#5a4a2a;font-family:\'IBM Plex Mono\',monospace;font-size:13px;">No pest records found.</div>';
+      '<div style="text-align:center;padding:40px 20px;color:#5a4a2a;font-family:\'IBM Plex Mono\',monospace;font-size:13px;">No records in the last 30 days.</div>';
     return;
   }
 
-  document.getElementById('pest-log-list').innerHTML = data.map(r => {
+  document.getElementById('pest-log-list').innerHTML = combined.map(r => {
+    if (r._type === 'mort' && r.type === 'loose') {
+      // Loose bird entry
+      return '<div style="background:#130c00;border:1px solid #7a5a00;border-radius:10px;padding:14px 16px;margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
+          '<div>' +
+            '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:#f0ead8;">'+r.farm+' — Barn '+r.house+'</div>' +
+            '<div style="font-size:11px;color:#8a7a5a;margin-top:2px;">'+(r.date||'')+(r.time?' · '+r.time:'')+' · '+(r.employee||'')+'</div>' +
+          '</div>' +
+          '<span style="background:#2a1a00;color:#f59e0b;border:1px solid #7a5a00;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;font-family:\'IBM Plex Mono\',monospace;">🐔 Loose Birds</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">' +
+          (r.looseCount ? '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;color:#f59e0b;font-weight:700;">'+r.looseCount+' bird'+(r.looseCount!==1?'s':'')+'</span>' : '') +
+        '</div>' +
+        (r.notes ? '<div style="margin-top:8px;font-size:12px;color:#8a7a5a;font-style:italic;">'+r.notes+'</div>' : '') +
+      '</div>';
+    }
+    if (r._type === 'mort') {
+      const notRemoved = r.mortrem === 'no';
+      const borderColor = notRemoved ? '#e53e3e' : '#7a3a3a';
+      return '<div style="background:#130808;border:1px solid '+borderColor+';border-radius:10px;padding:14px 16px;margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
+          '<div>' +
+            '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:#f0ead8;">'+r.farm+' — Barn '+r.house+'</div>' +
+            '<div style="font-size:11px;color:#8a6a6a;margin-top:2px;">'+r.date+' · '+r.time+' · '+r.employee+'</div>' +
+          '</div>' +
+          '<span style="background:#3a0a0a;color:#f87171;border:1px solid #7a2a2a;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;font-family:\'IBM Plex Mono\',monospace;">💀 Mortality</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">' +
+          (r.mortCount ? '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;color:#f87171;font-weight:700;">'+r.mortCount+' bird'+(r.mortCount!==1?'s':'')+'</span>' : '') +
+          (notRemoved ? '<span style="background:#4a0a0a;color:#fca5a5;border:1px solid #e53e3e;border-radius:8px;padding:1px 8px;font-size:11px;">⚠ Not Removed</span>' : '') +
+        '</div>' +
+        (r.notes ? '<div style="margin-top:8px;font-size:12px;color:#8a6a6a;font-style:italic;">'+r.notes+'</div>' : '') +
+      '</div>';
+    }
+    // Pest entry
     const rodentFlag = r.rodent === 'yes';
     const flyFlag    = r.fly === 'yes';
-    const highRodent = rodentFlag && (r.rodentCount||0) >= RODENT_WO_THRESHOLD;
-    const borderColor = highRodent ? '#e53e3e' : rodentFlag ? '#c8a05a' : '#3a6a3a';
+    const borderColor = rodentFlag ? '#c8a05a' : '#3a6a3a';
     const badges = [];
-    if (rodentFlag) badges.push('<span style="background:'+(highRodent?'#c0392b':'#3a2800')+';color:'+(highRodent?'#fff':'#c8a05a')+';border:1px solid '+(highRodent?'#e53e3e':'#7a5a1a')+';border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;font-family:\'IBM Plex Mono\',monospace;">🐀 Rodents'+(r.rodentCount?' × '+r.rodentCount:'')+(highRodent?' ⚠ WO':' ')+'</span>');
+    if (rodentFlag) badges.push('<span style="background:#3a2800;color:#c8a05a;border:1px solid #7a5a1a;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;font-family:\'IBM Plex Mono\',monospace;">🐀 Rodents'+(r.rodentCount?' × '+r.rodentCount:'')+'</span>');
     if (flyFlag)    badges.push('<span style="background:#2a2000;color:#d69e2e;border:1px solid #5a4a10;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;font-family:\'IBM Plex Mono\',monospace;">🪰 Fly Activity'+(r.flyCount?' × '+r.flyCount:'')+'</span>');
     return '<div style="background:#111008;border:1px solid '+borderColor+';border-radius:10px;padding:14px 16px;margin-bottom:10px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
