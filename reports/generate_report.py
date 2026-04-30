@@ -83,11 +83,25 @@ def fetch_work_orders(db, start_date: date, end_date: date):
 
 
 # ── EOS snapshot helpers ───────────────────────────────────────────────────────
-def fetch_open_work_orders(db):
-    """Return all work orders not in a closed state (no date filter)."""
+def fetch_open_work_orders(db, limit=500):
+    """Return open work orders, capped at `limit` reads to stay quota-friendly."""
     closed = {"Closed", "Resolved", "Cancelled", "Complete", "Completed"}
     out = []
-    for d in db.collection("workOrders").stream():
+    try:
+        # Try server-side filter first (cheapest)
+        q = (db.collection("workOrders")
+               .where("status", "not-in", list(closed))
+               .limit(limit))
+        for d in q.stream():
+            wo = d.to_dict() or {}
+            wo["_id"] = d.id
+            out.append(wo)
+        return out
+    except Exception:
+        # Fallback if Firestore complains about composite index / not-in usage
+        pass
+    # Plain limited scan with client-side filter
+    for d in db.collection("workOrders").limit(limit).stream():
         wo = d.to_dict() or {}
         wo["_id"] = d.id
         if str(wo.get("status", "")).strip() not in closed:
@@ -95,13 +109,25 @@ def fetch_open_work_orders(db):
     return out
 
 
-def fetch_active_red_tags(db):
-    """Return redTags whose status is 'Tagged' or 'Under Review'."""
+def fetch_active_red_tags(db, limit=500):
+    """Return redTags whose status is 'Tagged' or 'Under Review', capped at `limit` reads."""
+    active_statuses = ["Tagged", "Under Review"]
     out = []
-    for d in db.collection("redTags").stream():
+    try:
+        q = (db.collection("redTags")
+               .where("status", "in", active_statuses)
+               .limit(limit))
+        for d in q.stream():
+            rt = d.to_dict() or {}
+            rt["_id"] = d.id
+            out.append(rt)
+        return out
+    except Exception:
+        pass
+    for d in db.collection("redTags").limit(limit).stream():
         rt = d.to_dict() or {}
         rt["_id"] = d.id
-        if str(rt.get("status", "")) in ("Tagged", "Under Review"):
+        if str(rt.get("status", "")) in active_statuses:
             out.append(rt)
     return out
 
