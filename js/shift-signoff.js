@@ -234,21 +234,32 @@ function ssSummaryTile(icon, value, label, color) {
 }
 
 function ssCheckbox(id, label) {
+  // Plain div with explicit click handler — no <label for=> double-toggle, no native quirks.
   return `
-  <label for="${id}" onclick="ssChkToggle('${id}', event)" style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;padding:8px 6px;background:#080f08;border:1px solid #1a3a1a;border-radius:6px;-webkit-tap-highlight-color:rgba(74,222,128,.25);">
-    <input type="checkbox" id="${id}" onclick="event.stopPropagation()" style="margin-top:2px;accent-color:#4ade80;width:18px;height:18px;flex-shrink:0;cursor:pointer;" />
+  <div onclick="ssChkToggle('${id}')" id="${id}-row" style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;padding:8px 8px;background:#080f08;border:1px solid #1a3a1a;border-radius:6px;-webkit-tap-highlight-color:rgba(74,222,128,.25);">
+    <span id="${id}-box" style="display:inline-block;width:20px;height:20px;border:2px solid #2a5a2a;border-radius:4px;background:#000;flex-shrink:0;margin-top:1px;text-align:center;line-height:18px;color:#4ade80;font-weight:700;font-size:14px;"></span>
     <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;line-height:1.5;user-select:none;">${label}</span>
-  </label>`;
+    <input type="checkbox" id="${id}" style="display:none;" />
+  </div>`;
 }
 
-// Bulletproof click-to-toggle (works around iPad/mobile label quirks)
-function ssChkToggle(id, e) {
-  if (e && e.target && e.target.tagName === 'INPUT') return;
+// Toggle using the hidden checkbox + a custom box span for visual state.
+function ssChkToggle(id) {
   const cb = document.getElementById(id);
-  if (cb) {
-    cb.checked = !cb.checked;
-    cb.dispatchEvent(new Event('change', {bubbles:true}));
+  const box = document.getElementById(id + '-box');
+  const row = document.getElementById(id + '-row');
+  if (!cb) return;
+  cb.checked = !cb.checked;
+  if (box) {
+    box.textContent = cb.checked ? '✓' : '';
+    box.style.background = cb.checked ? '#1a3a1a' : '#000';
+    box.style.borderColor = cb.checked ? '#4ade80' : '#2a5a2a';
   }
+  if (row) {
+    row.style.background = cb.checked ? '#0d2a0d' : '#080f08';
+    row.style.borderColor = cb.checked ? '#2a5a2a' : '#1a3a1a';
+  }
+  cb.dispatchEvent(new Event('change', {bubbles:true}));
 }
 window.ssChkToggle = ssChkToggle;
 

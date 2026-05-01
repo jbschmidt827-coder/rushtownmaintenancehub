@@ -7,6 +7,7 @@
 
 // ── State ────────────────────────────────────────────────────────────────────
 let _drFarm = 'Danville';
+let _drSection = 'production';  // 'production' | 'maintenance' | '5s'
 let _drMorningWalks  = [];
 let _drBarnWalks     = [];
 let _drProjects      = [];
@@ -267,17 +268,30 @@ function drRender() {
   const walksComplete = drWalksComplete(farm);
   const totalHouses = cfg.houses;
 
+  // EOS sub-section state
+  const SECT = {
+    production:  { label:'🐔 Production / Barns', color:'#16a34a', border:'#4ade80' },
+    maintenance: { label:'🔧 Maintenance / Shop', color:'#fbbf24', border:'#fbbf24' },
+    '5s':        { label:'5️⃣ 5S Audit',           color:'#a855f7', border:'#c084fc' }
+  };
+  const section = _drSection;
+
+  // % completions
+  const walkPct  = Math.round((walksComplete / Math.max(totalHouses,1)) * 100);
+  const pmStats  = drPMStats(farm);
+  const pmPct    = pmStats.total ? Math.round(((pmStats.total - pmStats.overdue) / pmStats.total) * 100) : 100;
+  const audit5s  = (typeof _dr5SAudits !== 'undefined' && _dr5SAudits?.[farm]) || null;
+  const auditPct = audit5s?.total != null ? Math.round((audit5s.total / 25) * 100) : null;
+
   el.innerHTML = `
   <div style="max-width:960px;margin:0 auto;padding:0 0 60px 0;">
 
-    <!-- ── Header ── -->
     <div style="padding:18px 16px 10px 16px;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:4px;">Daily End-of-Shift Report · ${today}</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:#e8f5ec;">BARN & MAINTENANCE REPORT</div>
     </div>
 
-    <!-- ── Farm Tabs ── -->
-    <div style="display:flex;gap:8px;padding:0 16px 14px 16px;border-bottom:1.5px solid #1a3a1a;">
+    <div style="display:flex;gap:8px;padding:0 16px 10px 16px;border-bottom:1.5px solid #1a3a1a;">
       ${Object.keys(DR_FARMS).map(f => `
         <button onclick="drSwitchFarm('${f}')"
           style="padding:9px 22px;border-radius:8px;border:2px solid ${f===farm ? DR_FARMS[f].border : '#2a5a2a'};
@@ -289,113 +303,128 @@ function drRender() {
         </button>`).join('')}
     </div>
 
-    <!-- ── Summary Stats ── -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:14px 16px;">
-
-      ${drStatCard('🏠', walksComplete + '/' + totalHouses, 'Houses Walked',
-          walksComplete === totalHouses ? '#1b5e20' : walksComplete > 0 ? '#856404' : '#7f1d1d',
-          walksComplete === totalHouses ? '#4ade80' : walksComplete > 0 ? '#fbbf24' : '#f87171')}
-
-      ${drStatCard('💀', deadTotal, 'Dead Birds Today',
-          deadTotal === 0 ? '#1b5e20' : deadTotal > 20 ? '#7f1d1d' : '#856404',
-          deadTotal === 0 ? '#4ade80' : deadTotal > 20 ? '#f87171' : '#fbbf24')}
-
-      ${drStatCard('👥', headcount > 0 ? headcount.toLocaleString() : '—', 'Headcount',
-          '#0d2a4a', '#7ab0f6')}
-
-      ${drStatCard('🔧', openCount, 'Open WOs' + (urgentCount > 0 ? ` (${urgentCount} 🚨)` : ''),
-          openCount === 0 ? '#1b5e20' : urgentCount > 0 ? '#7f1d1d' : '#856404',
-          openCount === 0 ? '#4ade80' : urgentCount > 0 ? '#f87171' : '#fbbf24')}
-
-      ${safeDays !== null
-        ? drStatCard('🛡️', safeDays, 'Safe Days',
-            safeDays >= 30 ? '#1b5e20' : safeDays >= 7 ? '#856404' : '#7f1d1d',
-            safeDays >= 30 ? '#4ade80' : safeDays >= 7 ? '#fbbf24' : '#f87171')
-        : drStatCard('🛡️', 'Set Date', 'Safe Days', '#0f2a0f', '#4a8a4a')}
-
+    <div style="display:flex;gap:6px;padding:10px 16px 14px 16px;flex-wrap:wrap;">
+      ${Object.keys(SECT).map(s => `
+        <button onclick="drSwitchSection('${s}')"
+          style="padding:8px 16px;border-radius:8px;border:2px solid ${s===section ? SECT[s].border : '#2a5a2a'};
+                 background:${s===section ? SECT[s].color+'22' : 'transparent'};
+                 color:${s===section ? '#fff' : '#7ab07a'};
+                 font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;
+                 letter-spacing:1px;transition:all .15s;">
+          ${SECT[s].label}
+        </button>`).join('')}
     </div>
 
-    <!-- ── Safety Tracking — compact row ── -->
-    <div style="padding:0 16px 14px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:10px;">
-      ${_drSafetySettings.lastIncidentDate
-        ? `<span style="color:#4a8a4a;">Last incident: ${_drSafetySettings.lastIncidentDate}</span>`
-        : `<button onclick="drSetSafeDayStart()" style="padding:4px 10px;background:#0a1f0a;border:1px solid #2a5a2a;border-radius:5px;color:#4ade80;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;">▶ Set start date</button>`}
-      <button onclick="drResetSafeDays()" style="padding:4px 10px;background:transparent;border:1px solid #7f1d1d;border-radius:5px;color:#f87171;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;margin-left:auto;">⚠ Log incident</button>
-    </div>
-
-    <!-- ── House-by-House Grid ── -->
-    <div style="padding:0 16px 6px 16px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
-        🏠 HOUSE DATA — ${farm.toUpperCase()} (Today)
+    ${section === 'production' ? `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:0 16px 14px 16px;">
+        ${drStatCard('🏠', walkPct + '%', `Walks ${walksComplete}/${totalHouses}`,
+            walkPct === 100 ? '#1b5e20' : walkPct >= 50 ? '#856404' : '#7f1d1d',
+            walkPct === 100 ? '#4ade80' : walkPct >= 50 ? '#fbbf24' : '#f87171')}
+        ${drStatCard('💀', deadTotal, 'Dead Birds Today',
+            deadTotal === 0 ? '#1b5e20' : deadTotal > 20 ? '#7f1d1d' : '#856404',
+            deadTotal === 0 ? '#4ade80' : deadTotal > 20 ? '#f87171' : '#fbbf24')}
+        ${drStatCard('👥', headcount > 0 ? headcount.toLocaleString() : '—', 'Headcount', '#0d2a4a', '#7ab0f6')}
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;">
-        ${Array.from({length: totalHouses}, (_,i) => drHouseCard(farm, i+1)).join('')}
-      </div>
-    </div>
-
-    <!-- ── Open Work Orders ── -->
-    <div style="padding:20px 16px 6px 16px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
-        🔧 OPEN WORK ORDERS — ${farm.toUpperCase()}
-        <span style="margin-left:8px;background:#1a3a1a;border-radius:4px;padding:2px 8px;font-size:9px;">${openCount} open</span>
-      </div>
-      ${drWOList(woList)}
-    </div>
-
-    <!-- ── PM Completion ── -->
-    <div style="padding:20px 16px 6px 16px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;">
-          📋 PREVENTIVE MAINTENANCE — TODAY
+      <div style="padding:0 16px 6px 16px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
+          🏠 HOUSE DATA — ${farm.toUpperCase()} (Today)
         </div>
-        <span onclick="go('maint');setTimeout(()=>goMaintSection('pm'),50);" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4ade80;cursor:pointer;text-decoration:underline;">View PM Schedule →</span>
-      </div>
-      ${drPMSection(farm)}
-    </div>
-
-    <!-- ── 5S Quick Audit ── -->
-    <div style="padding:20px 16px 6px 16px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;">
-          5️⃣ 5S DAILY AUDIT — ${farm.toUpperCase()}
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;">
+          ${Array.from({length: totalHouses}, (_,i) => drHouseCard(farm, i+1)).join('')}
         </div>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#2a5a2a;">${getWeekFocusLabel().split('·')[0].replace(/^[^:]+:/,'').trim()}</span>
       </div>
-      ${dr5SAuditPanel(farm)}
-      <div style="margin-top:10px;">
-        ${typeof drRedTagWidget === 'function' ? drRedTagWidget(farm) : ''}
-      </div>
-    </div>
-
-    <!-- ── 5S / Improvement Projects ── -->
-    <div style="padding:20px 16px 6px 16px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;">
-          📋 5S & IMPROVEMENT PROJECTS
+      <div style="padding:20px 16px 30px 16px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
+          ✅ PRODUCTION SUBMIT — END-OF-SHIFT
         </div>
-        <button onclick="drOpenAddProject()" style="padding:6px 14px;background:#1a3a1a;border:1.5px solid #4ade80;border-radius:6px;color:#4ade80;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:1px;">+ ADD TASK</button>
+        <div id="dr-signoff-${farm}">${drSignoffPanel(farm)}</div>
       </div>
-      ${drProjectList(farm)}
-    </div>
+    ` : ''}
 
-    <!-- ── End-of-Shift Sign-Off ── -->
-    <div style="padding:20px 16px 30px 16px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
-        ✅ END-OF-SHIFT SIGN-OFF
+    ${section === 'maintenance' ? `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:0 16px 14px 16px;">
+        ${drStatCard('🔧', openCount, 'Open WOs' + (urgentCount > 0 ? ` (${urgentCount} 🚨)` : ''),
+            openCount === 0 ? '#1b5e20' : urgentCount > 0 ? '#7f1d1d' : '#856404',
+            openCount === 0 ? '#4ade80' : urgentCount > 0 ? '#f87171' : '#fbbf24')}
+        ${drStatCard('📋', pmPct + '%', `PM On-Time ${pmStats.done}/${pmStats.total}`,
+            pmPct === 100 ? '#1b5e20' : pmPct >= 90 ? '#856404' : '#7f1d1d',
+            pmPct === 100 ? '#4ade80' : pmPct >= 90 ? '#fbbf24' : '#f87171')}
+        ${safeDays !== null
+          ? drStatCard('🛡️', safeDays, 'Safe Days',
+              safeDays >= 30 ? '#1b5e20' : safeDays >= 7 ? '#856404' : '#7f1d1d',
+              safeDays >= 30 ? '#4ade80' : safeDays >= 7 ? '#fbbf24' : '#f87171')
+          : drStatCard('🛡️', 'Set Date', 'Safe Days', '#0f2a0f', '#4a8a4a')}
       </div>
-      <div id="dr-signoff-${farm}">${drSignoffPanel(farm)}</div>
-    </div>
+      <div style="padding:0 16px 14px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace;font-size:10px;">
+        ${_drSafetySettings.lastIncidentDate
+          ? `<span style="color:#4a8a4a;">Last incident: ${_drSafetySettings.lastIncidentDate}</span>`
+          : `<button onclick="drSetSafeDayStart()" style="padding:4px 10px;background:#0a1f0a;border:1px solid #2a5a2a;border-radius:5px;color:#4ade80;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;">▶ Set start date</button>`}
+        <button onclick="drResetSafeDays()" style="padding:4px 10px;background:transparent;border:1px solid #7f1d1d;border-radius:5px;color:#f87171;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;margin-left:auto;">⚠ Log incident</button>
+      </div>
+      <div style="padding:0 16px 6px 16px;">
+        ${typeof ehRenderHoursBlock === 'function' ? ehRenderHoursBlock(farm) : ''}
+      </div>
+      <div style="padding:6px 16px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
+          🔧 OPEN WORK ORDERS — ${farm.toUpperCase()}
+          <span style="margin-left:8px;background:#1a3a1a;border-radius:4px;padding:2px 8px;font-size:9px;">${openCount} open</span>
+        </div>
+        ${drWOList(woList)}
+      </div>
+      <div style="padding:20px 16px 6px 16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;">📋 PM TODAY</div>
+          <span onclick="go('maint');setTimeout(()=>goMaintSection('pm'),50);" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4ade80;cursor:pointer;text-decoration:underline;">View PM Schedule →</span>
+        </div>
+        ${drPMSection(farm)}
+      </div>
+      <div style="padding:20px 16px 30px 16px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
+          ✅ MAINTENANCE SUBMIT — END-OF-SHIFT
+        </div>
+        <div id="dr-signoff-${farm}">${drSignoffPanel(farm)}</div>
+      </div>
+    ` : ''}
 
-    <!-- EOS sections — org-wide, not per-farm -->
+    ${section === '5s' ? `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:0 16px 14px 16px;">
+        ${drStatCard('5️⃣', auditPct != null ? auditPct + '%' : '—', '5S Score',
+            auditPct == null ? '#0f2a0f' : auditPct >= 80 ? '#1b5e20' : auditPct >= 60 ? '#856404' : '#7f1d1d',
+            auditPct == null ? '#4a8a4a' : auditPct >= 80 ? '#4ade80' : auditPct >= 60 ? '#fbbf24' : '#f87171')}
+      </div>
+      <div style="padding:0 16px 6px 16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;">5️⃣ 5S DAILY AUDIT — ${farm.toUpperCase()}</div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#2a5a2a;">${getWeekFocusLabel().split('·')[0].replace(/^[^:]+:/,'').trim()}</span>
+        </div>
+        ${dr5SAuditPanel(farm)}
+        <div style="margin-top:10px;">
+          ${typeof drRedTagWidget === 'function' ? drRedTagWidget(farm) : ''}
+        </div>
+      </div>
+      <div style="padding:20px 16px 6px 16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;">📋 5S & IMPROVEMENT PROJECTS</div>
+          <button onclick="drOpenAddProject()" style="padding:6px 14px;background:#1a3a1a;border:1.5px solid #4ade80;border-radius:6px;color:#4ade80;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:1px;">+ ADD TASK</button>
+        </div>
+        ${drProjectList(farm)}
+      </div>
+      <div style="padding:20px 16px 30px 16px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
+          ✅ 5S SUBMIT
+        </div>
+        <div id="dr-signoff-${farm}">${drSignoffPanel(farm)}</div>
+      </div>
+    ` : ''}
+
     <div style="margin:24px 16px 0;padding-top:18px;border-top:2px dashed #2a5a2a;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:#4ade80;text-align:center;margin-bottom:6px;">EOS — ENTREPRENEURIAL OPERATING SYSTEM</div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;text-align:center;letter-spacing:1px;">L10 To-Dos — 7-day clock action items</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:#4ade80;text-align:center;margin-bottom:6px;">EOS — L10 TO-DOS</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a8a4a;text-align:center;letter-spacing:1px;">7-day clock action items</div>
     </div>
     <div id="eos-todos-host">${typeof renderTodosSection === 'function' ? renderTodosSection() : ''}</div>
 
   </div>
 
-  <!-- ── Add Project Modal ── -->
   ${drAddProjectModal()}
   `;
 }
@@ -882,3 +911,9 @@ async function drSetSafeDayStart() {
     drRender();
   } catch(e) { console.error(e); }
 }
+
+function drSwitchSection(s) {
+  _drSection = s;
+  drRender();
+}
+window.drSwitchSection = drSwitchSection;
