@@ -310,6 +310,9 @@ function renderDash() {
       </div>`).join('')
     : '';
 
+  // ── Trending WO & Projection (Lean BB intelligence — repeats / Pareto / push-to-reports) ──
+  if (typeof renderTrendingWO === 'function') renderTrendingWO();
+
   // ── Packing Performance Summary ──
   renderPackingSummary(todayStr);
 
