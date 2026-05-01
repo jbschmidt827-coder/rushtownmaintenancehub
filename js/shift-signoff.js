@@ -235,11 +235,22 @@ function ssSummaryTile(icon, value, label, color) {
 
 function ssCheckbox(id, label) {
   return `
-  <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;padding:4px 0;">
-    <input type="checkbox" id="${id}" style="margin-top:2px;accent-color:#4ade80;width:15px;height:15px;flex-shrink:0;" />
-    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;line-height:1.5;">${label}</span>
+  <label for="${id}" onclick="ssChkToggle('${id}', event)" style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;padding:8px 6px;background:#080f08;border:1px solid #1a3a1a;border-radius:6px;-webkit-tap-highlight-color:rgba(74,222,128,.25);">
+    <input type="checkbox" id="${id}" onclick="event.stopPropagation()" style="margin-top:2px;accent-color:#4ade80;width:18px;height:18px;flex-shrink:0;cursor:pointer;" />
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;line-height:1.5;user-select:none;">${label}</span>
   </label>`;
 }
+
+// Bulletproof click-to-toggle (works around iPad/mobile label quirks)
+function ssChkToggle(id, e) {
+  if (e && e.target && e.target.tagName === 'INPUT') return;
+  const cb = document.getElementById(id);
+  if (cb) {
+    cb.checked = !cb.checked;
+    cb.dispatchEvent(new Event('change', {bubbles:true}));
+  }
+}
+window.ssChkToggle = ssChkToggle;
 
 // Temporary issue list per farm
 const _ssIssueList  = {};

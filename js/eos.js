@@ -235,7 +235,7 @@ function eosAddTodoModal() {
     <div style="background:#0a1f0a;border:2px solid #4ade80;border-radius:10px;padding:18px;max-width:420px;width:100%;">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:#4ade80;margin-bottom:12px;">ADD L10 TO-DO</div>
       <input id="eos-todo-title" placeholder="What needs to happen? (action item)" style="width:100%;padding:9px;background:#000;border:1px solid #2a5a2a;border-radius:5px;color:#e8f5ec;font-family:inherit;font-size:13px;margin-bottom:8px;">
-      <input id="eos-todo-owner" placeholder="Who owns it?" style="width:100%;padding:9px;background:#000;border:1px solid #2a5a2a;border-radius:5px;color:#e8f5ec;font-family:inherit;font-size:13px;margin-bottom:8px;">
+      <input id="eos-todo-owner" list="staff-datalist" placeholder="Who owns it? (start typing — picks from Staff)" style="width:100%;padding:9px;background:#000;border:1px solid #2a5a2a;border-radius:5px;color:#e8f5ec;font-family:inherit;font-size:13px;margin-bottom:8px;"><datalist id="staff-datalist"></datalist>
       <input id="eos-todo-due" type="date" style="width:100%;padding:9px;background:#000;border:1px solid #2a5a2a;border-radius:5px;color:#e8f5ec;font-family:inherit;font-size:13px;margin-bottom:14px;">
       <div style="display:flex;gap:8px;">
         <button onclick="document.getElementById('eos-todo-modal').style.display='none'" style="flex:1;padding:9px;background:transparent;border:1px solid #2a5a2a;border-radius:5px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:1px;">CANCEL</button>
