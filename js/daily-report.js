@@ -362,21 +362,21 @@ function drRender() {
         <button onclick="drResetSafeDays()" style="padding:4px 10px;background:transparent;border:1px solid #7f1d1d;border-radius:5px;color:#f87171;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;margin-left:auto;">⚠ Log incident</button>
       </div>
       <div style="padding:0 16px 6px 16px;">
-        ${typeof ehRenderHoursBlock === 'function' ? ehRenderHoursBlock(farm) : ''}
+        ${(()=>{try{return typeof ehRenderHoursBlock==='function'?ehRenderHoursBlock(farm):'';}catch(e){console.error('hours block error:',e);return '<div style="color:#f87171;font-family:\'IBM Plex Mono\',monospace;font-size:10px;padding:8px;">Hours block failed: '+e.message+'</div>';}})()}
       </div>
       <div style="padding:6px 16px;">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
           🔧 OPEN WORK ORDERS — ${farm.toUpperCase()}
           <span style="margin-left:8px;background:#1a3a1a;border-radius:4px;padding:2px 8px;font-size:9px;">${openCount} open</span>
         </div>
-        ${drWOList(woList)}
+        ${(()=>{try{return drWOList(woList);}catch(e){console.error('WO list error:',e);return '<div style="color:#f87171;">WO list failed: '+e.message+'</div>';}})()}
       </div>
       <div style="padding:20px 16px 6px 16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;">📋 PM TODAY</div>
           <span onclick="go('maint');setTimeout(()=>goMaintSection('pm'),50);" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4ade80;cursor:pointer;text-decoration:underline;">View PM Schedule →</span>
         </div>
-        ${drPMSection(farm)}
+        ${(()=>{try{return drPMSection(farm);}catch(e){console.error('PM section error:',e);return '<div style="color:#f87171;">PM section failed: '+e.message+'</div>';}})()}
       </div>
       <div style="padding:20px 16px 30px 16px;">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">
