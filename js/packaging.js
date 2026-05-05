@@ -62,8 +62,7 @@ async function submitQuickWO() {
   if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
 
   try {
-    const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
-    woCounter = (woCounter || 900) + 1;
+    const woId = await mintWoId();
     const submitted = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const wo = {
       id: woId, farm, house: house || 'N/A', problem,

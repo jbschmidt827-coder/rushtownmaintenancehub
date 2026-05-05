@@ -806,6 +806,11 @@ async function submitBarnWalk() {
     ts: Date.now()
   };
 
+  // Track whether this is the first submission for this walk.
+  // Used below so auto-generated work orders only fire once — re-submitting via
+  // "Tap to Update" must not spawn duplicate WOs for the same flagged items.
+  const isFirstSubmit = !_bwDocId;
+
   try {
     if (_bwDocId) {
       await db.collection('barnWalks').doc(_bwDocId).set(record);
@@ -843,8 +848,10 @@ async function submitBarnWalk() {
 
   // ── Mortality Log ──
   // Always log mortality — never creates a WO
-  // Log mortality — never creates a WO
-  if (_bwData.mort === 'yes') {
+  // Gated on isFirstSubmit so re-submitting (Tap to Update) does not duplicate
+  // the mortality entry. If the operator forgot to enter mortality on the first
+  // submit, a separate mortality-log entry path is available outside the walk.
+  if (isFirstSubmit && _bwData.mort === 'yes') {
     const mortEntry = {
       farm: _bwFarm, house: String(_bwHouse), employee,
       date: new Date().toISOString().slice(0,10),
@@ -858,8 +865,8 @@ async function submitBarnWalk() {
     try { await db.collection('mortalityLog').add(mortEntry); } catch(e) { console.error('mortalityLog write failed:', e); }
   }
 
-  // Log loose birds — never creates a WO
-  if (_bwData.loose === 'yes') {
+  // Log loose birds — never creates a WO. Gated on isFirstSubmit (see mortality above).
+  if (isFirstSubmit && _bwData.loose === 'yes') {
     const looseEntry = {
       farm: _bwFarm, house: String(_bwHouse), employee,
       date: new Date().toISOString().slice(0,10),
@@ -873,9 +880,9 @@ async function submitBarnWalk() {
   }
 
   // ── Pest Log ──
-  // Always log pest observations — never creates a WO
+  // Always log pest observations — never creates a WO. Gated on isFirstSubmit.
   const hasPest = _bwData.rodent === 'yes' || _bwData.fly === 'yes';
-  if (hasPest) {
+  if (isFirstSubmit && hasPest) {
     const pestEntry = {
       farm: _bwFarm, house: String(_bwHouse), employee,
       date: new Date().toISOString().slice(0,10),
@@ -890,9 +897,9 @@ async function submitBarnWalk() {
 
   // Feed bin reading is saved live via liveUpdateFeedBin (onchange) — no duplicate save needed here.
 
-  // Auto-save egg count to opsEggProduction (replaces Egg Ops form)
+  // Auto-save egg count to opsEggProduction (replaces Egg Ops form). Gated on isFirstSubmit.
   const eggCount = parseInt(document.getElementById('bw-egg-count')?.value||'0')||0;
-  if (eggCount > 0) {
+  if (isFirstSubmit && eggCount > 0) {
     try {
       const eggRec = { date: new Date().toISOString().slice(0,10), farm: _bwFarm, house: String(_bwHouse),
         shift: shiftFromTime(), eggs: eggCount, by: employee, notes: 'From daily barn check', ts: Date.now() };
@@ -902,25 +909,29 @@ async function submitBarnWalk() {
     } catch(e) { console.error(e); }
   }
 
-  // Auto-create WOs for checklist failures that warrant one
+  // Auto-create WOs for checklist failures that warrant one.
+  // Gated on isFirstSubmit so that re-submitting (Tap to Update) does NOT
+  // produce a second copy of every WO — that bug was the source of the
+  // duplicate work orders reported from morning barn walks.
   const submitted = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const woDate    = new Date().toISOString().slice(0,10);
-  for (const key of checklistFails) {
-    if (!_BW_WO_ITEMS[key]) continue;
-    try {
-      const {desc, problem, priority} = _BW_WO_ITEMS[key];
-      const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
-      woCounter = (woCounter || 900) + 1;
-      const extraNote = checklistNotes[key] ? ' — ' + checklistNotes[key] : '';
-      await db.collection('workOrders').add({
-        id: woId, farm: _bwFarm, house: String(_bwHouse),
-        problem, priority, status: 'open',
-        desc: desc + extraNote,
-        tech: employee,
-        notes: 'Auto-created from daily checklist — ' + _bwFarm + ' Barn ' + _bwHouse,
-        submitted, date: woDate, ts: Date.now()
-      });
-    } catch(e) { console.error(e); }
+  if (isFirstSubmit) {
+    for (const key of checklistFails) {
+      if (!_BW_WO_ITEMS[key]) continue;
+      try {
+        const {desc, problem, priority} = _BW_WO_ITEMS[key];
+        const woId = await mintWoId();
+        const extraNote = checklistNotes[key] ? ' — ' + checklistNotes[key] : '';
+        await db.collection('workOrders').add({
+          id: woId, farm: _bwFarm, house: String(_bwHouse),
+          problem, priority, status: 'open',
+          desc: desc + extraNote,
+          tech: employee,
+          notes: 'Auto-created from daily checklist — ' + _bwFarm + ' Barn ' + _bwHouse,
+          submitted, date: woDate, ts: Date.now()
+        });
+      } catch(e) { console.error(e); }
+    }
   }
 
   const key = _bwFarm + '-' + _bwHouse;
@@ -939,27 +950,28 @@ async function submitBarnWalk() {
     'Feeders empty':              {problem:'Feed System',         priority:'urgent'},
     'Egg belt not working':       {problem:'Egg Collection',      priority:'urgent'},
   };
-  for (const flag of flags) {
-    // Checklist failures already handled above — skip to avoid duplicate WOs
-    if (flag.startsWith('Checklist failures')) continue;
-    // Mortality and loose birds go to mortalityLog only — never WOs
-    if (flag.toLowerCase().includes('mort') || flag.toLowerCase().includes('loose')) continue;
-    // Only create WOs for flags we explicitly recognise
-    const mapKey = Object.keys(flagProblemMap).find(k => flag.startsWith(k));
-    if (!mapKey) continue; // unknown flag — log it but don't create a WO
-    try {
-      const {problem, priority} = flagProblemMap[mapKey];
-      const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
-      woCounter = (woCounter || 900) + 1;
-      await db.collection('workOrders').add({
-        id: woId, farm: _bwFarm, house: String(_bwHouse),
-        problem, priority, status: 'open',
-        desc: flag,
-        tech: employee,
-        notes: 'Auto-created from employee daily check — ' + _bwFarm + ' Barn ' + _bwHouse,
-        submitted, date: woDate, ts: Date.now()
-      });
-    } catch(e) { console.error(e); }
+  if (isFirstSubmit) {
+    for (const flag of flags) {
+      // Checklist failures already handled above — skip to avoid duplicate WOs
+      if (flag.startsWith('Checklist failures')) continue;
+      // Mortality and loose birds go to mortalityLog only — never WOs
+      if (flag.toLowerCase().includes('mort') || flag.toLowerCase().includes('loose')) continue;
+      // Only create WOs for flags we explicitly recognise
+      const mapKey = Object.keys(flagProblemMap).find(k => flag.startsWith(k));
+      if (!mapKey) continue; // unknown flag — log it but don't create a WO
+      try {
+        const {problem, priority} = flagProblemMap[mapKey];
+        const woId = await mintWoId();
+        await db.collection('workOrders').add({
+          id: woId, farm: _bwFarm, house: String(_bwHouse),
+          problem, priority, status: 'open',
+          desc: flag,
+          tech: employee,
+          notes: 'Auto-created from employee daily check — ' + _bwFarm + ' Barn ' + _bwHouse,
+          submitted, date: woDate, ts: Date.now()
+        });
+      } catch(e) { console.error(e); }
+    }
   }
 
   // Clear localStorage draft — data is now in Firestore
@@ -1110,8 +1122,7 @@ async function submitMorningWalk() {
 
   if (flags.length > 0) {
     try {
-      const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
-      woCounter = (woCounter||900) + 1;
+      const woId = await mintWoId();
       await db.collection('workOrders').add({
         id: woId, farm: _mwFarm, house: String(_mwHouse), system: 'Production',
         desc: 'Morning Walk Flag — ' + flags.join('; '), priority: 'high', status: 'open',
@@ -1687,8 +1698,7 @@ function renderProdBiosec() {
 
 async function createMustFixWO(title, desc, farm, house, priority) {
   priority = priority || 'urgent';
-  const woId = 'WO-' + String(woCounter || 900).padStart(3,'0');
-  woCounter = (woCounter || 900) + 1;
+  const woId = await mintWoId();
   const today = new Date();
   await db.collection('workOrders').add({
     id: woId, farm: farm || '', house: String(house || ''),

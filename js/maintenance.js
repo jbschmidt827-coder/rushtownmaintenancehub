@@ -730,8 +730,10 @@ async function submitWO() {
       }
     }
 
+    // Atomically allocate a unique WO-### number across all devices.
+    const newWoId = await mintWoId();
     const wo = {
-      id: 'WO-' + String(woCounter).padStart(3,'0'),
+      id: newWoId,
       date: document.getElementById('wo-date').value,
       tech, farm, house, problem, desc,
       priority: selPri,
@@ -748,7 +750,6 @@ async function submitWO() {
     setSyncDot('saving');
     const ref = await db.collection('workOrders').add(wo);
     wo._fbId = ref.id;
-    woCounter++;
     workOrders.unshift(wo);
     renderWO();
 
@@ -1050,6 +1051,11 @@ function openPMModal(id) {
   // Hook up the linked WI button (if any) for this PM task
   if (typeof _pmAttachWIButton === 'function') _pmAttachWIButton(t);
 
+  // Reset confirm-button state in case a previous attempt was left disabled.
+  const _resetPmBtn = document.getElementById('pm-confirm-btn');
+  if (_resetPmBtn) { _resetPmBtn.disabled = false; _resetPmBtn.textContent = '✓ MARK DONE'; }
+  _pmConfirming = false;
+
   document.getElementById('pm-modal').classList.add('open');
 }
 
@@ -1058,7 +1064,13 @@ function closePMModal() {
   modalPMId=null;
 }
 
+let _pmConfirming = false;
+
 async function confirmPM() {
+  // Re-entrancy guard: a double-tap on MARK DONE was previously able to write
+  // pmHistory + activityLog twice and create a duplicate follow-up WO.
+  if (_pmConfirming) return;
+
   const tech=document.getElementById('modal-tech').value;
   if (!tech) return alert('Please select who completed this task.');
   const date=document.getElementById('modal-date').value;
@@ -1067,44 +1079,61 @@ async function confirmPM() {
   const genWO=document.getElementById('modal-gen-wo').value;
   const t=ALL_PM.find(x=>x.id===modalPMId);
 
+  _pmConfirming = true;
+  const pmBtn = document.getElementById('pm-confirm-btn');
+  const pmBtnOriginal = pmBtn ? pmBtn.textContent : '';
+  if (pmBtn) { pmBtn.disabled = true; pmBtn.textContent = 'Saving…'; }
+
   setSyncDot('saving');
 
-  // Always update the 'latest' doc so status logic stays fast
-  await db.collection('pmCompletions').doc(modalPMId).set({tech, date, parts, notes, ts:Date.now()});
+  try {
+    // Always update the 'latest' doc so status logic stays fast
+    await db.collection('pmCompletions').doc(modalPMId).set({tech, date, parts, notes, ts:Date.now()});
 
-  // Append to history — one record per completion, never overwritten
-  await db.collection('pmHistory').add({
-    pmId: modalPMId,
-    farm: t.farm, sys: t.sys, task: t.task, freq: t.freq,
-    tech, date, parts, notes, ts: Date.now()
-  });
-
-  await db.collection('activityLog').add({
-    type:'pm', id:modalPMId,
-    desc:`PM completed: ${t.farm} · ${SYS_ICON[t.sys]} ${t.sys} · ${FREQ[t.freq].label} — ${t.task}`,
-    tech, date:fmtDate(date), parts, notes, ts:Date.now()
-  });
-
-  if (genWO==='yes') {
-    const wo = {
-      id: 'WO-' + String(woCounter).padStart(3,'0'),
-      date, tech, farm:t.farm, house:'PM-Generated',
-      problem:`${SYS_ICON[t.sys]} ${t.sys} — PM Follow-up`,
-      desc:`Follow-up repair needed from PM: ${t.task}. Notes: ${notes}`,
-      priority:'high', parts, down:'no', status:'open',
-      notes:'Auto-generated from PM task',
-      submitted:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), ts:Date.now()
-    };
-    await db.collection('workOrders').add(wo);
-    await db.collection('activityLog').add({
-      type:'wo', id:wo.id,
-      desc:`WO auto-created from PM: ${t.farm} · ${t.sys}`,
-      tech, date:wo.submitted, ts:Date.now()
+    // Append to history — one record per completion, never overwritten
+    await db.collection('pmHistory').add({
+      pmId: modalPMId,
+      farm: t.farm, sys: t.sys, task: t.task, freq: t.freq,
+      tech, date, parts, notes, ts: Date.now()
     });
-  }
 
-  setSyncDot('live');
-  closePMModal();
+    await db.collection('activityLog').add({
+      type:'pm', id:modalPMId,
+      desc:`PM completed: ${t.farm} · ${SYS_ICON[t.sys]} ${t.sys} · ${FREQ[t.freq].label} — ${t.task}`,
+      tech, date:fmtDate(date), parts, notes, ts:Date.now()
+    });
+
+    if (genWO==='yes') {
+      const pmWoId = await mintWoId();
+      const wo = {
+        id: pmWoId,
+        date, tech, farm:t.farm, house:'PM-Generated',
+        problem:`${SYS_ICON[t.sys]} ${t.sys} — PM Follow-up`,
+        desc:`Follow-up repair needed from PM: ${t.task}. Notes: ${notes}`,
+        priority:'high', parts, down:'no', status:'open',
+        notes:'Auto-generated from PM task',
+        submitted:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), ts:Date.now()
+      };
+      await db.collection('workOrders').add(wo);
+      await db.collection('activityLog').add({
+        type:'wo', id:wo.id,
+        desc:`WO auto-created from PM: ${t.farm} · ${t.sys}`,
+        tech, date:wo.submitted, ts:Date.now()
+      });
+    }
+
+    setSyncDot('live');
+    closePMModal();
+  } catch (e) {
+    setSyncDot('live');
+    console.error('confirmPM failed:', e);
+    alert('Could not save PM completion: ' + (e && e.message ? e.message : e));
+    if (pmBtn) { pmBtn.disabled = false; pmBtn.textContent = pmBtnOriginal || '✓ MARK DONE'; }
+  } finally {
+    _pmConfirming = false;
+    // closePMModal() handles the modal state on success; on failure we already
+    // restored the button above so the user can retry.
+  }
 }
 
 document.getElementById('pm-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closePMModal();});
@@ -2869,6 +2898,7 @@ function prodRenderSections() {
       var woBtn = document.createElement('button');
       woBtn.type = 'button';
       woBtn.className = 'prod-wo-btn';
+      woBtn.id = 'prod-wo-btn-' + item.id;
       woBtn.textContent = '➕ Create WO';
       (function(iid, itxt, sid){ woBtn.addEventListener('click', function(){ prodCreateWO(iid, itxt, sid); }); })(item.id, item.text, sec.id);
       actions.appendChild(woBtn);
@@ -2941,11 +2971,25 @@ function prodAttachPhoto(itemId, input) {
 }
 
 async function prodCreateWO(itemId, taskText, sectionId) {
+  // Guard against double-tap and accidental re-creation:
+  // if a WO has already been created for this item, or one is in flight,
+  // exit immediately rather than spawning a duplicate Firestore record.
+  if (!PROD_STATE[itemId]) PROD_STATE[itemId] = { status:null, note:'', woId:'' };
+  if (PROD_STATE[itemId].woId) return;
+  if (PROD_STATE[itemId]._creatingWO) return;
+
   var note = document.getElementById('prod-note-' + itemId);
   var pri  = document.getElementById('prod-pri-'  + itemId);
   var desc = (note ? note.value.trim() : '') || taskText;
   var priority = (pri ? pri.value : '') || (PROD_STATE[itemId].status==='critical'?'urgent':'high');
   if (!priority) { alert('Select a priority before creating a work order.'); return; }
+
+  // Mark this item as in-flight and visually disable the button so a second
+  // tap (slow connection, gloves, impatience) cannot fire a parallel create.
+  PROD_STATE[itemId]._creatingWO = true;
+  var btnEl = document.getElementById('prod-wo-btn-' + itemId);
+  var btnOriginalText = btnEl ? btnEl.textContent : '';
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Creating…'; }
 
   var sectionLabel = '';
   var itemTextFull = taskText;
@@ -2957,8 +3001,9 @@ async function prodCreateWO(itemId, taskText, sectionId) {
     vent:'Ventilation — Fan Not Running', fives:'Structure — Door / Curtain Damage'
   };
 
+  var newWoId = await mintWoId();
   var wo = {
-    id: 'WO-' + String(woCounter).padStart(3,'0'),
+    id: newWoId,
     date: PROD_HEADER.date || todayStr,
     tech: PROD_HEADER.tech || CL.w || 'Checklist',
     farm: CL.loc,
@@ -2972,28 +3017,39 @@ async function prodCreateWO(itemId, taskText, sectionId) {
     ts: Date.now()
   };
 
-  setSyncDot('saving');
-  var ref = await db.collection('workOrders').add(wo);
-  wo._fbId = ref.id;
-  await db.collection('activityLog').add({
-    type:'wo', id:wo.id,
-    desc:'WO from barn walk: ' + CL.loc + ' House ' + PROD_HEADER.house + ' — ' + itemTextFull.slice(0,60),
-    tech: wo.tech, date: wo.submitted, ts: Date.now()
-  });
-  setSyncDot('live');
+  try {
+    setSyncDot('saving');
+    var ref = await db.collection('workOrders').add(wo);
+    wo._fbId = ref.id;
+    await db.collection('activityLog').add({
+      type:'wo', id:wo.id,
+      desc:'WO from barn walk: ' + CL.loc + ' House ' + PROD_HEADER.house + ' — ' + itemTextFull.slice(0,60),
+      tech: wo.tech, date: wo.submitted, ts: Date.now()
+    });
+    setSyncDot('live');
 
-  PROD_WOS_CREATED++;
-  PROD_STATE[itemId].woId = wo.id;
-  if (note) PROD_STATE[itemId].note = note.value;
+    PROD_WOS_CREATED++;
+    PROD_STATE[itemId].woId = wo.id;
+    if (note) PROD_STATE[itemId].note = note.value;
 
-  // Replace WO creation controls with badge
-  var fields = document.getElementById('prod-fields-' + itemId);
-  var actions = fields.querySelector('.prod-issue-actions');
-  if (actions) {
-    var existingPhoto = actions.querySelector('label') ? actions.querySelector('label').outerHTML : '';
-    actions.innerHTML = existingPhoto + '<span class="prod-wo-badge">🔧 ' + wo.id + ' created</span>';
+    // Replace WO creation controls with badge
+    var fields = document.getElementById('prod-fields-' + itemId);
+    var actions = fields.querySelector('.prod-issue-actions');
+    if (actions) {
+      var existingPhoto = actions.querySelector('label') ? actions.querySelector('label').outerHTML : '';
+      actions.innerHTML = existingPhoto + '<span class="prod-wo-badge">🔧 ' + wo.id + ' created</span>';
+    }
+    prodRenderSummary();
+  } catch (e) {
+    setSyncDot('live');
+    console.error('prodCreateWO failed:', e);
+    alert('Could not create work order: ' + (e && e.message ? e.message : e) + '\nPlease try again.');
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = btnOriginalText || '➕ Create WO'; }
+  } finally {
+    // Clear the in-flight flag in all cases. On success the controls were
+    // replaced with a badge, so re-enabling the (now removed) button is a no-op.
+    PROD_STATE[itemId]._creatingWO = false;
   }
-  prodRenderSummary();
 }
 
 function prodRenderSummary() {

@@ -175,6 +175,35 @@ async function getNextPO() {
   await db.collection('settings').doc('poCounter').set({val: poCounter - 1});
   return num;
 }
+
+// ─── Work Order ID minting ──────────────────────────────────────────────
+// Atomically allocate the next WO-### number using a Firestore transaction.
+// Two devices submitting at the same instant previously could both produce
+// the same human-readable id (different _fbIds, same "WO-042"), which made
+// records look like duplicates downstream. Running the increment inside a
+// transaction guarantees a unique number across all devices.
+//
+// All call sites should use:    const woId = await mintWoId();
+// rather than computing 'WO-' + woCounter directly.
+async function mintWoId() {
+  const counterRef = db.collection('settings').doc('woCounter');
+  const next = await db.runTransaction(async tx => {
+    const snap = await tx.get(counterRef);
+    let n;
+    if (snap.exists && typeof snap.data().val === 'number' && snap.data().val > 0) {
+      n = snap.data().val;
+    } else {
+      // Bootstrap from the locally computed woCounter (set by initApp from
+      // the existing workOrders collection). Falls back to 1 if unavailable.
+      n = (typeof woCounter !== 'undefined' && woCounter > 0) ? woCounter : 1;
+    }
+    tx.set(counterRef, { val: n + 1 });
+    return n;
+  });
+  // Keep the local counter in sync so any UI that displays "next WO" stays right.
+  if (typeof woCounter !== 'undefined') woCounter = next + 1;
+  return 'WO-' + String(next).padStart(3, '0');
+}
 const SYS_ICON = {Ventilation:'💨',Water:'💧',Feed:'🌾','Feed System':'🌾',Feeders:'🌾',Manure:'♻️','Egg Collectors':'🥚',Building:'🏚️',Alarms:'🚨',Lubing:'🛢️'};
 
 const PM_DEFS = [
