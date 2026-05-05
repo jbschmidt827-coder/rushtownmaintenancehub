@@ -458,10 +458,16 @@ body { min-height: 100dvh; overflow-x: hidden; }
 
 /* ── Hide floating action buttons on phones — they block submit buttons ── */
 @media(max-width:600px){ .fab { display: none !important; } }
-/* ── On phones: hide header HOME + lang buttons (logo taps home; lang on landing screen) ── */
+/* ── On phones: hide header HOME button (logo taps home).
+     The lang toggle stays visible on every screen so Spanish-speaking
+     operators can switch languages from inside any panel/form, not just
+     from the landing screen. We just shrink it slightly to save space. ── */
 @media(max-width:600px){
   .header-home-btn { display: none !important; }
-  #lang-toggle-btn { display: none !important; }
+  #lang-toggle-btn {
+    padding: 6px 10px !important;
+    font-size: 10px !important;
+  }
 }
 
 /* ── iPhone (≤480px) ── */

@@ -732,12 +732,18 @@ async function submitWO() {
 
     // Atomically allocate a unique WO-### number across all devices.
     const newWoId = await mintWoId();
+    // Read estimated hours from the form. Previously the input existed in the
+    // UI but the value was silently dropped on submit; capture it as a number
+    // so the field actually flows to Firestore.
+    const estHoursRaw = document.getElementById('wo-hours')?.value;
+    const estHours    = estHoursRaw ? Number(estHoursRaw) : null;
     const wo = {
       id: newWoId,
       date: document.getElementById('wo-date').value,
       tech, farm, house, problem, desc,
       priority: selPri,
       assignedTo: document.getElementById('wo-assign')?.value || '',
+      estHours: (estHours && !isNaN(estHours)) ? estHours : null,
       parts: document.getElementById('wo-parts').value,
       down: document.getElementById('wo-down').value,
       status: 'open',
@@ -794,7 +800,7 @@ function afterWOSubmit() {
   if (woFormCard) woFormCard.style.display='';
   const woSuccess = document.getElementById('wo-success');
   if (woSuccess) woSuccess.style.display='none';
-  ['wo-farm','wo-problem','wo-tech','wo-assign','wo-desc','wo-parts','wo-notes'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['wo-farm','wo-problem','wo-tech','wo-assign','wo-desc','wo-parts','wo-notes','wo-hours'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   const woDown = document.getElementById('wo-down'); if (woDown) woDown.value='no';
   const woHouse = document.getElementById('wo-house'); if (woHouse) woHouse.innerHTML='<option value="">— Select Farm First —</option>';
   const photoPreview = document.getElementById('photo-preview'); if (photoPreview) photoPreview.innerHTML='';

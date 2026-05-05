@@ -651,19 +651,17 @@ function toggleLang() {
   _lang = _lang === 'en' ? 'es' : 'en';
   localStorage.setItem('rushtown_lang', _lang);
   applyTranslations();
-  // Re-render ALL panels so dynamic content updates on language switch
-  try { renderDash(); } catch(e){}
-  try { renderWO(); } catch(e){}
-  try { renderKpiDashboard(); } catch(e){}
-  try { renderProdPanel(); } catch(e){}
-  try { renderShipping(); } catch(e){}
-  try { renderFarms(); } catch(e){}
-  try { renderExceptions(); } catch(e){}
-  try { renderBioLog(); } catch(e){}
-  try { renderReconciliation(); } catch(e){}
-  // Re-render any open sub-sections
-  try { if (typeof _ecFarm !== 'undefined') renderECContent(); } catch(e){}
-  try { if (typeof _mwSectionFarm !== 'undefined') renderMWContent(); } catch(e){}
+  // Refresh whatever panel/sub-section is currently visible so dynamic content
+  // (rendered via JS, not data-i18n attributes) flips to the new language.
+  // refreshCurrentPanel() covers every panel/sub-section the app exposes —
+  // see its body in this file. Add new panels there, not here.
+  try { refreshCurrentPanel(); } catch(e) { console.warn('toggleLang refresh:', e); }
+  // Sub-views that may be open inside the current panel (filter drawers,
+  // farm-scoped views) — these aren't gated by the panel-active check above.
+  try { if (typeof _ecFarm !== 'undefined' && typeof renderECContent === 'function') renderECContent(); } catch(e){}
+  try { if (typeof _mwSectionFarm !== 'undefined' && typeof renderMWContent === 'function') renderMWContent(); } catch(e){}
+  try { if (typeof renderFarms === 'function') renderFarms(); } catch(e){}
+  try { if (typeof renderBioLog === 'function') renderBioLog(); } catch(e){}
 }
 
 // ── Form-level text translations (labels, options, placeholders, buttons) ──
@@ -1114,32 +1112,101 @@ async function initApp() {
   }
 }
 
+// Re-render whatever panel + sub-section is currently visible. Used by:
+//   • the snapshot listeners in initApp() to refresh after Firestore changes
+//   • toggleLang() to re-render the visible screen so labels swap on EN/ES
+// IMPORTANT: every panel/sub-section the app exposes via go()/goXSection()
+// should appear here, otherwise translation toggles don't fully refresh
+// dynamic content on those screens.
 function refreshCurrentPanel() {
+  const safe = fn => { try { if (typeof fn === 'function') fn(); } catch(e) { console.warn('refreshCurrentPanel:', e); } };
   const active = tab => document.getElementById('panel-' + tab)?.classList.contains('active');
-  if (active('dash'))    { renderDash(); return; }
-  if (active('reports')) { renderReports(); return; }
+
+  if (active('dash'))    { safe(typeof renderDash === 'function' ? renderDash : null); return; }
+  if (active('reports')) { safe(typeof renderReports === 'function' ? renderReports : null); return; }
+
   // Maintenance sub-sections
   if (active('maint')) {
     const s = window._maintSection;
-    if (s==='wo')       renderWO();
-    else if (s==='pm')      renderPM();
-    else if (s==='parts')   renderParts();
-    else if (s==='log')     renderLog();
-    else if (s==='assets')  renderAssets();
+    if      (s==='wo')       safe(typeof renderWO === 'function' ? renderWO : null);
+    else if (s==='pm')       safe(typeof renderPM === 'function' ? renderPM : null);
+    else if (s==='parts')    safe(typeof renderParts === 'function' ? renderParts : null);
+    else if (s==='log')      safe(typeof renderLog === 'function' ? renderLog : null);
+    else if (s==='assets')   safe(typeof renderAssets === 'function' ? renderAssets : null);
+    else if (s==='wi')       safe(typeof renderWI === 'function' ? renderWI : null);
+    else if (s==='5s')       safe(typeof render5S === 'function' ? render5S : null);
+    else if (s==='calendar') safe(typeof renderMaintCalendar === 'function' ? renderMaintCalendar : null);
+    else if (s==='redtags')  safe(typeof renderRedTags === 'function' ? renderRedTags : null);
+    else if (s==='trending') safe(typeof renderTrendingWO === 'function' ? renderTrendingWO : null);
     return;
   }
+
+  // Production — has its own sub-sections via prod-sec-*
+  if (active('prod')) {
+    safe(typeof renderProdPanel === 'function' ? renderProdPanel : null);
+    const ps = window._prodSection;
+    if      (ps==='check')   safe(typeof renderProdCheck === 'function' ? renderProdCheck : null);
+    else if (ps==='mw')      safe(typeof renderProdMW === 'function' ? renderProdMW : null);
+    else if (ps==='summary') safe(typeof renderProdSummary === 'function' ? renderProdSummary : null);
+    else if (ps==='biosec')  safe(typeof renderProdBiosec === 'function' ? renderProdBiosec : null);
+    else if (ps==='trends')  safe(typeof renderProdEggTrends === 'function' ? renderProdEggTrends : null);
+    else if (ps==='history') safe(typeof renderProdWalkHistory === 'function' ? renderProdWalkHistory : null);
+    return;
+  }
+
   // Packaging sub-sections
   if (active('pkg')) {
-    if (window._pkgSection==='packing') renderPacking();
+    const ps = window._pkgSection;
+    if      (ps==='packing')    safe(typeof renderPacking === 'function' ? renderPacking : null);
+    else if (ps==='cooler')     safe(typeof renderCooler === 'function' ? renderCooler : null);
+    else if (ps==='downtime')   safe(typeof renderDowntime === 'function' ? renderDowntime : null);
+    else if (ps==='waste')      safe(typeof renderWaste === 'function' ? renderWaste : null);
+    else if (ps==='efficiency') safe(typeof renderEfficiency === 'function' ? renderEfficiency : null);
+    else if (ps==='eggs')       safe(typeof renderEggByBarn === 'function' ? renderEggByBarn : null);
+    else if (ps==='quality')    safe(typeof renderEggQuality === 'function' ? renderEggQuality : null);
     return;
   }
+
   // Shipping sub-sections
   if (active('ship')) {
-    if (window._shipSection==='shipping')       renderShipping();
-    else if (window._shipSection==='reconciliation') renderReconciliation();
-    else if (window._shipSection==='exceptions')     renderExceptions();
+    if      (window._shipSection==='shipping')       safe(typeof renderShipping === 'function' ? renderShipping : null);
+    else if (window._shipSection==='reconciliation') safe(typeof renderReconciliation === 'function' ? renderReconciliation : null);
+    else if (window._shipSection==='exceptions')     safe(typeof renderExceptions === 'function' ? renderExceptions : null);
     return;
   }
+
+  // Feed Mill sub-sections
+  if (active('feed')) {
+    const fs = window._feedSection;
+    if      (fs==='dashboard')   safe(typeof renderFeedDashboard === 'function' ? renderFeedDashboard : null);
+    else if (fs==='readings')    safe(typeof renderFeedReadings === 'function' ? renderFeedReadings : null);
+    else if (fs==='deliveries')  safe(typeof renderFeedDeliveries === 'function' ? renderFeedDeliveries : null);
+    else if (fs==='made')        safe(typeof renderFeedMade === 'function' ? renderFeedMade : null);
+    else if (fs==='bins')        safe(typeof renderFeedBinsList === 'function' ? renderFeedBinsList : null);
+    else if (fs==='medication')  safe(typeof renderMedicationLog === 'function' ? renderMedicationLog : null);
+    else if (fs==='withdrawal')  safe(typeof renderWithdrawalAlerts === 'function' ? renderWithdrawalAlerts : null);
+    else if (fs==='consumption') safe(typeof renderConsumptionLog === 'function' ? renderConsumptionLog : null);
+    return;
+  }
+
+  // KPI sub-sections
+  if (active('kpi')) {
+    const ks = window._kpiSection;
+    if      (ks==='dashboard') safe(typeof renderKpiDashboard === 'function' ? renderKpiDashboard : null);
+    else if (ks==='trends')    safe(typeof renderKpiTrends === 'function' ? renderKpiTrends : null);
+    else if (ks==='log')       safe(typeof renderKpiLog === 'function' ? renderKpiLog : null);
+    else if (ks==='entry')     safe(typeof renderEggByBarn === 'function' ? renderEggByBarn : null);
+    return;
+  }
+
+  // Single-render panels
+  if (active('check'))  { safe(typeof renderProdCheck === 'function' ? renderProdCheck : null); return; }
+  if (active('mw'))     { safe(typeof renderProdMW === 'function' ? renderProdMW : null); return; }
+  if (active('staff'))  { safe(typeof renderStaff === 'function' ? renderStaff : null); return; }
+  if (active('sched'))  { safe(typeof renderSchedule === 'function' ? renderSchedule : null); return; }
+  if (active('oncall')) { safe(typeof renderOnCallPanel === 'function' ? renderOnCallPanel : null); return; }
+  if (active('daily'))  { safe(typeof renderDailyReport === 'function' ? renderDailyReport : null); return; }
+  if (active('brief'))  { safe(typeof renderDirectorBrief === 'function' ? renderDirectorBrief : null); return; }
 }
 
 // ═══════════════════════════════════════════

@@ -796,6 +796,10 @@ async function submitBarnWalk() {
     dryers: _bwData.dryers, eggbelt: _bwData.eggbelt,
     stand: _bwData.stand, fly: _bwData.fly, mortrem: _bwData.mortrem,
     doors: _bwData.doors,
+    // Waste was previously collected via the YES/NO buttons but silently
+    // dropped on save — fall through to the history viewer (which already
+    // expects rec.waste) without ever being persisted.
+    waste: _bwData.waste || null,
     checklist: _bwChecklist, checklistNotes,
     checklistFails: checklistFails.length, checklistTotal,
     cageClean: _bwData.cageclean || null,
