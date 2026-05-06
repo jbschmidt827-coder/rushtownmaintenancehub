@@ -253,32 +253,79 @@ function clShowBuiltinWI(taskId, taskLabel) {
   return true;
 }
 
-// Edit-button handler on the built-in WI modal. Tries to seed the built-in
-// to the inventory and open the editable inventory view; if that fails
-// (no DB / offline), opens the WI form blank with the title prefilled so
-// the lead can still write a fresh editable copy.
-async function clEditBuiltinWI(taskId) {
+// Edit-button handler on the built-in WI modal.
+// Opens the WI form and PREFILLS every field from the built-in template
+// so the lead sees the existing content immediately and can edit it.
+// No Firestore round-trip — opens instantly. When they hit Save, the
+// existing saveWI() path creates a new editable WI in the inventory.
+function clEditBuiltinWI(taskId) {
+  // 1. Tear down the built-in read-only modal
   const modal = document.getElementById('cl-wi-modal'); if (modal) modal.remove();
-  const taskLabel = (CL_INSTRUCTIONS[taskId] && CL_INSTRUCTIONS[taskId].title) || '';
 
-  // Try seed → reload → open
-  if (typeof db !== 'undefined' && db && CL_INSTRUCTIONS[taskId]) {
-    try {
-      await clSeedBuiltinWIsToInventory([taskId]);
-      if (typeof loadWI === 'function') await loadWI();
-      const matches = (typeof allWI !== 'undefined' ? allWI : []).filter(w => w.clTaskId === taskId);
-      if (matches.length > 0 && typeof openWIView === 'function') {
-        openWIView(matches[0].wiId || matches[0]._fbId);
-        return;
-      }
-    } catch (e) { console.warn('clEditBuiltinWI seed failed:', e); }
+  const builtin = CL_INSTRUCTIONS[taskId];
+  if (!builtin) {
+    if (typeof toast === 'function') toast('No template found for ' + taskId);
+    return;
   }
 
-  // Last resort — open the blank form with the task hint baked in
-  if (typeof _openWIForm === 'function') {
-    _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
-  } else if (typeof toast === 'function') {
-    toast('Editor not available — try again in a moment.');
+  if (typeof _openWIForm !== 'function') {
+    alert('Editor unavailable — refresh the page and try again.');
+    return;
+  }
+
+  // 2. Open the form blank for a NEW WI, with title + dept + cl-task hint
+  _openWIForm(null, taskId, builtin.title || '', 'Barn / Layer');
+
+  // 3. Prefill every other field from the built-in template
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  set('wif-time',     builtin.timeMin || '');
+  set('wif-ppe',      builtin.ppe     || '');
+  set('wif-warnings', builtin.warnings|| '');
+  set('wif-type',     'onboarding');                 // matches the seed type used by clSeedBuiltinWIsToInventory
+  set('wif-author',   'Rushtown Poultry');
+
+  // 4. Replace the 3 blank steps that _openWIForm seeded with the actual
+  //    steps from the built-in template, in order
+  const stepsList = document.getElementById('wif-steps-list');
+  if (stepsList) {
+    stepsList.innerHTML = '';
+    if (typeof window !== 'undefined') window.wiStepCount = 0;
+    (builtin.steps || []).forEach(s => {
+      if (typeof wiAddStep === 'function') wiAddStep(s);
+    });
+    // Make sure the form is never empty even if the template has 0 steps
+    if (!(builtin.steps && builtin.steps.length) && typeof wiAddStep === 'function') {
+      wiAddStep('');
+    }
+  }
+
+  // 5. Make sure the form modal is visible and on top of the barn-walk
+  //    overlay (z-index 600). The form already has z-index 5000 inline,
+  //    but bump it higher and ensure the `open` class is set. We restore
+  //    the original z-index on close so this doesn't leak between flows.
+  const fm = document.getElementById('wi-form-modal');
+  if (fm) {
+    fm.classList.add('open');
+    const _origZ = fm.style.zIndex;
+    fm.style.zIndex = '11000';
+    fm.scrollTop = 0;
+    // Self-clean: restore the z-index once the form is closed via either path
+    const restore = () => {
+      fm.style.zIndex = _origZ || '5000';
+      fm.removeEventListener('click', backdropOff, true);
+    };
+    const backdropOff = (e) => { if (e.target === fm) setTimeout(restore, 0); };
+    fm.addEventListener('click', backdropOff, true);
+    // Patch the close path once so user-driven close also restores
+    if (!window._clCloseWIPatched && typeof closeWIForm === 'function') {
+      const orig = window.closeWIForm;
+      window.closeWIForm = function () {
+        const r = orig.apply(this, arguments);
+        try { restore(); } catch(e) {}
+        return r;
+      };
+      window._clCloseWIPatched = true;
+    }
   }
 }
 

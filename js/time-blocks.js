@@ -45,6 +45,49 @@
   let   _state = {};
   let   _tickHandle = null;
 
+  // Visibility rules — when a row is hidden the block math skips it so
+  // a Wednesday user isn't blocked from auto-closing Block 1 by a fly
+  // check that doesn't apply today.
+  //   { type: 'never' }                  → always hidden (moved off list)
+  //   { type: 'dow', day: <0..6> }        → only shown on that day-of-week
+  // Day numbers: Sun=0, Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6
+  const VISIBILITY = {
+    watertubes:  { type:'never' },                 // moved to monthly barn PM
+    flycheck:    { type:'dow', day: 2 },           // Tuesdays only
+    rodentcheck: { type:'dow', day: 5 },           // Fridays only
+  };
+
+  function isRowVisible(rowOrKey) {
+    const row = (typeof rowOrKey === 'string') ? findRowByKey(rowOrKey) : rowOrKey;
+    if (!row) return false;
+    if (row.style.display === 'none') return false;
+    return true;
+  }
+
+  function applyVisibility() {
+    const dow = new Date().getDay();
+    // Daily-checklist row gating
+    Object.entries(VISIBILITY).forEach(([key, rule]) => {
+      const row = findRowByKey(key);
+      if (!row) return;
+      let show = true;
+      if (rule.type === 'never') show = false;
+      else if (rule.type === 'dow') show = (dow === rule.day);
+      row.style.display = show ? '' : 'none';
+    });
+    // Other barn-walk elements (e.g. Fly trap activity Yes/No card) that
+    // also need day-of-week gating but don't live in the daily checklist.
+    const ELEMENT_GATES = [
+      { id: 'bw-fly-block',    type: 'dow', day: 2 },   // Fly trap activity → Tuesdays only
+    ];
+    ELEMENT_GATES.forEach(g => {
+      const el = document.getElementById(g.id);
+      if (!el) return;
+      const show = (g.type === 'never') ? false : (dow === g.day);
+      el.style.display = show ? '' : 'none';
+    });
+  }
+
   function rowKey(row)        { return row.id.replace(/^bw-cl-/, ''); }
   function findRowByKey(key)  { return document.getElementById('bw-cl-' + key); }
 
@@ -182,7 +225,9 @@
   }
 
   function blockTaskKeys(blockId) {
-    return Array.from(document.querySelectorAll('[data-block-body="' + blockId + '"] > .bw-cl-row')).map(rowKey);
+    return Array.from(document.querySelectorAll('[data-block-body="' + blockId + '"] > .bw-cl-row'))
+      .filter(isRowVisible)
+      .map(rowKey);
   }
 
   function blockReviewedCount(blockId) {
@@ -192,6 +237,7 @@
 
   function blockExpectedMinutes(blockId) {
     return Array.from(document.querySelectorAll('[data-block-body="' + blockId + '"] > .bw-cl-row'))
+      .filter(isRowVisible)
       .reduce((s, r) => s + (parseInt(r.dataset.minutes || '0') || 0), 0);
   }
 
@@ -338,6 +384,38 @@
     return true;
   }
 
+  // Recompute the global "X / Y reviewed · Zh remaining" badge using
+  // visible rows only — otherwise hidden weekly checks count toward
+  // remaining time on days they don't apply.
+  function recomputeGlobalBadge() {
+    const badge = document.getElementById('bw-time-badge');
+    const prog  = document.getElementById('bw-checklist-progress');
+    const rows  = Array.from(document.querySelectorAll('#bw-checklist-items .bw-cl-row'))
+                       .filter(isRowVisible);
+    const checks = window._bwChecklist || {};
+    let remaining = 0, total = rows.length, done = 0, fails = 0;
+    rows.forEach(row => {
+      const mins = parseInt(row.dataset.minutes || '0') || 0;
+      const v = checks[rowKey(row)];
+      if (v === 'pass' || v === 'fail') { done++; if (v === 'fail') fails++; }
+      else { remaining += mins; }
+    });
+    const fmtRem = m => m >= 60 ? Math.floor(m/60) + 'h ' + (m%60 ? (m%60) + 'm' : '') : m + 'm';
+    if (badge) {
+      if (done === total && total > 0) {
+        badge.textContent = '✅ All tasks reviewed';
+        badge.style.color = '#4caf50'; badge.style.borderColor = '#2a5a2a';
+      } else {
+        badge.textContent = '⏱ ~' + fmtRem(remaining).trim() + ' remaining';
+        badge.style.color = '#3a6a3a'; badge.style.borderColor = '#1a4a1a';
+      }
+    }
+    if (prog) {
+      prog.textContent = done + ' / ' + total + ' reviewed' + (fails ? ' · ' + fails + ' ⚠️ FAIL' : '');
+      prog.style.color = fails ? '#e53e3e' : (done === total ? '#4caf50' : '#5a8a5a');
+    }
+  }
+
   function installHooks() {
     // Pass/Fail click on a task: mark its block as touched + recompute
     wrap('bwSetCheck', function (key) {
@@ -345,28 +423,39 @@
       if (blockId) touchBlock(blockId);
       updateAllBlocks();
       saveBlockState();
+      recomputeGlobalBadge();
     });
 
     // Modal open / state reset
     wrap('bwInitChecklist', function () {
       resetState();
+      applyVisibility();   // re-evaluate dow rules every open
       // Then attempt to load any saved block state for this farm/house/date
       // (runs once _bwFarm/_bwHouse are set, which happens before bwInitChecklist
       //  is called from openBarnWalk)
       loadBlockState();
       updateAllBlocks();
+      recomputeGlobalBadge();
     });
 
     // After a draft restore, also restore block state
     wrap('bwRestoreFromData', function () {
       loadBlockState();
       updateAllBlocks();
+      recomputeGlobalBadge();
+    });
+
+    // Override the global time badge — production.js's bwUpdateTimeBadge
+    // counts ALL rows; we want visible-only.
+    wrap('bwUpdateTimeBadge', function () {
+      recomputeGlobalBadge();
     });
   }
 
   // ── Boot ────────────────────────────────────────────────────────
   function init() {
     buildBlocks();
+    applyVisibility();   // initial pass on first paint
     installHooks();
   }
 
