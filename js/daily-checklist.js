@@ -647,14 +647,23 @@ function renderChecklistDashboard() {
   const el = document.getElementById('cl-dashboard');
   if (!el) return;
 
-  const totalTasksVisible = rec => {
-    return CL_TASKS.filter(t => {
-      if (!rec.include) return true;
-      return rec.include[t.id] !== false;
-    }).length;
-  };
-  const doneCount = rec => {
-    return CL_TASKS.filter(t => rec.checks?.[t.id]?.done).length;
+  // % completion is now WEIGHTED BY TIME so a barn that finishes the
+  // 2-hour bird check shows higher than one that knocked out 3 ×
+  // 5-minute tasks. Tasks with no timeMin (ongoing) count as 0.
+  const visibleTasks = rec => CL_TASKS.filter(t => {
+    if (!rec.include) return true;
+    return rec.include[t.id] !== false;
+  });
+  const totalTasksVisible = rec => visibleTasks(rec).length;
+  const doneCount         = rec => visibleTasks(rec).filter(t => rec.checks?.[t.id]?.done).length;
+  const totalMinutes      = rec => visibleTasks(rec).reduce((s, t) => s + (t.timeMin || 0), 0);
+  const doneMinutes       = rec => visibleTasks(rec).filter(t => rec.checks?.[t.id]?.done)
+                                                      .reduce((s, t) => s + (t.timeMin || 0), 0);
+  const fmtMin = m => {
+    if (!m) return '—';
+    if (m < 60) return Math.round(m) + 'm';
+    const h = Math.floor(m/60), mm = Math.round(m%60);
+    return mm ? h + 'h ' + mm + 'm' : h + 'h';
   };
 
   const farms = Object.keys(CL_FARMS);
@@ -678,18 +687,24 @@ function renderChecklistDashboard() {
       } else {
         const done = doneCount(rec);
         const total = totalTasksVisible(rec);
-        const pct = total > 0 ? Math.round(done / total * 100) : 0;
+        const totMin  = totalMinutes(rec);
+        const dnMin   = doneMinutes(rec);
+        // Time-weighted % — falls back to count-based when no times are set
+        const pct = totMin > 0 ? Math.round(dnMin / totMin * 100)
+                              : (total > 0 ? Math.round(done / total * 100) : 0);
         const submitted = rec.status === 'pending-review' || rec.status === 'approved';
         const col = submitted ? '#4caf50' : pct > 0 ? '#d69e2e' : '#e53e3e';
         const bg  = submitted ? '#0a2a0a' : pct > 0 ? '#1a1200' : '#1a0505';
         const bdr = submitted ? '#2a5a2a' : pct > 0 ? '#4a3500' : '#5a1010';
         const icon = submitted ? '✅' : pct > 0 ? '⏳' : '🔴';
         const worker = rec.worker ? rec.worker.split(' ')[0] : '?';
-        html += `<div style="background:${bg};border:1.5px solid ${bdr};border-radius:9px;padding:8px 6px;text-align:center;">
+        const timeStr = totMin > 0 ? (fmtMin(dnMin) + '/' + fmtMin(totMin)) : '';
+        html += `<div style="background:${bg};border:1.5px solid ${bdr};border-radius:9px;padding:8px 6px;text-align:center;" title="${fmtMin(dnMin)} done of ${fmtMin(totMin)} planned · ${done}/${total} tasks">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:${col};margin-bottom:3px;font-weight:700;">H${b}</div>
           <div style="font-size:15px;line-height:1.2;">${icon}</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:${col};margin-top:3px;">${pct}%</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#5a7a5a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${rec.worker||''}">${worker}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:${col};margin-top:3px;">${pct}%</div>
+          ${timeStr ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:${col};margin-top:1px;">${timeStr}</div>` : ''}
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#5a7a5a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;" title="${rec.worker||''}">${worker}</div>
           <div style="background:#0a1a0a;border-radius:3px;height:3px;margin-top:4px;overflow:hidden;">
             <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;"></div>
           </div>

@@ -384,35 +384,60 @@
     return true;
   }
 
-  // Recompute the global "X / Y reviewed · Zh remaining" badge using
-  // visible rows only — otherwise hidden weekly checks count toward
-  // remaining time on days they don't apply.
+  // Recompute the global time badge + progress line.
+  // Shows a clear running tally of today's planned time:
+  //   "⏱ 13h 10m total · 1h 30m done · 11h 40m left  (11%)"
+  // Hidden rows (water tubes, fly check on non-Tue, etc.) are excluded
+  // from every total so days don't carry phantom minutes.
   function recomputeGlobalBadge() {
     const badge = document.getElementById('bw-time-badge');
     const prog  = document.getElementById('bw-checklist-progress');
     const rows  = Array.from(document.querySelectorAll('#bw-checklist-items .bw-cl-row'))
                        .filter(isRowVisible);
     const checks = window._bwChecklist || {};
-    let remaining = 0, total = rows.length, done = 0, fails = 0;
+
+    let totalMin = 0, doneMin = 0, remainMin = 0;
+    let total = rows.length, done = 0, fails = 0;
     rows.forEach(row => {
       const mins = parseInt(row.dataset.minutes || '0') || 0;
+      totalMin += mins;
       const v = checks[rowKey(row)];
-      if (v === 'pass' || v === 'fail') { done++; if (v === 'fail') fails++; }
-      else { remaining += mins; }
+      if (v === 'pass' || v === 'fail') {
+        done++;
+        doneMin += mins;
+        if (v === 'fail') fails++;
+      } else {
+        remainMin += mins;
+      }
     });
-    const fmtRem = m => m >= 60 ? Math.floor(m/60) + 'h ' + (m%60 ? (m%60) + 'm' : '') : m + 'm';
+
+    const fmt = m => {
+      if (m <= 0) return '0m';
+      if (m < 60) return Math.round(m) + 'm';
+      const h = Math.floor(m/60), mm = Math.round(m%60);
+      return mm ? h + 'h ' + mm + 'm' : h + 'h';
+    };
+    const pct = totalMin > 0 ? Math.round((doneMin / totalMin) * 100) : 0;
+
     if (badge) {
-      if (done === total && total > 0) {
-        badge.textContent = '✅ All tasks reviewed';
+      if (total === 0) {
+        badge.textContent = '⏱ no tasks today';
+        badge.style.color = '#5a8a5a'; badge.style.borderColor = '#1a3a1a';
+      } else if (remainMin === 0) {
+        badge.textContent = '✅ All ' + fmt(totalMin) + ' done (100%)';
         badge.style.color = '#4caf50'; badge.style.borderColor = '#2a5a2a';
       } else {
-        badge.textContent = '⏱ ~' + fmtRem(remaining).trim() + ' remaining';
-        badge.style.color = '#3a6a3a'; badge.style.borderColor = '#1a4a1a';
+        // Compact mobile-friendly layout: total · done · left  (pct%)
+        badge.textContent = '⏱ ' + fmt(totalMin) + ' total · ' + fmt(doneMin) + ' done · ' + fmt(remainMin) + ' left  (' + pct + '%)';
+        // Color shifts as more is completed
+        if (pct >= 75)      { badge.style.color = '#4caf50'; badge.style.borderColor = '#2a5a2a'; }
+        else if (pct >= 25) { badge.style.color = '#d69e2e'; badge.style.borderColor = '#4a3500'; }
+        else                { badge.style.color = '#3a6a3a'; badge.style.borderColor = '#1a4a1a'; }
       }
     }
     if (prog) {
-      prog.textContent = done + ' / ' + total + ' reviewed' + (fails ? ' · ' + fails + ' ⚠️ FAIL' : '');
-      prog.style.color = fails ? '#e53e3e' : (done === total ? '#4caf50' : '#5a8a5a');
+      prog.textContent = done + ' / ' + total + ' tasks reviewed · ' + pct + '% by time' + (fails ? ' · ' + fails + ' ⚠️ FAIL' : '');
+      prog.style.color = fails ? '#e53e3e' : (done === total && total > 0 ? '#4caf50' : '#5a8a5a');
     }
   }
 
