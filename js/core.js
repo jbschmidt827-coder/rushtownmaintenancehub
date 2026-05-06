@@ -283,6 +283,11 @@ const PM_DEFS = [
   // ── WATER ─────────────────────────────────────────────────
   {id:'wt1',sys:'Water',task:'Check water readings for normal consumption',freq:'daily',hrs:0.25},
   {id:'wt2',sys:'Water',task:'Check for water leaks',freq:'daily',hrs:0.25},
+  // Moved off the daily checklist (was bw-cl-watertubes) — now a monthly deep clean.
+  // Procedure: shut off water, drain end caps, run tube brush front-to-back, flush
+  // until clear, sanitize per label + flush again, restore pressure, verify every
+  // nipple drips. PPE: gloves + safety glasses. Reference WI: WI-CL-TUBES.
+  {id:'wt3',sys:'Water',task:'Clean water tubes — front & back of house (deep clean, sanitize, verify all nipples drip)',freq:'monthly',hrs:1.0},
   // ── BUILDING ──────────────────────────────────────────────
   {id:'bd1',sys:'Building',task:'Check foundation for any holes — mark for repair',freq:'monthly',hrs:0.5},
   {id:'bd2',sys:'Building',task:'Check structure for any damage — document where repairs are needed',freq:'monthly',hrs:0.5},
