@@ -203,8 +203,10 @@ const CL_INSTRUCTIONS = {
   },
 };
 
-// Open built-in instructions modal (does NOT depend on Firestore data)
-function clShowBuiltinWI(taskId) {
+// Open built-in instructions modal (does NOT depend on Firestore data).
+// taskLabel is optional — used to prefill the form if user clicks Edit
+// while the inventory copy hasn't been seeded yet.
+function clShowBuiltinWI(taskId, taskLabel) {
   const wi = CL_INSTRUCTIONS[taskId];
   const task = CL_TASKS.find(t => t.id === taskId);
   if (!wi || !task) return false;
@@ -240,6 +242,7 @@ function clShowBuiltinWI(taskId) {
         ${stepsHtml}
         ${strip('✅ What Good Looks Like', wi.verification, '#9b59b6','#1a0a2a')}
         <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #1a3a1a;">
+          <button onclick="clEditBuiltinWI('${taskId}')" style="flex:1;padding:11px;background:#0d2a0d;border:1.5px solid #2a5a2a;border-radius:8px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">✏️ EDIT</button>
           <button onclick="document.getElementById('cl-wi-modal').remove()" style="flex:1;padding:11px;background:#0a2a0a;border:1.5px solid #2a5a2a;border-radius:8px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">CLOSE</button>
         </div>
       </div>
@@ -248,6 +251,35 @@ function clShowBuiltinWI(taskId) {
   const ex = document.getElementById('cl-wi-modal'); if (ex) ex.remove();
   document.body.insertAdjacentHTML('beforeend', html);
   return true;
+}
+
+// Edit-button handler on the built-in WI modal. Tries to seed the built-in
+// to the inventory and open the editable inventory view; if that fails
+// (no DB / offline), opens the WI form blank with the title prefilled so
+// the lead can still write a fresh editable copy.
+async function clEditBuiltinWI(taskId) {
+  const modal = document.getElementById('cl-wi-modal'); if (modal) modal.remove();
+  const taskLabel = (CL_INSTRUCTIONS[taskId] && CL_INSTRUCTIONS[taskId].title) || '';
+
+  // Try seed → reload → open
+  if (typeof db !== 'undefined' && db && CL_INSTRUCTIONS[taskId]) {
+    try {
+      await clSeedBuiltinWIsToInventory([taskId]);
+      if (typeof loadWI === 'function') await loadWI();
+      const matches = (typeof allWI !== 'undefined' ? allWI : []).filter(w => w.clTaskId === taskId);
+      if (matches.length > 0 && typeof openWIView === 'function') {
+        openWIView(matches[0].wiId || matches[0]._fbId);
+        return;
+      }
+    } catch (e) { console.warn('clEditBuiltinWI seed failed:', e); }
+  }
+
+  // Last resort — open the blank form with the task hint baked in
+  if (typeof _openWIForm === 'function') {
+    _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
+  } else if (typeof toast === 'function') {
+    toast('Editor not available — try again in a moment.');
+  }
 }
 
 
@@ -506,22 +538,48 @@ let _clDashData = [];   // today's submitted checklists
 let _clDashUnsub = null;
 
 async function clOpenTaskWI(taskId, taskLabel) {
-  // Inventory is now the source of truth — check it FIRST so user edits from
-  // the WI page take effect. Fall back to the built-in template only if the
-  // inventory has nothing for this task (e.g. WI was deleted, or never seeded).
+  // Inventory is the source of truth so leads can EDIT in place. Strategy:
+  //   1. Make sure allWI is loaded.
+  //   2. If a matching WI exists in inventory → open the editable view.
+  //   3. If not, but a built-in template exists for this task → seed it
+  //      to inventory NOW, reload, then open the editable view. This means
+  //      anyone tapping 📖 always lands on a screen with a working ✏️ Edit
+  //      button.
+  //   4. If seeding fails (no Firestore / offline) → fall back to the
+  //      built-in modal, which itself now has its own Edit button as a
+  //      last-resort path to the form.
+  //   5. If nothing applies → open the blank form.
   try {
     if (typeof allWI === 'undefined' || !allWI.length) {
       if (typeof loadWI === 'function') await loadWI();
     }
   } catch(e) {}
-  const matches = (typeof allWI !== 'undefined' ? allWI : []).filter(w => w.clTaskId === taskId);
+
+  function findMatch() {
+    return (typeof allWI !== 'undefined' ? allWI : []).filter(w => w.clTaskId === taskId);
+  }
+
+  let matches = findMatch();
   if (matches.length > 0 && typeof openWIView === 'function') {
     openWIView(matches[0].wiId || matches[0]._fbId);
     return;
   }
-  // Inventory miss — render built-in template if we have one
-  if (clShowBuiltinWI(taskId)) return;
-  // No inventory entry, no built-in — open the form to create a new WI
+
+  // Inventory miss — try to seed-on-demand from the built-in template
+  if (CL_INSTRUCTIONS[taskId] && typeof db !== 'undefined' && db) {
+    try {
+      await clSeedBuiltinWIsToInventory([taskId]);
+      if (typeof loadWI === 'function') await loadWI();
+      matches = findMatch();
+      if (matches.length > 0 && typeof openWIView === 'function') {
+        openWIView(matches[0].wiId || matches[0]._fbId);
+        return;
+      }
+    } catch (e) { console.warn('seed-on-demand failed:', e); }
+  }
+
+  // Fallback chain: built-in modal (now editable), then blank form
+  if (clShowBuiltinWI(taskId, taskLabel)) return;
   if (typeof _openWIForm === 'function') {
     _openWIForm(null, taskId, taskLabel, 'Barn / Layer');
   }
@@ -673,10 +731,13 @@ async function clSeedBuiltinWIsToInventory(taskIds) {
   }
 }
 
-// Auto-seed on load — items 1, 3, 4, 6, 7 in the daily checklist UI.
+// Auto-seed on load — every task that has a built-in template (all 10).
+// Without this, leads get a read-only built-in modal for any task that
+// wasn't pre-seeded, with no way to edit. Seeding is idempotent so it's
+// safe to seed everything; existing user-edited WIs are never overwritten.
 // Waits for Firestore (db) to be ready before running.
 (function _clAutoSeedOnLoad() {
-  const TASKS_TO_SEED = ['fwv', 'tubes', 'front', 'wheelbarrow', 'undercage'];
+  const TASKS_TO_SEED = Object.keys(CL_INSTRUCTIONS);
   const tryRun = (attempt) => {
     if (typeof db !== 'undefined' && db) {
       clSeedBuiltinWIsToInventory(TASKS_TO_SEED);
