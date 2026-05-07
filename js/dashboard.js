@@ -38,6 +38,19 @@ function renderExecBrief(todayStr, yesterStr) {
     issues.push({ sev:'warning', icon:'🚩', title:`${flaggedBarns2.length} ${t('brief.barns_flagged')}`, detail: names2, trend:null });
   }
 
+  // 4b. Stalled barns — populated live by js/barn-status-panel.js as a
+  //     window global so we don't have to duplicate the listener here.
+  const stalledCt = (typeof window._dashStalledBarns === 'number') ? window._dashStalledBarns : 0;
+  if (stalledCt > 0) {
+    issues.push({
+      sev: stalledCt >= 3 ? 'critical' : 'warning',
+      icon: '⏸',
+      title: `${stalledCt} barn${stalledCt>1?'s':''} stalled`,
+      detail: 'No updates in 45+ min — tap dashboard panel to drill in',
+      trend: null
+    });
+  }
+
   // 5. Egg quality — defect rate trend vs yesterday
   const qToday = (opsEggQuality||[]).filter(r=>r.date===todayStr);
   const qYest  = (opsEggQuality||[]).filter(r=>r.date===yesterStr);
