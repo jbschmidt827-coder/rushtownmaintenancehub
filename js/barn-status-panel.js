@@ -133,6 +133,7 @@
           <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#9ad0a0;letter-spacing:2px;text-transform:uppercase;">Barn Check Status — Live</span>
           <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#5a8a5a;font-weight:400;letter-spacing:0.5px;">· tap a barn to open</span>
           <span id="dash-barn-status-summary" style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5a8a5a;"></span>
+          <button onclick="if(typeof openEosRollup==='function')openEosRollup()" title="End-of-shift rollup (printable)" style="margin-left:10px;padding:4px 10px;background:#0a2a0a;border:1px solid #2a5a2a;border-radius:6px;color:#9ad0a0;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;cursor:pointer;white-space:nowrap;">📊 ROLLUP</button>
         </div>
         <div style="padding:10px 12px;">`;
 
