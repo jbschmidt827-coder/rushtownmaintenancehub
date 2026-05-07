@@ -27,6 +27,22 @@
   // signal someone got pulled away or stuck.
   const STALL_MIN = 45;
 
+  // ── Shift hours (for "stalled" awareness) ──────────────────────
+  // No one expects updates outside of these hours, so stale records
+  // should not be flagged as "stalled" — they get a softer "left open"
+  // treatment instead. Hours are in the user's local timezone (24h).
+  // Days: 0=Sun..6=Sat. Default Mon-Sat 6 AM – 5 PM.
+  const SHIFT = {
+    days: [1, 2, 3, 4, 5, 6],   // Mon-Sat
+    startHour: 6,
+    endHour:   17,               // 5 PM
+  };
+  function inShiftWindow(d = new Date()) {
+    if (!SHIFT.days.includes(d.getDay())) return false;
+    const h = d.getHours();
+    return h >= SHIFT.startHour && h < SHIFT.endHour;
+  }
+
   // ── Source of truth for barn-walk task durations (minutes) ─────
   // Mirrors data-minutes on each <div id="bw-cl-..."> row. If a row's
   // data-minutes changes in index.html, update here too.
@@ -167,13 +183,17 @@
         aggDone += dn;
         const pct = planned > 0 ? Math.round(dn / planned * 100) : 0;
 
-        // Has the barn been silent for too long? Only counts as stalled
-        // if it's been STARTED (rec exists) but NOT submitted yet.
-        const idleMs = rec.ts ? Date.now() - rec.ts : 0;
-        const isStalled = !sub && rec.ts && idleMs >= STALL_MIN * 60000;
+        // Has the barn been silent for too long?
+        // Stall only fires DURING shift hours — outside shift, an
+        // unsubmitted barn with no recent updates is "left open"
+        // rather than "stalled" (no one's expected to be working).
+        const idleMs   = rec.ts ? Date.now() - rec.ts : 0;
+        const idleEnough = rec.ts && idleMs >= STALL_MIN * 60000;
+        const isStalled  = !sub && idleEnough && inShiftWindow();
+        const isLeftOpen = !sub && idleEnough && !inShiftWindow();
         if (isStalled) stalledNow++;
 
-        // Priority for color/icon: failing > submitted > stalled > in-progress > opened
+        // Priority for color/icon: failing > submitted > stalled > left-open > in-progress > opened
         let col, bg, bdr, icon, label;
         if (fbCount > 0 && !sub) {
           col = '#e57373'; bg = '#1a0505'; bdr = '#5a1010'; icon = '⚠️'; label = fbCount + ' FAIL';
@@ -181,6 +201,8 @@
           col = '#4caf50'; bg = '#0a2a0a'; bdr = '#2a5a2a'; icon = '✅'; label = 'submitted';
         } else if (isStalled) {
           col = '#ff9b54'; bg = '#2a0f00'; bdr = '#7a3500'; icon = '⏸'; label = 'stalled';
+        } else if (isLeftOpen) {
+          col = '#9a8a7a'; bg = '#1a1410'; bdr = '#3a3530'; icon = '🌙'; label = 'left open';
         } else if (dn > 0) {
           col = '#d69e2e'; bg = '#1a1200'; bdr = '#4a3500'; icon = '⏳'; label = pct + '%';
         } else {
