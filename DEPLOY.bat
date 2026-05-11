@@ -13,7 +13,7 @@ git status --short
 echo.
 
 echo === Staging changed files ===
-git add js/core.js js/maintenance.js index.html sw.js
+git add js/core.js js/maintenance.js index.html sw.js DEPLOY.bat DEPLOY-FIREBASE-DIRECT.bat
 git status --short
 echo.
 

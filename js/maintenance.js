@@ -1029,42 +1029,9 @@ function openPMModal(id) {
   document.getElementById('modal-notes').value='';
   document.getElementById('modal-gen-wo').value='no';
 
-  // Render procedure block (safety / tools / instructions / corrective) if any
-  const procEl = document.getElementById('pm-modal-procedure');
-  if (procEl) {
-    const blocks = [];
-    if (t.safety && t.safety.length) {
-      blocks.push(`<div style="background:#fff3cd;border:1px solid #856404;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
-        <div style="font-weight:700;font-size:11px;color:#856404;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;">⚠️ SAFETY</div>
-        <ul style="margin:0;padding-left:18px;font-size:12px;color:#5a3e00;">${t.safety.map(s=>`<li>${s}</li>`).join('')}</ul>
-      </div>`);
-    }
-    if (t.tools && t.tools.length) {
-      blocks.push(`<div style="background:#eef2ff;border:1px solid #6366f1;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
-        <div style="font-weight:700;font-size:11px;color:#3730a3;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;">🛠️ TOOLS REQUIRED</div>
-        <div style="font-size:12px;color:#1e1b4b;">${t.tools.join(' · ')}</div>
-      </div>`);
-    }
-    if (t.instructions && t.instructions.length) {
-      blocks.push(`<div style="background:#f0f9ff;border:1px solid #0ea5e9;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
-        <div style="font-weight:700;font-size:11px;color:#0c4a6e;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;">📋 PM INSTRUCTIONS</div>
-        <ol style="margin:0;padding-left:20px;font-size:12px;color:#0c4a6e;">${t.instructions.map(s=>`<li style="margin-bottom:2px;">${s}</li>`).join('')}</ol>
-      </div>`);
-    }
-    if (t.corrective && t.corrective.length) {
-      blocks.push(`<div style="background:#fef2f2;border:1px solid #ef4444;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
-        <div style="font-weight:700;font-size:11px;color:#991b1b;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;">🔧 CORRECTIVE ACTIONS</div>
-        <ul style="margin:0;padding-left:18px;font-size:12px;color:#7f1d1d;">${t.corrective.map(s=>`<li>${s}</li>`).join('')}</ul>
-      </div>`);
-    }
-    if (blocks.length) {
-      procEl.innerHTML = blocks.join('');
-      procEl.style.display = '';
-    } else {
-      procEl.innerHTML = '';
-      procEl.style.display = 'none';
-    }
-  }
+  // Render procedure block (safety / tools / instructions / corrective)
+  // Always rendered with an Edit Procedure button so techs/supervisors can author one.
+  renderPMProcedure(t);
 
   // Tech list — pull strictly from Staff module (no fallback names)
   const techSel = document.getElementById('modal-tech');
@@ -1105,6 +1072,215 @@ function openPMModal(id) {
 function closePMModal() {
   document.getElementById('pm-modal').classList.remove('open');
   modalPMId=null;
+  _pmCheckedSteps = {};
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PM PROCEDURE — render + checklist sign-off
+// Each instruction step is a checkbox; Mark Done is gated until every step
+// (if any exist) is checked. Saves the checklist state to pmHistory so audits
+// know what was actually verified at completion.
+// ─────────────────────────────────────────────────────────────────────────
+let _pmCheckedSteps = {};   // {stepIdx: true} for the open PM
+let _pmProcedureCache = null; // last-rendered procedure (for confirmPM)
+
+function _esc(s) { return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderPMProcedure(t) {
+  const procEl = document.getElementById('pm-modal-procedure');
+  if (!procEl || !t) return;
+  const proc = (typeof getPMProcedure === 'function') ? getPMProcedure(t) : {safety:[],tools:[],instructions:[],corrective:[]};
+  _pmCheckedSteps = {};
+  _pmProcedureCache = proc;
+  const editBtn = `<div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
+    <button type="button" onclick="openPMProcedureEditor()" style="padding:5px 10px;background:#fff;border:1px solid #3b82f6;color:#1e3a8a;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✏️ Edit Procedure</button>
+  </div>`;
+
+  const blocks = [editBtn];
+  if (proc.safety.length) {
+    blocks.push(`<div style="background:#fff3cd;border:1px solid #856404;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
+      <div style="font-weight:700;font-size:11px;color:#856404;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;">⚠️ SAFETY</div>
+      <ul style="margin:0;padding-left:18px;font-size:12px;color:#5a3e00;">${proc.safety.map(s=>`<li>${_esc(s)}</li>`).join('')}</ul>
+    </div>`);
+  }
+  if (proc.tools.length) {
+    blocks.push(`<div style="background:#eef2ff;border:1px solid #6366f1;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
+      <div style="font-weight:700;font-size:11px;color:#3730a3;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;">🛠️ TOOLS REQUIRED</div>
+      <div style="font-size:12px;color:#1e1b4b;">${proc.tools.map(_esc).join(' · ')}</div>
+    </div>`);
+  }
+  if (proc.instructions.length) {
+    const items = proc.instructions.map((step, i) => `
+      <label style="display:flex;align-items:flex-start;gap:8px;padding:5px 6px;border-radius:4px;cursor:pointer;font-size:12px;color:#0c4a6e;line-height:1.4;">
+        <input type="checkbox" data-step-idx="${i}" onchange="_pmStepToggle(${i}, this.checked)" style="margin-top:2px;width:16px;height:16px;flex-shrink:0;cursor:pointer;">
+        <span><strong style="font-family:'IBM Plex Mono',monospace;color:#0369a1;">${i+1}.</strong> ${_esc(step)}</span>
+      </label>`).join('');
+    blocks.push(`<div style="background:#f0f9ff;border:1px solid #0ea5e9;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-weight:700;font-size:11px;color:#0c4a6e;font-family:'IBM Plex Mono',monospace;">📋 PM INSTRUCTIONS — tick each step as you finish</div>
+        <span id="pm-step-counter" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#0369a1;font-weight:700;">0 / ${proc.instructions.length}</span>
+      </div>
+      ${items}
+    </div>`);
+  } else {
+    blocks.push(`<div style="background:#fafafa;border:1px dashed #9ca3af;border-radius:6px;padding:10px 12px;margin-bottom:8px;text-align:center;color:#6b7280;font-size:12px;">
+      No procedure on file for this PM yet — tap <strong>✏️ Edit Procedure</strong> above to add steps so techs follow the same process every time.
+    </div>`);
+  }
+  if (proc.corrective.length) {
+    blocks.push(`<div style="background:#fef2f2;border:1px solid #ef4444;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
+      <div style="font-weight:700;font-size:11px;color:#991b1b;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;">🔧 CORRECTIVE ACTIONS</div>
+      <ul style="margin:0;padding-left:18px;font-size:12px;color:#7f1d1d;">${proc.corrective.map(s=>`<li>${_esc(s)}</li>`).join('')}</ul>
+    </div>`);
+  }
+  procEl.innerHTML = blocks.join('');
+  procEl.style.display = '';
+  _pmRefreshConfirmGate();
+}
+
+function _pmStepToggle(idx, checked) {
+  if (checked) _pmCheckedSteps[idx] = true;
+  else delete _pmCheckedSteps[idx];
+  // Update the counter label
+  const total = (_pmProcedureCache && _pmProcedureCache.instructions || []).length;
+  const done = Object.keys(_pmCheckedSteps).length;
+  const counter = document.getElementById('pm-step-counter');
+  if (counter) counter.textContent = `${done} / ${total}`;
+  _pmRefreshConfirmGate();
+}
+
+function _pmRefreshConfirmGate() {
+  const btn = document.getElementById('pm-confirm-btn');
+  if (!btn) return;
+  const total = (_pmProcedureCache && _pmProcedureCache.instructions || []).length;
+  const done = Object.keys(_pmCheckedSteps).length;
+  if (total > 0 && done < total) {
+    btn.disabled = true;
+    btn.textContent = `✓ MARK DONE (${done}/${total})`;
+    btn.title = 'Check every step above before signing off.';
+  } else {
+    btn.disabled = _pmConfirming;
+    btn.textContent = '✓ MARK DONE';
+    btn.title = '';
+  }
+}
+
+// ─── Procedure Editor ───────────────────────────────────────────────────
+let _pmEditDraft = null; // {safety:[], tools:[], instructions:[], corrective:[]}
+
+function openPMProcedureEditor() {
+  const t = ALL_PM.find(x => x.id === modalPMId);
+  if (!t) return;
+  const proc = (typeof getPMProcedure === 'function') ? getPMProcedure(t) : {safety:[],tools:[],instructions:[],corrective:[]};
+  _pmEditDraft = {
+    safety:       [...proc.safety],
+    tools:        [...proc.tools],
+    instructions: [...proc.instructions],
+    corrective:   [...proc.corrective]
+  };
+  document.getElementById('pm-edit-title').textContent =
+    `Edit Procedure — ${t.farm} · ${t.sys} · ${t.task}`;
+  _pmRenderEditDraft();
+  document.getElementById('pm-edit-modal').classList.add('open');
+}
+
+function closePMProcedureEditor() {
+  document.getElementById('pm-edit-modal').classList.remove('open');
+  _pmEditDraft = null;
+}
+
+function _pmRenderEditDraft() {
+  if (!_pmEditDraft) return;
+  const sections = [
+    {key:'safety',       label:'⚠️ Safety',           hint:'LOTO, hazards, PPE notes'},
+    {key:'tools',        label:'🛠️ Tools Required',   hint:'Wrenches, grease gun, etc.'},
+    {key:'instructions', label:'📋 PM Instructions',  hint:'Step-by-step — these become the checklist techs must complete'},
+    {key:'corrective',   label:'🔧 Corrective Actions', hint:'What to do if you find a problem'}
+  ];
+  const html = sections.map(s => {
+    const items = (_pmEditDraft[s.key] || []).map((val, i) => `
+      <div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:5px;">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6b7280;min-width:18px;padding-top:8px;">${i+1}.</span>
+        <textarea data-key="${s.key}" data-idx="${i}" oninput="_pmEditUpdate('${s.key}',${i},this.value)" style="flex:1;min-height:36px;padding:6px 8px;border:1px solid #d1d5db;border-radius:5px;font-size:12px;font-family:'IBM Plex Sans',sans-serif;resize:vertical;">${_esc(val)}</textarea>
+        <button type="button" onclick="_pmEditRemove('${s.key}',${i})" title="Remove" style="padding:6px 8px;border:1px solid #fca5a5;background:#fef2f2;color:#991b1b;border-radius:5px;font-weight:700;cursor:pointer;">✕</button>
+      </div>`).join('');
+    return `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div style="font-weight:700;font-size:12px;color:#374151;">${s.label}</div>
+        <button type="button" onclick="_pmEditAdd('${s.key}')" style="padding:4px 10px;background:#10b981;border:none;color:#fff;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;">+ Add</button>
+      </div>
+      <div style="font-size:10px;color:#9ca3af;margin-bottom:6px;font-style:italic;">${s.hint}</div>
+      ${items || '<div style="color:#9ca3af;font-size:11px;font-style:italic;padding:4px;">No items — tap + Add to start.</div>'}
+    </div>`;
+  }).join('');
+  document.getElementById('pm-edit-body').innerHTML = html;
+}
+
+function _pmEditAdd(key) {
+  if (!_pmEditDraft) return;
+  _pmEditDraft[key] = _pmEditDraft[key] || [];
+  _pmEditDraft[key].push('');
+  _pmRenderEditDraft();
+  // Focus the new field
+  setTimeout(() => {
+    const arr = _pmEditDraft[key];
+    const idx = arr.length - 1;
+    const el = document.querySelector(`#pm-edit-body textarea[data-key="${key}"][data-idx="${idx}"]`);
+    if (el) el.focus();
+  }, 50);
+}
+
+function _pmEditRemove(key, idx) {
+  if (!_pmEditDraft || !_pmEditDraft[key]) return;
+  _pmEditDraft[key].splice(idx, 1);
+  _pmRenderEditDraft();
+}
+
+function _pmEditUpdate(key, idx, val) {
+  if (!_pmEditDraft || !_pmEditDraft[key]) return;
+  _pmEditDraft[key][idx] = val;
+}
+
+async function savePMProcedure() {
+  if (!modalPMId || !_pmEditDraft) return;
+  const t = ALL_PM.find(x => x.id === modalPMId);
+  if (!t) return;
+  const editor = document.getElementById('pm-edit-author');
+  const author = editor ? editor.value.trim() : '';
+  if (!author) {
+    alert('Who is editing this procedure? Enter your name so we can audit changes.');
+    if (editor) editor.focus();
+    return;
+  }
+  const btn = document.getElementById('pm-edit-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  setSyncDot('saving');
+  try {
+    // Strip blank entries so they don't clutter the checklist
+    const cleaned = {};
+    ['safety','tools','instructions','corrective'].forEach(k => {
+      cleaned[k] = (_pmEditDraft[k] || []).map(s => String(s||'').trim()).filter(Boolean);
+    });
+    await db.collection('pmProcedures').doc(t.defId).set({
+      ...cleaned,
+      sys: t.sys, defaultTask: t.task,
+      lastEditedBy: author, lastEditedAt: Date.now()
+    });
+    await db.collection('activityLog').add({
+      type:'pm', id: t.defId,
+      desc: `PM procedure edited: ${t.sys} — ${t.task} (${cleaned.instructions.length} step${cleaned.instructions.length===1?'':'s'})`,
+      tech: author, date: new Date().toISOString().slice(0,10), ts: Date.now()
+    });
+    setSyncDot('live');
+    closePMProcedureEditor();
+    // Re-render the procedure block with the new content
+    renderPMProcedure(t);
+  } catch (e) {
+    setSyncDot('live');
+    console.error('savePMProcedure failed:', e);
+    alert('Could not save procedure: ' + (e && e.message ? e.message : e));
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Save Procedure'; }
+  }
 }
 
 let _pmConfirming = false;
@@ -1129,15 +1305,38 @@ async function confirmPM() {
 
   setSyncDot('saving');
 
+  // Capture the procedure checklist state — what steps the tech ticked
+  // off before signing the PM as complete (audit trail).
+  const proc = _pmProcedureCache || (typeof getPMProcedure === 'function' ? getPMProcedure(t) : null);
+  const totalSteps = (proc && proc.instructions || []).length;
+  const checkedStepIdxs = Object.keys(_pmCheckedSteps).map(n => Number(n)).sort((a,b)=>a-b);
+  // Safety net — should already be enforced by the gate, but never let an
+  // incomplete signoff slip through if a tech somehow bypasses the UI.
+  if (totalSteps > 0 && checkedStepIdxs.length < totalSteps) {
+    _pmConfirming = false;
+    if (pmBtn) { pmBtn.disabled = false; pmBtn.textContent = pmBtnOriginal || '✓ MARK DONE'; }
+    alert(`Please check every step (${checkedStepIdxs.length}/${totalSteps} complete) before marking this PM done.`);
+    setSyncDot('live');
+    return;
+  }
+  const procedureSnapshot = (totalSteps > 0) ? {
+    totalSteps,
+    checkedSteps: checkedStepIdxs.length,
+    instructions: proc.instructions,
+    checkedFlags: proc.instructions.map((_, i) => !!_pmCheckedSteps[i])
+  } : null;
+
   try {
     // Always update the 'latest' doc so status logic stays fast
-    await db.collection('pmCompletions').doc(modalPMId).set({tech, date, parts, notes, ts:Date.now()});
+    await db.collection('pmCompletions').doc(modalPMId).set({tech, date, parts, notes, ts:Date.now(), procedure: procedureSnapshot || null});
 
     // Append to history — one record per completion, never overwritten
     await db.collection('pmHistory').add({
       pmId: modalPMId,
       farm: t.farm, sys: t.sys, task: t.task, freq: t.freq,
-      tech, date, parts, notes, ts: Date.now()
+      tech, date, parts, notes,
+      procedure: procedureSnapshot || null,
+      ts: Date.now()
     });
 
     await db.collection('activityLog').add({
@@ -1180,6 +1379,10 @@ async function confirmPM() {
 }
 
 document.getElementById('pm-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closePMModal();});
+(function(){
+  const el = document.getElementById('pm-edit-modal');
+  if (el) el.addEventListener('click', e => { if (e.target === e.currentTarget) closePMProcedureEditor(); });
+})();
 
 // ═══════════════════════════════════════════
 // PM HISTORY MODAL

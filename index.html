@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Rushtown Poultry — Operations Hub</title>
 <script>
-(function(){var V='20260511b';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
+(function(){var V='20260511c';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
 </script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0f1a0f">
@@ -4697,6 +4697,25 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
+<!-- ═══ PM PROCEDURE EDITOR MODAL ═══ -->
+<div class="overlay" id="pm-edit-modal">
+  <div class="modal" style="max-width:560px;width:96vw;">
+    <h3 id="pm-edit-title" style="font-size:14px;line-height:1.3;">Edit Procedure</h3>
+    <p class="modal-sub" style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+      Define the steps techs must verify before this PM can be marked done. Saves to Firestore — survives deploys.
+    </p>
+    <div class="modal-field">
+      <label>Your Name <span class="req">*</span></label>
+      <input type="text" id="pm-edit-author" placeholder="Who's editing? (audit trail)">
+    </div>
+    <div id="pm-edit-body" style="max-height:48vh;overflow-y:auto;padding-right:4px;"></div>
+    <div class="modal-btns" style="gap:6px;">
+      <button class="btn-cancel" onclick="closePMProcedureEditor()">Cancel</button>
+      <button id="pm-edit-save-btn" class="btn-confirm" onclick="savePMProcedure()">💾 Save Procedure</button>
+    </div>
+  </div>
+</div>
+
 <!-- Floating Submit Button -->
 <button class="fab" id="fab-btn" onclick="openQuickWO()" style="display:none;">⚡ QUICK WO</button>
 
@@ -4885,11 +4904,11 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260511b"></script>
+<script defer src="js/core.js?v=20260511c"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260506e"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
-<script defer src="js/maintenance.js?v=20260511b"></script>
+<script defer src="js/maintenance.js?v=20260511c"></script>
 <script defer src="js/trending-wo.js?v=20260501"></script>
 <script defer src="js/packaging.js?v=20260427k"></script>
 <script defer src="js/shipping.js?v=20260424"></script>

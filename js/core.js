@@ -605,6 +605,10 @@ for (const farm of ['Hegins','Danville','Processing Plant']) {
 // ═══════════════════════════════════════════
 let workOrders = [];
 let pmComps    = {};
+// Per-PM procedure overrides edited via the app. Stored in Firestore
+// `pmProcedures/{defId}` — each doc may have {safety, tools, instructions, corrective}.
+// Falls back to PM_DEFS defaults baked into core.js if no override exists.
+let pmProcedures = {};
 let actLog     = [];
 let selPri     = 'normal';
 let woLocFilter = 'all';
@@ -1326,6 +1330,13 @@ async function initApp() {
       refreshCurrentPanel();
     });
 
+    // Per-PM procedure overrides (safety / tools / instructions / corrective)
+    db.collection('pmProcedures').onSnapshot(snap => {
+      pmProcedures = {};
+      snap.forEach(d => { pmProcedures[d.id] = d.data(); });
+      refreshCurrentPanel();
+    });
+
     db.collection('activityLog').orderBy('ts','desc').limit(500).onSnapshot(snap => {
       actLog = [];
       snap.forEach(d => actLog.push(d.data()));
@@ -1380,6 +1391,27 @@ async function initApp() {
 // IMPORTANT: every panel/sub-section the app exposes via go()/goXSection()
 // should appear here, otherwise translation toggles don't fully refresh
 // dynamic content on those screens.
+// ─────────────────────────────────────────────────────────────────────────
+// PM PROCEDURE HELPERS
+// Merge the PM_DEFS baked-in procedure with any Firestore override saved
+// via the "Edit Procedure" mini-modal. Always returns 4 arrays (may be empty).
+// ─────────────────────────────────────────────────────────────────────────
+function getPMProcedure(t) {
+  if (!t) return {safety:[], tools:[], instructions:[], corrective:[]};
+  const override = (typeof pmProcedures !== 'undefined' && pmProcedures && pmProcedures[t.defId]) || null;
+  const pick = (k) => {
+    if (override && Array.isArray(override[k])) return override[k];
+    if (t && Array.isArray(t[k])) return t[k];
+    return [];
+  };
+  return {
+    safety:       pick('safety'),
+    tools:        pick('tools'),
+    instructions: pick('instructions'),
+    corrective:   pick('corrective')
+  };
+}
+
 function refreshCurrentPanel() {
   const safe = fn => { try { if (typeof fn === 'function') fn(); } catch(e) { console.warn('refreshCurrentPanel:', e); } };
   const active = tab => document.getElementById('panel-' + tab)?.classList.contains('active');
