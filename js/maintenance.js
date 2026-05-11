@@ -11,7 +11,7 @@ function requestNotifPermission() {
 function sendNotif(title, body, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   try {
-    new Notification(title, { body, tag: tag||'rushtown', icon: '/icon-192.png', badge: '/icon-192.png' });
+    new Notification(title, { body, tag: tag||'rushtown', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png' });
   } catch(e) { /* silently fail on unsupported browsers */ }
 }
 
@@ -2485,7 +2485,7 @@ async function loadDowntime() {
     db.collection('downtimeEvents').orderBy('startTs','desc').onSnapshot(snap => {
       downtimeEvents = [];
       snap.forEach(d => downtimeEvents.push({...d.data(), _fbId: d.id}));
-      if (document.getElementById('panel-reports').classList.contains('active')) renderReports();
+      if (document.getElementById('panel-reports')?.classList.contains('active')) renderReports();
     });
   } catch(e) { console.error('Downtime load error:', e); }
 }

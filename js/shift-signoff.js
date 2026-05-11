@@ -14,6 +14,7 @@ function startSignoffListener() {
   _ssListening = true;
   const today = new Date().toISOString().slice(0,10);
   db.collection('shiftSignoffs').where('date','==',today).onSnapshot(snap => {
+    _ssSignoffs = {};                                          // ← drop stale entries (deletes & yesterday)
     snap.docs.forEach(d => { _ssSignoffs[d.id] = d.data(); });
     // Refresh Director's Brief badge if open
     if (document.getElementById('panel-brief')?.classList.contains('active')) dbRender();

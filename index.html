@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Rushtown Poultry — Operations Hub</title>
 <script>
-(function(){var V='20260427n';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
+(function(){var V='20260511a';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
 </script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0f1a0f">
@@ -4882,8 +4882,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 <script defer src="js/core.js?v=20260506d"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
-<script defer src="js/barn-status-panel.js?v=20260506d"></script>
-<script defer src="js/eos-rollup.js?v=20260506b"></script>
+<script defer src="js/barn-status-panel.js?v=20260506e"></script>
+<script defer src="js/eos-rollup.js?v=20260506c"></script>
 <script defer src="js/maintenance.js?v=20260428b"></script>
 <script defer src="js/trending-wo.js?v=20260501"></script>
 <script defer src="js/packaging.js?v=20260427k"></script>
@@ -4952,4 +4952,9 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('/sw.js')
       .then(function(reg) { console.log('SW registered:', reg.scope); })
-      .catch(function(err) { console.warn('SW registration failed:', err
+      .catch(function(err) { console.warn('SW registration failed:', err); });
+  });
+}
+</script>
+</body>
+</html>

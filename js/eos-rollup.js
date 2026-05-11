@@ -22,6 +22,20 @@
   };
   const STALL_MIN = 45;
 
+  // Friendly labels for FAIL display — keep aligned with barn-status-panel.js
+  const TASK_NAME = {
+    fwv:          'Monitor F/W/V',
+    birdcheck:    'Full bird check',
+    watertubes:   'Water tubes',
+    frontofhouse: 'Front of house',
+    blowoff:      'Blow-off',
+    wheelbarrow:  'Wheelbarrow + back',
+    undercages:   'Under-cage cleaning',
+    hallways:     'Hallways',
+    flycheck:     'Fly check',
+    rodentcheck:  'Rodent check',
+  };
+
   // Shift window — keep aligned with barn-status-panel.js
   const SHIFT = { days:[1,2,3,4,5,6], startHour:6, endHour:17 };
   function inShiftWindow(d = new Date()) {
@@ -56,7 +70,19 @@
     if (!rec || !rec.checklist) return [];
     return Object.entries(rec.checklist)
       .filter(([, v]) => v === 'fail')
-      .map(([k]) => k);
+      .map(([k]) => TASK_NAME[k] || k);
+  }
+  // Returns [{ task, note }, ...] for every failed task on a record.
+  // Used in the email body where there's room for the worker's note.
+  function failDetails(rec) {
+    if (!rec || !rec.checklist) return [];
+    const notes = rec.checklistNotes || {};
+    return Object.entries(rec.checklist)
+      .filter(([, v]) => v === 'fail')
+      .map(([k]) => ({
+        task: TASK_NAME[k] || k,
+        note: (notes[k] || '').trim(),
+      }));
   }
 
   function fmtMin(m) {
@@ -169,6 +195,13 @@
         const worker = b.rec?.worker || '—';
         const fbBit = fbN ? ` · ${fbN} FAIL` : '';
         lines.push(`  H${b.house}: ${stat.label.padEnd(12)} ${pct}%  ${fmtMin(dn).padEnd(8)} ${worker}${fbBit}`);
+        // Per-fail breakdown so the manager sees what actually broke
+        if (fbN > 0) {
+          failDetails(b.rec).forEach(f => {
+            const noteBit = f.note ? ' — ' + f.note : '';
+            lines.push(`       ⚠ ${f.task}${noteBit}`);
+          });
+        }
       });
       lines.push('');
     });

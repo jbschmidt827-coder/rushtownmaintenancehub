@@ -133,10 +133,13 @@ exports.dailyPMCheck = onSchedule(
 
     if (!overdue.length) return null;
 
-    // Group by farm (pmId format: "Farm-...")
+    // Group by farm (pmId format: "Farm-..."). Frontend supports multiple farms;
+    // we read the first segment instead of hardcoding Danville/Hegins.
+    const KNOWN_FARMS = ['Danville','Hegins','Rushtown','Turbotville','W&M'];
     const byFarm = {};
     overdue.forEach(o => {
-      const farm = o.pmId.startsWith('Danville') ? 'Danville' : 'Hegins';
+      const seg  = String(o.pmId || '').split('-')[0];
+      const farm = KNOWN_FARMS.includes(seg) ? seg : 'Other';
       byFarm[farm] = (byFarm[farm] || 0) + 1;
     });
 

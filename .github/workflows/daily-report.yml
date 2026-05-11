@@ -2,7 +2,7 @@ name: Daily Report
 
 on:
   schedule:
-    - cron: '0 11 * * *'   # 6:00 AM EST (UTC-5)
+    - cron: '0 11 * * *'   # 11:00 UTC = 6 AM EST (winter) / 7 AM EDT (summer). GitHub crons run in UTC and don't honor DST.
   workflow_dispatch:        # allow manual run
 
 permissions:

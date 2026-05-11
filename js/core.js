@@ -169,11 +169,23 @@ async function loadPOCounter() {
     if (doc.exists) poCounter = (doc.data().val || 0) + 1;
   } catch(e) { poCounter = 1; }
 }
+// Atomic PO ID minting — same pattern as mintWoId(). Prevents two devices
+// from generating the same PO-#### at the same time.
 async function getNextPO() {
-  const num = 'PO-' + String(poCounter).padStart(4,'0');
-  poCounter++;
-  await db.collection('settings').doc('poCounter').set({val: poCounter - 1});
-  return num;
+  const counterRef = db.collection('settings').doc('poCounter');
+  const n = await db.runTransaction(async tx => {
+    const snap = await tx.get(counterRef);
+    let v;
+    if (snap.exists && typeof snap.data().val === 'number' && snap.data().val > 0) {
+      v = snap.data().val;
+    } else {
+      v = (typeof poCounter !== 'undefined' && poCounter > 0) ? poCounter : 1;
+    }
+    tx.set(counterRef, { val: v + 1 });
+    return v;
+  });
+  poCounter = n + 1;
+  return 'PO-' + String(n).padStart(4,'0');
 }
 
 // ─── Work Order ID minting ──────────────────────────────────────────────
@@ -388,7 +400,17 @@ let flocks        = [];   // flock placement records
 let opsEggByBarn  = [];   // per-barn egg collection + packing log
 
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
-const todayStr = TODAY.toISOString().split('T')[0];
+// `todayStr` is read from many modules. PWAs can run for >24h on phones,
+// so we refresh once a minute to keep midnight rollovers accurate.
+let todayStr = new Date().toISOString().slice(0,10);
+setInterval(() => {
+  const t = new Date().toISOString().slice(0,10);
+  if (t !== todayStr) {
+    todayStr = t;
+    // Force a re-render so date-scoped views (egg log, walks, etc) refresh.
+    if (typeof refreshCurrentPanel === 'function') refreshCurrentPanel();
+  }
+}, 60000);
 
 function setSyncDot(state) {
   const d = document.getElementById('sync-dot');
@@ -1002,58 +1024,69 @@ function startLandingClock() {
 }
 
 async function initApp() {
-  setMsg('Loading work orders...');
+  setMsg('Loading…');
   try {
-    const woSnap = await db.collection('workOrders').orderBy('ts','desc').get();
+    const today = new Date().toISOString().slice(0,10);
+
+    // ── Parallel pass 1: the five core collections used by the dashboard ──
+    // Previously these were 5 sequential awaits (~5×RTT). Running them in
+    // parallel cuts cold-open time substantially on slow mobile networks.
+    // activityLog is limited to the most recent 500 entries (was unbounded).
+    const [woSnap, pmSnap, partsSnap, checkinSnap, logSnap] = await Promise.all([
+      db.collection('workOrders').orderBy('ts','desc').get(),
+      db.collection('pmCompletions').get(),
+      db.collection('partsInventory').get(),
+      db.collection('dailyCheckins').where('date','==',today).get(),
+      db.collection('activityLog').orderBy('ts','desc').limit(500).get(),
+    ]);
+
     workOrders = [];
     woSnap.forEach(d => workOrders.push({...d.data(), _fbId: d.id}));
     if (workOrders.length > 0) {
-      woCounter = Math.max(...workOrders.map(w => parseInt(w.id.replace('WO-','')))) + 1;
+      const nums = workOrders.map(w => parseInt((w.id||'').replace('WO-',''))).filter(n => !isNaN(n));
+      woCounter = nums.length ? nums.reduce((m,n) => Math.max(m,n), 0) + 1 : 1;
     }
 
-    setMsg('Loading PM completions...');
-    // Load latest completion per task from the 'latest' doc in each subcollection
-    const pmSnap = await db.collection('pmCompletions').get();
     pmComps = {};
     pmSnap.forEach(d => { pmComps[d.id] = d.data(); });
 
-    setMsg('Loading parts inventory...');
-    const partsSnap = await db.collection('partsInventory').get();
     partsInventory = {};
     partsSnap.forEach(d => { partsInventory[d.id] = d.data(); });
 
-    setMsg('Loading crew check-ins...');
-    const today = new Date().toISOString().slice(0,10);
-    const checkinSnap = await db.collection('dailyCheckins')
-      .where('date','==',today).get();
     dailyCheckins = {};
     checkinSnap.forEach(d => { dailyCheckins[d.id] = d.data().crew||[]; });
 
-    setMsg('Loading activity log...');
-    const logSnap = await db.collection('activityLog').orderBy('ts','desc').get();
     actLog = [];
     logSnap.forEach(d => actLog.push(d.data()));
 
     setMsg('Connected!');
     setSyncDot('live');
 
-    // Load new collections
-    await loadDowntime();
-    await loadPOCounter();
-    await loadAssets();
-    await loadWI();
-    await loadCustomParts();
-    await loadFeedBins();
-    await loadFeedData();
-    await loadEggByBarn();
-    await loadEggQuality();
-    await loadPkgExtras();
-    await loadBioLog();
-    await seedMortalityCompostingWI();
-    await seedWaterRegulatorWI();
-    await seedAugerRollerWI();
-    await seedCounterCardWI();
-    await seedRushtownOpsWI();
+    // ── Parallel pass 2: the rest of the read-only loaders.
+    // The seed* functions write back to Firestore so keep them sequential
+    // after the reads to avoid racing with a concurrent listener firing.
+    await Promise.all([
+      loadDowntime(),
+      loadPOCounter(),
+      loadAssets(),
+      loadWI(),
+      loadCustomParts(),
+      loadFeedBins(),
+      loadFeedData(),
+      loadEggByBarn(),
+      loadEggQuality(),
+      loadPkgExtras(),
+      loadBioLog(),
+    ]);
+
+    // Run write-back seeders in parallel — independent docs.
+    await Promise.all([
+      seedMortalityCompostingWI(),
+      seedWaterRegulatorWI(),
+      seedAugerRollerWI(),
+      seedCounterCardWI(),
+      seedRushtownOpsWI(),
+    ]);
     assignRHNumbers();
 
     // Real-time listeners
@@ -1062,7 +1095,7 @@ async function initApp() {
       snap.forEach(d => workOrders.push({...d.data(), _fbId: d.id}));
       if (workOrders.length > 0) {
         const nums = workOrders.map(w => parseInt((w.id||'').replace('WO-',''))).filter(n => !isNaN(n));
-        woCounter = nums.length ? Math.max(...nums) + 1 : 1;
+        woCounter = nums.length ? nums.reduce((m,n) => Math.max(m,n), 0) + 1 : 1;
       }
       refreshCurrentPanel();
     });
@@ -1073,17 +1106,18 @@ async function initApp() {
       refreshCurrentPanel();
     });
 
-    db.collection('activityLog').orderBy('ts','desc').onSnapshot(snap => {
+    db.collection('activityLog').orderBy('ts','desc').limit(500).onSnapshot(snap => {
       actLog = [];
       snap.forEach(d => actLog.push(d.data()));
       if (document.getElementById('panel-log')?.classList.contains('active') || window._maintSection==='log') renderLog();
-      if (document.getElementById('panel-reports').classList.contains('active')) renderReports();
+      if (document.getElementById('panel-reports')?.classList.contains('active')) renderReports();
     });
 
     db.collection('partsInventory').onSnapshot(snap => {
+      partsInventory = {};
       snap.forEach(d => { partsInventory[d.id] = d.data(); });
       if (document.getElementById('panel-parts')?.classList.contains('active') || window._maintSection==='parts') renderParts();
-      if (document.getElementById('panel-reports').classList.contains('active')) renderReports();
+      if (document.getElementById('panel-reports')?.classList.contains('active')) renderReports();
       updatePartsAlerts();
     });
 
@@ -1100,20 +1134,23 @@ async function initApp() {
     await loadOpsData();
     startOpsListeners();
 
-    setTimeout(() => {
-      document.getElementById('loading-screen').classList.add('hidden');
+    // Render and hide splash on the next frame — no artificial delay.
+    requestAnimationFrame(() => {
+      const ls = document.getElementById('loading-screen');
+      if (ls) ls.classList.add('hidden');
       renderDash();
       if (typeof initNotifications === 'function') initNotifications();
-    }, 600);
+    });
 
   } catch(err) {
-    setMsg('Error: ' + err.message);
-    console.error(err);
-    // Show app anyway after error
-    setTimeout(() => {
-      document.getElementById('loading-screen').classList.add('hidden');
+    console.error('initApp failed:', err);
+    setMsg('Connection issue — opening anyway…');
+    // Show app immediately on error so the user isn't stuck on the splash.
+    requestAnimationFrame(() => {
+      const ls = document.getElementById('loading-screen');
+      if (ls) ls.classList.add('hidden');
       renderDash();
-    }, 2000);
+    });
   }
 }
 

@@ -59,6 +59,20 @@
     rodentcheck:   30,
   };
 
+  // Friendly labels for FAIL display — short enough to fit on a card.
+  const TASK_NAME = {
+    fwv:          'Monitor F/W/V',
+    birdcheck:    'Full bird check',
+    watertubes:   'Water tubes',
+    frontofhouse: 'Front of house',
+    blowoff:      'Blow-off',
+    wheelbarrow:  'Wheelbarrow + back',
+    undercages:   'Under-cage cleaning',
+    hallways:     'Hallways',
+    flycheck:     'Fly check',
+    rodentcheck:  'Rodent check',
+  };
+
   // ── Day-of-week + permanent visibility (matches time-blocks.js) ─
   function isTaskShownToday(taskId) {
     const dow = new Date().getDay();
@@ -236,8 +250,49 @@
     // dashboard exec brief can read it without re-deriving the math.
     window._dashStalledBarns = stalledNow;
 
+    // Build the FAIL details list — collapsed by default. Only the count
+    // shows by default; a single tap reveals the per-fail breakdown.
+    const failItems = [];
+    Object.entries(recByKey).forEach(([k, rec]) => {
+      const [farm, house] = k.split('#');
+      const checks = rec.checklist || {};
+      const notes  = rec.checklistNotes || {};
+      Object.entries(checks).forEach(([taskId, val]) => {
+        if (val !== 'fail') return;
+        failItems.push({
+          farm, house,
+          task: TASK_NAME[taskId] || taskId,
+          note: (notes[taskId] || '').trim(),
+          worker: rec.worker || '',
+        });
+      });
+    });
+    // Persist the open/closed state across re-renders so the lead doesn't
+    // have to re-open the strip every time barnWalks updates.
+    window._dashFailOpen = window._dashFailOpen || false;
+    let failStripHtml = '';
+    if (failItems.length > 0) {
+      const isOpen = window._dashFailOpen;
+      const itemsHtml = failItems.map(f => `
+        <div style="display:flex;gap:8px;padding:7px 10px;border-bottom:1px solid #1a2a1a;font-family:'IBM Plex Mono',monospace;font-size:11px;">
+          <span style="flex-shrink:0;color:#7ab07a;font-weight:700;min-width:78px;">${escapeAttr(f.farm)} H${f.house}</span>
+          <span style="flex-shrink:0;color:#e57373;min-width:130px;">${escapeAttr(f.task)}</span>
+          <span style="flex:1;color:#c8b08a;">${f.note ? escapeAttr(f.note) : '<em style="color:#5a7a5a;">no note</em>'}</span>
+          ${f.worker ? `<span style="flex-shrink:0;color:#5a7a5a;font-size:10px;">${escapeAttr(String(f.worker).split(' ')[0])}</span>` : ''}
+        </div>`).join('');
+      failStripHtml = `
+        <div style="margin-top:10px;background:#1a0808;border:1px solid #3a1010;border-radius:8px;overflow:hidden;">
+          <button onclick="(function(){window._dashFailOpen=!window._dashFailOpen;document.dispatchEvent(new CustomEvent('rerender-barn-status'));})()" style="width:100%;display:flex;align-items:center;gap:8px;padding:8px 11px;background:transparent;border:none;color:#e57373;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;text-align:left;">
+            <span>⚠️ ${failItems.length} FAIL ${failItems.length===1?'item':'items'} today</span>
+            <span style="margin-left:auto;color:#7a8a7a;font-size:9px;font-weight:400;">${isOpen ? 'hide details ▴' : 'show details ▾'}</span>
+          </button>
+          <div style="display:${isOpen ? 'block' : 'none'};border-top:1px solid #3a1010;background:#0f0505;">${itemsHtml}</div>
+        </div>`;
+    }
+
+    html += failStripHtml;
     html += `
-        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:6px;padding-top:8px;border-top:1px solid #1a3a1a;">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid #1a3a1a;">
           <div style="text-align:center;">
             <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#4caf50;">${submitted}</div>
             <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;text-transform:uppercase;letter-spacing:1px;">Submitted</div>
@@ -361,4 +416,8 @@
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) render();
   });
+
+  // Custom rerender hook used by the FAIL-details show/hide toggle so
+  // it can flip state without re-fetching from Firestore.
+  document.addEventListener('rerender-barn-status', () => render());
 })();
