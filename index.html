@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Rushtown Poultry — Operations Hub</title>
 <script>
-(function(){var V='20260511a';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
+(function(){var V='20260511b';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
 </script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0f1a0f">
@@ -3082,9 +3082,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     </div>
     <div class="stats-grid g4" id="pm-stats"></div>
     <div class="pill-bar" id="pm-loc-bar">
-      <button class="loc-pill active" onclick="pmLoc('all',this)">All Farms</button>
+      <button class="loc-pill active" onclick="pmLoc('all',this)">All Locations</button>
       <button class="loc-pill" onclick="pmLoc('Hegins',this)">📍 Hegins</button>
       <button class="loc-pill" onclick="pmLoc('Danville',this)">📍 Danville</button>
+      <button class="loc-pill" onclick="pmLoc('Processing Plant',this)">📦 Processing Plant</button>
     </div>
     <div class="pill-bar" id="pm-filter-bar">
       <button class="pill active" onclick="pmStat('all',this)">All Tasks</button>
@@ -3100,6 +3101,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="pill" onclick="pmSys('Feed System',this)">🌾 Feed System</button>
       <button class="pill" onclick="pmSys('Ventilation',this)">💨 Ventilation</button>
       <button class="pill" onclick="pmSys('Manure',this)">♻️ Manure</button>
+      <button class="pill" onclick="pmSys('Packaging',this)">📦 Packaging</button>
     </div>
     <div id="pm-container"></div>
   </div>
@@ -4659,6 +4661,9 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <h3>Mark Task Complete</h3>
     <p class="modal-sub" id="modal-desc"></p>
 
+    <!-- Procedure block (safety / tools / instructions / corrective) — rendered when PM def has those fields -->
+    <div id="pm-modal-procedure" style="display:none;margin-bottom:10px;max-height:38vh;overflow-y:auto;"></div>
+
     <!-- Linked Work Instruction button (shown when a matching WI exists) -->
     <div id="pm-modal-wi-strip" style="display:none;background:#f0f4ff;border:1px solid #3b82f6;border-radius:7px;padding:8px 12px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4880,11 +4885,11 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260506d"></script>
+<script defer src="js/core.js?v=20260511b"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260506e"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
-<script defer src="js/maintenance.js?v=20260428b"></script>
+<script defer src="js/maintenance.js?v=20260511b"></script>
 <script defer src="js/trending-wo.js?v=20260501"></script>
 <script defer src="js/packaging.js?v=20260427k"></script>
 <script defer src="js/shipping.js?v=20260424"></script>

@@ -131,7 +131,7 @@ const FREQ = {
   semiannual: {label:'Bi-Annual',    icon:'🟣', days:180},
   annual:     {label:'Annual',       icon:'🔴', days:365},
 };
-const SYS_TAG  = {Ventilation:'t-vent',Water:'t-water',Feed:'t-feed','Feed System':'t-feed',Feeders:'t-feed',Manure:'t-manure','Egg Collectors':'t-egg',Building:'t-building',Alarms:'t-water',Lubing:'t-lubing'};
+const SYS_TAG  = {Ventilation:'t-vent',Water:'t-water',Feed:'t-feed','Feed System':'t-feed',Feeders:'t-feed',Manure:'t-manure','Egg Collectors':'t-egg',Building:'t-building',Alarms:'t-water',Lubing:'t-lubing',Packaging:'t-egg'};
 
 // Maps WO problem type keywords → parts system categories
 const PROBLEM_TO_PARTS = {
@@ -216,7 +216,7 @@ async function mintWoId() {
   if (typeof woCounter !== 'undefined') woCounter = next + 1;
   return 'WO-' + String(next).padStart(3, '0');
 }
-const SYS_ICON = {Ventilation:'💨',Water:'💧',Feed:'🌾','Feed System':'🌾',Feeders:'🌾',Manure:'♻️','Egg Collectors':'🥚',Building:'🏚️',Alarms:'🚨',Lubing:'🛢️'};
+const SYS_ICON = {Ventilation:'💨',Water:'💧',Feed:'🌾','Feed System':'🌾',Feeders:'🌾',Manure:'♻️','Egg Collectors':'🥚',Building:'🏚️',Alarms:'🚨',Lubing:'🛢️',Packaging:'📦'};
 
 const PM_DEFS = [
   // ── MANURE SYSTEM ─────────────────────────────────────────
@@ -318,6 +318,220 @@ const PM_DEFS = [
   {id:'lb6',sys:'Lubing',task:'Check chain for any missing rods and replace',freq:'daily',hrs:0.5},
   {id:'lb7',sys:'Lubing',task:'Check rod counter sprockets for wear and adjustment',freq:'daily',hrs:0.25},
   {id:'lb8',sys:'Lubing',task:'Fill oil reservoirs as needed',freq:'daily',hrs:0.25},
+
+  // ── PACKAGING (Processing Plant Equipment) ────────────────
+  {id:'pk-rodcon',sys:'Packaging',task:'Rod Conveyor — weekly inspection',freq:'weekly',hrs:0.33, farms:['Processing Plant'],
+    safety:['Lock out / tag out equipment before inspection','Verify conveyor cannot start automatically'],
+    tools:['Grease gun','Wrenches','Flashlight','Cleaning rag'],
+    instructions:[
+      'Inspect rods for bends, cracks, or excessive wear',
+      'Check chain tension and alignment',
+      'Inspect sprockets for wear',
+      'Check bearings for heat, vibration, or noise',
+      'Inspect guards and mounting hardware',
+      'Remove egg buildup and debris',
+      'Lubricate bearings if required',
+      'Run conveyor and verify smooth operation'
+    ],
+    corrective:['Replace damaged rods','Tighten loose hardware','Report worn sprockets or bearings','Create WO for repairs outside PM scope']
+  },
+  {id:'pk-slk',sys:'Packaging',task:'SLK — weekly inspection',freq:'weekly',hrs:0.25, farms:['Processing Plant'],
+    instructions:[
+      'Verify proper machine cycling',
+      'Inspect chains and sprockets',
+      'Check bearings for vibration or noise',
+      'Inspect sensors and switches',
+      'Tighten loose hardware',
+      'Clean debris and buildup',
+      'Verify proper product flow'
+    ],
+    corrective:['Adjust timing if required','Replace damaged sensors','Create WO for major issues']
+  },
+  {id:'pk-washer',sys:'Packaging',task:'Washer — monthly inspection',freq:'monthly',hrs:0.75, farms:['Processing Plant'],
+    instructions:[
+      'Run test eggs through washer',
+      'Inspect transfer points',
+      'Clean and inspect brushes',
+      'Check all belts for wear and tracking',
+      'Inspect master links and chain condition',
+      'Verify spray nozzles are clear',
+      'Check water flow and temperature',
+      'Inspect bearings and motors',
+      'Clean debris and buildup',
+      'Verify proper egg flow through machine'
+    ],
+    corrective:['Replace worn brushes','Adjust belts','Replace damaged chains or links','Create WO for motor or bearing issues']
+  },
+  {id:'pk-blower',sys:'Packaging',task:'Blower — weekly inspection',freq:'weekly',hrs:0.25, farms:['Processing Plant'],
+    instructions:[
+      'Inspect blower motor',
+      'Check fan blades for damage',
+      'Inspect belts and alignment',
+      'Check bearings for heat or noise',
+      'Tighten hardware and guards',
+      'Clean dust buildup',
+      'Verify proper airflow'
+    ],
+    corrective:['Replace damaged belts','Report vibration issues','Create WO for motor repairs']
+  },
+  {id:'pk-candler',sys:'Packaging',task:'Candler — monthly inspection',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
+    instructions:[
+      'Verify candler light operation',
+      'Inspect copper plug-ins',
+      'Clean lenses and sensors',
+      'Verify reject functions',
+      'Inspect electrical connections',
+      'Tighten loose hardware',
+      'Test operation with eggs'
+    ],
+    corrective:['Replace failed lights','Repair loose connections','Create WO for electrical repairs']
+  },
+  {id:'pk-dirtdet',sys:'Packaging',task:'Dirt Detector — monthly inspection',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
+    instructions:[
+      'Calibrate detector',
+      'Verify reject operation',
+      'Clean sensors and lenses',
+      'Inspect mounts and wiring',
+      'Run test eggs through detector',
+      'Verify sensitivity settings'
+    ],
+    corrective:['Recalibrate unit','Replace damaged sensors','Create WO if reject system fails']
+  },
+  {id:'pk-pusher',sys:'Packaging',task:'Pusher Pin Chain — monthly inspection',freq:'monthly',hrs:0.42, farms:['Processing Plant'],
+    instructions:[
+      'Inspect chain tension',
+      'Check alignment',
+      'Inspect pusher pins for damage',
+      'Inspect sprockets and bearings',
+      'Lubricate chain',
+      'Tighten loose hardware',
+      'Verify smooth movement'
+    ],
+    corrective:['Replace damaged pins','Adjust chain tension','Create WO for excessive wear']
+  },
+  {id:'pk-transfer',sys:'Packaging',task:'Transfer — monthly inspection',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
+    instructions:[
+      'Check transfer timing',
+      'Inspect rollers and belts',
+      'Verify alignment',
+      'Tighten hardware',
+      'Inspect bearings',
+      'Remove debris buildup',
+      'Verify smooth egg flow'
+    ],
+    corrective:['Adjust alignment','Replace damaged rollers','Create WO for major repairs']
+  },
+  {id:'pk-scales',sys:'Packaging',task:'Scales — monthly inspection',freq:'monthly',hrs:0.5, farms:['Processing Plant'],
+    instructions:[
+      'Auto calibrate scales',
+      'Verify accuracy with test weights',
+      'Inspect load cells',
+      'Inspect wiring and mounts',
+      'Clean debris from scale area',
+      'Verify communication with system'
+    ],
+    corrective:['Recalibrate scales','Replace damaged load cells','Create WO for electrical issues']
+  },
+  {id:'pk-basket',sys:'Packaging',task:'Basket Conveyor — monthly inspection',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
+    instructions:[
+      'Inspect conveyor alignment',
+      'Inspect baskets for wear',
+      'Check chain and sprockets',
+      'Inspect bearings',
+      'Lubricate moving parts',
+      'Verify smooth operation'
+    ],
+    corrective:['Replace damaged baskets','Tighten loose hardware','Create WO for major repairs']
+  },
+  {id:'pk-blood',sys:'Packaging',task:'Blood Detector — monthly inspection',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
+    instructions:[
+      'Test blood detector operation',
+      'Verify reject system works',
+      'Clean sensors and lenses',
+      'Inspect wiring and mounts',
+      'Verify calibration settings'
+    ],
+    corrective:['Recalibrate detector','Replace failed sensors','Create WO for electrical repairs']
+  },
+  {id:'pk-packers',sys:'Packaging',task:'Packers — monthly inspection',freq:'monthly',hrs:1.0, farms:['Processing Plant'],
+    instructions:[
+      'Run 100 test eggs through all packers',
+      'Verify proper packing operation',
+      'Inspect chains, belts, and sprockets',
+      'Inspect rubber components',
+      'Tighten loose hardware',
+      'Inspect bearings and rollers',
+      'Clean buildup and debris',
+      'Verify reject and transfer functions'
+    ],
+    corrective:['Replace worn rubber','Adjust timing','Create WO for major mechanical issues']
+  },
+  {id:'pk-cagebelt',sys:'Packaging',task:'Cage Belt — weekly inspection',freq:'weekly',hrs:0.33, farms:['Processing Plant'],
+    instructions:[
+      'Inspect belt condition',
+      'Verify belt tracking',
+      'Inspect rollers and bearings',
+      'Check chain and sprockets',
+      'Remove buildup and debris',
+      'Verify smooth operation'
+    ],
+    corrective:['Adjust tracking','Replace damaged rollers','Create WO for torn belts']
+  },
+  {id:'pk-loader',sys:'Packaging',task:'Loader — weekly inspection',freq:'weekly',hrs:0.33, farms:['Processing Plant'],
+    instructions:[
+      'Inspect loader timing',
+      'Check chains and sprockets',
+      'Inspect bearings',
+      'Verify smooth product flow',
+      'Tighten hardware',
+      'Lubricate moving parts'
+    ],
+    corrective:['Adjust timing','Replace damaged chains','Create WO for major repairs']
+  },
+  {id:'pk-lights',sys:'Packaging',task:'Plant Lights — weekly inspection',freq:'weekly',hrs:0.25, farms:['Processing Plant'],
+    instructions:[
+      'Inspect all plant lighting',
+      'Replace bad bulbs',
+      'Replace failed ballasts',
+      'Inspect fixtures and wiring',
+      'Clean dust buildup'
+    ],
+    corrective:['Replace failed fixtures','Create WO for electrical issues']
+  },
+  {id:'pk-aircomp',sys:'Packaging',task:'Air Compressor — monthly inspection',freq:'monthly',hrs:0.5, farms:['Processing Plant'],
+    instructions:[
+      'Change oil',
+      'Drain moisture from tank',
+      'Inspect hoses and fittings',
+      'Check for air leaks',
+      'Inspect belts and alignment',
+      'Verify pressure settings',
+      'Clean cooling fins'
+    ],
+    corrective:['Replace leaking hoses','Tighten fittings','Create WO for compressor issues']
+  },
+  {id:'pk-boiler',sys:'Packaging',task:'Boiler — weekly inspection',freq:'weekly',hrs:0.33, farms:['Processing Plant'],
+    instructions:[
+      'Visually inspect boiler',
+      'Check for leaks',
+      'Verify pressure and temperature',
+      'Inspect valves and safety devices',
+      'Listen for unusual noises',
+      'Clean surrounding area'
+    ],
+    corrective:['Report pressure issues immediately','Create WO for leaks or unsafe conditions']
+  },
+  {id:'pk-bldg',sys:'Packaging',task:'Building Maintenance — weekly walk',freq:'weekly',hrs:0.5, farms:['Processing Plant'],
+    instructions:[
+      'Inspect walls, floors, and ceilings',
+      'Inspect doors and docks',
+      'Check handrails and guards',
+      'Verify safety signage',
+      'Inspect housekeeping and 5S conditions',
+      'Identify structural or utility repairs needed'
+    ],
+    corrective:['Create WO for repairs','Correct housekeeping issues immediately']
+  },
 ];
 
 // ═══════════════════════════════════════════
@@ -373,10 +587,16 @@ let editingPartId = null;
 let editingPartQty = 0;
 
 const ALL_PM = [];
-for (const farm of ['Hegins','Danville']) {
+for (const farm of ['Hegins','Danville','Processing Plant']) {
   for (const def of PM_DEFS) {
     if (def.farms && !def.farms.includes(farm)) continue;
-    ALL_PM.push({id:`${farm}-${def.id}`, defId:def.id, farm, sys:def.sys, task:def.task, freq:def.freq, hrs:def.hrs});
+    ALL_PM.push({
+      id:`${farm}-${def.id}`, defId:def.id, farm,
+      sys:def.sys, task:def.task, freq:def.freq, hrs:def.hrs,
+      // Procedural details (optional — used by PM modal if present)
+      safety:def.safety||null, tools:def.tools||null,
+      instructions:def.instructions||null, corrective:def.corrective||null
+    });
   }
 }
 

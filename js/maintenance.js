@@ -888,10 +888,10 @@ function renderPM() {
   }
 
   let html = banner;
-  for (const sys of ['Ventilation','Water','Feed','Manure','Egg Collectors','Building','Alarms','Lubing']) {
+  for (const sys of ['Ventilation','Water','Feed','Feeders','Manure','Egg Collectors','Building','Alarms','Lubing','Packaging']) {
     const st=filtered.filter(t=>t.sys===sys);
     if (!st.length) continue;
-    html+=`<div class="sys-hdr">${SYS_ICON[sys]} ${sys}</div><div class="card-list">`;
+    html+=`<div class="sys-hdr">${SYS_ICON[sys]||'🔧'} ${sys}</div><div class="card-list">`;
     html+=st.map(t=>pmCardHtml(t)).join('');
     html+='</div>';
   }
@@ -1023,11 +1023,48 @@ async function skipPM() {
 function openPMModal(id) {
   modalPMId=id;
   const t=ALL_PM.find(x=>x.id===id);
-  document.getElementById('modal-desc').textContent=`${t.farm} · ${SYS_ICON[t.sys]} ${t.sys} · ${FREQ[t.freq].label} — ${t.task}`;
+  document.getElementById('modal-desc').textContent=`${t.farm} · ${SYS_ICON[t.sys]||'🔧'} ${t.sys} · ${FREQ[t.freq].label} — ${t.task}`;
   document.getElementById('modal-date').value=todayStr;
   document.getElementById('modal-parts').value='';
   document.getElementById('modal-notes').value='';
   document.getElementById('modal-gen-wo').value='no';
+
+  // Render procedure block (safety / tools / instructions / corrective) if any
+  const procEl = document.getElementById('pm-modal-procedure');
+  if (procEl) {
+    const blocks = [];
+    if (t.safety && t.safety.length) {
+      blocks.push(`<div style="background:#fff3cd;border:1px solid #856404;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
+        <div style="font-weight:700;font-size:11px;color:#856404;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;">⚠️ SAFETY</div>
+        <ul style="margin:0;padding-left:18px;font-size:12px;color:#5a3e00;">${t.safety.map(s=>`<li>${s}</li>`).join('')}</ul>
+      </div>`);
+    }
+    if (t.tools && t.tools.length) {
+      blocks.push(`<div style="background:#eef2ff;border:1px solid #6366f1;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
+        <div style="font-weight:700;font-size:11px;color:#3730a3;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;">🛠️ TOOLS REQUIRED</div>
+        <div style="font-size:12px;color:#1e1b4b;">${t.tools.join(' · ')}</div>
+      </div>`);
+    }
+    if (t.instructions && t.instructions.length) {
+      blocks.push(`<div style="background:#f0f9ff;border:1px solid #0ea5e9;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
+        <div style="font-weight:700;font-size:11px;color:#0c4a6e;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;">📋 PM INSTRUCTIONS</div>
+        <ol style="margin:0;padding-left:20px;font-size:12px;color:#0c4a6e;">${t.instructions.map(s=>`<li style="margin-bottom:2px;">${s}</li>`).join('')}</ol>
+      </div>`);
+    }
+    if (t.corrective && t.corrective.length) {
+      blocks.push(`<div style="background:#fef2f2;border:1px solid #ef4444;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
+        <div style="font-weight:700;font-size:11px;color:#991b1b;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;">🔧 CORRECTIVE ACTIONS</div>
+        <ul style="margin:0;padding-left:18px;font-size:12px;color:#7f1d1d;">${t.corrective.map(s=>`<li>${s}</li>`).join('')}</ul>
+      </div>`);
+    }
+    if (blocks.length) {
+      procEl.innerHTML = blocks.join('');
+      procEl.style.display = '';
+    } else {
+      procEl.innerHTML = '';
+      procEl.style.display = 'none';
+    }
+  }
 
   // Tech list — pull strictly from Staff module (no fallback names)
   const techSel = document.getElementById('modal-tech');
@@ -2217,7 +2254,7 @@ async function renderReports() {
   </div>`;
 
   // PM compliance by farm
-  const pmFarms = ['Hegins','Danville'];
+  const pmFarms = ['Hegins','Danville','Processing Plant'];
   const pmByFarm = {};
   pmFarms.forEach(farm => {
     const farmPMs = ALL_PM.filter(t => !t.farms || t.farms.includes(farm));
