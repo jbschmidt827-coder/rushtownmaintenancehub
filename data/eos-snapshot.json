@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-05-12T13:08:36.437944Z",
-  "date": "2026-05-12",
+  "generatedAt": "2026-05-13T13:20:48.430290Z",
+  "date": "2026-05-13",
   "scope": {
     "farms": [
       "Hegins",
@@ -9,10 +9,10 @@
     "houses": 13
   },
   "headline": {
-    "openWOTotal": 19,
+    "openWOTotal": 22,
     "redTagsActive": 0,
     "overdue7d": 0,
-    "walksToday": 3,
+    "walksToday": 2,
     "totalHouses": 13
   },
   "byHouse": [
@@ -25,7 +25,7 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Ventilation / Fans",
-      "topItemDays": 5
+      "topItemDays": 6
     },
     {
       "farm": "Hegins",
@@ -63,13 +63,13 @@
     {
       "farm": "Hegins",
       "house": "5",
-      "openWO": 0,
+      "openWO": 1,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": false,
-      "topItem": null,
-      "topItemDays": null
+      "topItem": "Electrical",
+      "topItemDays": 0
     },
     {
       "farm": "Hegins",
@@ -102,7 +102,7 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Feed System",
-      "topItemDays": 7
+      "topItemDays": 8
     },
     {
       "farm": "Danville",
@@ -113,18 +113,18 @@
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Manure System",
-      "topItemDays": 24
+      "topItemDays": 25
     },
     {
       "farm": "Danville",
       "house": "2",
-      "openWO": 6,
+      "openWO": 8,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Egg Collection",
-      "topItemDays": 25
+      "topItemDays": 26
     },
     {
       "farm": "Danville",
@@ -155,9 +155,9 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
-      "topItem": "Manure System",
-      "topItemDays": 13
+      "morningWalkToday": false,
+      "topItem": "",
+      "topItemDays": 10
     }
   ],
   "openWOs": [
@@ -206,6 +206,17 @@
       "urgent": false
     },
     {
+      "id": "FoIT9CDlMYfRn0FogECY",
+      "farm": "Danville",
+      "house": "5",
+      "title": "Manure System",
+      "desc": "",
+      "priority": "urgent",
+      "status": "open",
+      "ts": 1778605670804,
+      "urgent": false
+    },
+    {
       "id": "HQKYcUbceCwQrwGNurnk",
       "farm": "Danville",
       "house": "5",
@@ -236,6 +247,17 @@
       "priority": "high",
       "status": "open",
       "ts": 1778528852599,
+      "urgent": false
+    },
+    {
+      "id": "NKs1JAqIuAqZmKKlquUs",
+      "farm": "Hegins",
+      "house": "5",
+      "title": "Electrical",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1778673815948,
       "urgent": false
     },
     {
@@ -291,17 +313,6 @@
       "priority": "high",
       "status": "open",
       "ts": 1778585729878,
-      "urgent": false
-    },
-    {
-      "id": "XmJNBKOpz8wUaXrwQCGL",
-      "farm": "Danville",
-      "house": "5",
-      "title": "Manure System",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1777464457613,
       "urgent": false
     },
     {
@@ -371,6 +382,28 @@
       "urgent": false
     },
     {
+      "id": "spUsrSr6cU6TYIPwfL8e",
+      "farm": "Danville",
+      "house": "2",
+      "title": "Egg Collection",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1778592154390,
+      "urgent": false
+    },
+    {
+      "id": "sxVInWg4yDFXRrfhxyZe",
+      "farm": "Danville",
+      "house": "2",
+      "title": "Ventilation / Fans",
+      "desc": "",
+      "priority": "urgent",
+      "status": "open",
+      "ts": 1778671257787,
+      "urgent": false
+    },
+    {
       "id": "u1ZkaV9RPSaLI15rPT4T",
       "farm": "Danville",
       "house": "1",
@@ -431,21 +464,15 @@
   "morningWalksToday": [
     {
       "farm": "Danville",
-      "house": "5",
-      "employee": "Celia",
-      "time": "7:35 AM"
-    },
-    {
-      "farm": "Danville",
       "house": "1",
       "employee": "Celia",
-      "time": "6:57 AM"
+      "time": "7:12 AM"
     },
     {
       "farm": "Danville",
       "house": "2",
       "employee": "Celia",
-      "time": "7:21 AM"
+      "time": "7:25 AM"
     }
   ]
 }
