@@ -12,6 +12,7 @@
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
 <style>
@@ -461,6 +462,26 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
+
+// ── Invisible kiosk auth ──
+// Sign in anonymously so Firestore rules can require auth without
+// forcing barn staff to log in. Persists locally so it only happens once.
+// _authReadyBarn resolves once a Firebase user (real or anonymous) is
+// signed in — every Firestore call should await it.
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+const _authReadyBarn = new Promise(res => {
+  let done = false;
+  const finish = () => { if (!done) { done = true; res(); } };
+  auth.onAuthStateChanged(user => {
+    if (user) { finish(); return; }
+    auth.signInAnonymously()
+      .then(() => finish())
+      .catch(e => { console.warn('anon auth failed:', e); finish(); });
+  });
+  // Hard fallback so the kiosk never deadlocks if auth is unreachable.
+  setTimeout(finish, 4000);
+});
 
 // ═══════════════════════════════════════════
 // STATE
@@ -488,7 +509,8 @@ window.addEventListener('DOMContentLoaded', () => {
   setInterval(clockTick, 30000);
   updateNameBadge();
   if (!_name) showScreen('screen-name');
-  loadTodayWalks();
+  // Wait for kiosk auth before any Firestore call so security rules pass.
+  _authReadyBarn.then(() => loadTodayWalks());
 });
 
 function clockTick() {

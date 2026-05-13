@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════
-// RUSHTOWN POULTRY — SERVICE WORKER v8
-// Network-first + FCM background push
+// RUSHTOWN POULTRY — SERVICE WORKER v9
+// Stale-while-revalidate (cache-first) + FCM background push
 // ═══════════════════════════════════════════
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
@@ -43,9 +43,11 @@ self.addEventListener('notificationclick', event => {
 });
 
 // ═══════════════════════════════════════════
-// CACHE — network-first, fall back offline
+// CACHE — stale-while-revalidate (fast opens)
+// Returns cached asset INSTANTLY, then refreshes
+// in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v50';
+const CACHE_NAME = 'rushtown-v51';
 
 const SHELL_FILES = [
   '/',
@@ -81,7 +83,14 @@ const SHELL_FILES = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(SHELL_FILES))
+      // Use individual put()s so a single 404 doesn't blow up the install.
+      .then(cache => Promise.all(
+        SHELL_FILES.map(url =>
+          fetch(url, { cache: 'reload' })
+            .then(r => r.ok ? cache.put(url, r) : null)
+            .catch(() => null)
+        )
+      ))
       .then(() => self.skipWaiting())
   );
 });
@@ -100,28 +109,47 @@ self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
+// Stale-while-revalidate: serve cache instantly, refresh in background.
+// Skipped entirely for Firestore / Firebase / Google APIs so live data
+// never gets a stale read.
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
+  const req = event.request;
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
   if (
     url.hostname.includes('firestore.googleapis.com') ||
     url.hostname.includes('firebase') ||
     url.hostname.includes('googleapis.com') ||
-    url.hostname.includes('gstatic.com')
+    url.hostname.includes('gstatic.com') ||
+    url.hostname.includes('identitytoolkit')
   ) return;
 
+  // Only cache same-origin requests.
+  if (url.origin !== self.location.origin) return;
+
   event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        if (response && response.status === 200 && response.type === 'basic') {
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, response.clone()));
+    caches.open(CACHE_NAME).then(cache =>
+      cache.match(req).then(cached => {
+        const networkFetch = fetch(req).then(response => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            cache.put(req, response.clone());
+          }
+          return response;
+        }).catch(() => null);
+
+        // Cache hit → return immediately, refresh in background.
+        if (cached) {
+          event.waitUntil(networkFetch);
+          return cached;
         }
-        return response;
+        // No cache → wait for network, fall back to index.html for documents.
+        return networkFetch.then(r => {
+          if (r) return r;
+          if (req.destination === 'document') return cache.match('/index.html');
+          return new Response('', { status: 504, statusText: 'Offline' });
+        });
       })
-      .catch(() =>
-        caches.match(event.request).then(cached => {
-          if (cached) return cached;
-          if (event.request.destination === 'document') return caches.match('/index.html');
-        })
-      )
+    )
   );
-});
+});
