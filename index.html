@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Rushtown Poultry — Operations Hub</title>
 <script>
-(function(){var V='20260511c';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
+(function(){var V='20260513a';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
 </script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0f1a0f">
@@ -270,6 +270,33 @@ textarea { resize: vertical; min-height: 85px; }
 .btn-confirm { flex: 1; padding: 13px; background: var(--green-mid); color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 19px; letter-spacing: 2px; border: none; border-radius: 7px; cursor: pointer; }
 .btn-confirm:hover { background: var(--green-bright); }
 .btn-cancel { padding: 13px 18px; background: transparent; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 12px; border: 2px solid var(--border); border-radius: 7px; cursor: pointer; }
+
+/* ── PHONE-SIZE MODAL ADJUSTMENTS ──
+   Forces modals (especially the WI Add/Edit form) to fit a portrait phone
+   without horizontal scroll. Stacks the 2-column grid inside the WI form
+   to one column, tightens padding, and gives the buttons enough vertical
+   space to be tap-friendly. Triggers under 600px width. */
+@media (max-width: 600px) {
+  .overlay { padding: 8px; align-items: flex-start; }
+  .overlay.open { padding-top: max(8px, env(safe-area-inset-top, 0px)); }
+  .modal { padding: 16px 14px; border-radius: 11px; max-width: 100% !important; max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); }
+  .modal h3 { font-size: 20px; letter-spacing: 1.5px; }
+  .modal-sub { font-size: 11px; margin-bottom: 12px; }
+  .modal-field { margin-bottom: 10px; }
+  .modal-field input, .modal-field select, .modal-field textarea { font-size: 16px; /* prevents iOS zoom-on-focus */ }
+  .modal-btns { gap: 8px; margin-top: 14px; position: sticky; bottom: 0; background: var(--cream); padding-top: 8px; }
+  .btn-confirm { padding: 14px; font-size: 17px; }
+  .btn-cancel  { padding: 14px; font-size: 12px; }
+  /* WI Add/Edit form: stack the 2-column grid (Type/System, Time/PPE) into one column. */
+  #wi-form-modal .modal > div[style*="grid-template-columns:1fr 1fr"],
+  #wi-form-modal .modal > div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+  /* WI dynamic view modal — match phone-friendly sizing. */
+  #wi-view-dyn-modal { padding: 8px !important; align-items: flex-start !important; }
+  #wi-view-dyn-modal > div { max-width: 100% !important; padding: 14px 14px !important; max-height: calc(100dvh - 16px) !important; }
+  #wi-view-dyn-modal h3 { font-size: 17px !important; }
+  /* Make the dynamic view's Edit + ✕ buttons easier to tap. */
+  #wi-view-dyn-modal button { min-height: 36px; }
+}
 
 .log-card { background: var(--cream); border-radius: 9px; padding: 13px 16px; display: grid; grid-template-columns: 1fr auto; gap: 11px; align-items: start; box-shadow: 0 2px 8px rgba(0,0,0,0.13); border-left: 4px solid var(--green-bright); margin-bottom: 8px; }
 .log-card.wo-log       { border-left-color: var(--amber); }
@@ -4904,7 +4931,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260511c"></script>
+<script defer src="js/core.js?v=20260513a"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260506e"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
@@ -4912,7 +4939,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script defer src="js/trending-wo.js?v=20260501"></script>
 <script defer src="js/packaging.js?v=20260427k"></script>
 <script defer src="js/shipping.js?v=20260424"></script>
-<script defer src="js/production.js?v=20260427n"></script>
+<script defer src="js/production.js?v=20260513a"></script>
 <script defer src="js/time-blocks.js?v=20260506e"></script>
 <script defer src="js/feed-mill.js?v=20260424"></script>
 <script defer src="js/egg-quality.js?v=20260424"></script>

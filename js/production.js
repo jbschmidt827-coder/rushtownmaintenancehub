@@ -669,12 +669,12 @@ async function clOpenTaskWI(taskId, taskLabel) {
     if (!match) match = wi.find(w => targetTitle.includes((w.title || '').toLowerCase().trim()) && (w.title||'').length > 3);
   }
 
-  // Debug toast — tap to dismiss
-  const _dbg = document.createElement('div');
-  _dbg.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a3a1a;color:#a0e0a0;padding:10px 16px;border-radius:10px;font-size:13px;z-index:20000;max-width:90vw;text-align:center;border:1px solid #4a9b6f;';
-  _dbg.textContent = `WI debug: ${wi.length} loaded | target="${WI_TITLE_MAP[taskId]||'none'}" | match=${match?match.title:'NONE'} | id=${match?(match.wiId||match._fbId||'?'):'—'}`;
-  document.body.appendChild(_dbg);
-  setTimeout(() => _dbg.remove(), 8000);
+  // (Removed: a debug "WI debug: …" toast that flashed on every barn-walk WI open.
+  //  It was originally added to diagnose missing WI matches and is no longer needed.)
+  // (Removed: a "force-show" line that tried to open the legacy static `wi-view-modal`
+  //  if the dynamic one didn't appear. openWIView now creates `wi-view-dyn-modal`
+  //  and explicitly closes the legacy one, so the force-show was just popping up
+  //  an empty unpopulated modal that the user had to close manually.)
 
   setTimeout(() => {
     if (match) {
@@ -683,15 +683,11 @@ async function clOpenTaskWI(taskId, taskLabel) {
       try {
         if (typeof openWIView === 'function') openWIView(id);
       } catch(err) {
-        _dbg.textContent += ' ERR:' + err.message;
+        console.warn('openWIView from barn walk failed:', err);
+        if (typeof toast === 'function') toast('Could not open work instruction');
       }
-      const m = document.getElementById('wi-view-modal');
-      const hasOpen = m && m.classList.contains('open');
-      _dbg.textContent += hasOpen ? ' ✓OPEN' : ' ✗NOTOPEN';
-      // Force-show if openWIView didn't open it
-      if (m && !hasOpen) m.classList.add('open');
     } else {
-      // No WI mapped — close barn walk and go to WI section
+      // No WI mapped — close barn walk and go to WI section so the user can find one.
       if (typeof closeBarnEntry === 'function') closeBarnEntry();
       const beOverlay = document.getElementById('barn-entry-overlay');
       if (beOverlay) { beOverlay.style.display = 'none'; document.body.style.overflow = ''; }

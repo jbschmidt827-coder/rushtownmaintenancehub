@@ -643,6 +643,45 @@ function setSyncDot(state) {
 
 function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
+// ── Global toast utility ───────────────────────────────────────────────────
+// Several modules (maintenance.js, production.js, daily-checklist.js, etc.)
+// call `if (typeof toast === 'function') toast(msg)` to surface a quick error
+// or status message. Previously no global `toast` existed so those messages
+// silently disappeared. This implementation is intentionally tiny: shows a
+// pill at the bottom of the screen, auto-dismisses, tap to dismiss early.
+function toast(msg, opts) {
+  const cfg = opts || {};
+  const ok  = cfg.ok === true;
+  const ms  = typeof cfg.ms === 'number' ? cfg.ms : 3200;
+  const el  = document.createElement('div');
+  el.textContent = String(msg == null ? '' : msg);
+  el.style.cssText = [
+    'position:fixed','left:50%','bottom:80px','transform:translateX(-50%) translateY(20px)',
+    'background:' + (ok ? '#0a2a0a' : '#1f0a0a'),
+    'color:' + (ok ? '#a8d5b5' : '#ffd5d0'),
+    'border:1px solid ' + (ok ? '#4a9b6f' : '#a94038'),
+    'padding:11px 18px','border-radius:10px','font-size:13px',
+    'font-family:"IBM Plex Sans",sans-serif','line-height:1.35',
+    'max-width:min(90vw,440px)','text-align:center',
+    'box-shadow:0 8px 24px rgba(0,0,0,0.45)','z-index:20000',
+    'opacity:0','transition:opacity .18s ease, transform .18s ease',
+    'cursor:pointer','touch-action:manipulation'
+  ].join(';');
+  el.addEventListener('click', () => el.remove());
+  document.body.appendChild(el);
+  requestAnimationFrame(() => {
+    el.style.opacity = '1';
+    el.style.transform = 'translateX(-50%) translateY(0)';
+  });
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(-50%) translateY(20px)';
+    setTimeout(() => el.remove(), 220);
+  }, ms);
+}
+// Make sure it's reachable from every module / inline handler.
+if (typeof window !== 'undefined') window.toast = toast;
+
 // ═══════════════════════════════════════════
 // FIREBASE LOAD
 // ═══════════════════════════════════════════
