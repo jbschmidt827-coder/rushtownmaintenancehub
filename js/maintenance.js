@@ -6555,7 +6555,7 @@ function wiCard(wi, WI_TYPE_MAP, SYS_ICON_MAP) {
     <!-- Meta row -->
     <div style="padding:0 12px 8px;display:flex;align-items:center;gap:8px;">
       ${wi.system && wi.system !== 'General' ? `<span style="font-size:11px;color:var(--muted);">${sysIcon} ${wi.system}</span>` : ''}
-      <button onclick="event.stopPropagation();openWIForm('${wi.wiId}')" style="margin-left:auto;padding:3px 10px;background:transparent;border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">✏️ Edit</button>
+      <button onclick="event.stopPropagation();openWIForm('${String(wi.wiId || wi._fbId || '').replace(/[^A-Za-z0-9_-]/g,'')}')" style="margin-left:auto;padding:3px 10px;background:transparent;border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">✏️ Edit</button>
     </div>
   </div>`;
 }
@@ -6776,42 +6776,69 @@ function wiRemoveExistingPhoto(i) {
 }
 
 function _openWIForm(wiId, clTaskId, prefillTitle, prefillDept) {
-  editingWIId = wiId || null;
+  // Sanity: the form modal must exist in the DOM. If markup is missing (very
+  // stale cache, etc.), surface a toast instead of failing silently — the
+  // previous behaviour closed the view modal first then threw, making it look
+  // like "everything just closes out" with no explanation.
+  const modal = document.getElementById('wi-form-modal');
+  if (!modal) {
+    if (typeof toast === 'function') toast('Edit form is not loaded — please refresh the page');
+    console.error('_openWIForm: wi-form-modal element not in DOM');
+    return;
+  }
+
+  // Match by wiId OR _fbId. Older / seeded WIs sometimes only have a Firestore
+  // doc id and no wiId field; the old code matched on wiId only and bailed
+  // silently when none was found, which closed the view modal but never
+  // opened the edit form.
+  let wi = null;
+  if (wiId && wiId !== 'undefined' && wiId !== 'null') {
+    wi = (allWI || []).find(x => x.wiId === wiId || x._fbId === wiId);
+    if (!wi) {
+      if (typeof toast === 'function') toast('Could not find that work instruction (id: ' + wiId + ')');
+      console.warn('_openWIForm: no WI matched id', wiId);
+      return;
+    }
+  }
+
+  // We've passed the early-exit gates — now wire up the form.
+  editingWIId = wi ? (wi.wiId || wi._fbId) : null;
   wiStepCount = 0;
-  document.getElementById('wif-steps-list').innerHTML = '';
   _wiPendingPhotos = [];
   _wiExistingPhotos = [];
-  const photoPreview = document.getElementById('wif-photo-preview');
-  if (photoPreview) photoPreview.innerHTML = '';
-  const clTaskInput = document.getElementById('wif-cl-task-id');
-  if (clTaskInput) clTaskInput.value = clTaskId || '';
 
-  if (wiId) {
-    const wi = allWI.find(x => x.wiId === wiId);
-    if (!wi) return;
-    document.getElementById('wi-form-title').textContent = 'Edit Work Instruction';
-    document.getElementById('wif-title').value   = wi.title || '';
-    document.getElementById('wif-type').value    = wi.type || '';
-    document.getElementById('wif-dept').value    = wi.dept || wi.department || '';
-    document.getElementById('wif-system').value  = wi.system || '';
-    document.getElementById('wif-time').value    = wi.time || '';
-    document.getElementById('wif-ppe').value     = wi.ppe || '';
-    document.getElementById('wif-warnings').value = wi.warnings || '';
-    document.getElementById('wif-author').value  = wi.author || '';
+  // Tiny helper so a single missing input doesn't break the whole flow.
+  const $set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  const $txt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const $html = (id, val) => { const el = document.getElementById(id); if (el) el.innerHTML = val; };
+
+  $html('wif-steps-list', '');
+  $html('wif-photo-preview', '');
+  $set('wif-cl-task-id', clTaskId || '');
+
+  if (wi) {
+    $txt('wi-form-title', 'Edit Work Instruction');
+    $set('wif-title',    wi.title    || '');
+    $set('wif-type',     wi.type     || '');
+    $set('wif-dept',     wi.dept     || wi.department || '');
+    $set('wif-system',   wi.system   || '');
+    $set('wif-time',     wi.time     || '');
+    $set('wif-ppe',      wi.ppe      || '');
+    $set('wif-warnings', wi.warnings || '');
+    $set('wif-author',   wi.author   || '');
     (wi.steps || []).forEach(step => wiAddStep(step));
-    // Load existing photos
     _wiExistingPhotos = [...(wi.photos || [])];
     renderWIPhotoPreviews();
   } else {
-    document.getElementById('wi-form-title').textContent = 'Add Work Instruction';
-    ['wif-title','wif-time','wif-ppe','wif-warnings','wif-author'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('wif-type').value   = 'onboarding';
-    document.getElementById('wif-dept').value   = prefillDept || '';
-    document.getElementById('wif-system').value = '';
-    if (prefillTitle) document.getElementById('wif-title').value = prefillTitle;
+    $txt('wi-form-title', 'Add Work Instruction');
+    ['wif-title','wif-time','wif-ppe','wif-warnings','wif-author'].forEach(id => $set(id, ''));
+    $set('wif-type',   'onboarding');
+    $set('wif-dept',   prefillDept || '');
+    $set('wif-system', '');
+    if (prefillTitle) $set('wif-title', prefillTitle);
     wiAddStep(); wiAddStep(); wiAddStep(); // start with 3 blank steps
   }
-  document.getElementById('wi-form-modal').classList.add('open');
+  modal.classList.add('open');
 }
 
 function closeWIForm() {
