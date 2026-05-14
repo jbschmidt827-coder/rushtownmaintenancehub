@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rushtown — Seed Staff Roster</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: #0d1f16; color: #f0ead8;
+    min-height: 100vh; padding: 32px 20px;
+    display: flex; align-items: flex-start; justify-content: center;
+  }
+  .card {
+    background: #f7f4ee; color: #1a1a1a;
+    border-radius: 16px; padding: 28px 26px;
+    width: 100%; max-width: 540px;
+    box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+  }
+  h1 { font-size: 24px; color: #2d5a3d; margin-bottom: 4px; letter-spacing: .5px; }
+  .sub { font-size: 12px; color: #6b7c70; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; }
+  .info {
+    background: #e8f5ec; border: 1px solid #4a9b6f; border-radius: 8px;
+    padding: 12px 14px; font-size: 13px; line-height: 1.5; color: #1a3a2a;
+    margin-bottom: 18px;
+  }
+  button {
+    width: 100%; padding: 14px; border: none; border-radius: 10px;
+    background: #2d5a3d; color: #fff;
+    font-size: 17px; font-weight: 700; letter-spacing: 1.5px;
+    cursor: pointer; transition: background .15s;
+  }
+  button:hover:not(:disabled) { background: #4a9b6f; }
+  button:disabled { background: #aaa; cursor: not-allowed; }
+  .progress-wrap {
+    display: none; margin-top: 18px;
+  }
+  .progress-bar {
+    height: 12px; background: #e8e8e8; border-radius: 6px;
+    overflow: hidden; margin-bottom: 8px;
+  }
+  .progress-fill {
+    height: 100%; background: #4a9b6f; width: 0%; transition: width .25s;
+  }
+  .progress-text {
+    font-size: 12px; color: #6b7c70; text-align: center;
+    font-family: ui-monospace, monospace;
+  }
+  .log {
+    margin-top: 16px; max-height: 200px; overflow-y: auto;
+    background: #0d1f16; color: #a8d5b5; border-radius: 8px;
+    padding: 10px 12px; font-size: 11px; font-family: ui-monospace, monospace;
+    line-height: 1.5; display: none;
+  }
+  .ok    { color: #4a9b6f; font-weight: 700; }
+  .err   { color: #d94f3d; font-weight: 700; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 50px; background: #fff8e1; color: #b07a00; font-size: 11px; margin-left: 6px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>🐔 Seed Staff Roster</h1>
+    <div class="sub">Rushtown Operations Hub</div>
+
+    <div class="info">
+      <strong>What this does:</strong> writes all 71 employees into your Firestore
+      <code>staff</code> collection in one batch. Safe to run — if the collection
+      already has records, this won't duplicate them.
+    </div>
+
+    <button id="go" onclick="run()">Add 71 Employees to Staff Panel</button>
+
+    <div class="progress-wrap" id="prog">
+      <div class="progress-bar"><div class="progress-fill" id="bar"></div></div>
+      <div class="progress-text" id="ptext">Connecting to Firestore…</div>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+<script>
+// Firebase config — matches the one in core.js / sw.js
+const firebaseConfig = {
+  apiKey:            "AIzaSyBRPjACWaVeHXw4ztydZVB-_MTMwEWfWmY",
+  authDomain:        "rushtown-poultry.firebaseapp.com",
+  projectId:         "rushtown-poultry",
+  storageBucket:     "rushtown-poultry.firebasestorage.app",
+  messagingSenderId: "1050651051862",
+  appId:             "1:1050651051862:web:c83d671abaec7f4c8378f7"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const ROSTER = [
+  ['1002','Alicea','Jonathan'],['1091','Ayala Sr','Joseph D'],['1135','Barr','Natalie'],
+  ['1156','Bello Gonzalez','Joaquin Tomas'],['1081','Bewley','Trevor'],['1124','Bingaman','Joshua'],
+  ['1136','Bixler','Jill'],['1131','Bogar Jr','Erik'],['1096','Boyer','Adrianna M'],
+  ['1159','Broschart','Kayla'],['1137','Brosius','Adam Miles'],['1114','Colon','Jose'],
+  ['1126','Davenport','Celia'],['1092','Deitzler','David S'],['1008','Derr','Bradley S'],
+  ['1154','Ernest','John'],['1051','Foust','Cody A'],['1010','Fox','John P'],
+  ['1011','Garcia','Arturo'],['1012','Garcia','Candelaria'],['1155','Hansen','Matthew'],
+  ['1161','Haynes','Joshua'],['1157','Hernandez Hernandez','Oscar Eduardo'],['1123','Jiminez','Aracely'],
+  ['1115','Kipp','Mariah'],['1015','Klinger','Thomas A'],['1152','Kramer','Joshua'],
+  ['1017','Kuykendall','Matthew S'],['1087','Lahout','Michael'],['1127','Leisey','Harry Steven'],
+  ['1067','Linsky','Andrew'],['1044','Lopez-Jimenez','Maria'],['1147','Lopez-Veguilla','Christian D'],
+  ['1164','Madrid Castro','Karen'],['1150','Madrid Romero','Norlan E'],['1128','Manning','Claire'],
+  ['1140','Martz','Debra C'],['1089','McCarthy Jr','Sean R'],['1023','Nye','Shawn Z'],
+  ['1110','Orellana','Marifer M'],['1113','Ortiz','Leidy Yessenia'],['1122','Perez','Milagros'],
+  ['1098','Perez','Norma'],['1045','Perez-Sanchez','Carlos U'],['1085','Pico Estrada','Jorge A'],
+  ['1024','Piestrak','Nathan'],['1106','Quiles','Hector'],['1095','Roarabaugh','Thomas P'],
+  ['1078','Ross','Quil'],['1148','Rudderow','Lindsey'],['1086','Salazar Samuel','Jenny Catherine'],
+  ['1056','Sanchez','Dervys'],['1047','Sanchez-Roblero','Cain'],['1141','Schell','Elizabeth'],
+  ['1100','Schmidt','Joseph'],['1142','Schmitt','Paul'],['1037','Shaffer','Kyle G'],
+  ['1130','Sibaja Cruz','Daniela'],['1160','Smullen','Michael Kenneth'],['1153','Strobel','Tiffany'],
+  ['1149','Tenorio','Lyneth'],['1027','Thompson','John'],['1125','Torres','Ruth'],
+  ['1029','Ulrich','Tim L'],['1102','Walters','Allison'],['1107','Weidner','Cody'],
+  ['1144','Wenrich','Tammy A'],['1162','Wilt','Eric'],['1145','Wolfe','Nathan'],
+  ['1146','Wolfe','Randy E'],['1094','Zeiset','Raymond W'],['1119','Ziegler','Shawn']
+];
+
+const $ = id => document.getElementById(id);
+
+function log(msg, cls) {
+  const el = $('log');
+  el.style.display = 'block';
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setProgress(done, total, msg) {
+  const pct = Math.round((done / total) * 100);
+  $('bar').style.width = pct + '%';
+  $('ptext').textContent = msg || (done + ' / ' + total + ' written (' + pct + '%)');
+}
+
+async function run() {
+  const btn = $('go');
+  btn.disabled = true;
+  btn.textContent = 'Working…';
+  $('prog').style.display = 'block';
+
+  log('Starting at ' + new Date().toLocaleTimeString());
+
+  try {
+    // Look for already-seeded records by empId so this is safe to re-run.
+    setProgress(0, ROSTER.length, 'Checking for existing records…');
+    const existingByEmpId = new Set();
+    const snap = await db.collection('staff').get();
+    snap.forEach(d => {
+      const empId = d.data().empId;
+      if (empId) existingByEmpId.add(empId);
+    });
+    log('Found ' + snap.size + ' existing staff records. ' + existingByEmpId.size + ' have an empId tag.');
+
+    const toAdd = ROSTER.filter(([id]) => !existingByEmpId.has(id));
+    if (toAdd.length === 0) {
+      log('All 71 employees already exist in Firestore (by empId). Nothing to do.', 'ok');
+      setProgress(ROSTER.length, ROSTER.length, 'Up to date — nothing added.');
+      btn.textContent = '✅ Already Loaded';
+      btn.style.background = '#4a9b6f';
+      return;
+    }
+    log('Will add ' + toAdd.length + ' new employee(s).');
+
+    // Batch write (Firestore allows up to 500 ops per batch; we have ≤71).
+    const batch = db.batch();
+    toAdd.forEach(([empId, last, first]) => {
+      const ref = db.collection('staff').doc();
+      batch.set(ref, {
+        name:      first + ' ' + last,
+        firstName: first,
+        lastName:  last,
+        empId:     empId,
+        role:      'Other',
+        farm:      '',
+        phone:     '',
+        active:    true,
+        ts:        Date.now(),
+        seededFromRoster2026: true,
+      });
+    });
+    setProgress(0, toAdd.length, 'Writing ' + toAdd.length + ' records…');
+    await batch.commit();
+
+    setProgress(toAdd.length, toAdd.length, '✅ Done — ' + toAdd.length + ' employees added.');
+    log('✅ Wrote ' + toAdd.length + ' employees successfully.', 'ok');
+    log('Open the app and check the Staff panel — names appear in seconds.', 'ok');
+
+    btn.textContent = '✅ Done — Close This Tab';
+    btn.style.background = '#4a9b6f';
+  } catch (err) {
+    log('❌ Failed: ' + (err && err.message ? err.message : err), 'err');
+    log('If the message says "permission-denied", your Firestore rules require sign-in.', 'err');
+    log('Tell Joe to deploy the wide-open rules (firebase deploy --only firestore:rules).', 'err');
+    btn.disabled = false;
+    btn.textContent = 'Try Again';
+    btn.style.background = '#d94f3d';
+  }
+}
+</script>
+</body>
+</html>
