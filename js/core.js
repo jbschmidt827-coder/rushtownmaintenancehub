@@ -1378,10 +1378,19 @@ async function initApp() {
 
     // Staff listener has to fire on the FAST path — its data feeds every
     // name dropdown in the app (WO form, PM complete modal, etc).
-    // Without this, "Your Name" stays empty until the background pass runs.
-    try {
-      if (typeof startStaffListener === 'function') startStaffListener();
-    } catch(e) { console.warn('startStaffListener early-fail:', e); }
+    //
+    // NOTE: scheduling.js is loaded BEFORE staff.js in index.html, so at
+    // the synchronous moment initApp() runs, startStaffListener may not
+    // yet be defined. setTimeout(...,0) defers the call to the next tick,
+    // by which time ALL <script defer> tags (including staff.js) have
+    // executed. This was a real production bug — without this, the Staff
+    // panel renders permanently empty.
+    setTimeout(() => {
+      try {
+        if (typeof startStaffListener === 'function') startStaffListener();
+        else console.warn('startStaffListener still undefined after tick — script order broken');
+      } catch(e) { console.warn('startStaffListener fail:', e); }
+    }, 0);
 
     // ── Background pass: secondary loaders, seeders, panel listeners.
     // Deferred so first paint happens fast. Errors here are non-fatal.
@@ -1409,7 +1418,10 @@ async function initApp() {
       safeRun(() => typeof startWIListener === 'function' && startWIListener(), 'startWIListener');
       safeRun(() => typeof start5SListener === 'function' && start5SListener(), 'start5SListener');
       safeRun(() => typeof startPartsDefsListener === 'function' && startPartsDefsListener(), 'startPartsDefsListener');
-      // startStaffListener moved to fast path above — see comment in initApp.
+      // Belt-and-suspenders: also try startStaffListener here in case the
+      // fast-path setTimeout(0) attempt was skipped or threw silently.
+      // startStaffListener itself is idempotent — calling twice is harmless.
+      safeRun(() => typeof startStaffListener === 'function' && startStaffListener(), 'startStaffListener-bg');
       safeRun(() => typeof startStaffCertsListener === 'function' && startStaffCertsListener(), 'startStaffCertsListener');
       safeRun(() => typeof startStaffOnboardListener === 'function' && startStaffOnboardListener(), 'startStaffOnboardListener');
       safeRun(() => typeof startOnCallListener === 'function' && startOnCallListener(), 'startOnCallListener');
