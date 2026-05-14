@@ -1423,6 +1423,7 @@ async function initApp() {
 
       // Seeders run last — they write back to Firestore, lowest priority.
       setTimeout(() => {
+        safeRun(() => typeof seedStaffRosterIfEmpty === 'function' && seedStaffRosterIfEmpty(), 'seedStaffRoster');
         safeRun(() => typeof seedMortalityCompostingWI === 'function' && seedMortalityCompostingWI(), 'seedMort');
         safeRun(() => typeof seedWaterRegulatorWI === 'function' && seedWaterRegulatorWI(), 'seedWater');
         safeRun(() => typeof seedAugerRollerWI === 'function' && seedAugerRollerWI(), 'seedAuger');
