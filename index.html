@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Rushtown Poultry — Operations Hub</title>
 <script>
-(function(){var V='20260513-auth';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
+(function(){var V='20260513-wonames';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
 </script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0f1a0f">
@@ -928,30 +928,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .landing-card:hover { border-color: #4caf50 !important; }
 </style>
 
-<!-- ═══ LOGIN SCREEN ═══ -->
-<div id="login-screen" style="display:none;position:fixed;inset:0;z-index:1000;background:#0d1f16;flex-direction:column;align-items:center;justify-content:center;padding:24px;font-family:'IBM Plex Sans',sans-serif;">
-  <div style="font-size:54px;margin-bottom:10px;">🐔</div>
-  <h2 style="font-family:'Bebas Neue',sans-serif;font-size:30px;color:#fff;letter-spacing:3px;margin-bottom:4px;">Rushtown Poultry</h2>
-  <p style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#a8d5b5;letter-spacing:3px;text-transform:uppercase;margin-bottom:28px;">Operations Hub — Sign In</p>
-  <div style="background:#f7f4ee;border-radius:14px;padding:22px 20px;width:100%;max-width:340px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
-    <div style="margin-bottom:14px;">
-      <label style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#2d5a3d;display:block;margin-bottom:5px;">Email</label>
-      <input id="login-email" type="email" autocomplete="username" placeholder="you@rushtownpoultry.com" style="font-size:16px;padding:10px 13px;border:2px solid #c8dace;border-radius:7px;background:#fff;width:100%;box-sizing:border-box;-webkit-appearance:none;">
-    </div>
-    <div style="margin-bottom:8px;">
-      <label style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#2d5a3d;display:block;margin-bottom:5px;">Password</label>
-      <input id="login-password" type="password" autocomplete="current-password" placeholder="••••••••" style="font-size:16px;padding:10px 13px;border:2px solid #c8dace;border-radius:7px;background:#fff;width:100%;box-sizing:border-box;-webkit-appearance:none;">
-    </div>
-    <div id="login-error" style="display:none;background:#fde8e6;color:#d94f3d;border:1px solid #d94f3d;border-radius:6px;padding:8px 10px;margin:8px 0 4px;font-size:12px;font-family:'IBM Plex Mono',monospace;"></div>
-    <button id="login-btn" onclick="appSignIn()" style="margin-top:14px;width:100%;padding:12px;border:none;border-radius:8px;background:#2d5a3d;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer;">SIGN IN</button>
-    <div style="display:flex;justify-content:space-between;margin-top:12px;">
-      <a href="#" onclick="appSignUp();return false;" style="color:#4a9b6f;font-family:'IBM Plex Mono',monospace;font-size:11px;text-decoration:none;letter-spacing:.5px;">Create account</a>
-      <a href="#" onclick="appResetPassword();return false;" style="color:#6b7c70;font-family:'IBM Plex Mono',monospace;font-size:11px;text-decoration:none;letter-spacing:.5px;">Forgot password</a>
-    </div>
-  </div>
-  <p style="margin-top:18px;color:#a8d5b5;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-align:center;">Rushtown Poultry · Operations Hub</p>
-</div>
-
 <!-- ═══ MAIN APP ═══ -->
 <div id="main-app">
 
@@ -991,7 +967,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     </nav>
     <button onclick="goHome()" class="header-home-btn" style="padding:10px 20px;background:#163016;border:2px solid #4caf50;border-radius:10px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">⌂ HOME</button>
     <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
-    <button id="signout-btn" onclick="appSignOut()" title="Sign Out" style="padding:7px 11px;background:#2a1a1a;border:1.5px solid #d94f3d;border-radius:9px;color:#d94f3d;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">↩ SIGN OUT</button>
     <button id="lang-toggle-btn" onclick="toggleLang()" title="Switch Language / Cambiar Idioma" style="padding:7px 13px;background:#0a1a2a;border:1.5px solid #3b82f6;border-radius:9px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;flex-shrink:0;">🌐 ES</button>
 
     <!-- 🔔 Notification bell -->
@@ -4789,7 +4764,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <!-- Your Name -->
       <div style="margin-bottom:14px;">
         <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:6px;">Your Name *</label>
-        <input type="text" id="qwo-name" placeholder="Who are you?" style="width:100%;box-sizing:border-box;background:#0a140a;border:1px solid #2a5a2a;border-radius:8px;padding:11px 14px;color:#f0ead8;font-size:14px;font-family:'IBM Plex Mono',monospace;">
+        <input type="text" id="qwo-name" list="staff-datalist" placeholder="Who are you?" autocomplete="off" style="width:100%;box-sizing:border-box;background:#0a140a;border:1px solid #2a5a2a;border-radius:8px;padding:11px 14px;color:#f0ead8;font-size:14px;font-family:'IBM Plex Mono',monospace;">
       </div>
 
       <!-- Farm + House row -->
@@ -4956,7 +4931,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260513-auth"></script>
+<script defer src="js/core.js?v=20260513-wonames"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260506e"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
@@ -4971,7 +4946,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script defer src="js/biosecurity.js?v=20260424"></script>
 <script defer src="js/scheduling.js?v=20260427a"></script>
 <script defer src="js/tv-scoreboard.js?v=20260424"></script>
-<script defer src="js/staff.js?v=20260424"></script>
+<script defer src="js/staff.js?v=20260513-wonames"></script>
 <script defer src="js/enhancements.js?v=20260428"></script>
 <script defer src="js/contractor.js?v=20260424"></script>
 <script defer src="js/cost-dashboard.js?v=20260424"></script>

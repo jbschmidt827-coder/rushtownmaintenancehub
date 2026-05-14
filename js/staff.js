@@ -45,12 +45,15 @@ function updateStaffDropdowns() {
   document.querySelectorAll('datalist#staff-datalist').forEach(dl => dl.innerHTML = datalistOpts);
 
   // Select dropdowns — all get the same active staff list
-  const selectOpts = '<option value="">— Select —</option>' +
-    names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+  const nameOpts = names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+  const selectOpts = '<option value="">— Select Name —</option>' + nameOpts;
 
+  // ALL name-bearing selects across the app. Adding a new one? Add it here.
   const selectIds = [
+    'wo-tech',          // WO form (full): Your Name
+    'wo-assign',        // WO form (full): Assign To
+    'qwo-tech',         // Quick WO form: Your Name (if/when converted to select)
     'bulk-tech',        // Bulk PM Catch-Up: Completed By
-    'wo-assign',        // WO form: Assign To
     'closeout-tech',    // WO Closeout modal: Completed By
     'modal-tech',       // PM complete modal: Completed By
     'wo-completed-by',  // legacy alias
@@ -61,7 +64,7 @@ function updateStaffDropdowns() {
     if (!el || el.tagName !== 'SELECT') return;
     const cur = el.value;
     el.innerHTML = id === 'wo-assign'
-      ? '<option value="">— Unassigned —</option>' + names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('')
+      ? '<option value="">— Unassigned —</option>' + nameOpts
       : selectOpts;
     if (cur) el.value = cur;
   });

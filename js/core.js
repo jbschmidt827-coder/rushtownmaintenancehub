@@ -1376,6 +1376,13 @@ async function initApp() {
       if (_hideLoadingCalled) refreshCurrentPanel();
     });
 
+    // Staff listener has to fire on the FAST path — its data feeds every
+    // name dropdown in the app (WO form, PM complete modal, etc).
+    // Without this, "Your Name" stays empty until the background pass runs.
+    try {
+      if (typeof startStaffListener === 'function') startStaffListener();
+    } catch(e) { console.warn('startStaffListener early-fail:', e); }
+
     // ── Background pass: secondary loaders, seeders, panel listeners.
     // Deferred so first paint happens fast. Errors here are non-fatal.
     setTimeout(() => {
@@ -1402,7 +1409,7 @@ async function initApp() {
       safeRun(() => typeof startWIListener === 'function' && startWIListener(), 'startWIListener');
       safeRun(() => typeof start5SListener === 'function' && start5SListener(), 'start5SListener');
       safeRun(() => typeof startPartsDefsListener === 'function' && startPartsDefsListener(), 'startPartsDefsListener');
-      safeRun(() => typeof startStaffListener === 'function' && startStaffListener(), 'startStaffListener');
+      // startStaffListener moved to fast path above — see comment in initApp.
       safeRun(() => typeof startStaffCertsListener === 'function' && startStaffCertsListener(), 'startStaffCertsListener');
       safeRun(() => typeof startStaffOnboardListener === 'function' && startStaffOnboardListener(), 'startStaffOnboardListener');
       safeRun(() => typeof startOnCallListener === 'function' && startOnCallListener(), 'startOnCallListener');
@@ -1574,6 +1581,8 @@ function go(tab) {
       if(fab) fab.style.display = 'none';
       const woSubmitBtn = document.querySelector('#wo-form-card .btn-confirm');
       if (woSubmitBtn) { woSubmitBtn.disabled = false; woSubmitBtn.textContent = '✓ SUBMIT WORK ORDER'; }
+      // Repopulate name dropdowns from current staff list before showing form.
+      if (typeof updateStaffDropdowns === 'function') updateStaffDropdowns();
     }, 50);
     return;
   }
