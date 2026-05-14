@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rushtown — Diagnostic & Reset</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: #0d1f16; color: #f0ead8;
+    min-height: 100vh; padding: 24px 16px;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 {
+    font-size: 26px; color: #fff; margin-bottom: 4px; letter-spacing: .5px;
+  }
+  .sub { color: #a8d5b5; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 22px; }
+
+  .card {
+    background: #f7f4ee; color: #1a1a1a;
+    border-radius: 14px; padding: 20px 22px; margin-bottom: 16px;
+    box-shadow: 0 6px 30px rgba(0,0,0,.4);
+  }
+  .card h2 { font-size: 17px; color: #2d5a3d; margin-bottom: 10px; }
+  .stat {
+    display: inline-block; background: #e8f5ec; border: 1.5px solid #4a9b6f;
+    border-radius: 50px; padding: 6px 16px; font-size: 13px; font-weight: 700;
+    color: #1a3a2a; margin-right: 8px;
+  }
+  .stat.warn { background: #fff8e1; border-color: #f0a500; color: #b07a00; }
+  .stat.err  { background: #fde8e6; border-color: #d94f3d; color: #d94f3d; }
+  .name-list {
+    margin-top: 12px; max-height: 320px; overflow-y: auto;
+    background: #fff; border: 1px solid #c8dace; border-radius: 8px;
+    padding: 6px 4px;
+  }
+  .name-row {
+    padding: 6px 12px; font-size: 13px; border-bottom: 1px solid #f0eee8;
+    display: flex; justify-content: space-between;
+  }
+  .name-row:last-child { border-bottom: none; }
+  .name-row .id { color: #6b7c70; font-family: ui-monospace, monospace; font-size: 11px; }
+  .btn {
+    display: block; width: 100%; padding: 14px; margin-top: 12px;
+    border: none; border-radius: 10px; font-size: 15px; font-weight: 700;
+    letter-spacing: 1px; cursor: pointer; transition: background .15s;
+  }
+  .btn-green { background: #2d5a3d; color: #fff; }
+  .btn-green:hover { background: #4a9b6f; }
+  .btn-red   { background: #d94f3d; color: #fff; }
+  .btn-red:hover   { background: #b03425; }
+  .btn-blue  { background: #1a4a7a; color: #fff; }
+  .btn-blue:hover  { background: #2a6aaa; }
+  .log { font-family: ui-monospace, monospace; font-size: 11px; color: #2d5a3d; margin-top: 8px; line-height: 1.5; }
+  .err-log { color: #d94f3d; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🐔 Diagnostic & Reset</h1>
+  <div class="sub">Rushtown Operations Hub</div>
+
+  <!-- 1. WHAT'S IN FIRESTORE -->
+  <div class="card">
+    <h2>1. What's Actually in Your Database</h2>
+    <div id="staff-stats">Checking…</div>
+    <div id="staff-names" class="name-list" style="display:none;"></div>
+    <div id="staff-log" class="log"></div>
+  </div>
+
+  <!-- 2. CACHE RESET -->
+  <div class="card">
+    <h2>2. Force-Reset the App Cache</h2>
+    <p style="font-size:13px;color:#6b7c70;line-height:1.5;margin-bottom:10px;">
+      If the database above shows your 85 staff records but the main app still
+      shows zero, your browser is holding a cached version of the old app.
+      Tap this to nuke the cache and the service worker so the app re-downloads
+      everything fresh.
+    </p>
+    <button class="btn btn-red" onclick="resetCache()">🧹 Clear Cache & Service Worker</button>
+    <div id="reset-log" class="log"></div>
+  </div>
+
+  <!-- 3. OPEN THE APP -->
+  <div class="card">
+    <h2>3. Open the App Fresh</h2>
+    <p style="font-size:13px;color:#6b7c70;line-height:1.5;margin-bottom:10px;">
+      After clearing the cache above, open a clean copy of the app.
+    </p>
+    <button class="btn btn-green" onclick="openApp()">🚀 Open Rushtown Operations Hub</button>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey:            "AIzaSyBRPjACWaVeHXw4ztydZVB-_MTMwEWfWmY",
+  authDomain:        "rushtown-poultry.firebaseapp.com",
+  projectId:         "rushtown-poultry",
+  storageBucket:     "rushtown-poultry.firebasestorage.app",
+  messagingSenderId: "1050651051862",
+  appId:             "1:1050651051862:web:c83d671abaec7f4c8378f7"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function $(id) { return document.getElementById(id); }
+
+async function loadStaff() {
+  try {
+    const snap = await db.collection('staff').get();
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const total    = docs.length;
+    const active   = docs.filter(d => d.active !== false).length;
+    const inactive = total - active;
+    const withEmpId= docs.filter(d => d.empId).length;
+    const seeded   = docs.filter(d => d.seededFromRoster2026).length;
+
+    $('staff-stats').innerHTML =
+      '<span class="stat">' + total + ' total records</span>' +
+      '<span class="stat">' + active + ' active</span>' +
+      (inactive > 0 ? '<span class="stat warn">' + inactive + ' inactive</span>' : '') +
+      '<span class="stat">' + withEmpId + ' with empId</span>' +
+      (seeded > 0 ? '<span class="stat">' + seeded + ' from roster seed</span>' : '');
+
+    if (total === 0) {
+      $('staff-log').innerHTML = '<div class="err-log">⚠ The staff collection is empty.</div>';
+      return;
+    }
+
+    // sort by name
+    docs.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+    const list = $('staff-names');
+    list.style.display = 'block';
+    list.innerHTML = docs.map(d =>
+      '<div class="name-row"><span>' + (d.name||'(no name)') + (d.active === false ? ' <em style="color:#888">(inactive)</em>' : '') + '</span><span class="id">' + (d.empId || '—') + '</span></div>'
+    ).join('');
+
+    $('staff-log').innerHTML = '✓ Read ' + total + ' staff records successfully from Firestore.';
+  } catch (e) {
+    $('staff-stats').innerHTML = '<span class="stat err">⚠ Could not read staff</span>';
+    $('staff-log').innerHTML = '<div class="err-log">Error: ' + (e.message || e) + '</div>';
+    if (String(e.message||e).toLowerCase().includes('permission')) {
+      $('staff-log').innerHTML += '<div class="err-log">→ Your Firestore rules currently require sign-in. They need to be re-deployed as wide-open. Tell Claude.</div>';
+    }
+  }
+}
+
+async function resetCache() {
+  const log = $('reset-log');
+  log.innerHTML = '';
+  function line(msg, isErr) {
+    const d = document.createElement('div');
+    if (isErr) d.className = 'err-log';
+    d.textContent = msg;
+    log.appendChild(d);
+  }
+
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      line('Found ' + regs.length + ' service worker(s).');
+      for (const r of regs) {
+        const ok = await r.unregister();
+        line(ok ? '✓ Unregistered: ' + (r.scope || '(scope unknown)') : '✗ Failed to unregister.');
+      }
+    } else {
+      line('Service workers not supported here.');
+    }
+
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      line('Found ' + keys.length + ' cache(s).');
+      for (const k of keys) {
+        const ok = await caches.delete(k);
+        line(ok ? '✓ Deleted cache: ' + k : '✗ Failed to delete: ' + k);
+      }
+    }
+
+    try { localStorage.removeItem('_rv'); line('✓ Cleared app version flag.'); } catch(e) {}
+
+    line('');
+    line('✅ Cache fully cleared. Click "Open the App Fresh" below.');
+  } catch (e) {
+    line('⚠ Reset error: ' + (e.message || e), true);
+  }
+}
+
+function openApp() {
+  window.open('https://rushtown-poultry.web.app/?_t=' + Date.now(), '_blank');
+}
+
+// Auto-load on page open
+loadStaff();
+</script>
+</body>
+</html>
