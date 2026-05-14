@@ -1,22 +1,18 @@
-// Rushtown Poultry — Firestore Security Rules
+// Rushtown Poultry — Firestore Security Rules (open access)
 //
-// Default: any authenticated user (real account OR anonymous kiosk
-// sign-in used by barn.html) can read and write the entire database.
+// Login was removed because too many farm staff don't have email
+// accounts. These rules match the pre-auth behavior: anyone with the
+// URL can read and write the database. Deploy with:
+//   firebase deploy --only firestore:rules
 //
-// Why so permissive: the operations hub is a single-tenant internal app
-// shared by employees. Adding auth alone closes the wide-open access we
-// had before. Per-collection role checks (e.g. only admins can edit
-// staff records) can be layered on later without breaking anything.
-//
-// Cloud Functions and the GitHub Actions report job both use the Admin
-// SDK / a service-account key, which BYPASSES these rules entirely —
-// they will continue to work unchanged.
+// When you're ready to add auth back, replace the rule body with:
+//   allow read, write: if request.auth != null;
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
