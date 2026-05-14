@@ -12,101 +12,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const storage = firebase.storage();
-const auth = firebase.auth();
 
-// ═══════════════════════════════════════════
-// AUTH GATE — login required before app boots
-// ═══════════════════════════════════════════
-// _authReady resolves once a user is signed in. initApp awaits it,
-// so no Firestore traffic happens until we have a real user.
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
-
-let _resolveAuthReady;
-const _authReady = new Promise(res => { _resolveAuthReady = res; });
-window._currentUser = null;
-
-function _showLogin(show) {
-  const login = document.getElementById('login-screen');
-  const splash = document.getElementById('loading-screen');
-  const app = document.getElementById('main-app');
-  if (login) login.style.display = show ? 'flex' : 'none';
-  if (show) {
-    if (splash) splash.classList.add('hidden');
-    if (app) app.style.opacity = '0';
-  } else {
-    // Signing in → show splash again until initApp's first snapshot fires.
-    if (splash) splash.classList.remove('hidden');
-    if (app) app.style.opacity = '1';
-  }
-}
-
-auth.onAuthStateChanged(user => {
-  if (user) {
-    window._currentUser = user;
-    _showLogin(false);
-    const so = document.getElementById('signout-btn'); if (so) so.style.display = 'inline-flex';
-    _resolveAuthReady(user);
-  } else {
-    window._currentUser = null;
-    _showLogin(true);
-    const so = document.getElementById('signout-btn'); if (so) so.style.display = 'none';
-  }
-});
-
-function _setLoginError(msg) {
-  const el = document.getElementById('login-error');
-  if (!el) return;
-  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-function appSignIn() {
-  const email = (document.getElementById('login-email')?.value||'').trim();
-  const pw    = document.getElementById('login-password')?.value||'';
-  if (!email || !pw) { _setLoginError('Enter email and password.'); return; }
-  _setLoginError('');
-  const btn = document.getElementById('login-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'SIGNING IN…'; }
-  auth.signInWithEmailAndPassword(email, pw)
-    .then(() => { if (btn){ btn.disabled=false; btn.textContent='SIGN IN'; } })
-    .catch(err => {
-      _setLoginError(err.message || 'Sign-in failed.');
-      if (btn) { btn.disabled = false; btn.textContent = 'SIGN IN'; }
-    });
-}
-
-function appSignUp() {
-  const email = (document.getElementById('login-email')?.value||'').trim();
-  const pw    = document.getElementById('login-password')?.value||'';
-  if (!email || pw.length < 6) { _setLoginError('Enter email + password (6+ chars) to create an account.'); return; }
-  _setLoginError('');
-  auth.createUserWithEmailAndPassword(email, pw)
-    .catch(err => _setLoginError(err.message || 'Create-account failed.'));
-}
-
-function appResetPassword() {
-  const email = (document.getElementById('login-email')?.value||'').trim();
-  if (!email) { _setLoginError('Enter your email first, then tap Forgot password.'); return; }
-  auth.sendPasswordResetEmail(email)
-    .then(() => _setLoginError('Reset email sent. Check your inbox.'))
-    .catch(err => _setLoginError(err.message || 'Reset failed.'));
-}
-
-function appSignOut() {
-  if (!confirm('Sign out of Rushtown Operations Hub?')) return;
-  auth.signOut().then(() => location.reload());
-}
-
-// Allow Enter key on the login form.
-document.addEventListener('DOMContentLoaded', () => {
-  const pw = document.getElementById('login-password');
-  if (pw) pw.addEventListener('keydown', e => { if (e.key === 'Enter') appSignIn(); });
-  const em = document.getElementById('login-email');
-  if (em) em.addEventListener('keydown', e => { if (e.key === 'Enter') {
-    const p = document.getElementById('login-password'); if (p) p.focus();
-  }});
-});
+// Login was removed (too many farm staff don't have email accounts).
+// The ADMIN_PIN below still gates admin actions inside the app.
 
 // ═══════════════════════════════════════════
 // ADMIN PIN SYSTEM
@@ -1406,9 +1314,6 @@ function _hideLoadingScreen() {
 }
 
 async function initApp() {
-  setMsg('Waiting for sign-in…');
-  // Gate: no Firestore traffic until a user is signed in.
-  await _authReady;
   setMsg('Loading…');
   // Safety net: never let the splash sit longer than 4 seconds, even if
   // Firestore is unreachable. App opens with whatever it has cached.
