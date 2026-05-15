@@ -663,24 +663,45 @@ const _origProdSetStatus = typeof prodSetStatus === 'function' ? prodSetStatus :
 let bulkPMSelected = new Set();
 
 function openBulkPM(preFilter) {
-  document.getElementById('bulk-date').value = new Date().toISOString().slice(0,10);
-  document.getElementById('bulk-tech').value = '';
-  document.getElementById('bulk-notes').value = 'Catch-up completion — tasks performed per normal schedule';
-  document.getElementById('bulk-pm-progress').style.display = 'none';
-  document.getElementById('bulk-pm-submit-btn').disabled = false;
-  if (preFilter) {
-    document.getElementById('bulk-farm-filter').value = 'all';
+  // Defensive: open the modal FIRST so the user gets immediate feedback,
+  // then fill it in. Previously, if any of the field-fill lines below
+  // threw (missing element, undefined global, etc.), the modal never
+  // opened and the button looked "broken". Now any field-fill error is
+  // surfaced via console + still leaves a usable (if half-filled) modal.
+  const modal = document.getElementById('bulk-pm-modal');
+  if (!modal) {
+    console.error('[openBulkPM] modal #bulk-pm-modal missing from DOM');
+    alert('Bulk PM modal is not loaded yet. Please reload the page and try again.');
+    return;
   }
-  // Refresh staff dropdown every time modal opens
-  if (typeof updateStaffDropdowns === 'function') updateStaffDropdowns();
-  bulkPMSelected = new Set();
-  renderBulkPMList();
-  if (preFilter === 'daily') {
-    // Auto-select all daily overdue
-    ALL_PM.filter(t=>t.freq==='daily'&&pmStatus(t.id)==='overdue').forEach(t=>bulkPMSelected.add(t.id));
-    renderBulkPMList();
+  modal.classList.add('open');
+
+  try {
+    const $ = id => document.getElementById(id);
+    if ($('bulk-date'))  $('bulk-date').value = new Date().toISOString().slice(0,10);
+    if ($('bulk-tech'))  $('bulk-tech').value = '';
+    if ($('bulk-notes')) $('bulk-notes').value = 'Catch-up completion — tasks performed per normal schedule';
+    if ($('bulk-pm-progress')) $('bulk-pm-progress').style.display = 'none';
+    if ($('bulk-pm-submit-btn')) $('bulk-pm-submit-btn').disabled = false;
+    if (preFilter && $('bulk-farm-filter')) $('bulk-farm-filter').value = 'all';
+
+    // Refresh staff dropdown every time modal opens
+    if (typeof updateStaffDropdowns === 'function') updateStaffDropdowns();
+
+    bulkPMSelected = new Set();
+    if (typeof renderBulkPMList === 'function') renderBulkPMList();
+
+    if (preFilter === 'daily' && Array.isArray(ALL_PM) && typeof pmStatus === 'function') {
+      // Auto-select all daily overdue
+      ALL_PM
+        .filter(t => t && t.freq === 'daily' && pmStatus(t.id) === 'overdue')
+        .forEach(t => bulkPMSelected.add(t.id));
+      if (typeof renderBulkPMList === 'function') renderBulkPMList();
+    }
+  } catch (e) {
+    console.error('[openBulkPM] init error:', e);
+    // Modal is already open so the user can still try to interact.
   }
-  document.getElementById('bulk-pm-modal').classList.add('open');
 }
 
 function closeBulkPM() {
