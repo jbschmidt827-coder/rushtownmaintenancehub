@@ -102,6 +102,7 @@
   let _walks = [];     // today's barnWalks records
   let _unsub = null;
   let _tick = null;
+  let _lastListenerError = null;  // last Firestore listener error message, for UI feedback
 
   function todayStr() { return new Date().toISOString().slice(0, 10); }
 
@@ -165,6 +166,7 @@
           <span id="dash-barn-status-summary" style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5a8a5a;"></span>
           <button onclick="if(typeof openEosRollup==='function')openEosRollup()" title="End-of-shift rollup (printable)" style="margin-left:10px;padding:4px 10px;background:#0a2a0a;border:1px solid #2a5a2a;border-radius:6px;color:#9ad0a0;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;cursor:pointer;white-space:nowrap;">📊 ROLLUP</button>
         </div>
+        ${_lastListenerError ? `<div style="padding:8px 12px;background:#3a1010;border-bottom:1px solid #5a1a1a;color:#ffb0b0;font-family:'IBM Plex Mono',monospace;font-size:10px;">⚠ Live data unavailable: ${_lastListenerError} — retrying…</div>` : ''}
         <div style="padding:10px 12px;">`;
 
     Object.entries(FARMS).forEach(([farm, count]) => {
@@ -343,9 +345,25 @@
       _unsub = db.collection('barnWalks').where('date', '==', todayStr())
         .onSnapshot(snap => {
           _walks = snap.docs.map(d => d.data());
+          _lastListenerError = null;
           render();
-        }, err => console.warn('[barn-status] listener:', err));
-    } catch (e) { console.warn('[barn-status] startListener failed:', e); }
+        }, err => {
+          // Surface listener failures in the panel so users know the
+          // grid is stale instead of just seeing "all barns blank."
+          console.error('[barn-status] listener error:', err);
+          _lastListenerError = err && err.message ? err.message : String(err);
+          render();
+          // Retry once after 10s so transient blips self-heal.
+          setTimeout(() => {
+            if (_unsub) { try { _unsub(); } catch(_) {} _unsub = null; }
+            startListener();
+          }, 10000);
+        });
+    } catch (e) {
+      console.error('[barn-status] startListener failed:', e);
+      _lastListenerError = e && e.message ? e.message : String(e);
+      try { render(); } catch(_) {}
+    }
   }
 
   function stopListener() {

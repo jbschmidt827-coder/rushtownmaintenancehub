@@ -640,7 +640,11 @@ function startChecklistDashboard() {
     .onSnapshot(snap => {
       _clDashData = snap.docs.map(d => ({ ...d.data(), _id: d.id }));
       renderChecklistDashboard();
-    }, err => console.error('checklist listener:', err));
+    }, err => {
+      console.error('[checklist] listener error:', err);
+      // Retry once after 10s so transient blips self-heal.
+      setTimeout(startChecklistDashboard, 10000);
+    });
 }
 
 function renderChecklistDashboard() {

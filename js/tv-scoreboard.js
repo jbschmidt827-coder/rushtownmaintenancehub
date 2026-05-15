@@ -56,15 +56,23 @@ function renderTVMode() {
   const el = document.getElementById('tv-last-refresh');
   if (el) el.textContent = 'Updated: ' + now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
 
+  // Defensive: if globals aren't populated yet (e.g. TV opened before
+  // initApp's listeners returned their first snapshots), treat everything
+  // as empty arrays so we don't throw and leave the scoreboard blank.
+  const _wo    = Array.isArray(workOrders) ? workOrders : [];
+  const _pms   = Array.isArray(ALL_PM)     ? ALL_PM     : [];
+  const _pmSt  = typeof pmStatus  === 'function' ? pmStatus  : () => 'unknown';
+  const _doneT = typeof doneToday === 'function' ? doneToday : () => false;
+
   // ── KPIs ──
-  const openUrgent = workOrders.filter(w=>w.priority==='urgent'&&w.status!=='completed').length;
-  const openWOs    = workOrders.filter(w=>w.status==='open'||w.status==='in-progress').length;
-  const pmOverdue  = ALL_PM.filter(t=>pmStatus(t.id)==='overdue').length;
-  const pmDoneToday= ALL_PM.filter(t=>doneToday(t.id)).length;
-  const pmPct = ALL_PM.length > 0 ? Math.round(pmDoneToday/ALL_PM.length*100) : 0;
+  const openUrgent = _wo.filter(w=>w.priority==='urgent'&&w.status!=='completed').length;
+  const openWOs    = _wo.filter(w=>w.status==='open'||w.status==='in-progress').length;
+  const pmOverdue  = _pms.filter(t=>_pmSt(t.id)==='overdue').length;
+  const pmDoneToday= _pms.filter(t=>_doneT(t.id)).length;
+  const pmPct = _pms.length > 0 ? Math.round(pmDoneToday/_pms.length*100) : 0;
 
   // Barn walk completion
-  const todayWalks = barnWalkStatus || {};
+  const todayWalks = (typeof barnWalkStatus !== 'undefined' && barnWalkStatus) ? barnWalkStatus : {};
   const hDone = Array.from({length:8},(_,i)=>i+1).filter(n=>todayWalks['Hegins-'+n]).length;
   const dDone = Array.from({length:5},(_,i)=>i+1).filter(n=>todayWalks['Danville-'+n]).length;
   const totalDone = hDone + dDone;

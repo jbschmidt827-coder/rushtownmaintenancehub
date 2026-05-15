@@ -51,7 +51,13 @@ function _listenToNotifications() {
       _notifDocs = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
       _updateBadge();
       if (_panelOpen) _renderList();
-    }, () => {});
+    }, err => {
+      // Previously this was `() => {}` — failures were silent and the bell
+      // badge stayed at zero forever even if pushes existed. Log the error
+      // and retry once after 10 seconds so transient blips self-heal.
+      console.error('[notifications] listener error:', err);
+      setTimeout(_listenToNotifications, 10000);
+    });
 }
 
 // ── Badge count ──
