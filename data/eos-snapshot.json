@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-05-16T11:56:26.179564Z",
-  "date": "2026-05-16",
+  "generatedAt": "2026-05-17T12:01:50.003532Z",
+  "date": "2026-05-17",
   "scope": {
     "farms": [
       "Danville",
@@ -9,10 +9,10 @@
     "houses": 13
   },
   "headline": {
-    "openWOTotal": 10,
+    "openWOTotal": 7,
     "redTagsActive": 0,
     "overdue7d": 0,
-    "walksToday": 2,
+    "walksToday": 3,
     "totalHouses": 13
   },
   "byHouse": [
@@ -25,7 +25,7 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Ventilation / Fans",
-      "topItemDays": 9
+      "topItemDays": 10
     },
     {
       "farm": "Hegins",
@@ -69,7 +69,7 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Electrical",
-      "topItemDays": 2
+      "topItemDays": 3
     },
     {
       "farm": "Hegins",
@@ -102,7 +102,7 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Feed System",
-      "topItemDays": 11
+      "topItemDays": 12
     },
     {
       "farm": "Danville",
@@ -113,18 +113,18 @@
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Feed System",
-      "topItemDays": 11
+      "topItemDays": 12
     },
     {
       "farm": "Danville",
       "house": "2",
-      "openWO": 4,
+      "openWO": 1,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Egg Collection",
-      "topItemDays": 29
+      "topItemDays": 4
     },
     {
       "farm": "Danville",
@@ -155,9 +155,9 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": false,
+      "morningWalkToday": true,
       "topItem": "Manure System",
-      "topItemDays": 3
+      "topItemDays": 4
     }
   ],
   "openWOs": [
@@ -261,17 +261,6 @@
       "urgent": false
     },
     {
-      "id": "lsDqWh51TCABMeERFhOO",
-      "farm": "Danville",
-      "house": "2",
-      "title": "Egg Collection",
-      "desc": "",
-      "priority": "urgent",
-      "status": "on-hold",
-      "ts": 1776348975843,
-      "urgent": false
-    },
-    {
       "id": "spUsrSr6cU6TYIPwfL8e",
       "farm": "Danville",
       "house": "2",
@@ -283,17 +272,6 @@
       "urgent": false
     },
     {
-      "id": "sxVInWg4yDFXRrfhxyZe",
-      "farm": "Danville",
-      "house": "2",
-      "title": "Ventilation / Fans",
-      "desc": "",
-      "priority": "urgent",
-      "status": "open",
-      "ts": 1778671257787,
-      "urgent": false
-    },
-    {
       "id": "u1ZkaV9RPSaLI15rPT4T",
       "farm": "Danville",
       "house": "1",
@@ -302,17 +280,6 @@
       "priority": "high",
       "status": "open",
       "ts": 1778513866050,
-      "urgent": false
-    },
-    {
-      "id": "vLjDUGQKGDaeeXefghy3",
-      "farm": "Danville",
-      "house": "2",
-      "title": "Building / Structure",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1778442592961,
       "urgent": false
     },
     {
@@ -332,15 +299,39 @@
   "morningWalksToday": [
     {
       "farm": "Danville",
+      "house": "5",
+      "employee": "Aracely",
+      "time": "7:24 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "5",
+      "employee": "Aracely",
+      "time": "7:24 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "5",
+      "employee": "Aracely",
+      "time": "7:24 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "5",
+      "employee": "Aracely",
+      "time": "7:24 AM"
+    },
+    {
+      "farm": "Danville",
       "house": "2",
-      "employee": "Celia",
-      "time": "7:53 AM"
+      "employee": "Aracely",
+      "time": "7:12 AM"
     },
     {
       "farm": "Danville",
       "house": "1",
-      "employee": "Celia",
-      "time": "7:21 AM"
+      "employee": "Aracely",
+      "time": "7:01 AM"
     }
   ]
 }
