@@ -6894,12 +6894,22 @@ async function saveWI() {
   try {
     const date = new Date().toISOString().slice(0,10);
     if (editingWIId) {
-      // Resolve the Firestore doc ID — try in-memory first, fall back to query
-      const existing = allWI.find(w => w.wiId === editingWIId);
+      // Resolve the Firestore doc ID — match by wiId OR _fbId (legacy docs may have only one).
+      // Asymmetry with openWIView/_openWIForm was the long-standing root cause of "edits don't save".
+      const existing = allWI.find(w => w.wiId === editingWIId || w._fbId === editingWIId);
       let fbId = existing && existing._fbId;
       if (!fbId) {
+        // 1) Try the wiId field
         const snap = await db.collection('workInstructions').where('wiId','==',editingWIId).limit(1).get();
-        if (!snap.empty) fbId = snap.docs[0].id;
+        if (!snap.empty) {
+          fbId = snap.docs[0].id;
+        } else {
+          // 2) Last resort: treat editingWIId AS a Firestore doc id (handles legacy docs with no wiId field)
+          try {
+            const direct = await db.collection('workInstructions').doc(editingWIId).get();
+            if (direct.exists) fbId = direct.id;
+          } catch(_) {}
+        }
       }
       if (fbId) {
         // Merge kept existing photos (legacy Storage URLs OR data URIs) with newly
@@ -6919,8 +6929,16 @@ async function saveWI() {
         }
         photoUrls = trimmed;
         const clTaskId = (document.getElementById('wif-cl-task-id')?.value || '').trim();
+        // Self-heal: ensure every saved doc has a wiId. Legacy docs without one used to be
+        // unfindable by saveWI — backfilling here means once they're edited, they never fall
+        // into the legacy bucket again. Eliminates the bug class permanently over time.
+        const needsWiId = !existing || !existing.wiId;
+        const healWiId = needsWiId
+          ? (editingWIId && !editingWIId.startsWith(fbId.slice(0,6)) ? editingWIId : ('WI-' + fbId.slice(0,8).toUpperCase()))
+          : null;
         await db.collection('workInstructions').doc(fbId).update({
           title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, photos: photoUrls, updatedTs: Date.now(),
+          ...(needsWiId ? { wiId: healWiId } : {}),
           ...(clTaskId ? { clTaskId } : {})
         });
         // activityLog for edits — non-blocking
@@ -7168,10 +7186,22 @@ function wiEditCurrent() {
 
 async function wiDeleteCurrent() {
   if (!currentWIId) return;
-  const wi = allWI.find(x => x.wiId === currentWIId);
-  if (!wi || !wi._fbId) return;
-  if (!confirm(`Delete "${wi.title}"? This cannot be undone.`)) return;
-  await db.collection('workInstructions').doc(wi._fbId).delete();
+  // Match by wiId OR _fbId — same asymmetry fix as saveWI.
+  let wi = allWI.find(x => x.wiId === currentWIId || x._fbId === currentWIId);
+  // Last-resort: direct doc-id lookup for legacy docs not in cache yet
+  let fbId = wi && wi._fbId;
+  if (!fbId) {
+    try {
+      const direct = await db.collection('workInstructions').doc(currentWIId).get();
+      if (direct.exists) { wi = Object.assign({_fbId: direct.id}, direct.data()); fbId = direct.id; }
+    } catch(_) {}
+  }
+  if (!wi || !fbId) {
+    alert('Could not find work instruction to delete.');
+    return;
+  }
+  if (!confirm(`Delete "${wi.title || 'this work instruction'}"? This cannot be undone.`)) return;
+  await db.collection('workInstructions').doc(fbId).delete();
   closeWIView();
 }
 
