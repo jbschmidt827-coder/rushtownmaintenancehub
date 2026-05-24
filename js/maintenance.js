@@ -887,15 +887,129 @@ function renderPM() {
     return;
   }
 
+  // Group by System → Machine → individual PM tasks. One collapsible card per machine
+  // keeps the panel scannable instead of dumping 80+ flat rows.
   let html = banner;
+  let expanded = {};
+  try { expanded = JSON.parse(localStorage.getItem('pmExpanded') || '{}') || {}; } catch(e) {}
+  // When the user has narrowed the view (overdue / due-soon / frequency / sys filter)
+  // it's almost always more useful to see the tasks immediately, so auto-expand.
+  const autoExpand = (pmStatFilter !== 'all');
+
   for (const sys of ['Ventilation','Water','Feed','Feeders','Manure','Egg Collectors','Building','Alarms','Lubing','Packaging']) {
-    const st=filtered.filter(t=>t.sys===sys);
+    const st = filtered.filter(t=>t.sys===sys);
     if (!st.length) continue;
-    html+=`<div class="sys-hdr">${SYS_ICON[sys]||'🔧'} ${sys}</div><div class="card-list">`;
-    html+=st.map(t=>pmCardHtml(t)).join('');
-    html+='</div>';
+
+    // Bucket this system's tasks by machine
+    const byMach = {};
+    for (const t of st) {
+      const m = pmMachine(t);
+      (byMach[m] = byMach[m] || []).push(t);
+    }
+    // Sort machines: worst status first, then alphabetical
+    const machNames = Object.keys(byMach).sort((a,b)=>{
+      const score = list => list.some(t=>pmStatus(t.id)==='overdue') ? 0
+                          : list.some(t=>pmStatus(t.id)==='due-soon') ? 1 : 2;
+      const sa = score(byMach[a]), sb = score(byMach[b]);
+      return sa - sb || a.localeCompare(b);
+    });
+
+    html += `<div class="sys-hdr">${SYS_ICON[sys]||'🔧'} ${sys}</div>`;
+    html += '<div class="card-list">';
+    for (const mach of machNames) {
+      const list = byMach[mach];
+      const key  = sys + '|' + mach;
+      const isOpen = autoExpand || !!expanded[key];
+      const ov = list.filter(t=>pmStatus(t.id)==='overdue').length;
+      const ds = list.filter(t=>pmStatus(t.id)==='due-soon').length;
+      const ok = list.filter(t=>pmStatus(t.id)==='ok').length;
+      const dt = list.filter(t=>doneToday(t.id)).length;
+      const allDone = (dt === list.length);
+      const stCls = ov ? 'overdue' : ds ? 'due-soon' : allDone ? 'done-today' : 'ok';
+      const keyAttr = key.replace(/"/g,'&quot;');
+      html += `<div class="pm-mach-group ${isOpen?'open':''} ${stCls}" data-mach-key="${keyAttr}">
+        <div class="pm-mach-hdr" onclick="togglePMMachine(this)">
+          <span class="pm-mach-caret">▶</span>
+          <span class="pm-mach-icon">${SYS_ICON[sys]||'🔧'}</span>
+          <span class="pm-mach-name">${mach}</span>
+          <span class="pm-mach-counts">
+            ${ov ? `<span class="pm-mc-pill ov">${ov} overdue</span>` : ''}
+            ${ds ? `<span class="pm-mc-pill ds">${ds} due soon</span>` : ''}
+            ${(!ov && !ds && ok) ? `<span class="pm-mc-pill ok">${ok} on track</span>` : ''}
+            ${dt ? `<span class="pm-mc-pill dt">${dt} done today</span>` : ''}
+            <span class="pm-mc-tot">${list.length} task${list.length!==1?'s':''}</span>
+          </span>
+        </div>
+        <div class="pm-mach-body">
+          ${list.map(t=>pmCardHtml(t)).join('')}
+        </div>
+      </div>`;
+    }
+    html += '</div>';
   }
-  document.getElementById('pm-container').innerHTML=html;
+  document.getElementById('pm-container').innerHTML = html;
+}
+
+// ── Machine grouping ──────────────────────────────────────────
+// Derive a "machine" label for a PM task so the panel can collapse 80+ flat
+// rows into one card per physical machine. Most PMs don't carry an explicit
+// machine field, so we infer it from the task text. New PM_DEFS can opt in
+// by adding a `mach` field — when present it's used as-is.
+function pmMachine(t) {
+  if (t && t.mach) return t.mach;
+  const txt = (t && t.task || '').toLowerCase();
+  switch (t && t.sys) {
+    case 'Manure':
+      if (/run manure belts|check manure belts/.test(txt)) return 'Manure Belts';
+      if (/drying fan|fan shroud|screens on manure/.test(txt)) return 'Drying Fans';
+      if (/plow|trip switch|trip sensor|scraper|adjuster plate|2x6/.test(txt)) return 'Floor Scrapers';
+      if (/incline belt/.test(txt))                          return 'Incline Belt';
+      if (/pit belt|grease bearings on pit/.test(txt))       return 'Pit Belt';
+      if (/auger|manure in pit/.test(txt))                   return 'Pit & Augers';
+      return 'Drives & Gearboxes';
+    case 'Egg Collectors':
+      if (/niagara/.test(txt))                  return 'Niagara Belt';
+      if (/egg belt|egg jam|finger/.test(txt))  return 'Egg Belts';
+      return 'Drives & Chains';
+    case 'Feeders':
+      if (/feed bin|v-belt/.test(txt))          return 'Feed Bins';
+      if (/gearbox|wear shoe/.test(txt))        return 'Feeder Drives';
+      if (/feeders are working|feeder corner/.test(txt)) return 'Feeder Pans';
+      return 'Feed Chain';
+    case 'Ventilation':
+      if (/inlet|attic/.test(txt))              return 'Inlets';
+      if (/stir fan/.test(txt))                 return 'Stir Fans';
+      if (/updraft/.test(txt))                  return 'Updraft Fans';
+      if (/equalizer/.test(txt))                return 'Equalizer';
+      return 'Pit Fans';
+    case 'Water':    return 'Water Lines';
+    case 'Building': return 'Building';
+    case 'Alarms':   return 'Alarm System';
+    case 'Lubing':
+      if (/oiler drip|oil reservoir/.test(txt)) return 'Drip Oilers';
+      if (/brush|rod counter sprocket/.test(txt)) return 'Drive Roller';
+      return 'Lubing Chain';
+    case 'Packaging':
+      // Packaging PM_DEFS are already named per machine ("Rod Conveyor — weekly…").
+      // Use the part of the title before the em-dash as the machine name.
+      return ((t && t.task) || '').split('—')[0].trim() || 'Packaging';
+    default: return (t && t.sys) || 'Other';
+  }
+}
+
+// Toggle a machine group open/closed and persist the choice so it survives
+// re-renders (snapshots, filter changes, etc).
+function togglePMMachine(hdrEl) {
+  const grp = hdrEl && hdrEl.parentElement;
+  if (!grp) return;
+  grp.classList.toggle('open');
+  const key = grp.getAttribute('data-mach-key');
+  if (!key) return;
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('pmExpanded') || '{}') || {}; } catch(e) {}
+  if (grp.classList.contains('open')) saved[key] = 1;
+  else delete saved[key];
+  try { localStorage.setItem('pmExpanded', JSON.stringify(saved)); } catch(e) {}
 }
 
 function pmCardHtml(t) {

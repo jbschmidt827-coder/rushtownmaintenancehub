@@ -559,8 +559,11 @@ function bwSetCheck(key, val, btn) {
 
 function openBarnWalk(farm, house) {
   _bwFarm = farm; _bwHouse = house; _bwData = {}; _bwDocId = null;
-  document.getElementById('bw-title').textContent = farm + ' — Barn ' + house;
-  document.getElementById('bw-subtitle').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  const _t = (typeof t === 'function') ? t : (k => k);
+  const _bLbl = _t('prod.barn');
+  const _isEs = (typeof _lang !== 'undefined' && _lang === 'es');
+  document.getElementById('bw-title').textContent = farm + ' — ' + _bLbl + ' ' + house;
+  document.getElementById('bw-subtitle').textContent = new Date().toLocaleDateString(_isEs ? 'es-MX' : 'en-US',{weekday:'long',month:'long',day:'numeric'});
   ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count','bw-egg-count'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
@@ -577,7 +580,10 @@ function openBarnWalk(farm, house) {
   if (oldBanner) oldBanner.remove();
   const submitBtn = document.getElementById('bw-submit-btn');
   submitBtn.disabled = true;
-  submitBtn.textContent = 'Submit';
+  // Reset to the canonical English label — applyFormTextTranslation() called
+  // below will swap to Spanish if needed via the FORM_TEXT '✓ Submit Daily Check' entry.
+  submitBtn.textContent = '✓ Submit Daily Check';
+  delete submitBtn.dataset.enText;
   submitBtn.style.background = '';
 
   document.getElementById('barn-walk-modal').style.display = 'block';
@@ -620,9 +626,11 @@ function openBarnWalk(farm, house) {
           const sb = document.getElementById('bw-submit-btn');
           if (sb) sb.parentNode.insertBefore(banner, sb);
         }
-        banner.textContent = '✏️ Editing today\'s submission — changes will update the existing record';
+        banner.textContent = _isEs
+          ? '✏️ Editando la entrega de hoy — los cambios actualizarán el registro existente'
+          : '✏️ Editing today\'s submission — changes will update the existing record';
         const sb = document.getElementById('bw-submit-btn');
-        if (sb) { sb.textContent = 'Update Submission'; sb.style.background = '#1a3a4a'; }
+        if (sb) { sb.textContent = _isEs ? 'Actualizar Entrega' : 'Update Submission'; sb.style.background = '#1a3a4a'; }
         return;
       }
       // 3. No draft, no submission — pre-fill employee from last barn walk
@@ -993,7 +1001,9 @@ async function submitBarnWalk() {
     if (sBtn) sBtn.parentNode.insertBefore(banner, sBtn);
   }
   banner.style.cssText = 'background:#0f3a1a;border:1px solid #4caf50;border-radius:8px;padding:10px 14px;margin:0 0 12px;color:#7ad07a;font-size:12px;font-family:"IBM Plex Mono",monospace;text-align:center;';
-  banner.textContent = '✅ Saved at ' + record.time + ' — edit any field above and tap Update to re-save';
+  banner.textContent = (typeof _lang !== 'undefined' && _lang === 'es')
+    ? ('✅ Guardado a las ' + record.time + ' — edita cualquier campo arriba y toca Actualizar para volver a guardar')
+    : ('✅ Saved at ' + record.time + ' — edit any field above and tap Update to re-save');
 
   renderProdPanel();
   renderECContent();
@@ -1005,7 +1015,8 @@ var _mwFarm = '', _mwHouse = 0, _mwData = {};
 
 function openMorningWalk(farm, house) {
   _mwFarm = farm; _mwHouse = house; _mwData = {};
-  document.getElementById('mw-title').textContent = farm + ' — Barn ' + house;
+  const _t = (typeof t === 'function') ? t : (k => k);
+  document.getElementById('mw-title').textContent = farm + ' — ' + _t('prod.barn') + ' ' + house;
   ['mw-employee','mw-water','mw-temp','mw-notes','mw-ee-count'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
@@ -1013,6 +1024,7 @@ function openMorningWalk(farm, house) {
   document.getElementById('mw-submit-btn').disabled = true;
   document.getElementById('morning-walk-modal').style.display = 'block';
   document.getElementById('morning-walk-modal').scrollTop = 0;
+  if (typeof applyFormTextTranslation === 'function') applyFormTextTranslation();
   // Pre-populate employee from last submission for this barn
   db.collection('morningWalks').where('farm','==',farm).where('house','==',String(house))
     .limit(20).get()
@@ -1035,10 +1047,11 @@ function mwCheckBinLevel(inputId, statusId) {
   if (!input || !status) return;
   const val = parseFloat(input.value);
   if (isNaN(val) || input.value === '') { status.textContent = ''; return; }
-  if (val < 1)        { status.style.color = '#e53e3e'; status.textContent = '🔴 CRITICAL — Order feed now'; }
-  else if (val < 2.5) { status.style.color = '#d69e2e'; status.textContent = '🟡 Low — Order soon'; }
-  else if (val < 5)   { status.style.color = '#4ade80'; status.textContent = '🟢 Moderate'; }
-  else                { status.style.color = '#4ade80'; status.textContent = '🟢 Good'; }
+  const _isEs = (typeof _lang !== 'undefined' && _lang === 'es');
+  if (val < 1)        { status.style.color = '#e53e3e'; status.textContent = _isEs ? '🔴 CRÍTICO — Pedir alimento ya' : '🔴 CRITICAL — Order feed now'; }
+  else if (val < 2.5) { status.style.color = '#d69e2e'; status.textContent = _isEs ? '🟡 Bajo — Pedir pronto'          : '🟡 Low — Order soon'; }
+  else if (val < 5)   { status.style.color = '#4ade80'; status.textContent = _isEs ? '🟢 Moderado'                       : '🟢 Moderate'; }
+  else                { status.style.color = '#4ade80'; status.textContent = _isEs ? '🟢 Bien'                            : '🟢 Good'; }
 }
 
 function mwSet(key, val) {
@@ -1718,7 +1731,10 @@ var _prodCheckIssues = [];
 async function renderProdCheck() {
   const el = document.getElementById('panel-check-body') || document.getElementById('prod-sec-check');
   if (!el) return;
-  el.innerHTML = '<div style="text-align:center;padding:40px;color:#5a8a5a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">Loading\u2026</div>';
+  // i18n helper (no-op fallback when core.js' t() hasn't loaded yet)
+  const _t = (typeof t === 'function') ? t : (k => k);
+  const barnLbl = _t('prod.barn');
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:#5a8a5a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">'+_t('chk.loading')+'</div>';
   const todayStr = new Date().toISOString().slice(0,10);
   let walks = [];
   try {
@@ -1739,33 +1755,35 @@ async function renderProdCheck() {
     for (let h=1; h<=houses; h++) {
       const k=name+'-'+h, walk=walkMap[k], eggs=eggMap[k]||0, eggPct=eggs>0?Math.round((eggs/EGG_TARGET)*100):null, hasFlag=walk&&walk.flags&&walk.flags.length>0;
       let bg,bc,icon,sub;
-      if (!walk)        { bg='#1a1a0a';bc='#4a4a00';icon='&mdash;';sub='pending'; issues.push({farm:name,house:h,issue:'No barn check submitted today'}); }
+      if (!walk)        { bg='#1a1a0a';bc='#4a4a00';icon='&mdash;';sub=_t('chk.pending'); issues.push({farm:name,house:h,issue:_t('chk.no_check')}); }
       else if (hasFlag) { bg='#2a1a1a';bc='#e53e3e';icon='&#x26a0;';sub=walk.employee||'?'; }
       else              { bg='#1a3a1a';bc='#4caf50';icon='&#x2713;';sub=walk.employee||'?'; }
-      if (eggs>0&&eggPct<50) issues.push({farm:name,house:h,issue:'Low eggs: '+eggs+' ('+eggPct+'% of target)'});
-      const eggLine = eggPct!==null ? '<div style="font-size:8px;color:'+(eggPct>=90?'#4caf50':eggPct>=70?'#d69e2e':'#e53e3e')+';margin-top:2px;">'+eggPct+'%</div>' : (walk?'<div style="font-size:8px;color:#3a5a3a;margin-top:2px;">no egg log</div>':'');
+      if (eggs>0&&eggPct<50) issues.push({farm:name,house:h,issue:_t('chk.low_eggs')+' '+eggs+' ('+eggPct+'% '+_t('chk.of_target')+')'});
+      const eggLine = eggPct!==null ? '<div style="font-size:8px;color:'+(eggPct>=90?'#4caf50':eggPct>=70?'#d69e2e':'#e53e3e')+';margin-top:2px;">'+eggPct+'%</div>' : (walk?'<div style="font-size:8px;color:#3a5a3a;margin-top:2px;">'+_t('chk.no_egg_log')+'</div>':'');
       cells += '<div onclick="openBarnWalk(\''+name+'\','+h+')" style="background:'+bg+';border:2px solid '+bc+';border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;"><div style="font-size:8px;color:#5a8a5a;letter-spacing:1px;font-family:\'IBM Plex Mono\',monospace;">H'+h+'</div><div style="font-size:20px;font-weight:700;color:'+bc+';line-height:1.3;">'+icon+'</div><div style="font-size:8px;color:#7a9a7a;font-family:\'IBM Plex Mono\',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:54px;margin:1px auto 0;">'+sub+'</div>'+eggLine+'</div>';
     }
     farmsHtml += '<div style="margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;color:#a0c0a0;margin-bottom:8px;">&#x1f4cd; '+name+'</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'+cells+'</div></div>';
   });
   _prodCheckIssues = issues;
+  const issueLbl = issues.length>1 ? _t('chk.issues_many') : _t('chk.issues_one');
   const issuesHtml = issues.length>0
-    ? '<div style="background:#1a0a0a;border:1px solid #5a2a2a;border-radius:12px;padding:14px;margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#e53e3e;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">&#x26a0; '+issues.length+' Issue'+(issues.length>1?'s':'')+' Found</div>'+issues.map(i=>'<div style="font-size:11px;color:#c0604a;font-family:\'IBM Plex Mono\',monospace;padding:4px 0;border-bottom:1px solid #2a1010;">'+i.farm+' Barn '+i.house+' &mdash; '+i.issue+'</div>').join('')+'<button onclick="prodCheckCreateWOs()" style="margin-top:12px;width:100%;padding:10px;background:#5a1010;border:1px solid #e53e3e;border-radius:8px;color:#e53e3e;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;">&#x1f527; Create Must-Fix WOs for All Issues</button></div>'
-    : '<div style="background:#0a1a0a;border:1px solid #2a5a2a;border-radius:12px;padding:12px;margin-bottom:16px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#4caf50;">&#x2705; No issues found for today</div>';
+    ? '<div style="background:#1a0a0a;border:1px solid #5a2a2a;border-radius:12px;padding:14px;margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#e53e3e;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">&#x26a0; '+issues.length+' '+issueLbl+'</div>'+issues.map(i=>'<div style="font-size:11px;color:#c0604a;font-family:\'IBM Plex Mono\',monospace;padding:4px 0;border-bottom:1px solid #2a1010;">'+i.farm+' '+barnLbl+' '+i.house+' &mdash; '+i.issue+'</div>').join('')+'<button onclick="prodCheckCreateWOs()" style="margin-top:12px;width:100%;padding:10px;background:#5a1010;border:1px solid #e53e3e;border-radius:8px;color:#e53e3e;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;">'+_t('chk.create_wos')+'</button></div>'
+    : '<div style="background:#0a1a0a;border:1px solid #2a5a2a;border-radius:12px;padding:12px;margin-bottom:16px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#4caf50;">'+_t('chk.no_issues_today')+'</div>';
   const recentHtml = walks.length>0
-    ? '<div style="background:#0f1a0f;border:1px solid #2a4a2a;border-radius:12px;padding:14px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#5a8a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Today\'s Submissions</div>'+walks.sort((a,b)=>b.ts-a.ts).map(w=>'<div style="padding:8px 0;border-bottom:1px solid #1a3a1a;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#f0ead8;">'+w.farm+' Barn '+w.house+' <span style="color:'+(w.flags&&w.flags.length?'#e53e3e':'#4caf50')+';font-size:10px;">'+(w.flags&&w.flags.length?'&#x26a0; '+w.flags.length+' flag(s)':'&#x2713; OK')+'</span></div><div style="font-size:10px;color:#5a8a5a;margin-top:2px;">'+(w.employee||'Unknown')+' &middot; '+(w.time||'')+'</div></div><div style="font-size:10px;color:#4a6a4a;font-family:\'IBM Plex Mono\',monospace;">PSI: '+(w.waterPSI||'&mdash;')+'</div></div>').join('')+'</div>'
+    ? '<div style="background:#0f1a0f;border:1px solid #2a4a2a;border-radius:12px;padding:14px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#5a8a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">'+_t('chk.todays_submissions')+'</div>'+walks.sort((a,b)=>b.ts-a.ts).map(w=>'<div style="padding:8px 0;border-bottom:1px solid #1a3a1a;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#f0ead8;">'+w.farm+' '+barnLbl+' '+w.house+' <span style="color:'+(w.flags&&w.flags.length?'#e53e3e':'#4caf50')+';font-size:10px;">'+(w.flags&&w.flags.length?'&#x26a0; '+w.flags.length+' '+_t('chk.flags_one'):_t('chk.ok'))+'</span></div><div style="font-size:10px;color:#5a8a5a;margin-top:2px;">'+(w.employee||_t('chk.unknown'))+' &middot; '+(w.time||'')+'</div></div><div style="font-size:10px;color:#4a6a4a;font-family:\'IBM Plex Mono\',monospace;">'+_t('chk.psi')+' '+(w.waterPSI||'&mdash;')+'</div></div>').join('')+'</div>'
     : '';
-  el.innerHTML = '<div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e')+';">'+checked+'/'+totalBarns+'</div><div style="font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Checked</div></div><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(flagged>0?'#e53e3e':'#4caf50')+';">'+flagged+'</div><div style="font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Flagged</div></div><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e')+';">'+pct+'%</div><div style="font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Coverage</div></div></div>'+issuesHtml+farmsHtml+recentHtml;
+  el.innerHTML = '<div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e')+';">'+checked+'/'+totalBarns+'</div><div style="font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">'+_t('chk.checked')+'</div></div><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(flagged>0?'#e53e3e':'#4caf50')+';">'+flagged+'</div><div style="font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">'+_t('chk.flagged')+'</div></div><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(pct>=80?'#4caf50':pct>=50?'#d69e2e':'#e53e3e')+';">'+pct+'%</div><div style="font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">'+_t('chk.coverage')+'</div></div></div>'+issuesHtml+farmsHtml+recentHtml;
 }
 
 async function prodCheckCreateWOs() {
   if (!_prodCheckIssues.length) return;
+  const _t = (typeof t === 'function') ? t : (k => k);
   const btn = document.querySelector('#prod-sec-check button[onclick="prodCheckCreateWOs()"]');
-  if (btn) { btn.disabled=true; btn.textContent='Creating WOs\u2026'; }
+  if (btn) { btn.disabled=true; btn.textContent=_t('chk.creating_wos'); }
   for (const iss of _prodCheckIssues) {
     try { await createMustFixWO(iss.farm+' Barn '+iss.house+' \u2014 '+iss.issue, iss.issue, iss.farm, iss.house, 'urgent'); } catch(e) { console.error(e); }
   }
-  if (btn) btn.textContent='\u2713 WOs Created';
+  if (btn) btn.textContent=_t('chk.wos_created');
   setTimeout(()=>renderProdCheck(), 1500);
 }
 
@@ -1776,7 +1794,9 @@ var _mwTabIssues = [];
 async function renderProdMW() {
   const el = document.getElementById('panel-mw-body') || document.getElementById('prod-sec-mw');
   if (!el) return;
-  el.innerHTML = '<div style="text-align:center;padding:40px;color:#3a5a8a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">Loading\u2026</div>';
+  const _t = (typeof t === 'function') ? t : (k => k);
+  const barnLbl = _t('prod.barn');
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:#3a5a8a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">'+_t('chk.loading')+'</div>';
   const todayStr = new Date().toISOString().slice(0,10);
   let walks = [];
   try {
@@ -1804,13 +1824,14 @@ async function renderProdMW() {
     farmsHtml += '<div style="margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;color:#6a90c0;margin-bottom:8px;">&#x1f4cd; '+name+'</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'+cells+'</div></div>';
   });
   _mwTabIssues = issues;
+  const issueLbl = issues.length>1 ? _t('chk.issues_many') : _t('chk.issues_one');
   const issuesHtml = issues.length>0
-    ? '<div style="background:#1a0a0a;border:1px solid #5a2a2a;border-radius:12px;padding:14px;margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#e53e3e;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">&#x26a0; '+issues.length+' Issue'+(issues.length>1?'s':'')+' Found</div>'+issues.map(i=>'<div style="font-size:11px;color:#c0604a;font-family:\'IBM Plex Mono\',monospace;padding:4px 0;border-bottom:1px solid #2a1010;">'+i.farm+' Barn '+i.house+' &mdash; '+i.issue+'</div>').join('')+'<button onclick="mwTabCreateWOs()" style="margin-top:12px;width:100%;padding:10px;background:#5a1010;border:1px solid #e53e3e;border-radius:8px;color:#e53e3e;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;">&#x1f527; Create Must-Fix WOs</button></div>'
-    : '<div style="background:#080d1a;border:1px solid #1e3a6a;border-radius:12px;padding:12px;margin-bottom:16px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#4a90d9;">&#x2705; No issues found for today</div>';
+    ? '<div style="background:#1a0a0a;border:1px solid #5a2a2a;border-radius:12px;padding:14px;margin-bottom:16px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#e53e3e;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">&#x26a0; '+issues.length+' '+issueLbl+'</div>'+issues.map(i=>'<div style="font-size:11px;color:#c0604a;font-family:\'IBM Plex Mono\',monospace;padding:4px 0;border-bottom:1px solid #2a1010;">'+i.farm+' '+barnLbl+' '+i.house+' &mdash; '+i.issue+'</div>').join('')+'<button onclick="mwTabCreateWOs()" style="margin-top:12px;width:100%;padding:10px;background:#5a1010;border:1px solid #e53e3e;border-radius:8px;color:#e53e3e;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;">'+_t('mw.create_wos')+'</button></div>'
+    : '<div style="background:#080d1a;border:1px solid #1e3a6a;border-radius:12px;padding:12px;margin-bottom:16px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#4a90d9;">'+_t('chk.no_issues_today')+'</div>';
   const recentHtml = walks.length>0
-    ? '<div style="background:#080d1a;border:1px solid #1e3a6a;border-radius:12px;padding:14px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#3a6aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Today\'s Submissions</div>'+walks.sort((a,b)=>b.ts-a.ts).map(w=>'<div style="padding:8px 0;border-bottom:1px solid #0d1f3a;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#f0ead8;">'+w.farm+' Barn '+w.house+' <span style="color:'+(w.flags&&w.flags.length?'#e53e3e':'#4a90d9')+';font-size:10px;">'+(w.flags&&w.flags.length?'&#x26a0; '+w.flags.length+' flag(s)':'&#x2713; OK')+'</span></div><div style="font-size:10px;color:#3a5a8a;margin-top:2px;">'+(w.employee||'Unknown')+' &middot; '+(w.time||'')+' &middot; '+(w.temp||'&mdash;')+'&deg;F</div></div><div style="font-size:10px;color:#3a6aaa;font-family:\'IBM Plex Mono\',monospace;">PSI: '+(w.waterPSI||'&mdash;')+'</div></div>').join('')+'</div>'
+    ? '<div style="background:#080d1a;border:1px solid #1e3a6a;border-radius:12px;padding:14px;"><div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#3a6aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">'+_t('chk.todays_submissions')+'</div>'+walks.sort((a,b)=>b.ts-a.ts).map(w=>'<div style="padding:8px 0;border-bottom:1px solid #0d1f3a;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#f0ead8;">'+w.farm+' '+barnLbl+' '+w.house+' <span style="color:'+(w.flags&&w.flags.length?'#e53e3e':'#4a90d9')+';font-size:10px;">'+(w.flags&&w.flags.length?'&#x26a0; '+w.flags.length+' '+_t('chk.flags_one'):_t('chk.ok'))+'</span></div><div style="font-size:10px;color:#3a5a8a;margin-top:2px;">'+(w.employee||_t('chk.unknown'))+' &middot; '+(w.time||'')+' &middot; '+(w.temp||'&mdash;')+'&deg;F</div></div><div style="font-size:10px;color:#3a6aaa;font-family:\'IBM Plex Mono\',monospace;">'+_t('chk.psi')+' '+(w.waterPSI||'&mdash;')+'</div></div>').join('')+'</div>'
     : '';
-  el.innerHTML = '<div style="background:#080d1a;border:1px solid #1e3a6a;border-radius:12px;padding:14px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(pct>=80?'#4a90d9':pct>=50?'#d69e2e':'#e53e3e')+';">'+checked+'/'+totalBarns+'</div><div style="font-size:9px;color:#3a5a8a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Walked</div></div><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(flagged>0?'#e53e3e':'#4a90d9')+';">'+flagged+'</div><div style="font-size:9px;color:#3a5a8a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Flagged</div></div><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(pct>=80?'#4a90d9':pct>=50?'#d69e2e':'#e53e3e')+';">'+pct+'%</div><div style="font-size:9px;color:#3a5a8a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Coverage</div></div></div>'+issuesHtml+farmsHtml+recentHtml;
+  el.innerHTML = '<div style="background:#080d1a;border:1px solid #1e3a6a;border-radius:12px;padding:14px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;"><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(pct>=80?'#4a90d9':pct>=50?'#d69e2e':'#e53e3e')+';">'+checked+'/'+totalBarns+'</div><div style="font-size:9px;color:#3a5a8a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">'+_t('mw.walked')+'</div></div><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(flagged>0?'#e53e3e':'#4a90d9')+';">'+flagged+'</div><div style="font-size:9px;color:#3a5a8a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">'+_t('chk.flagged')+'</div></div><div><div style="font-family:\'IBM Plex Mono\',monospace;font-size:26px;font-weight:700;color:'+(pct>=80?'#4a90d9':pct>=50?'#d69e2e':'#e53e3e')+';">'+pct+'%</div><div style="font-size:9px;color:#3a5a8a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">'+_t('chk.coverage')+'</div></div></div>'+issuesHtml+farmsHtml+recentHtml;
 }
 
 async function mwTabCreateWOs() {

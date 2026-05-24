@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Rushtown Poultry — Operations Hub</title>
 <script>
-(function(){var V='20260515-resilience';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
+(function(){var V='20260522-pm-by-machine';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
 </script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0f1a0f">
@@ -224,7 +224,28 @@ body { font-family: 'IBM Plex Sans', sans-serif; background: var(--dark); min-he
 .btn-history { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; padding: 5px 10px; border-radius: 6px; border: 1px solid #ccc; cursor: pointer; background: #f5f5f5; color: var(--muted); transition: all 0.2s; white-space: nowrap; margin-top: 4px; }
 .btn-history:hover { background: #e8e8e8; color: var(--ink); }
 .sys-hdr { font-family: 'Bebas Neue', sans-serif; font-size: 17px; letter-spacing: 2px; color: #fff; padding: 14px 0 7px; border-bottom: 2px solid var(--green-mid); margin-bottom: 9px; margin-top: 18px; }
-@media(max-width:500px){ .pm-card { grid-template-columns: 1fr; } .pm-right { align-items: flex-start; flex-direction: row; flex-wrap: wrap; } }
+/* Machine grouping inside each system — one collapsible card per machine */
+.pm-mach-group { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: 10px; overflow: hidden; }
+.pm-mach-group.overdue   { border-left-color: var(--red); }
+.pm-mach-group.due-soon  { border-left-color: var(--amber); }
+.pm-mach-group.ok        { border-left-color: var(--green-bright); }
+.pm-mach-group.done-today{ border-left-color: var(--blue); }
+.pm-mach-hdr  { display:flex; align-items:center; gap:10px; padding:11px 14px; cursor:pointer; user-select:none; }
+.pm-mach-hdr:hover { background: rgba(255,255,255,0.05); }
+.pm-mach-caret { font-size:11px; transition: transform .15s; color: var(--muted); width:14px; display:inline-block; }
+.pm-mach-group.open .pm-mach-caret { transform: rotate(90deg); }
+.pm-mach-icon { font-size:17px; }
+.pm-mach-name { font-family:'Bebas Neue', sans-serif; font-size:16px; letter-spacing:1.5px; color:#fff; flex:1; }
+.pm-mach-counts { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.pm-mc-pill  { font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:700; padding:3px 8px; border-radius:99px; }
+.pm-mc-pill.ov { background:#3a1414; color:#fca5a5; border:1px solid #7f1d1d; }
+.pm-mc-pill.ds { background:#2a1f00; color:#fcd34d; border:1px solid #856404; }
+.pm-mc-pill.ok { background:#0f2a1c; color:#86efac; border:1px solid #2e7d32; }
+.pm-mc-pill.dt { background:#0d1f3a; color:#93c5fd; border:1px solid #1a3a6b; }
+.pm-mc-tot   { font-family:'IBM Plex Mono', monospace; font-size:11px; color: var(--muted); margin-left:4px; }
+.pm-mach-body { display: none; padding: 0 12px 12px 12px; }
+.pm-mach-group.open .pm-mach-body { display: flex; flex-direction: column; gap: 8px; }
+@media(max-width:500px) { .pm-card { grid-template-columns: 1fr; } .pm-right { align-items: flex-start; flex-direction: row; flex-wrap: wrap; } .pm-mach-hdr { flex-wrap: wrap; } .pm-mach-name { flex-basis: 100%; } }
 
 .form-wrap { max-width: 700px; margin: 0 auto; }
 .form-card { background: var(--cream); border-radius: 12px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.3); }
@@ -4931,7 +4952,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260514-stafffix"></script>
+<script defer src="js/core.js?v=20260519-i18n-walk-check"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
@@ -4939,7 +4960,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script defer src="js/trending-wo.js?v=20260501"></script>
 <script defer src="js/packaging.js?v=20260427k"></script>
 <script defer src="js/shipping.js?v=20260424"></script>
-<script defer src="js/production.js?v=20260513a"></script>
+<script defer src="js/production.js?v=20260519-i18n-walk-check"></script>
 <script defer src="js/time-blocks.js?v=20260506e"></script>
 <script defer src="js/feed-mill.js?v=20260424"></script>
 <script defer src="js/egg-quality.js?v=20260424"></script>
@@ -4958,7 +4979,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script defer src="js/barn-entry.js?v=20260424"></script>
 <script defer src="js/notifications.js?v=20260515-resilience"></script>
 <script defer src="js/oncall.js?v=20260424"></script>
-<script defer src="js/daily-checklist.js?v=20260515-resilience"></script>
+<script defer src="js/daily-checklist.js?v=20260519-i18n-walk-check"></script>
 <script defer src="js/eos.js?v=20260430b"></script>
 <script defer src="js/eos-hours.js?v=20260430b"></script>
 <script defer src="js/daily-report.js?v=20260430e"></script>

@@ -811,6 +811,73 @@ const TRANSLATIONS = {
     'landing.quick_actions':'⚡ QUICK ACTIONS',
     'landing.new_wo':'🔧 New Work Order','landing.log_barn':'🐓 Log Barn Walk',
     'landing.enter_egg':'🥚 Enter Egg Data',
+    // Daily Check dashboard (renderProdCheck)
+    'chk.loading':'Loading…',
+    'chk.pending':'pending',
+    'chk.no_check':'No barn check submitted today',
+    'chk.low_eggs':'Low eggs:',
+    'chk.of_target':'of target',
+    'chk.no_egg_log':'no egg log',
+    'chk.issues_one':'Issue Found',
+    'chk.issues_many':'Issues Found',
+    'chk.no_issues_today':'✅ No issues found for today',
+    'chk.todays_submissions':"Today's Submissions",
+    'chk.ok':'✓ OK',
+    'chk.flags_one':'flag(s)',
+    'chk.unknown':'Unknown',
+    'chk.psi':'PSI:',
+    'chk.checked':'Checked',
+    'chk.flagged':'Flagged',
+    'chk.coverage':'Coverage',
+    'chk.create_wos':'🔧 Create Must-Fix WOs for All Issues',
+    'chk.creating_wos':'Creating WOs…',
+    'chk.wos_created':'✓ WOs Created',
+    // Morning Walk dashboard (renderProdMW)
+    'mw.create_wos':'🔧 Create Must-Fix WOs',
+    'mw.walked':'Walked',
+    // Daily Checklist (renderChecklist / Dashboard)
+    'cl.farm_placeholder':'Farm…',
+    'cl.barn_placeholder':'Barn…',
+    'cl.your_name':'Your name',
+    'cl.barn_prefix':'Barn',
+    'cl.done_suffix':'done',
+    'cl.expected_time':'Expected Time Today',
+    'cl.submit_day':'✅ SUBMIT DAY',
+    'cl.submitted_pending':'✅ DAY SUBMITTED — PENDING REVIEW',
+    'cl.note_p1':'Note any issues here (required if not checked)…',
+    'cl.note_optional':'Optional note…',
+    'cl.live_title':'📋 Task Completion — Live',
+    'cl.submitted_stat':'Submitted',
+    'cl.in_progress_stat':'In Progress',
+    'cl.not_started_stat':'Not Started',
+    'cl.freq_daily':'DAILY','cl.freq_2xwk':'2×/WK','cl.freq_eod':'EOD',
+    'cl.freq_tue':'TUE','cl.freq_fri':'FRI','cl.freq_skip':'SKIP',
+    'cl.select_first':'Select a farm and barn first.',
+    'cl.must_check':'must be checked or have a note before submitting.',
+    'cl.save_error':'Error saving:',
+    // Daily Checklist group headers
+    'cl.grp.p1':'🔴 PRIORITY 1 — ALWAYS FIRST',
+    'cl.grp.core':'🟡 CORE WORK BLOCK',
+    'cl.grp.cleaning':'🔵 CLEANING BLOCK',
+    'cl.grp.rotational':'🟢 ROTATIONAL TASKS',
+    'cl.grp.weekly':'🟣 WEEKLY TASKS',
+    // Daily Checklist task labels
+    'cl.tk.fwv':'Monitor Feed, Water, Ventilation',
+    'cl.tk.fwv_sub':'Check all systems — note any issues below',
+    'cl.tk.bird':'Full Bird & Equipment Check',
+    'cl.tk.bird_sub':'Mortality · chute · sick/loose birds · egg belt · cage damage',
+    'cl.tk.tubes':'Clean Water Tubes (front & back)',
+    'cl.tk.front':'Clean Front of House',
+    'cl.tk.front_sub':'After egg run',
+    'cl.tk.blowoff':'Blow Off',
+    'cl.tk.blowoff_sub':'Walls · cages · egg collectors · floors',
+    'cl.tk.wheelbarrow':'Wheelbarrow + Back Cleanup',
+    'cl.tk.undercage':'Under Cage Cleaning',
+    'cl.tk.hallway':'Hallway Cleaning',
+    'cl.tk.fly':'Fly Check',
+    'cl.tk.fly_sub':'Tuesday only',
+    'cl.tk.rodent':'Rodent Check',
+    'cl.tk.rodent_sub':'Friday only',
   },
   es: {
     // Nav
@@ -931,6 +998,73 @@ const TRANSLATIONS = {
     'landing.quick_actions':'⚡ ACCIONES RÁPIDAS',
     'landing.new_wo':'🔧 Nueva Orden de Trabajo','landing.log_barn':'🐓 Registrar Ronda',
     'landing.enter_egg':'🥚 Registrar Huevos',
+    // Daily Check dashboard (renderProdCheck)
+    'chk.loading':'Cargando…',
+    'chk.pending':'pendiente',
+    'chk.no_check':'No se registró revisión de galpón hoy',
+    'chk.low_eggs':'Huevos bajos:',
+    'chk.of_target':'de meta',
+    'chk.no_egg_log':'sin registro',
+    'chk.issues_one':'Problema Encontrado',
+    'chk.issues_many':'Problemas Encontrados',
+    'chk.no_issues_today':'✅ Sin problemas hoy',
+    'chk.todays_submissions':'Entregas de Hoy',
+    'chk.ok':'✓ OK',
+    'chk.flags_one':'alerta(s)',
+    'chk.unknown':'Desconocido',
+    'chk.psi':'PSI:',
+    'chk.checked':'Revisados',
+    'chk.flagged':'Con Alertas',
+    'chk.coverage':'Cobertura',
+    'chk.create_wos':'🔧 Crear OTs Obligatorias para Todos',
+    'chk.creating_wos':'Creando OTs…',
+    'chk.wos_created':'✓ OTs Creadas',
+    // Morning Walk dashboard (renderProdMW)
+    'mw.create_wos':'🔧 Crear OTs Obligatorias',
+    'mw.walked':'Recorridos',
+    // Daily Checklist (renderChecklist / Dashboard)
+    'cl.farm_placeholder':'Granja…',
+    'cl.barn_placeholder':'Galpón…',
+    'cl.your_name':'Tu nombre',
+    'cl.barn_prefix':'Galpón',
+    'cl.done_suffix':'hechas',
+    'cl.expected_time':'Tiempo Esperado Hoy',
+    'cl.submit_day':'✅ ENVIAR DÍA',
+    'cl.submitted_pending':'✅ DÍA ENVIADO — PENDIENTE REVISIÓN',
+    'cl.note_p1':'Anota los problemas aquí (requerido si no se marca)…',
+    'cl.note_optional':'Nota opcional…',
+    'cl.live_title':'📋 Tareas Completadas — En Vivo',
+    'cl.submitted_stat':'Enviado',
+    'cl.in_progress_stat':'En Progreso',
+    'cl.not_started_stat':'Sin Empezar',
+    'cl.freq_daily':'DIARIO','cl.freq_2xwk':'2×/SEM','cl.freq_eod':'C/2D',
+    'cl.freq_tue':'MAR','cl.freq_fri':'VIE','cl.freq_skip':'OMITIR',
+    'cl.select_first':'Seleccione granja y galpón primero.',
+    'cl.must_check':'debe estar marcado o tener nota antes de enviar.',
+    'cl.save_error':'Error al guardar:',
+    // Daily Checklist group headers
+    'cl.grp.p1':'🔴 PRIORIDAD 1 — SIEMPRE PRIMERO',
+    'cl.grp.core':'🟡 BLOQUE DE TRABAJO PRINCIPAL',
+    'cl.grp.cleaning':'🔵 BLOQUE DE LIMPIEZA',
+    'cl.grp.rotational':'🟢 TAREAS ROTATIVAS',
+    'cl.grp.weekly':'🟣 TAREAS SEMANALES',
+    // Daily Checklist task labels
+    'cl.tk.fwv':'Monitorear Alimento, Agua y Ventilación',
+    'cl.tk.fwv_sub':'Revisar todos los sistemas — notar problemas',
+    'cl.tk.bird':'Revisión Completa de Aves y Equipo',
+    'cl.tk.bird_sub':'Mortalidad · chute · aves enfermas/sueltas · banda · daño en jaulas',
+    'cl.tk.tubes':'Limpiar Tubos de Agua (frente y fondo)',
+    'cl.tk.front':'Limpiar Frente del Galpón',
+    'cl.tk.front_sub':'Después de recolectar huevos',
+    'cl.tk.blowoff':'Soplado',
+    'cl.tk.blowoff_sub':'Paredes · jaulas · recolectores · pisos',
+    'cl.tk.wheelbarrow':'Carretilla + Limpieza Atrás',
+    'cl.tk.undercage':'Limpieza Bajo Jaulas',
+    'cl.tk.hallway':'Limpieza de Pasillo',
+    'cl.tk.fly':'Revisión de Moscas',
+    'cl.tk.fly_sub':'Solo martes',
+    'cl.tk.rodent':'Revisión de Roedores',
+    'cl.tk.rodent_sub':'Solo viernes',
   }
 };
 
@@ -955,6 +1089,14 @@ function toggleLang() {
   try { if (typeof _mwSectionFarm !== 'undefined' && typeof renderMWContent === 'function') renderMWContent(); } catch(e){}
   try { if (typeof renderFarms === 'function') renderFarms(); } catch(e){}
   try { if (typeof renderBioLog === 'function') renderBioLog(); } catch(e){}
+  // Daily Check / Morning Walk dashboards — always re-render so language flips
+  // immediately even if the user has the tab open but the panel-active check
+  // above missed it (e.g. when both prod-sec-check and panel-check exist).
+  try { if (typeof renderProdCheck === 'function')          renderProdCheck(); } catch(e){}
+  try { if (typeof renderProdMW === 'function')             renderProdMW(); } catch(e){}
+  // Daily Checklist (employee task list + live dashboard)
+  try { if (typeof renderChecklist === 'function')          renderChecklist(); } catch(e){}
+  try { if (typeof renderChecklistDashboard === 'function') renderChecklistDashboard(); } catch(e){}
 }
 
 // ── Form-level text translations (labels, options, placeholders, buttons) ──
@@ -1191,6 +1333,87 @@ const FORM_TEXT = {
   'Submit':                   { es:'Enviar' },
   'Today':                    { es:'Hoy' },
   '+ Add New':                { es:'+ Agregar Nuevo' },
+  // ── Barn walk modal: extra static HTML ──
+  '✕ Exit':                                                       { es:'✕ Salir' },
+  'MARK EACH ITEM PASS OR FAIL — IN ORDER':                       { es:'MARQUE CADA ÍTEM PASA O FALLA — EN ORDEN' },
+  'Egg count (approx. total today)':                              { es:'Conteo de Huevos (total aprox. hoy)' },
+  'Weekly rodent trap count':                                     { es:'Conteo semanal de roedores' },
+  '🔧 Work Order will be auto-created when you submit.':          { es:'🔧 Orden de Trabajo creada al enviar.' },
+  '🔧 Work Order will be auto-created':                           { es:'🔧 Orden de Trabajo será creada' },
+  '✓ Submit Daily Check':                                         { es:'✓ Enviar Revisión Diaria' },
+  // Barn walk checklist task labels (inside .bw-cl-label)
+  'Monitor feed, water & ventilation throughout the shift':       { es:'Monitorear alimento, agua y ventilación durante el turno' },
+  'Full bird check — mortality, chute, sick/loose birds, egg belt & cage damage': { es:'Revisión completa — mortalidad, chute, aves enfermas/sueltas, banda de huevos y daño en jaulas' },
+  'Water tubes cleaned — front & back of house':                  { es:'Tubos de agua limpios — frente y fondo del galpón' },
+  'Front of house cleaned after egg run':                         { es:'Frente del galpón limpio después de recolectar huevos' },
+  'Full blow-off — walls, cages, egg collectors & floors (top & bottom of house)': { es:'Soplado completo — paredes, jaulas, recolectores y pisos (arriba y abajo)' },
+  'Wheelbarrow emptied & back of house tidied':                   { es:'Carretilla vaciada y fondo del galpón ordenado' },
+  'Under cage cleaning — all rows, both floors':                  { es:'Limpieza bajo jaulas — todas las filas, ambos pisos' },
+  'Designated hallways cleaned (swept & tidied)':                 { es:'Pasillos designados limpios (barridos y ordenados)' },
+  'Fly check — inspect all traps & bait stations':                { es:'Revisión de moscas — inspeccionar trampas y estaciones de cebo' },
+  'Rodent check — inspect stations, add poison if needed':        { es:'Revisión de roedores — inspeccionar estaciones, agregar veneno si es necesario' },
+  // Time markers (next to .bw-cl-label)
+  '⏱ time varies · ongoing':                                      { es:'⏱ tiempo variable · continuo' },
+  '⏱ 2 hrs · daily':                                              { es:'⏱ 2 hrs · diario' },
+  '⏱ 30 min · daily':                                             { es:'⏱ 30 min · diario' },
+  '⏱ 45 min · daily':                                             { es:'⏱ 45 min · diario' },
+  '⏱ 3h 30min · daily / every other day':                         { es:'⏱ 3h 30min · diario / día por medio' },
+  '⏱ 25 min · daily':                                             { es:'⏱ 25 min · diario' },
+  '⏱ 3 hrs · min 2x/week':                                        { es:'⏱ 3 hrs · mín. 2x/sem' },
+  '⏱ 45 min · every other day':                                   { es:'⏱ 45 min · día por medio' },
+  '⏱ 15 min · weekly':                                            { es:'⏱ 15 min · semanal' },
+  '⏱ 30 min · weekly':                                            { es:'⏱ 30 min · semanal' },
+  // Alert headers in .bw-cl-fail-detail
+  '⚠ LOG THE ISSUE & NOTIFY MANAGER':                             { es:'⚠ REGISTRAR PROBLEMA Y AVISAR AL GERENTE' },
+  '⚠ LOG ALL ISSUES — NOTIFY MANAGER':                            { es:'⚠ REGISTRAR TODOS LOS PROBLEMAS — AVISAR AL GERENTE' },
+  '⚠ MUST COMPLETE — RETURN TO FINISH':                           { es:'⚠ DEBE COMPLETAR — REGRESAR A TERMINAR' },
+  '⚠ COMPLETE BEFORE SHIFT END':                                  { es:'⚠ COMPLETAR ANTES DEL FIN DEL TURNO' },
+  '⚠ LOG WHAT WAS MISSED':                                        { es:'⚠ REGISTRAR LO QUE FALTÓ' },
+  '⚠ DO NOT LEAVE FULL':                                          { es:'⚠ NO DEJAR LLENA' },
+  '⚠ LOG WHICH SECTION WAS SKIPPED':                              { es:'⚠ REGISTRAR QUÉ SECCIÓN SE OMITIÓ' },
+  '⚠ LOG WHICH HALLWAY WAS SKIPPED':                              { es:'⚠ REGISTRAR QUÉ PASILLO SE OMITIÓ' },
+  '⚠ REPORT HIGH ACTIVITY TO MANAGER':                            { es:'⚠ REPORTAR ACTIVIDAD ALTA AL GERENTE' },
+  '⚠ REPORT EVIDENCE TO MANAGER':                                 { es:'⚠ REPORTAR EVIDENCIA AL GERENTE' },
+  // Morning walk modal headers + labels
+  '☀️ Morning Walk':                                              { es:'☀️ Ronda Mañanera' },
+  '👤 Lead / WNO Name':                                           { es:'👤 Nombre del Líder / WNO' },
+  '👥 Employees Present at This Barn':                            { es:'👥 Empleados Presentes en Este Galpón' },
+  '📊 Readings':                                                  { es:'📊 Lecturas' },
+  'Water Pressure (PSI)':                                         { es:'Presión de Agua (PSI)' },
+  'House Temp (°F)':                                              { es:'Temperatura del Galpón (°F)' },
+  '🌾 Feed Meter Reading (lbs) — updates bin level instantly':    { es:'🌾 Medidor de Alimento (lbs) — actualiza el nivel al instante' },
+  '🌾 Bin A (tons)':                                              { es:'🌾 Tolva A (toneladas)' },
+  '🌾 Bin B (tons)':                                              { es:'🌾 Tolva B (toneladas)' },
+  '⚙️ Systems Check':                                             { es:'⚙️ Revisión de Sistemas' },
+  'Feed — Feeders running?':                                      { es:'Alimento — ¿Comederos funcionando?' },
+  'Fans — All working?':                                          { es:'Ventiladores — ¿Todos funcionando?' },
+  'Blowers — Working?':                                           { es:'Sopladores — ¿Funcionando?' },
+  '📝 Notes (optional)':                                          { es:'📝 Notas (opcional)' },
+  '☀️ Submit Morning Walk':                                       { es:'☀️ Enviar Ronda Mañanera' },
+  // Misc UI strings (across panels)
+  '📍 Hegins':                                                    { es:'📍 Hegins' },
+  '📍 Danville':                                                  { es:'📍 Danville' },
+  '📍 Rushtown':                                                  { es:'📍 Rushtown' },
+  '📍 Turbotville':                                               { es:'📍 Turbotville' },
+  '📍 W&M':                                                       { es:'📍 W&M' },
+  'All Farms':                                                    { es:'Todas las Granjas' },
+  'All Types':                                                    { es:'Todos los Tipos' },
+  '💀 Mortality':                                                 { es:'💀 Mortalidad' },
+  '🐔 Loose Birds':                                               { es:'🐔 Aves Sueltas' },
+  '🐀 Rodents':                                                   { es:'🐀 Roedores' },
+  '🪰 Flies':                                                     { es:'🪰 Moscas' },
+  // Daily Checklist tab buttons
+  '✅ Daily Tasks':                                               { es:'✅ Tareas Diarias' },
+  '📊 Barn Overview':                                             { es:'📊 Vista por Galpón' },
+  'Overview':                                                     { es:'Vista General' },
+  'Tasks':                                                        { es:'Tareas' },
+  // Cage cleaning card
+  '🧹 Clean Under Cages':                                         { es:'🧹 Limpiar Bajo Jaulas' },
+  'Scheduled deep-clean task: sweep and remove buildup from under all cage rows on both floors.': { es:'Tarea de limpieza profunda programada: barrer y remover acumulación bajo todas las filas de jaulas en ambos pisos.' },
+  'Was this completed?':                                          { es:'¿Se completó?' },
+  '✅ COMPLETE':                                                  { es:'✅ COMPLETO' },
+  '❌ INCOMPLETE':                                                { es:'❌ INCOMPLETO' },
+  '📅 Weekly Task':                                               { es:'📅 Tarea Semanal' },
 };
 
 // Placeholders
@@ -1211,6 +1434,30 @@ const PLACEHOLDER_TEXT = {
     'List any parts (optional)':               'Lista de partes (opcional)',
     'e.g. 2':                                  'ej. 2',
     'Describe what was repaired, replaced, or adjusted...': 'Describe lo que se reparó, reemplazó o ajustó...',
+    // ── Barn walk modal placeholders ──
+    'Enter your name...':                      'Ingresa tu nombre...',
+    'Enter count':                             'Ingresa cantidad',
+    'Enter fly count':                         'Ingresa conteo de moscas',
+    'Total rodents caught this week':          'Total de roedores atrapados esta semana',
+    'Anything to flag for the manager...':     'Algo que reportar al gerente...',
+    // Barn walk fail-detail input placeholders
+    'System affected, readings, action taken...': 'Sistema afectado, lecturas, acción tomada...',
+    'Mortality count, cage row, belt issue, loose birds, chute level...': 'Conteo de mortalidad, fila, problema de banda, aves sueltas, nivel del chute...',
+    'What was incomplete, reason...':          'Qué quedó incompleto, motivo...',
+    'What was not cleaned, reason...':         'Qué no se limpió, motivo...',
+    'Which areas not completed (top floor, fan screens, collectors...)...': 'Qué áreas no se completaron (piso superior, rejillas, recolectores...)...',
+    'What was left, reason...':                'Qué quedó, motivo...',
+    'Which rows/section not completed, reason...': 'Qué filas/sección no se completaron, motivo...',
+    'Which hallway(s) not completed, reason...': 'Qué pasillo(s) no se completaron, motivo...',
+    'Trap location, activity level (low/med/high)...': 'Ubicación de la trampa, nivel de actividad (bajo/medio/alto)...',
+    'Station location, evidence found, poison added (y/n)...': 'Ubicación, evidencia, veneno agregado (s/n)...',
+    // ── Morning walk modal placeholders ──
+    'Headcount':                               'Conteo',
+    '10–60 PSI':                               '10–60 PSI',
+    'e.g. 72':                                 'ej. 72',
+    'Enter total lbs remaining':               'Ingresa total de lbs restantes',
+    'Anything to flag...':                     'Algo que reportar...',
+    '0.0':                                     '0.0',
   }
 };
 
@@ -1242,7 +1489,69 @@ function applyFormTextTranslation() {
   });
 
   // Translate barn walk modal: card titles, row labels, yn-buttons, checklist labels, submit
-  document.querySelectorAll('.bw-card-title, .bw-row-label, .bw-yn-btn, .bw-cl-label, .bw-cl-pass, .bw-cl-fail-btn, .bw-submit').forEach(el => {
+  document.querySelectorAll('.bw-card-title, .bw-row-label, .bw-yn-btn, .bw-cl-label, .bw-cl-pass, .bw-cl-fail-btn, .bw-submit, .bw-wo-badge').forEach(el => {
+    if (!el.dataset.enText) el.dataset.enText = el.textContent.trim();
+    const orig = el.dataset.enText;
+    if (!orig) return;
+    const tr = FORM_TEXT[orig];
+    if (tr) el.textContent = _lang === 'es' ? (tr.es ?? orig) : orig;
+  });
+
+  // ── Barn-walk checklist rows: time labels & alert headers ──
+  // Pattern: each .bw-cl-label is followed by a sibling <div> holding the time
+  // marker ("⏱ 2 hrs · daily"). Translate by exact-text match against FORM_TEXT.
+  document.querySelectorAll('#barn-walk-modal .bw-cl-label + div').forEach(el => {
+    if (!el.dataset.enText) el.dataset.enText = el.textContent.trim();
+    const orig = el.dataset.enText;
+    if (!orig) return;
+    const tr = FORM_TEXT[orig];
+    if (tr) el.textContent = _lang === 'es' ? (tr.es ?? orig) : orig;
+  });
+  // .bw-cl-fail-detail alert blocks: first child of inner wrapper = bold header,
+  // second child = paragraph. Walk both via FORM_TEXT.
+  document.querySelectorAll('#barn-walk-modal .bw-cl-fail-detail > div > div').forEach(el => {
+    if (!el.dataset.enText) el.dataset.enText = el.textContent.trim();
+    const orig = el.dataset.enText;
+    if (!orig) return;
+    const tr = FORM_TEXT[orig];
+    if (tr) el.textContent = _lang === 'es' ? (tr.es ?? orig) : orig;
+  });
+  // Generic walker for the daily-walk/check modals + related overlays: translate
+  // plain text-only divs whose exact textContent matches a FORM_TEXT key. Cheap
+  // and covers section headers like "👤 Lead / WNO Name", "📊 Readings",
+  // "⚙️ Systems Check", and pill buttons like "All Farms", "📍 Hegins", etc.,
+  // without needing new class hooks in the HTML.
+  const _modalScopes = [
+    '#barn-walk-modal',
+    '#morning-walk-modal',
+    '#bw-history-overlay',
+    '#pest-log-overlay',
+    '#egg-trends-overlay',
+    '#prod-summary-section',
+  ].join(', ');
+  document.querySelectorAll(_modalScopes.replace(/(#[\w-]+)/g, '$1 div')).forEach(el => {
+    if (el.children.length > 0) return; // text-only nodes only
+    if (!el.textContent || !el.textContent.trim()) return;
+    if (!el.dataset.enText) el.dataset.enText = el.textContent.trim();
+    const orig = el.dataset.enText;
+    if (!orig) return;
+    const tr = FORM_TEXT[orig];
+    if (tr) el.textContent = _lang === 'es' ? (tr.es ?? orig) : orig;
+  });
+  document.querySelectorAll(_modalScopes.replace(/(#[\w-]+)/g, '$1 button')).forEach(el => {
+    if (el.children.length > 0) return;
+    if (!el.textContent || !el.textContent.trim()) return;
+    if (!el.dataset.enText) el.dataset.enText = el.textContent.trim();
+    const orig = el.dataset.enText;
+    if (!orig) return;
+    const tr = FORM_TEXT[orig];
+    if (tr) el.textContent = _lang === 'es' ? (tr.es ?? orig) : orig;
+  });
+  // Pill buttons live across many panels (filters, locations, types) — single
+  // text-only buttons that show "All Farms", "📍 Hegins", "All Types", etc.
+  document.querySelectorAll('button.pill, button.loc-pill, button.pri-pill').forEach(el => {
+    if (el.children.length > 0) return;
+    if (!el.textContent || !el.textContent.trim()) return;
     if (!el.dataset.enText) el.dataset.enText = el.textContent.trim();
     const orig = el.dataset.enText;
     if (!orig) return;
@@ -1508,7 +1817,11 @@ function refreshCurrentPanel() {
   if (active('prod')) {
     safe(typeof renderProdPanel === 'function' ? renderProdPanel : null);
     const ps = window._prodSection;
-    if      (ps==='check')   safe(typeof renderProdCheck === 'function' ? renderProdCheck : null);
+    if      (ps==='check')   {
+      safe(typeof renderProdCheck === 'function' ? renderProdCheck : null);
+      safe(typeof renderChecklist === 'function' ? renderChecklist : null);
+      safe(typeof renderChecklistDashboard === 'function' ? renderChecklistDashboard : null);
+    }
     else if (ps==='mw')      safe(typeof renderProdMW === 'function' ? renderProdMW : null);
     else if (ps==='summary') safe(typeof renderProdSummary === 'function' ? renderProdSummary : null);
     else if (ps==='biosec')  safe(typeof renderProdBiosec === 'function' ? renderProdBiosec : null);
@@ -1563,7 +1876,12 @@ function refreshCurrentPanel() {
   }
 
   // Single-render panels
-  if (active('check'))  { safe(typeof renderProdCheck === 'function' ? renderProdCheck : null); return; }
+  if (active('check'))  {
+    safe(typeof renderProdCheck === 'function' ? renderProdCheck : null);
+    safe(typeof renderChecklist === 'function' ? renderChecklist : null);
+    safe(typeof renderChecklistDashboard === 'function' ? renderChecklistDashboard : null);
+    return;
+  }
   if (active('mw'))     { safe(typeof renderProdMW === 'function' ? renderProdMW : null); return; }
   if (active('staff'))  { safe(typeof renderStaff === 'function' ? renderStaff : null); return; }
   if (active('sched'))  { safe(typeof renderSchedule === 'function' ? renderSchedule : null); return; }

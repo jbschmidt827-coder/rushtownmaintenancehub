@@ -32,6 +32,21 @@ const CL_GROUPS = {
   weekly:     { label:'🟣 WEEKLY TASKS',               color:'#9b59b6', bg:'#1a0a2a', border:'#3a1a5a' },
 };
 
+// ─── i18n helpers ────────────────────────────────────────────────────
+// Each task and group has both an English source-of-truth label (above)
+// AND a translation key. clT/clTaskLabel/clTaskSub/clGroupLabel resolve
+// the right text for the current language via core.js' t().
+const _clT = (k, fallback) => {
+  if (typeof t === 'function') {
+    const v = t(k);
+    return (v && v !== k) ? v : (fallback != null ? fallback : k);
+  }
+  return fallback != null ? fallback : k;
+};
+function clTaskLabel(task) { return _clT('cl.tk.' + task.id, task.label); }
+function clTaskSub(task)   { return task.sub ? _clT('cl.tk.' + task.id + '_sub', task.sub) : null; }
+function clGroupLabel(g)   { return _clT('cl.grp.' + g, (CL_GROUPS[g] && CL_GROUPS[g].label) || g); }
+
 const CL_FARMS = { Hegins:8, Danville:5, Rushtown:5, Turbotville:4, 'W&M':2 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -442,13 +457,13 @@ function clToggleInclude(id) {
 
 async function clSubmitDay() {
   if (_cl.submitted) return;
-  if (!_cl.farm || !_cl.barn) { alert('Select a farm and barn first.'); return; }
+  if (!_cl.farm || !_cl.barn) { alert(_clT('cl.select_first','Select a farm and barn first.')); return; }
 
   // Require P1 tasks checked or noted
   for (const t of CL_TASKS.filter(t => t.group === 'p1')) {
     const c = _cl.checks[t.id] || {};
     if (!c.done && !c.note) {
-      alert(`"${t.label}" must be checked or have a note before submitting.`);
+      alert(`"${clTaskLabel(t)}" ${_clT('cl.must_check','must be checked or have a note before submitting.')}`);
       return;
     }
   }
@@ -468,7 +483,7 @@ async function clSubmitDay() {
     _cl.submitted = true;
     _cl._fbId = docId;
     renderChecklist();
-  } catch(e) { alert('Error saving: ' + e.message); }
+  } catch(e) { alert(_clT('cl.save_error','Error saving:') + ' ' + e.message); }
 }
 
 function renderChecklist() {
@@ -477,10 +492,19 @@ function renderChecklist() {
 
   clInitDefaults();
 
-  const dateStr = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  // Pick locale for date formatting based on current language (set by core.js)
+  const _lang = (typeof t === 'function' && t('cl.farm_placeholder') !== 'cl.farm_placeholder')
+    ? (t('cl.farm_placeholder') === 'Granja…' ? 'es-MX' : 'en-US')
+    : 'en-US';
+  const dateStr = new Date().toLocaleDateString(_lang, { weekday:'long', month:'long', day:'numeric' });
   const totalMin = clTotalTime();
   const doneCount = CL_TASKS.filter(t => _cl.include[t.id] && _cl.checks[t.id]?.done).length;
   const visCount  = CL_TASKS.filter(t => _cl.include[t.id]).length;
+  const farmPh = _clT('cl.farm_placeholder','Farm…');
+  const barnPh = _clT('cl.barn_placeholder','Barn…');
+  const namePh = _clT('cl.your_name','Your name');
+  const barnPrefix = _clT('cl.barn_prefix','Barn');
+  const doneLbl = _clT('cl.done_suffix','done');
 
   let html = '';
 
@@ -489,18 +513,18 @@ function renderChecklist() {
     <div style="background:#0a1a0a;border:1.5px solid #1a3a1a;border-radius:12px;padding:12px 14px;margin-bottom:12px;">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
         <select id="cl-farm" onchange="clSelectFarm()" style="background:#050f05;border:1px solid #2a5a2a;color:#f0ead8;padding:8px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;">
-          <option value="">Farm…</option>
+          <option value="">${farmPh}</option>
           ${Object.keys(CL_FARMS).map(f => `<option value="${f}"${_cl.farm===f?' selected':''}>${f}</option>`).join('')}
         </select>
         <select id="cl-barn" onchange="clSelectBarn()" style="background:#050f05;border:1px solid #2a5a2a;color:#f0ead8;padding:8px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;">
-          <option value="">Barn…</option>
-          ${_cl.farm ? Array.from({length:CL_FARMS[_cl.farm]},(_,i)=>`<option value="${i+1}"${_cl.barn==i+1?' selected':''}>Barn ${i+1}</option>`).join('') : ''}
+          <option value="">${barnPh}</option>
+          ${_cl.farm ? Array.from({length:CL_FARMS[_cl.farm]},(_,i)=>`<option value="${i+1}"${_cl.barn==i+1?' selected':''}>${barnPrefix} ${i+1}</option>`).join('') : ''}
         </select>
-        <input list="staff-datalist" id="cl-worker" value="${_cl.worker}" placeholder="Your name" oninput="_cl.worker=this.value" autocomplete="off" style="background:#050f05;border:1px solid #2a5a2a;color:#f0ead8;padding:8px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;">
+        <input list="staff-datalist" id="cl-worker" value="${_cl.worker}" placeholder="${namePh}" oninput="_cl.worker=this.value" autocomplete="off" style="background:#050f05;border:1px solid #2a5a2a;color:#f0ead8;padding:8px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;">
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3a6a3a;">${dateStr}</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#f0ead8;">${doneCount}/${visCount} done &nbsp;·&nbsp; ${clFmtTime(totalMin)||'—'}</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#f0ead8;">${doneCount}/${visCount} ${doneLbl} &nbsp;·&nbsp; ${clFmtTime(totalMin)||'—'}</span>
       </div>
     </div>`;
 
@@ -514,63 +538,77 @@ function renderChecklist() {
 
   // Task groups
   let currentGroup = null;
-  CL_TASKS.forEach(t => {
-    const g    = CL_GROUPS[t.group];
-    const chk  = _cl.checks[t.id] || { done: false, note: '' };
-    const incl = _cl.include[t.id];
-    const toggleable = t.freq !== 'always';
+  const freqLabels = {
+    toggle:        _clT('cl.freq_daily', 'DAILY'),
+    '2x-week':     _clT('cl.freq_2xwk',  '2×/WK'),
+    'every-other': _clT('cl.freq_eod',   'EOD'),
+    tuesday:       _clT('cl.freq_tue',   'TUE'),
+    friday:        _clT('cl.freq_fri',   'FRI')
+  };
+  const skipLbl   = _clT('cl.freq_skip','SKIP');
+  const noteP1Ph  = _clT('cl.note_p1','Note any issues here (required if not checked)…');
+  const noteOptPh = _clT('cl.note_optional','Optional note…');
+  CL_TASKS.forEach(task => {
+    const g    = CL_GROUPS[task.group];
+    const chk  = _cl.checks[task.id] || { done: false, note: '' };
+    const incl = _cl.include[task.id];
+    const toggleable = task.freq !== 'always';
+    const taskLabel = clTaskLabel(task);
+    const taskSub   = clTaskSub(task);
 
     // Group header
-    if (t.group !== currentGroup) {
-      currentGroup = t.group;
-      html += `<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${g.color};padding:10px 0 5px;">${g.label}</div>`;
+    if (task.group !== currentGroup) {
+      currentGroup = task.group;
+      html += `<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${g.color};padding:10px 0 5px;">${clGroupLabel(task.group)}</div>`;
     }
 
     // Frequency badge
-    const freqLabels = { toggle:'DAILY', '2x-week':'2×/WK', 'every-other':'EOD', tuesday:'TUE', friday:'FRI' };
     const freqBadge = toggleable ? `
-      <span onclick="${_cl.submitted?'':'"clToggleInclude(\''+t.id+'\')"'}" style="cursor:${_cl.submitted?'default':'pointer'};font-family:'IBM Plex Mono',monospace;font-size:8px;padding:2px 7px;border-radius:10px;background:${incl?'#1a3a1a':'#2a1010'};color:${incl?'#4caf50':'#e07070'};border:1px solid ${incl?'#2a5a2a':'#5a2020'};" onclick="clToggleInclude('${t.id}')">${incl?(freqLabels[t.freq]||'ON'):'SKIP'}</span>` : '';
+      <span onclick="${_cl.submitted?'':'"clToggleInclude(\''+task.id+'\')"'}" style="cursor:${_cl.submitted?'default':'pointer'};font-family:'IBM Plex Mono',monospace;font-size:8px;padding:2px 7px;border-radius:10px;background:${incl?'#1a3a1a':'#2a1010'};color:${incl?'#4caf50':'#e07070'};border:1px solid ${incl?'#2a5a2a':'#5a2020'};" onclick="clToggleInclude('${task.id}')">${incl?(freqLabels[task.freq]||'ON'):skipLbl}</span>` : '';
 
     if (!incl) {
       html += `
         <div style="padding:8px 0;border-bottom:1px solid #0a1a0a;display:flex;align-items:center;justify-content:space-between;opacity:0.45;">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3a5a3a;text-decoration:line-through;">${t.label}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3a5a3a;text-decoration:line-through;">${taskLabel}</span>
           ${freqBadge}
         </div>`;
       return;
     }
 
-    const showNote = t.group === 'p1' || !chk.done;
-    const wiExists = (typeof allWI !== 'undefined') && allWI.some(w => w.clTaskId === t.id);
+    const showNote = task.group === 'p1' || !chk.done;
+    const wiExists = (typeof allWI !== 'undefined') && allWI.some(w => w.clTaskId === task.id);
     html += `
       <div style="background:${chk.done?'#050f05':g.bg};border:1.5px solid ${chk.done?'#1a3a1a':g.border};border-radius:10px;padding:10px 12px;margin-bottom:8px;">
         <div style="display:flex;align-items:flex-start;gap:10px;">
-          <div onclick="${_cl.submitted?'':'"clToggle(\''+t.id+'\')"'}" style="flex-shrink:0;margin-top:1px;width:26px;height:26px;border:2px solid ${chk.done?'#4caf50':g.color};border-radius:7px;background:${chk.done?'#4caf50':'transparent'};display:flex;align-items:center;justify-content:center;cursor:${_cl.submitted?'default':'pointer'};" onclick="clToggle('${t.id}')">
+          <div onclick="${_cl.submitted?'':'"clToggle(\''+task.id+'\')"'}" style="flex-shrink:0;margin-top:1px;width:26px;height:26px;border:2px solid ${chk.done?'#4caf50':g.color};border-radius:7px;background:${chk.done?'#4caf50':'transparent'};display:flex;align-items:center;justify-content:center;cursor:${_cl.submitted?'default':'pointer'};" onclick="clToggle('${task.id}')">
             ${chk.done?'<span style="color:#fff;font-size:15px;line-height:1;font-weight:700;">✓</span>':''}
           </div>
           <div style="flex:1;min-width:0;">
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:${t.sub||showNote?'3px':'0'};">
-              <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${chk.done?'#3a6a3a':'#f0ead8'};${chk.done?'text-decoration:line-through;':''}">${t.label}</span>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:${taskSub||showNote?'3px':'0'};">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:${chk.done?'#3a6a3a':'#f0ead8'};${chk.done?'text-decoration:line-through;':''}">${taskLabel}</span>
               ${freqBadge}
-              ${t.timeMin?`<span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a6a4a;">${clFmtTime(t.timeMin)}</span>`:''}
-              <button onclick="clOpenTaskWI('${t.id}','${t.label.replace(/'/g,"\\'")}');" style="margin-left:auto;padding:2px 8px;border-radius:5px;border:1px solid ${wiExists?'#2a5a3a':'#2a3a5a'};background:${wiExists?'#0a2a0a':'#0a0f1a'};color:${wiExists?'#5a9a6a':'#5a7a9a'};font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;">📖 ${wiExists?'WI':'+ WI'}</button>
+              ${task.timeMin?`<span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a6a4a;">${clFmtTime(task.timeMin)}</span>`:''}
+              <button onclick="clOpenTaskWI('${task.id}','${taskLabel.replace(/'/g,"\\'")}');" style="margin-left:auto;padding:2px 8px;border-radius:5px;border:1px solid ${wiExists?'#2a5a3a':'#2a3a5a'};background:${wiExists?'#0a2a0a':'#0a0f1a'};color:${wiExists?'#5a9a6a':'#5a7a9a'};font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;">📖 ${wiExists?'WI':'+ WI'}</button>
             </div>
-            ${t.sub?`<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a6a4a;margin-bottom:${showNote?'5px':'0'};">${t.sub}</div>`:''}
-            ${showNote?`<input type="text" placeholder="${t.group==='p1'?'Note any issues here (required if not checked)…':'Optional note…'}" value="${chk.note||''}" oninput="clNote('${t.id}',this.value)" ${_cl.submitted?'disabled':''} style="width:100%;background:#0a1a0a;border:1px solid #1a3a1a;color:#9a9a8a;padding:5px 8px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;box-sizing:border-box;">`:''}
+            ${taskSub?`<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a6a4a;margin-bottom:${showNote?'5px':'0'};">${taskSub}</div>`:''}
+            ${showNote?`<input type="text" placeholder="${task.group==='p1'?noteP1Ph:noteOptPh}" value="${chk.note||''}" oninput="clNote('${task.id}',this.value)" ${_cl.submitted?'disabled':''} style="width:100%;background:#0a1a0a;border:1px solid #1a3a1a;color:#9a9a8a;padding:5px 8px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;box-sizing:border-box;">`:''}
           </div>
         </div>
       </div>`;
   });
 
   // Total time + submit
+  const expectedLbl  = _clT('cl.expected_time','Expected Time Today');
+  const submitLbl    = _clT('cl.submit_day','✅ SUBMIT DAY');
+  const submittedLbl = _clT('cl.submitted_pending','✅ DAY SUBMITTED — PENDING REVIEW');
   html += `
     <div style="background:#0a1a0a;border:1.5px solid #1a3a1a;border-radius:12px;padding:14px;margin-top:6px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a7a4a;text-transform:uppercase;letter-spacing:1px;">Expected Time Today</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a7a4a;text-transform:uppercase;letter-spacing:1px;">${expectedLbl}</span>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:#f0ead8;">${clFmtTime(totalMin)||'—'}</span>
       </div>
       <button onclick="clSubmitDay()" style="width:100%;padding:14px;background:${_cl.submitted?'#0a2a0a':'#1a3a1a'};border:2px solid ${_cl.submitted?'#4caf50':'#3a7a3a'};border-radius:12px;color:${_cl.submitted?'#4caf50':'#f0ead8'};font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:${_cl.submitted?'default':'pointer'};letter-spacing:1px;">
-        ${_cl.submitted ? '✅ DAY SUBMITTED — PENDING REVIEW' : '✅ SUBMIT DAY'}
+        ${_cl.submitted ? submittedLbl : submitLbl}
       </button>
     </div>`;
 
@@ -671,8 +709,10 @@ function renderChecklistDashboard() {
   };
 
   const farms = Object.keys(CL_FARMS);
+  const liveTitle = _clT('cl.live_title','📋 Task Completion — Live');
+  const pendingLbl = _clT('chk.pending','pending');
   let html = `
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#4caf50;margin-bottom:10px;">📋 Task Completion — Live</div>`;
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#4caf50;margin-bottom:10px;">${liveTitle}</div>`;
 
   farms.forEach(farm => {
     const barnCount = CL_FARMS[farm];
@@ -686,7 +726,7 @@ function renderChecklistDashboard() {
         html += `<div style="background:#0a1a0a;border:1.5px solid #1a2a1a;border-radius:9px;padding:8px 6px;text-align:center;">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#3a5a3a;margin-bottom:4px;">H${b}</div>
           <div style="font-size:16px;">—</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#2a4a2a;margin-top:3px;">pending</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#2a4a2a;margin-top:3px;">${pendingLbl}</div>
         </div>`;
       } else {
         const done = doneCount(rec);
@@ -723,19 +763,22 @@ function renderChecklistDashboard() {
   const submitted = _clDashData.filter(r => r.status === 'pending-review' || r.status === 'approved').length;
   const inProg = total - submitted;
   const totalBarns = Object.values(CL_FARMS).reduce((s,v) => s+v, 0);
+  const submittedLbl   = _clT('cl.submitted_stat','Submitted');
+  const inProgressLbl  = _clT('cl.in_progress_stat','In Progress');
+  const notStartedLbl  = _clT('cl.not_started_stat','Not Started');
   html += `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:4px;padding-top:10px;border-top:1px solid #1a3a1a;">
       <div style="text-align:center;">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:#4caf50;">${submitted}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;text-transform:uppercase;letter-spacing:1px;">Submitted</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;text-transform:uppercase;letter-spacing:1px;">${submittedLbl}</div>
       </div>
       <div style="text-align:center;">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${inProg>0?'#d69e2e':'#4caf50'}">${inProg}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;text-transform:uppercase;letter-spacing:1px;">In Progress</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;text-transform:uppercase;letter-spacing:1px;">${inProgressLbl}</div>
       </div>
       <div style="text-align:center;">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:${totalBarns-total>0?'#e53e3e':'#4caf50'}">${totalBarns - total}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;text-transform:uppercase;letter-spacing:1px;">Not Started</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;text-transform:uppercase;letter-spacing:1px;">${notStartedLbl}</div>
       </div>
     </div>`;
 
