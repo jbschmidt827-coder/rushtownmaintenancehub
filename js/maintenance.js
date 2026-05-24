@@ -960,39 +960,30 @@ function pmMachine(t) {
   const txt = (t && t.task || '').toLowerCase();
   switch (t && t.sys) {
     case 'Manure':
-      if (/run manure belts|check manure belts/.test(txt)) return 'Manure Belts';
-      if (/drying fan|fan shroud|screens on manure/.test(txt)) return 'Drying Fans';
-      if (/plow|trip switch|trip sensor|scraper|adjuster plate|2x6/.test(txt)) return 'Floor Scrapers';
-      if (/incline belt/.test(txt))                          return 'Incline Belt';
-      if (/pit belt|grease bearings on pit/.test(txt))       return 'Pit Belt';
-      if (/auger|manure in pit/.test(txt))                   return 'Pit & Augers';
-      return 'Drives & Gearboxes';
+      // Two buckets keep belts/pit work separate from scrapers/fans/drives.
+      if (/belt|pit|auger/.test(txt)) return 'Belts, Pit & Augers';
+      return 'Scrapers, Fans & Drives';
     case 'Egg Collectors':
-      if (/niagara/.test(txt))                  return 'Niagara Belt';
-      if (/egg belt|egg jam|finger/.test(txt))  return 'Egg Belts';
-      return 'Drives & Chains';
+      return 'Egg Collector System';
     case 'Feeders':
-      if (/feed bin|v-belt/.test(txt))          return 'Feed Bins';
-      if (/gearbox|wear shoe/.test(txt))        return 'Feeder Drives';
-      if (/feeders are working|feeder corner/.test(txt)) return 'Feeder Pans';
-      return 'Feed Chain';
+      return 'Feed System';
     case 'Ventilation':
-      if (/inlet|attic/.test(txt))              return 'Inlets';
-      if (/stir fan/.test(txt))                 return 'Stir Fans';
-      if (/updraft/.test(txt))                  return 'Updraft Fans';
-      if (/equalizer/.test(txt))                return 'Equalizer';
-      return 'Pit Fans';
+      // Inlets/equalizer/attic on one side, all fans on the other.
+      if (/inlet|equalizer|attic/.test(txt)) return 'Inlets & Equalizer';
+      return 'Fans';
     case 'Water':    return 'Water Lines';
     case 'Building': return 'Building';
     case 'Alarms':   return 'Alarm System';
-    case 'Lubing':
-      if (/oiler drip|oil reservoir/.test(txt)) return 'Drip Oilers';
-      if (/brush|rod counter sprocket/.test(txt)) return 'Drive Roller';
-      return 'Lubing Chain';
-    case 'Packaging':
-      // Packaging PM_DEFS are already named per machine ("Rod Conveyor — weekly…").
-      // Use the part of the title before the em-dash as the machine name.
-      return ((t && t.task) || '').split('—')[0].trim() || 'Packaging';
+    case 'Lubing':   return 'Lubing System';
+    case 'Packaging': {
+      // Packaging PMs are per-machine; collapse the 18 machines into 4 areas.
+      const id = (t && t.id) || '';
+      if (/pk-(rodcon|basket|cagebelt|pusher|transfer|loader)/.test(id)) return 'Egg Handling';
+      if (/pk-(washer|blower|slk|packers)/.test(id))                     return 'Wash & Pack';
+      if (/pk-(candler|dirtdet|blood|scales)/.test(id))                  return 'Inspection & Scales';
+      if (/pk-(lights|aircomp|boiler|bldg)/.test(id))                    return 'Plant Support';
+      return 'Packaging';
+    }
     default: return (t && t.sys) || 'Other';
   }
 }
