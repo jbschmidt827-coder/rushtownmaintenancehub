@@ -2,7 +2,7 @@
 // TIME BLOCKS for the daily-checklist card in the barn-walk modal
 // -------------------------------------------------------------------
 // Splits the 10 daily-checklist tasks into 3 time blocks based on
-// the shift's two breaks (9 AM and lunch). Each block:
+// the shift's two breaks (9:30 AM and lunch). Each block:
 //   • shows expected vs. elapsed time
 //   • starts its timer the first time any task in it is reviewed
 //   • auto-closes when every task in the block is Pass/Fail-reviewed
@@ -20,15 +20,15 @@
 
   const BLOCKS = [
     { id:'b1',
-      label:'BLOCK 1 — START → 9 AM BREAK',
+      label:'BLOCK 1 — START → 9:30 AM BREAK',
       shortLabel:'Block 1',
-      window:'~7:00 – 9:00 AM',
+      window:'~7:00 – 9:30 AM',
       color:'#7ad07a', bg:'#0a2010', border:'#2a5a2a',
       defaultTasks:['fwv','birdcheck','flycheck','rodentcheck'] },
     { id:'b2',
-      label:'BLOCK 2 — 9 AM → LUNCH',
+      label:'BLOCK 2 — 9:30 AM → LUNCH',
       shortLabel:'Block 2',
-      window:'~9:00 AM – 12:00 PM',
+      window:'~9:30 AM – 12:00 PM',
       color:'#e0b048', bg:'#1a1200', border:'#4a3500',
       defaultTasks:['watertubes','frontofhouse','undercages'] },
     { id:'b3',
@@ -100,7 +100,7 @@
     // Helper banner above the rows
     const helpBanner = document.createElement('div');
     helpBanner.style.cssText = 'background:#0a1a0a;border:1px dashed #2a4a2a;border-radius:8px;padding:8px 10px;margin:0 0 10px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#7a9a7a;line-height:1.45;';
-    helpBanner.innerHTML = '🕒 <strong style="color:#9ad0a0;">Tasks are split by shift breaks</strong> — work through Block&nbsp;1 before the 9 AM break, Block&nbsp;2 before lunch, and Block&nbsp;3 before end of shift. Use <strong>↕&nbsp;Move</strong> on a task to shift it into another block.';
+    helpBanner.innerHTML = '🕒 <strong style="color:#9ad0a0;">Tasks are split by shift breaks</strong> — work through Block&nbsp;1 before the 9:30 AM break, Block&nbsp;2 before lunch, and Block&nbsp;3 before end of shift. Use <strong>↕&nbsp;Move</strong> on a task to shift it into another block.';
     root.parentNode.insertBefore(helpBanner, root);
 
     // Snapshot the existing rows in DOM order
