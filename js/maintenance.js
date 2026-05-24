@@ -1780,19 +1780,9 @@ async function savePartsQty() {
   updatePartsAlerts();
 }
 
-function updatePartsAlerts() {
-  const lowCount = PARTS_DEFS.filter(p=>{
-    const inv = partsInventory[p.id]||{qty:0,min:1};
-    return inv.qty <= inv.min;
-  }).length;
-  const badge = document.getElementById('parts-alert-badge');
-  if (badge) {
-    if (lowCount>0) { badge.textContent=lowCount; badge.style.display='inline'; }
-    else badge.style.display='none';
-  }
-  // Also refresh the parts panel order button if it's visible
-  if (window._maintSection==='parts') renderParts();
-}
+// Note: updatePartsAlerts() lives in the AUTO PARTS ORDERING block below —
+// an earlier duplicate of this function used to live here and was unreachable
+// (hoisting let the later one win). Removed 2026-05-24 during cleanup.
 
 // ═══════════════════════════════════════════
 // PART ADD / EDIT
@@ -2848,6 +2838,9 @@ function updatePartsAlerts() {
     if (lowParts.length > 0) { badge.textContent = lowParts.length; badge.style.display = 'inline'; }
     else badge.style.display = 'none';
   }
+  // Refresh the parts panel order button if it's visible (folded in from the
+  // old duplicate at the top of this file).
+  if (window._maintSection === 'parts' && typeof renderParts === 'function') renderParts();
 }
 
 async function sendOrderEmail() {

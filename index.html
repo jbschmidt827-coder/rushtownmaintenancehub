@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Rushtown Poultry — Operations Hub</title>
 <script>
-(function(){var V='20260524-pm-merge-break930';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
+(function(){var V='20260524-cleanup';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
 </script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0f1a0f">
@@ -27,7 +27,6 @@
 <!-- Firebase Compat (no type=module needed) -->
 <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
 
 <style>
@@ -3121,9 +3120,6 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
   <!-- PM Schedule section -->
   <div class="maint-section" id="maint-pm">
-    <div style="background:#e6f4ea;border:1px solid #2e7d32;border-radius:8px;padding:9px 14px;margin-bottom:10px;font-size:12px;color:#2e7d32;">
-      ✅ <strong>Danville PMs loaded from spreadsheet</strong> — 29 tasks across Feed System, Ventilation &amp; Manure · Monthly + Bi-Annual schedules
-    </div>
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
       <button onclick="openBulkPM()" style="padding:11px 18px;background:#fff8e1;border:2px solid var(--amber);color:#856404;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">📋 Bulk Catch-Up</button>
       <button onclick="openBulkPM('daily')" style="padding:11px 18px;background:#e6f4ea;border:2px solid #2e7d32;color:#2e7d32;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">🟢 Mark Daily PMs Done</button>
@@ -4956,12 +4952,12 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
-<script defer src="js/maintenance.js?v=20260513a"></script>
+<script defer src="js/maintenance.js?v=20260524-pm-merge"></script>
 <script defer src="js/trending-wo.js?v=20260501"></script>
 <script defer src="js/packaging.js?v=20260427k"></script>
 <script defer src="js/shipping.js?v=20260424"></script>
 <script defer src="js/production.js?v=20260519-i18n-walk-check"></script>
-<script defer src="js/time-blocks.js?v=20260506e"></script>
+<script defer src="js/time-blocks.js?v=20260524-break930"></script>
 <script defer src="js/feed-mill.js?v=20260424"></script>
 <script defer src="js/egg-quality.js?v=20260424"></script>
 <script defer src="js/biosecurity.js?v=20260424"></script>

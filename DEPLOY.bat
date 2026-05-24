@@ -13,12 +13,12 @@ git status --short
 echo.
 
 echo === Staging changed files ===
-git add js/core.js js/maintenance.js index.html sw.js DEPLOY.bat DEPLOY-FIREBASE-DIRECT.bat
+git add -A js/ index.html sw.js DEPLOY.bat DEPLOY-FIREBASE-DIRECT.bat firestore.rules functions/index.js firebase.json
 git status --short
 echo.
 
 set /p MSG="Commit message (press Enter for default): "
-if "%MSG%"=="" set MSG=Add Packaging PMs for Processing Plant (18 equipment items)
+if "%MSG%"=="" set MSG=Update Operations Hub (%DATE%)
 
 echo.
 echo === Committing ===

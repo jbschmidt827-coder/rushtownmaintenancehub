@@ -11,7 +11,6 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-const storage = firebase.storage();
 
 // Login was removed (too many farm staff don't have email accounts).
 // The ADMIN_PIN below still gates admin actions inside the app.
