@@ -2514,9 +2514,10 @@ async function renderReports() {
     byTech[t]++;
   });
 
-  // WOs by farm
+  // WOs by location (all 3 maintenance facilities)
   const hWOs = completedWOs.filter(w=>w.farm==='Hegins').length;
   const dWOs = completedWOs.filter(w=>w.farm==='Danville').length;
+  const ppWOs = completedWOs.filter(w=>w.farm==='Processing Plant').length;
 
   // Downtime in range
   const dtInRange = downtimeEvents.filter(e => e.startTs >= cutoff);
@@ -2579,11 +2580,12 @@ async function renderReports() {
   });
   const totalPartsCost = Object.values(partsCostMap).reduce((s,v)=>s+v.cost,0);
 
-  // By farm
-  html += `<div class="recent-hdr">📍 WOs Completed by Farm</div>
-  <div class="stats-grid g2" style="margin-bottom:20px;">
+  // By location
+  html += `<div class="recent-hdr">📍 WOs Completed by Location</div>
+  <div class="stats-grid g3" style="margin-bottom:20px;">
     <div class="stat-card"><div class="stat-num">${hWOs}</div><div class="stat-label">Hegins</div></div>
     <div class="stat-card"><div class="stat-num">${dWOs}</div><div class="stat-label">Danville</div></div>
+    <div class="stat-card"><div class="stat-num">${ppWOs}</div><div class="stat-label">Processing Plant</div></div>
   </div>`;
 
   // PM compliance by farm
@@ -7380,11 +7382,15 @@ function renderAssets() {
   const critical = allAssets.filter(a => a.criticality === 'critical').length;
   const high     = allAssets.filter(a => a.criticality === 'high').length;
   const hegins   = allAssets.filter(a => a.farm === 'Hegins').length;
+  const danville = allAssets.filter(a => a.farm === 'Danville').length;
+  const ppAssets = allAssets.filter(a => a.farm === 'Processing Plant').length;
   document.getElementById('asset-stats').innerHTML =
     sc('s-blue', total, 'Total Assets') +
     sc('s-red',  critical, 'Critical') +
     sc('s-amber', high, 'High Criticality') +
-    sc('', hegins, 'Hegins / ' + (total - hegins) + ' Danville');
+    sc('', hegins, 'Hegins') +
+    sc('', danville, 'Danville') +
+    sc('', ppAssets, 'Processing Plant');
 
   // Filter
   let list = allAssets;

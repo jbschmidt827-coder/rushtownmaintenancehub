@@ -121,7 +121,10 @@ const LAYER_FARMS = [
 // ═══════════════════════════════════════════
 const FARM_HOUSES = {
   Hegins:   ['House 1','House 2','House 3','House 4','House 5','House 6','House 7','House 8'],
-  Danville: ['House 1','House 2','House 3','House 4','House 5']
+  Danville: ['House 1','House 2','House 3','House 4','House 5'],
+  // Processing Plant has no houses — it has plant areas instead.
+  // These are the egg-handling line locations a WO could pin to.
+  'Processing Plant': ['Packing Floor','Washer Line','Candler / Detector Line','Cooler / Storage','Loader','Boiler Room','Air Compressor Room','Loading Dock','Office']
 };
 const AREAS = ['Feed System','Watering System','Ventilation / Fans','Heating / Brooders','Electrical Panel','Well House / Pump','Catch / Load Out','Generator','Vehicle / Equipment','Shop / Office','Other'];
 const FREQ = {
@@ -588,10 +591,36 @@ let partsFilter_ = 'all';
 let editingPartId = null;
 let editingPartQty = 0;
 
+// ═══════════════════════════════════════════
+// FACILITIES — single source of truth
+// ═══════════════════════════════════════════
+// Each facility has a whitelist of PM systems that apply to it.
+// Layer farms (Hegins, Danville) run the egg-laying operation:
+// ventilation, water, feed, manure, egg-collectors, building, alarms,
+// lubing. The Processing Plant runs ONLY the Packaging line — no
+// manure handling, no feed delivery, no egg-laying systems.
+//
+// Adding a new facility? Add a row here and update FACILITIES list.
+const FACILITIES = ['Hegins','Danville','Processing Plant'];
+
+const FACILITY_SYSTEMS = {
+  'Hegins':           ['Ventilation','Water','Feed','Feed System','Feeders','Manure','Egg Collectors','Building','Alarms','Lubing'],
+  'Danville':         ['Ventilation','Water','Feed','Feed System','Feeders','Manure','Egg Collectors','Building','Alarms','Lubing'],
+  'Processing Plant': ['Packaging'],
+};
+
 const ALL_PM = [];
-for (const farm of ['Hegins','Danville','Processing Plant']) {
+for (const farm of FACILITIES) {
+  const allowed = FACILITY_SYSTEMS[farm] || [];
   for (const def of PM_DEFS) {
+    // Two-stage filter:
+    //   1. Explicit `farms:` array on a PM_DEF wins — only those farms see it.
+    //   2. Otherwise the def's system must be on this facility's allowlist.
+    // This is what keeps the Processing Plant from inheriting farm-only
+    // tasks like manure-belt runs, and keeps layer farms from being told
+    // to inspect packaging conveyors.
     if (def.farms && !def.farms.includes(farm)) continue;
+    if (!allowed.includes(def.sys)) continue;
     ALL_PM.push({
       id:`${farm}-${def.id}`, defId:def.id, farm,
       sys:def.sys, task:def.task, freq:def.freq, hrs:def.hrs,
