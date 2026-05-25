@@ -294,13 +294,26 @@ async function copyLastWeek() {
 
 // BOOT
 // ═══════════════════════════════════════════
-initApp().then(() => {
-  applyTranslations();
-  startLandingClock();
-  if (typeof injectLandingStaffCard === 'function') injectLandingStaffCard();
-  _initBuildDate();
-  _initSwUpdateListener();
-});
+// Defensive: only call initApp() if no other boot path has already fired.
+// The inline safety net in index.html also calls initApp() if neither
+// scheduling.js nor anything else got to it first.
+(function bootApp(){
+  if (window._initAppCalled) return;
+  window._initAppCalled = true;
+  var p;
+  try { p = initApp(); } catch(e) {
+    console.error('initApp threw synchronously:', e);
+    return;
+  }
+  if (!p || typeof p.then !== 'function') return;
+  p.then(function(){
+    try { applyTranslations(); } catch(e) { console.warn('applyTranslations:', e); }
+    try { startLandingClock(); } catch(e) { console.warn('startLandingClock:', e); }
+    try { if (typeof injectLandingStaffCard === 'function') injectLandingStaffCard(); } catch(e) { console.warn('injectLandingStaffCard:', e); }
+    try { _initBuildDate(); } catch(e) { console.warn('_initBuildDate:', e); }
+    try { _initSwUpdateListener(); } catch(e) { console.warn('_initSwUpdateListener:', e); }
+  }).catch(function(e){ console.error('initApp() rejected:', e); });
+})();
 
 // ── Show build date in landing footer ───────────────────────────
 function _initBuildDate() {
