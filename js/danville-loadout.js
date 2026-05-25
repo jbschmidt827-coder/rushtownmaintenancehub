@@ -61,23 +61,39 @@ function dvWeekRange(dateStr) {
   return {start: sun.toISOString().slice(0,10), end: sat.toISOString().slice(0,10)};
 }
 
+// Client-side sort: newest date+time first. Server query uses a single ts
+// orderBy (no composite index required); we sort by user-visible date+time
+// here so the table never depends on when the row happened to be saved.
+function _dvSort(arr) {
+  return arr.slice().sort((a,b) => {
+    const aK = (a.date||'') + ' ' + (a.time||'');
+    const bK = (b.date||'') + ' ' + (b.time||'');
+    if (aK !== bK) return bK.localeCompare(aK);
+    return 0;
+  });
+}
+
 // ── Firestore wiring ──────────────────────────────────────
 async function loadDanvilleLoads() {
   try {
-    const snap = await db.collection('danvilleLoads').orderBy('date','desc').orderBy('time','desc').limit(500).get();
-    window.danvilleLoads = [];
-    snap.forEach(d => window.danvilleLoads.push({...d.data(), _fbId: d.id}));
+    const snap = await db.collection('danvilleLoads').orderBy('ts','desc').limit(500).get();
+    const out = [];
+    snap.forEach(d => out.push({...d.data(), _fbId: d.id}));
+    window.danvilleLoads = _dvSort(out);
   } catch(e) {
+    // First-time use: collection may not exist yet — that's fine, leave empty.
     console.warn('loadDanvilleLoads:', e.message);
+    window.danvilleLoads = window.danvilleLoads || [];
   }
 }
 
 function listenDanvilleLoads() {
   try {
-    db.collection('danvilleLoads').orderBy('date','desc').orderBy('time','desc').limit(500)
+    db.collection('danvilleLoads').orderBy('ts','desc').limit(500)
       .onSnapshot(snap => {
-        window.danvilleLoads = [];
-        snap.forEach(d => window.danvilleLoads.push({...d.data(), _fbId: d.id}));
+        const out = [];
+        snap.forEach(d => out.push({...d.data(), _fbId: d.id}));
+        window.danvilleLoads = _dvSort(out);
         if (window._shipSection === 'danville') renderDanvilleLoadout();
       }, e => console.warn('dv listener:', e.message));
   } catch(e) { console.warn('listenDanvilleLoads:', e.message); }
