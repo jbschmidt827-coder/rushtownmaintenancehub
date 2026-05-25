@@ -1741,6 +1741,11 @@ async function initApp() {
         if (typeof startOpsListeners === 'function') startOpsListeners();
       }, 'opsData');
 
+      safeRun(async () => {
+        if (typeof loadDanvilleLoads === 'function') await loadDanvilleLoads();
+        if (typeof listenDanvilleLoads === 'function') listenDanvilleLoads();
+      }, 'danvilleLoadout');
+
       // Seeders run last — they write back to Firestore, lowest priority.
       setTimeout(() => {
         safeRun(() => typeof seedStaffRosterIfEmpty === 'function' && seedStaffRosterIfEmpty(), 'seedStaffRoster');

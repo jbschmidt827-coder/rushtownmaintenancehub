@@ -12,6 +12,7 @@ function goShipSection(section) {
   });
   updateOpsExcBadge();
   if (section === 'shipping') renderShipping();
+  if (section === 'danville' && typeof renderDanvilleLoadout === 'function') renderDanvilleLoadout();
   if (section === 'farms') renderFarms();
   if (section === 'reconciliation') renderReconciliation();
   if (section === 'exceptions') renderExceptions();

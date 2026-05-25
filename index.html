@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Rushtown Poultry — Operations Hub</title>
 <script>
-(function(){var V='20260524-cleanup';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
+(function(){var V='20260524-danville-loadout';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
 </script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0f1a0f">
@@ -4048,6 +4048,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <div class="section-title" data-i18n="title.ship">🚚 Shipping</div>
   <div class="sub-nav">
     <button class="sub-btn active" data-section="shipping"       onclick="goShipSection('shipping')">🚛 Active Loads</button>
+    <button class="sub-btn"        data-section="danville"       onclick="goShipSection('danville')">🥚 Danville Load-Out</button>
     <button class="sub-btn"        data-section="farms"          onclick="goShipSection('farms')">🏚️ Farms</button>
     <button class="sub-btn"        data-section="reconciliation" onclick="goShipSection('reconciliation')">⚖️ Reconciliation</button>
   </div>
@@ -4088,6 +4089,47 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     </div>
     <div class="stats-grid g4" id="ship-stats" style="margin-bottom:16px;"></div>
     <div id="ship-list"></div>
+  </div>
+
+  <!-- Danville Load-Out -->
+  <div class="ship-section" id="ship-danville">
+    <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1b5e20;font-family:'IBM Plex Mono',monospace;">
+      🥚 <strong>Danville Barn — 555,000 birds.</strong> <span id="dv-target-summary">Weekly target loading…</span>
+    </div>
+    <div class="stats-grid g4" id="dv-stats" style="margin-bottom:14px;"></div>
+    <div id="dv-week-bar" style="margin-bottom:16px;"></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+      <button class="ops-save-btn" onclick="toggleDanvilleLoadForm()">➕ Log Load Out</button>
+      <div class="pill-bar" id="dv-view-pills">
+        <button class="pill active" onclick="dvSetView('today',this)">Today</button>
+        <button class="pill" onclick="dvSetView('week',this)">This Week</button>
+        <button class="pill" onclick="dvSetView('month',this)">This Month</button>
+        <button class="pill" onclick="dvSetView('all',this)">All</button>
+      </div>
+      <select id="dv-driver-filter" onchange="renderDanvilleLoadout()" style="padding:7px 11px;border-radius:8px;border:1.5px solid #ddd;font-size:12px;font-family:'IBM Plex Sans',sans-serif;background:#fff;">
+        <option value="">All Drivers</option>
+      </select>
+    </div>
+    <div class="ops-quick-form" id="dv-form-panel" style="display:none;">
+      <div class="ops-qf-title">Log Danville Load Out</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label>Date *</label><input type="date" id="dv-date"></div>
+        <div class="fg"><label>Time Out *</label><input type="time" id="dv-time"></div>
+        <div class="fg"><label>Driver *</label><select id="dv-driver"><option value="">— Select —</option></select></div>
+        <div class="fg"><label>Truck #</label><input type="text" id="dv-truck" placeholder="e.g. 12"></div>
+        <div class="fg"><label>Trailer #</label><input type="text" id="dv-trailer" placeholder="e.g. 203"></div>
+        <div class="fg"><label>Cases *</label><input type="number" id="dv-cases" min="0" placeholder="1550"></div>
+        <div class="fg"><label>Destination</label><select id="dv-dest"><option>RTP (for grading)</option><option>Monticello</option><option>Deb El</option><option>Sherburne</option><option>New Hampton</option><option>Met Council</option><option>Other</option></select></div>
+        <div class="fg"><label>SO #</label><input type="text" id="dv-so" placeholder="optional"></div>
+        <div class="fg ops-form-full"><label>Notes</label><input type="text" id="dv-notes" placeholder="Optional notes"></div>
+      </div>
+      <div class="ops-form-actions">
+        <button class="ops-save-btn" onclick="saveDanvilleLoad()">✓ Log Load</button>
+        <button class="ops-cancel-btn" onclick="toggleDanvilleLoadForm()">Cancel</button>
+      </div>
+    </div>
+    <div class="recent-hdr" style="margin-bottom:10px;">Loads Out</div>
+    <div id="dv-list"></div>
   </div>
 
   <!-- Farms Directory -->
@@ -4955,7 +4997,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script defer src="js/maintenance.js?v=20260524-pm-merge"></script>
 <script defer src="js/trending-wo.js?v=20260501"></script>
 <script defer src="js/packaging.js?v=20260427k"></script>
-<script defer src="js/shipping.js?v=20260424"></script>
+<script defer src="js/shipping.js?v=20260524-danville"></script>
+<script defer src="js/danville-loadout.js?v=20260524"></script>
 <script defer src="js/production.js?v=20260519-i18n-walk-check"></script>
 <script defer src="js/time-blocks.js?v=20260524-break930"></script>
 <script defer src="js/feed-mill.js?v=20260424"></script>
