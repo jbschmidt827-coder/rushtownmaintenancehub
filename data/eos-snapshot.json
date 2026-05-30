@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-05-29T14:11:26.044878Z",
-  "date": "2026-05-29",
+  "generatedAt": "2026-05-30T12:06:36.434028Z",
+  "date": "2026-05-30",
   "scope": {
     "farms": [
       "Hegins",
@@ -9,10 +9,10 @@
     "houses": 13
   },
   "headline": {
-    "openWOTotal": 10,
+    "openWOTotal": 11,
     "redTagsActive": 0,
     "overdue7d": 0,
-    "walksToday": 4,
+    "walksToday": 1,
     "totalHouses": 13
   },
   "byHouse": [
@@ -102,18 +102,18 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Feed System",
-      "topItemDays": 24
+      "topItemDays": 25
     },
     {
       "farm": "Danville",
       "house": "1",
-      "openWO": 3,
+      "openWO": 4,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Feed System",
-      "topItemDays": 24
+      "topItemDays": 25
     },
     {
       "farm": "Danville",
@@ -122,7 +122,7 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
+      "morningWalkToday": false,
       "topItem": null,
       "topItemDays": null
     },
@@ -144,9 +144,9 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
+      "morningWalkToday": false,
       "topItem": "",
-      "topItemDays": 0
+      "topItemDays": 1
     },
     {
       "farm": "Danville",
@@ -155,9 +155,9 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
+      "morningWalkToday": false,
       "topItem": "Manure System",
-      "topItemDays": 16
+      "topItemDays": 17
     }
   ],
   "openWOs": [
@@ -225,6 +225,17 @@
       "priority": "urgent",
       "status": "in-progress",
       "ts": 1778605670804,
+      "urgent": false
+    },
+    {
+      "id": "IMuDuzfdJI3uC3Y2GVcQ",
+      "farm": "Danville",
+      "house": "1",
+      "title": "Building / Structure",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1780084441040,
       "urgent": false
     },
     {
@@ -343,27 +354,9 @@
   "morningWalksToday": [
     {
       "farm": "Danville",
-      "house": "5",
-      "employee": "Celia",
-      "time": "7:33 AM"
-    },
-    {
-      "farm": "Danville",
       "house": "1",
       "employee": "Celia",
-      "time": "7:02 AM"
-    },
-    {
-      "farm": "Danville",
-      "house": "2",
-      "employee": "Celia",
-      "time": "7:21 AM"
-    },
-    {
-      "farm": "Danville",
-      "house": "4",
-      "employee": "Celia",
-      "time": "7:35 AM"
+      "time": "7:01 AM"
     }
   ]
 }
