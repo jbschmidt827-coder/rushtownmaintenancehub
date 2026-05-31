@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-05-30T12:06:36.434028Z",
-  "date": "2026-05-30",
+  "generatedAt": "2026-05-31T12:14:36.378324Z",
+  "date": "2026-05-31",
   "scope": {
     "farms": [
       "Hegins",
@@ -9,10 +9,10 @@
     "houses": 13
   },
   "headline": {
-    "openWOTotal": 11,
+    "openWOTotal": 15,
     "redTagsActive": 0,
     "overdue7d": 0,
-    "walksToday": 1,
+    "walksToday": 4,
     "totalHouses": 13
   },
   "byHouse": [
@@ -25,7 +25,7 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Ventilation / Fans",
-      "topItemDays": 23
+      "topItemDays": 24
     },
     {
       "farm": "Hegins",
@@ -102,7 +102,7 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Feed System",
-      "topItemDays": 25
+      "topItemDays": 26
     },
     {
       "farm": "Danville",
@@ -113,7 +113,7 @@
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Feed System",
-      "topItemDays": 25
+      "topItemDays": 26
     },
     {
       "farm": "Danville",
@@ -122,7 +122,7 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": false,
+      "morningWalkToday": true,
       "topItem": null,
       "topItemDays": null
     },
@@ -140,24 +140,24 @@
     {
       "farm": "Danville",
       "house": "4",
-      "openWO": 1,
+      "openWO": 3,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": false,
+      "morningWalkToday": true,
       "topItem": "",
-      "topItemDays": 1
+      "topItemDays": 0
     },
     {
       "farm": "Danville",
       "house": "5",
-      "openWO": 4,
+      "openWO": 6,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": false,
+      "morningWalkToday": true,
       "topItem": "Manure System",
-      "topItemDays": 17
+      "topItemDays": 18
     }
   ],
   "openWOs": [
@@ -228,6 +228,17 @@
       "urgent": false
     },
     {
+      "id": "I7uGAjtDbUhjMT5mwHW1",
+      "farm": "Danville",
+      "house": "4",
+      "title": "",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1780144348694,
+      "urgent": false
+    },
+    {
       "id": "IMuDuzfdJI3uC3Y2GVcQ",
       "farm": "Danville",
       "house": "1",
@@ -250,6 +261,17 @@
       "urgent": false
     },
     {
+      "id": "PJjoWFk6oCFU93HJ1VTZ",
+      "farm": "Danville",
+      "house": "5",
+      "title": "",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1780227951461,
+      "urgent": false
+    },
+    {
       "id": "UPvqH4ifLFaPUTyxW8eU",
       "farm": "Danville",
       "house": "",
@@ -269,6 +291,17 @@
       "priority": "high",
       "status": "on-hold",
       "ts": 1776724765480,
+      "urgent": false
+    },
+    {
+      "id": "flFcJcv14vyMN6pUo8hJ",
+      "farm": "Danville",
+      "house": "4",
+      "title": "",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1780227432530,
       "urgent": false
     },
     {
@@ -316,6 +349,17 @@
       "urgent": false
     },
     {
+      "id": "tiU10pz5OArbW3znSWob",
+      "farm": "Danville",
+      "house": "5",
+      "title": "",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1780227951022,
+      "urgent": false
+    },
+    {
       "id": "u1ZkaV9RPSaLI15rPT4T",
       "farm": "Danville",
       "house": "1",
@@ -356,7 +400,31 @@
       "farm": "Danville",
       "house": "1",
       "employee": "Celia",
-      "time": "7:01 AM"
+      "time": "6:51 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "5",
+      "employee": "Celia",
+      "time": "7:45 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "5",
+      "employee": "Celia",
+      "time": "7:45 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "2",
+      "employee": "Celia",
+      "time": "6:58 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "4",
+      "employee": "Celia",
+      "time": "7:37 AM"
     }
   ]
 }
