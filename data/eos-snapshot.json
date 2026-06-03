@@ -1,31 +1,31 @@
 {
-  "generatedAt": "2026-06-02T14:57:35.895704Z",
-  "date": "2026-06-02",
+  "generatedAt": "2026-06-03T15:49:14.369716Z",
+  "date": "2026-06-03",
   "scope": {
     "farms": [
-      "Danville",
-      "Hegins"
+      "Hegins",
+      "Danville"
     ],
     "houses": 13
   },
   "headline": {
-    "openWOTotal": 18,
+    "openWOTotal": 5,
     "redTagsActive": 0,
     "overdue7d": 0,
-    "walksToday": 3,
+    "walksToday": 4,
     "totalHouses": 13
   },
   "byHouse": [
     {
       "farm": "Hegins",
       "house": "1",
-      "openWO": 1,
+      "openWO": 0,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": false,
-      "topItem": "Ventilation / Fans",
-      "topItemDays": 27
+      "topItem": null,
+      "topItemDays": null
     },
     {
       "farm": "Hegins",
@@ -102,29 +102,29 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Feed System",
-      "topItemDays": 28
+      "topItemDays": 29
     },
     {
       "farm": "Danville",
       "house": "1",
-      "openWO": 5,
+      "openWO": 2,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Feed System",
-      "topItemDays": 28
+      "topItemDays": 29
     },
     {
       "farm": "Danville",
       "house": "2",
-      "openWO": 1,
+      "openWO": 0,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": "Building / Structure",
-      "topItemDays": 0
+      "topItem": null,
+      "topItemDays": null
     },
     {
       "farm": "Danville",
@@ -140,24 +140,24 @@
     {
       "farm": "Danville",
       "house": "4",
-      "openWO": 5,
+      "openWO": 1,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "",
-      "topItemDays": 0
+      "topItemDays": 5
     },
     {
       "farm": "Danville",
       "house": "5",
-      "openWO": 4,
+      "openWO": 0,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": false,
-      "topItem": "",
-      "topItemDays": 2
+      "morningWalkToday": true,
+      "topItem": null,
+      "topItemDays": null
     }
   ],
   "openWOs": [
@@ -170,39 +170,6 @@
       "priority": "high",
       "status": "in-progress",
       "ts": 1779886109797,
-      "urgent": false
-    },
-    {
-      "id": "6JCtfJ9omeHqdcgu7Fxc",
-      "farm": "Danville",
-      "house": "",
-      "title": "Building / Structure",
-      "desc": "",
-      "priority": "high",
-      "status": "on-hold",
-      "ts": 1776724669211,
-      "urgent": false
-    },
-    {
-      "id": "6nazDRXPvx4yZOO3ifLa",
-      "farm": "Danville",
-      "house": "4",
-      "title": "",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780315250664,
-      "urgent": false
-    },
-    {
-      "id": "8o00QcMeiJ6f36yuse18",
-      "farm": "Danville",
-      "house": "2",
-      "title": "Building / Structure",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780343694381,
       "urgent": false
     },
     {
@@ -223,7 +190,7 @@
       "title": "Other",
       "desc": "",
       "priority": "high",
-      "status": "on-hold",
+      "status": "in-progress",
       "ts": 1778167283440,
       "urgent": false
     },
@@ -250,28 +217,6 @@
       "urgent": false
     },
     {
-      "id": "I7uGAjtDbUhjMT5mwHW1",
-      "farm": "Danville",
-      "house": "4",
-      "title": "",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780144348694,
-      "urgent": false
-    },
-    {
-      "id": "IMuDuzfdJI3uC3Y2GVcQ",
-      "farm": "Danville",
-      "house": "1",
-      "title": "Building / Structure",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780084441040,
-      "urgent": false
-    },
-    {
       "id": "JjJ1HuKohAQSvaiTYmfH",
       "farm": "Danville",
       "house": "1",
@@ -280,17 +225,6 @@
       "priority": "normal",
       "status": "open",
       "ts": 1777979335752,
-      "urgent": false
-    },
-    {
-      "id": "PJjoWFk6oCFU93HJ1VTZ",
-      "farm": "Danville",
-      "house": "5",
-      "title": "",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780227951461,
       "urgent": false
     },
     {
@@ -305,17 +239,6 @@
       "urgent": false
     },
     {
-      "id": "a5vjIAOymkyf6nhTN1Ac",
-      "farm": "Danville",
-      "house": "",
-      "title": "Building / Structure",
-      "desc": "",
-      "priority": "high",
-      "status": "on-hold",
-      "ts": 1776724765480,
-      "urgent": false
-    },
-    {
       "id": "bnJWO4M4L9fh4H59HCbM",
       "farm": "Danville",
       "house": "",
@@ -324,50 +247,6 @@
       "priority": "high",
       "status": "open",
       "ts": 1780328951420,
-      "urgent": false
-    },
-    {
-      "id": "flFcJcv14vyMN6pUo8hJ",
-      "farm": "Danville",
-      "house": "4",
-      "title": "",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780227432530,
-      "urgent": false
-    },
-    {
-      "id": "kQXVvUS5DO87aMRdRSTu",
-      "farm": "Danville",
-      "house": "1",
-      "title": "Feed System",
-      "desc": "",
-      "priority": "urgent",
-      "status": "open",
-      "ts": 1779359600626,
-      "urgent": false
-    },
-    {
-      "id": "lf2jb1zqcTaWQ0vUA6P5",
-      "farm": "Danville",
-      "house": "5",
-      "title": "",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780315761693,
-      "urgent": false
-    },
-    {
-      "id": "mYNf2zoawz6kWHzYu7kN",
-      "farm": "Danville",
-      "house": "5",
-      "title": "",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780054430595,
       "urgent": false
     },
     {
@@ -391,50 +270,6 @@
       "status": "open",
       "ts": 1779806316319,
       "urgent": false
-    },
-    {
-      "id": "tiU10pz5OArbW3znSWob",
-      "farm": "Danville",
-      "house": "5",
-      "title": "",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780227951022,
-      "urgent": false
-    },
-    {
-      "id": "u1ZkaV9RPSaLI15rPT4T",
-      "farm": "Danville",
-      "house": "1",
-      "title": "Manure System",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1778513866050,
-      "urgent": false
-    },
-    {
-      "id": "xTyuW26AOYFoDVbVY9Nq",
-      "farm": "Hegins",
-      "house": "1",
-      "title": "Ventilation / Fans",
-      "desc": "",
-      "priority": "high",
-      "status": "on-hold",
-      "ts": 1778076633033,
-      "urgent": false
-    },
-    {
-      "id": "za73pQelcXBPpQfw56SQ",
-      "farm": "Danville",
-      "house": "4",
-      "title": "",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780399023064,
-      "urgent": false
     }
   ],
   "redTags": [],
@@ -443,20 +278,26 @@
     {
       "farm": "Danville",
       "house": "2",
-      "employee": "Celia",
-      "time": "7:02 AM"
+      "employee": "Aracely",
+      "time": "8:05 AM"
     },
     {
       "farm": "Danville",
       "house": "4",
-      "employee": "Celia",
-      "time": "7:17 AM"
+      "employee": "Aracely",
+      "time": "7:57 AM"
     },
     {
       "farm": "Danville",
       "house": "1",
-      "employee": "Celia",
-      "time": "6:54 AM"
+      "employee": "Aracely",
+      "time": "8:10 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "5",
+      "employee": "Aracely",
+      "time": "7:56 AM"
     }
   ]
 }
