@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-03T15:49:14.369716Z",
-  "date": "2026-06-03",
+  "generatedAt": "2026-06-04T14:06:42.457543Z",
+  "date": "2026-06-04",
   "scope": {
     "farms": [
       "Hegins",
@@ -9,7 +9,7 @@
     "houses": 13
   },
   "headline": {
-    "openWOTotal": 5,
+    "openWOTotal": 8,
     "redTagsActive": 0,
     "overdue7d": 0,
     "walksToday": 4,
@@ -102,18 +102,18 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Feed System",
-      "topItemDays": 29
+      "topItemDays": 30
     },
     {
       "farm": "Danville",
       "house": "1",
-      "openWO": 2,
+      "openWO": 3,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Feed System",
-      "topItemDays": 29
+      "topItemDays": 30
     },
     {
       "farm": "Danville",
@@ -146,18 +146,18 @@
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "",
-      "topItemDays": 5
+      "topItemDays": 6
     },
     {
       "farm": "Danville",
       "house": "5",
-      "openWO": 0,
+      "openWO": 2,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": null,
-      "topItemDays": null
+      "topItem": "Sistema de Alimento",
+      "topItemDays": 0
     }
   ],
   "openWOs": [
@@ -173,6 +173,28 @@
       "urgent": false
     },
     {
+      "id": "7o4frUlxHrKVWtu8nxF0",
+      "farm": "Danville",
+      "house": "1",
+      "title": "Recolecci\u00f3n de Huevos",
+      "desc": "",
+      "priority": "urgent",
+      "status": "in-progress",
+      "ts": 1780509034023,
+      "urgent": false
+    },
+    {
+      "id": "8PGhH6Wxu39qiZRPmZfD",
+      "farm": "Danville",
+      "house": "5",
+      "title": "Sistema de Alimento",
+      "desc": "",
+      "priority": "urgent",
+      "status": "in-progress",
+      "ts": 1780508775862,
+      "urgent": false
+    },
+    {
       "id": "B7FKHi74CPElnf8IbVnC",
       "farm": "Danville",
       "house": "4",
@@ -184,13 +206,24 @@
       "urgent": false
     },
     {
+      "id": "BOjMuezopPi3XpVhvyZ5",
+      "farm": "Danville",
+      "house": "5",
+      "title": "Sistema de Esti\u00e9rcol",
+      "desc": "",
+      "priority": "urgent",
+      "status": "open",
+      "ts": 1780510354203,
+      "urgent": false
+    },
+    {
       "id": "CEBULpHEGPRMfGnKbq3C",
       "farm": "Danville",
       "house": "",
       "title": "Other",
       "desc": "",
       "priority": "high",
-      "status": "in-progress",
+      "status": "on-hold",
       "ts": 1778167283440,
       "urgent": false
     },
@@ -277,27 +310,27 @@
   "morningWalksToday": [
     {
       "farm": "Danville",
-      "house": "2",
-      "employee": "Aracely",
-      "time": "8:05 AM"
-    },
-    {
-      "farm": "Danville",
       "house": "4",
       "employee": "Aracely",
-      "time": "7:57 AM"
+      "time": "6:40 AM"
     },
     {
       "farm": "Danville",
-      "house": "1",
+      "house": "2",
       "employee": "Aracely",
-      "time": "8:10 AM"
+      "time": "7:01 AM"
     },
     {
       "farm": "Danville",
       "house": "5",
       "employee": "Aracely",
-      "time": "7:56 AM"
+      "time": "6:49 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "1",
+      "employee": "Aracely",
+      "time": "7:06 AM"
     }
   ]
 }
