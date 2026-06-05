@@ -2056,8 +2056,8 @@ function refreshCurrentPanel() {
     else if (ps==='mw')      safe(typeof renderProdMW === 'function' ? renderProdMW : null);
     else if (ps==='summary') safe(typeof renderProdSummary === 'function' ? renderProdSummary : null);
     else if (ps==='biosec')  safe(typeof renderProdBiosec === 'function' ? renderProdBiosec : null);
-    else if (ps==='trends')  safe(typeof renderProdEggTrends === 'function' ? renderProdEggTrends : null);
-    else if (ps==='history') safe(typeof renderProdWalkHistory === 'function' ? renderProdWalkHistory : null);
+    else if (ps==='mwhistory') safe(typeof renderProdMorningWalks === 'function' ? renderProdMorningWalks : null);
+    else if (ps==='bwhistory') safe(typeof renderProdBarnWalks === 'function' ? renderProdBarnWalks : null);
     return;
   }
 

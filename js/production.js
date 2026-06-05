@@ -1539,33 +1539,40 @@ function renderEggTrends(data) {
 // ── Production Sub-Tab Switcher ─────────────
 
 function goProdSection(sec) {
-  const sections = ['overview','history','biosec'];
+  const sections = ['overview','mwhistory','bwhistory','biosec'];
   sections.forEach(s => {
     const el  = document.getElementById('prod-sec-' + s);
     const btn = document.getElementById('prod-tab-' + s);
     if (el)  el.style.display = s === sec ? 'block' : 'none';
     if (btn) btn.classList.toggle('active', s === sec);
   });
+  window._prodSection = sec;
 
-  if (sec === 'history') renderProdWalkHistory();
-  if (sec === 'biosec')  renderProdBiosec();
-}
-
-function renderProdEggTrends() {
-  const el = document.getElementById('prod-sec-trends');
-  if (!el) return;
-  el.innerHTML = '<div style="padding:20px;text-align:center;color:#a0c060;font-family:\'IBM Plex Mono\',monospace;">📈 Egg Trends — coming soon</div>';
+  if (sec === 'mwhistory') renderProdMorningWalks();
+  if (sec === 'bwhistory') renderProdBarnWalks();
+  if (sec === 'biosec')    renderProdBiosec();
 }
 
 let _walkDetailData = {}; // docId → full walk record
 
-function renderProdWalkHistory() {
-  const el = document.getElementById('prod-sec-history');
+// Two separate walk logs share one renderer.
+function renderProdMorningWalks() {
+  _renderWalkHistory({ elId: 'prod-sec-mwhistory', collection: 'morningWalks', title: '☀️ Morning Walk History', accent: '#6a90d9' });
+}
+function renderProdBarnWalks() {
+  _renderWalkHistory({ elId: 'prod-sec-bwhistory', collection: 'barnWalks', title: '📂 Barn Walk History', accent: '#7ab07a' });
+}
+// Back-compat alias (old 'history' section pointed here).
+function renderProdWalkHistory() { renderProdBarnWalks(); }
+
+function _renderWalkHistory(opts) {
+  const el = document.getElementById(opts.elId);
   if (!el) return;
   el.innerHTML = '<div style="color:#aaa;font-family:\'IBM Plex Mono\',monospace;font-size:12px;margin-bottom:12px;">Loading walk history…</div>';
   const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
-  db.collection('barnWalks').where('ts','>=',cutoff).orderBy('ts','desc').get().then(snap => {
-    if (snap.empty) { el.innerHTML = '<div style="color:#888;padding:20px;text-align:center;">No walks in the last 30 days.</div>'; return; }
+  db.collection(opts.collection).where('ts','>=',cutoff).orderBy('ts','desc').get().then(snap => {
+    const titleBar = `<div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:${opts.accent};margin-bottom:10px;">${opts.title}</div>`;
+    if (snap.empty) { el.innerHTML = titleBar + '<div style="color:#888;padding:20px;text-align:center;">No walks in the last 30 days.</div>'; return; }
     _walkDetailData = {};
     const rows = snap.docs.map(d => {
       const r = d.data();
@@ -1581,7 +1588,7 @@ function renderProdWalkHistory() {
         <td style="padding:8px 6px;color:#3a6a8a;font-size:10px;">→</td>
       </tr>`;
     }).join('');
-    el.innerHTML = `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6a4a;margin-bottom:8px;">Tap any row to see full details</div>
+    el.innerHTML = titleBar + `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4a6a4a;margin-bottom:8px;">Tap any row to see full details</div>
       <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
       <thead><tr style="border-bottom:1px solid #2a4a2a;">
         <th style="padding:8px 6px;color:#5a8a5a;text-align:left;">Date</th>
@@ -1600,6 +1607,8 @@ function openWalkDetail(id) {
   const hasFlagsArr = r.flags && r.flags.length > 0;
   const date = r.ts ? new Date(r.ts).toLocaleString() : (r.date || '—');
   const yn = v => v === 'yes' ? '<span style="color:#e53e3e;">⚠ YES</span>' : v === 'no' ? '<span style="color:#4caf50;">✓ NO</span>' : v ? `<span style="color:#d69e2e;">${v}</span>` : '—';
+  // Positive sense: 'yes'/running is good (green), 'no' is bad (red).
+  const ynGood = v => v === 'yes' ? '<span style="color:#4caf50;">✓ YES</span>' : v === 'no' ? '<span style="color:#e53e3e;">⚠ NO</span>' : v ? `<span style="color:#d69e2e;">${v}</span>` : '—';
   const field = (label, val) => val != null && val !== '' && val !== '—'
     ? `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a2a1a;">
         <span style="color:#5a8a5a;font-size:11px;">${label}</span>
@@ -1627,7 +1636,10 @@ function openWalkDetail(id) {
     <div style="background:#0a140a;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;">
       ${field('Water PSI', r.waterPSI != null ? r.waterPSI + ' PSI' : null)}
       ${field('House Temp', r.temp != null ? r.temp + '°F' : null)}
+      ${field('Egg Count', r.eeCount != null ? r.eeCount : null)}
       ${field('Feed Bin', r.feedBinReading != null ? r.feedBinReading + ' lbs' : null)}
+      ${field('Bin A', r.binA != null && r.binA !== '' ? r.binA + ' tons' : null)}
+      ${field('Bin B', r.binB != null && r.binB !== '' ? r.binB + ' tons' : null)}
       ${field('Mortality Count', r.mortCount || null)}
       ${field('Loose Birds', r.looseCount || null)}
       ${field('Rodents Found', r.rodentCount || null)}
@@ -1641,7 +1653,10 @@ function openWalkDetail(id) {
       ${field('Loose Birds', yn(r.loose))}
       ${field('Feathering', r.feather||null)}
       ${field('Air Quality', yn(r.air))}
-      ${field('Feeders', r.feed||null)}
+      ${field('Feeders Running', ynGood(r.feed))}
+      ${field('Fans Running', ynGood(r.fans))}
+      ${field('Blowers Running', ynGood(r.blowers))}
+      ${field('Water OK', ynGood(r.water))}
       ${field('Rodents', yn(r.rodent))}
       ${field('Manure Dryers', r.dryers||null)}
       ${field('Egg Belt', r.eggbelt||null)}

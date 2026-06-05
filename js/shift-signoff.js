@@ -181,20 +181,6 @@ function drSignoffPanel(farm) {
         </div>
       </div>
 
-      <!-- Auto-pulled: PMs due tomorrow -->
-      ${(() => {
-        const pms = ssTomorrowPMs(farm);
-        if (!pms.length) return '';
-        return `
-        <div style="margin-bottom:8px;">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#fbbf24;letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">⏰ PMs Due / Overdue (auto-pulled)</div>
-          ${pms.map(t => `
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#fde68a;padding:3px 0;display:flex;gap:6px;">
-              <span>📋</span><span>${t.name}${t.area?' · '+t.area:''}</span>
-            </div>`).join('')}
-        </div>`;
-      })()}
-
       <!-- Auto-pulled: urgent/high WOs -->
       ${(() => {
         const wos = ssTomorrowWOs(farm);

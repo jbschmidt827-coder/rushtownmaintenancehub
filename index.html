@@ -1370,7 +1370,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <!-- Production Sub-Nav -->
   <div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;">
     <button class="prod-tab-btn active" id="prod-tab-overview" onclick="goProdSection('overview')">📋 Overview</button>
-    <button class="prod-tab-btn" id="prod-tab-history" onclick="goProdSection('history')">📂 Walk History</button>
+    <button class="prod-tab-btn" id="prod-tab-mwhistory" onclick="goProdSection('mwhistory')">☀️ Morning Walks</button>
+    <button class="prod-tab-btn" id="prod-tab-bwhistory" onclick="goProdSection('bwhistory')">📂 Barn Walks</button>
     <button class="prod-tab-btn" id="prod-tab-biosec" onclick="goProdSection('biosec')">🦠 Biosecurity</button>
     <button class="prod-tab-btn" id="prod-tab-pest" onclick="openPestLog()">🐀 Pest Log</button>
   </div>
@@ -1408,18 +1409,18 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <div style="font-size:12px;color:#f87171;margin-top:4px;" data-i18n="prod.biosec_sub">Visitor & entry log, sanitation records, risk tracking</div>
       </div>
     </button>
-    <button onclick="goProdSection('history')" style="width:100%;padding:24px 20px;background:#0f1a0f;border:2px solid #3a6a3a;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
-      <span style="font-size:40px;line-height:1;">📂</span>
+    <button onclick="goProdSection('mwhistory')" style="width:100%;padding:24px 20px;background:#0d1f3a;border:2px solid #3a6aaa;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">☀️</span>
       <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Walk History</div>
-        <div style="font-size:12px;color:#7ab07a;margin-top:4px;">Browse all past barn walks — filter by farm, see flags</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Morning Walk History</div>
+        <div style="font-size:12px;color:#6a90d9;margin-top:4px;">Past morning walks — water, temp, feed, fans, blowers</div>
       </div>
     </button>
-    <button onclick="goProdSection('trends')" style="width:100%;padding:24px 20px;background:#1a2a0a;border:2px solid #5a8a2a;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
-      <span style="font-size:40px;line-height:1;">📈</span>
+    <button onclick="goProdSection('bwhistory')" style="width:100%;padding:24px 20px;background:#0f1a0f;border:2px solid #3a6a3a;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
+      <span style="font-size:40px;line-height:1;">📂</span>
       <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Egg Trends</div>
-        <div style="font-size:12px;color:#a0c060;margin-top:4px;">7, 14, 30-day production charts vs target by farm</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">Barn Walk History</div>
+        <div style="font-size:12px;color:#7ab07a;margin-top:4px;">Past barn walks — mortality, bins, rodents, notes</div>
       </div>
     </button>
     <button onclick="openPestLog()" style="width:100%;padding:24px 20px;background:#1a1200;border:2px solid #7a5a1a;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
@@ -1432,8 +1433,11 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
   </div><!-- /prod-sec-overview -->
 
-  <!-- Walk History Tab -->
-  <div id="prod-sec-history" style="display:none;"></div>
+  <!-- Morning Walk History Tab -->
+  <div id="prod-sec-mwhistory" style="display:none;"></div>
+
+  <!-- Barn Walk History Tab -->
+  <div id="prod-sec-bwhistory" style="display:none;"></div>
 
   <!-- Biosecurity Tab -->
   <div id="prod-sec-biosec" style="display:none;"></div>
