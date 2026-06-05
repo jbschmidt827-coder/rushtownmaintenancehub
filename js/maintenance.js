@@ -225,8 +225,12 @@ function woCardHtml(wo) {
       `</div>`
     : '';
 
-  return `<div class="wo-card ${wo.priority}${escalate?' wo-escalated':''}${slaBreach?' wo-sla-breach':''}">
-    <div class="wo-id">${wo.id}<div class="wo-pri" style="color:${pC[wo.priority]}">${pL[wo.priority]}</div></div>
+  const pendingBadge = wo._pending
+    ? `<span style="display:inline-block;margin-left:8px;padding:2px 8px;border-radius:10px;background:#4a3a00;border:1px solid #856404;color:#fcd34d;font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;">📴 Pending sync</span>`
+    : '';
+
+  return `<div class="wo-card ${wo.priority}${escalate?' wo-escalated':''}${slaBreach?' wo-sla-breach':''}"${wo._pending?' style="opacity:0.85;"':''}>
+    <div class="wo-id">${wo.id}${pendingBadge}<div class="wo-pri" style="color:${pC[wo.priority]}">${pL[wo.priority]}</div></div>
     <div class="wo-body">
       <h4>${wo.farm} · ${wo.house}${dT[wo.down]||''}</h4>
       <span class="prob-tag">${wo.problem}</span>
@@ -242,12 +246,16 @@ function woCardHtml(wo) {
       <span class="wo-meta-txt">👤 ${wo.tech||t('wo.unassigned')}${wo.assignedTo?' <span style="color:#3b82f6;font-weight:700;">→ '+wo.assignedTo+'</span>':''}</span>
       <span class="wo-meta-txt">${wo.submitted||''}</span>
     </div>
+    ${wo._pending ? `
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:#a8975a;font-family:'IBM Plex Mono',monospace;">
+      ⏳ Waiting for signal — this order will send automatically and get its WO number once you're back online.
+    </div>` : `
     <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
       ${actionBtns}
       <button onclick="event.stopPropagation();openWOUpdate('${wo._fbId}')" style="padding:9px 12px;background:#1a2a1a;border:1px solid #2a4a2a;border-radius:8px;color:#7ab07a;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">💬 Update</button>
       <button onclick="event.stopPropagation();toggleWORail('${wo._fbId}',${!wo.actionRail})" title="${wo.actionRail?'Remove from Action Rail':'Add to Action Rail'}" style="padding:9px 10px;background:${wo.actionRail?'#2a1f00':'#1a1a1a'};border:1px solid ${wo.actionRail?'#856404':'#333'};border-radius:8px;color:${wo.actionRail?'#f59e0b':'#555'};font-size:13px;cursor:pointer;" >⚡</button>
       <button onclick="event.stopPropagation();toggleWOMeeting('${wo._fbId}',${!wo.meetingFlag})" title="${wo.meetingFlag?'Remove from Meeting':'Flag for Meeting'}" style="padding:9px 10px;background:${wo.meetingFlag?'#0d1f3a':'#1a1a1a'};border:1px solid ${wo.meetingFlag?'#2a4a6a':'#333'};border-radius:8px;color:${wo.meetingFlag?'#60a5fa':'#555'};font-size:13px;cursor:pointer;">📋</button>
-    </div>
+    </div>`}
   </div>`;
 }
 
@@ -730,15 +738,14 @@ async function submitWO() {
       }
     }
 
-    // Atomically allocate a unique WO-### number across all devices.
-    const newWoId = await mintWoId();
     // Read estimated hours from the form. Previously the input existed in the
     // UI but the value was silently dropped on submit; capture it as a number
     // so the field actually flows to Firestore.
     const estHoursRaw = document.getElementById('wo-hours')?.value;
     const estHours    = estHoursRaw ? Number(estHoursRaw) : null;
-    const wo = {
-      id: newWoId,
+
+    // Shared payload for both the online write and the offline queue.
+    const formData = {
       date: document.getElementById('wo-date').value,
       tech, farm, house, problem, desc,
       priority: selPri,
@@ -749,46 +756,88 @@ async function submitWO() {
       status: 'open',
       notes: document.getElementById('wo-notes').value,
       photos: safePhotos,
-      submitted: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-      ts: Date.now()
+      submitted: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
     };
 
-    setSyncDot('saving');
-    const ref = await db.collection('workOrders').add(wo);
-    wo._fbId = ref.id;
-    workOrders.unshift(wo);
-    renderWO();
+    // ── ONLINE PATH ──────────────────────────────────────────────────────
+    // Mint a real WO-### (transaction, needs a connection) and write it.
+    // If anything in here fails because the signal dropped, we fall through
+    // to the offline queue below instead of losing the work order.
+    if (navigator.onLine) {
+      try {
+        const newWoId = await mintWoId();
+        const wo = { id: newWoId, ...formData, ts: Date.now() };
 
-    // Log write is best-effort — don't let it break the success screen
-    try {
-      await db.collection('activityLog').add({
-        type:'wo', id:wo.id,
-        desc:`WO submitted: ${wo.farm} · ${wo.house} — ${wo.problem}`,
-        tech:wo.tech, date:wo.submitted, ts:Date.now()
-      });
-    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
+        setSyncDot('saving');
+        const ref = await db.collection('workOrders').add(wo);
+        wo._fbId = ref.id;
+        workOrders.unshift(wo);
+        renderWO();
 
-    setSyncDot('live');
+        // Log write is best-effort — don't let it break the success screen
+        try {
+          await db.collection('activityLog').add({
+            type:'wo', id:wo.id,
+            desc:`WO submitted: ${wo.farm} · ${wo.house} — ${wo.problem}`,
+            tech:wo.tech, date:wo.submitted, ts:Date.now()
+          });
+        } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
 
-    // Notify on urgent/high WOs
-    if (wo.priority === 'urgent') {
-      sendNotif('🔴 Urgent WO Submitted', `${wo.id} · ${wo.farm} · ${wo.house} — ${wo.problem}`, wo.id);
-    } else if (wo.priority === 'high') {
-      sendNotif('🟡 High Priority WO', `${wo.id} · ${wo.farm} · ${wo.house} — ${wo.problem}`, wo.id);
+        setSyncDot('live');
+
+        // Notify on urgent/high WOs
+        if (wo.priority === 'urgent') {
+          sendNotif('🔴 Urgent WO Submitted', `${wo.id} · ${wo.farm} · ${wo.house} — ${wo.problem}`, wo.id);
+        } else if (wo.priority === 'high') {
+          sendNotif('🟡 High Priority WO', `${wo.id} · ${wo.farm} · ${wo.house} — ${wo.problem}`, wo.id);
+        }
+
+        _woSubmitting = false;
+        showWOSuccess(wo, false);
+        return;
+      } catch(onlineErr) {
+        // Connection likely dropped mid-submit — park it offline instead of failing.
+        console.warn('online WO submit failed — saving to offline queue:', onlineErr);
+      }
     }
 
-    // Only hide the form after everything succeeded
+    // ── OFFLINE / FALLBACK PATH ─────────────────────────────────────────
+    // No signal (or the online write just failed): save the order on the
+    // device. It shows in the list as "Pending sync" and is sent
+    // automatically the moment the phone reconnects.
+    const item = queueOfflineWO({ ...formData });
+    renderWO();
     _woSubmitting = false;
-    document.getElementById('wo-form-card').style.display='none';
-    document.getElementById('wo-success').style.display='block';
-    document.getElementById('wo-success-num').textContent = wo.id + ' · ' + wo.farm + ' · ' + wo.house;
+    showWOSuccess(item, true);
+    setSyncDot(navigator.onLine ? 'saving' : 'offline');
+    if (navigator.onLine) flushOfflineWOs();
 
   } catch(err) {
     _woSubmitting = false;
-    setSyncDot('live');
+    setSyncDot(navigator.onLine ? 'live' : 'offline');
     console.error('submitWO error:', err);
     alert('Something went wrong saving the work order. Please try again.\n\nError: ' + err.message);
     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '✓ SUBMIT WORK ORDER'; }
+  }
+}
+
+// Show the post-submit success screen. `offline` = true means the order was
+// parked on the device and will sync later, so we word it differently.
+function showWOSuccess(wo, offline) {
+  const card  = document.getElementById('wo-form-card');
+  const succ  = document.getElementById('wo-success');
+  const title = document.getElementById('wo-success-title');
+  const num   = document.getElementById('wo-success-num');
+  if (card) card.style.display = 'none';
+  if (succ) succ.style.display = 'block';
+  if (title) {
+    title.textContent = offline ? 'Saved — Will Send When Online' : 'Work Order Submitted!';
+    title.style.color = offline ? '#b07a00' : '#2e7d32';
+  }
+  if (num) {
+    num.textContent = offline
+      ? `📴 ${wo.farm} · ${wo.house} — saved on this device`
+      : `${wo.id} · ${wo.farm} · ${wo.house}`;
   }
 }
 
@@ -896,7 +945,7 @@ function renderPM() {
   // it's almost always more useful to see the tasks immediately, so auto-expand.
   const autoExpand = (pmStatFilter !== 'all');
 
-  for (const sys of ['Ventilation','Water','Feed','Feeders','Manure','Egg Collectors','Building','Alarms','Lubing','Packaging']) {
+  for (const sys of ['Ventilation','Water','Feed','Feeders','Manure','Egg Collectors','Building','Alarms','Lubing','Processing Plant']) {
     const st = filtered.filter(t=>t.sys===sys);
     if (!st.length) continue;
 
@@ -1012,11 +1061,13 @@ function pmCardHtml(t) {
   const badgeCls=done?'done':status;
   const badgeTxt=done?'✓ Done Today':nextDueLabel(t.id);
   const btnAttr=done?'disabled':`onclick="openPMModal('${t.id}')"`;
+  const pmNumTag = t.pmNum ? `<span class="pm-tag" style="background:#1e3a5f;color:#bfdbfe;font-family:'IBM Plex Mono',monospace;font-weight:700;">PM-${t.pmNum}</span>` : '';
   return `<div class="pm-card ${cardCls}">
     <div><span class="pm-freq-icon">${f.icon}</span><span class="pm-freq-lbl">${f.label}</span></div>
     <div class="pm-body">
       <div class="pm-tags">
-        <span class="pm-tag ${SYS_TAG[t.sys]}">${SYS_ICON[t.sys]} ${t.sys}</span>
+        ${pmNumTag}
+        <span class="pm-tag ${SYS_TAG[t.sys]||''}">${SYS_ICON[t.sys]||'🔧'} ${t.sys}</span>
         <span class="pm-tag t-loc">📍 ${t.farm}</span>
       </div>
       <h4>${t.task}</h4>
@@ -1128,7 +1179,8 @@ async function skipPM() {
 function openPMModal(id) {
   modalPMId=id;
   const t=ALL_PM.find(x=>x.id===id);
-  document.getElementById('modal-desc').textContent=`${t.farm} · ${SYS_ICON[t.sys]||'🔧'} ${t.sys} · ${FREQ[t.freq].label} — ${t.task}`;
+  const pmNumPrefix = t.pmNum ? `PM-${t.pmNum} · ` : '';
+  document.getElementById('modal-desc').textContent=`${pmNumPrefix}${t.farm} · ${SYS_ICON[t.sys]||'🔧'} ${t.sys} · ${FREQ[t.freq].label} — ${t.task}`;
   document.getElementById('modal-date').value=todayStr;
   document.getElementById('modal-parts').value='';
   document.getElementById('modal-notes').value='';
@@ -1216,9 +1268,9 @@ function renderPMProcedure(t) {
   }
   if (proc.instructions.length) {
     const items = proc.instructions.map((step, i) => `
-      <label style="display:flex;align-items:flex-start;gap:8px;padding:5px 6px;border-radius:4px;cursor:pointer;font-size:12px;color:#0c4a6e;line-height:1.4;">
-        <input type="checkbox" data-step-idx="${i}" onchange="_pmStepToggle(${i}, this.checked)" style="margin-top:2px;width:16px;height:16px;flex-shrink:0;cursor:pointer;">
-        <span><strong style="font-family:'IBM Plex Mono',monospace;color:#0369a1;">${i+1}.</strong> ${_esc(step)}</span>
+      <label id="pm-step-row-${i}" style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;color:#0c4a6e;line-height:1.4;transition:background-color .15s,color .15s;background:transparent;border:1px solid transparent;">
+        <input type="checkbox" data-step-idx="${i}" onchange="_pmStepToggle(${i}, this.checked)" style="accent-color:#16a34a;margin-top:2px;width:18px;height:18px;flex-shrink:0;cursor:pointer;">
+        <span id="pm-step-text-${i}"><strong style="font-family:'IBM Plex Mono',monospace;color:#0369a1;">${i+1}.</strong> ${_esc(step)}</span>
       </label>`).join('');
     blocks.push(`<div style="background:#f0f9ff;border:1px solid #0ea5e9;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
@@ -1246,11 +1298,34 @@ function renderPMProcedure(t) {
 function _pmStepToggle(idx, checked) {
   if (checked) _pmCheckedSteps[idx] = true;
   else delete _pmCheckedSteps[idx];
+
+  // Visual feedback: green background + strikethrough text when a step is ticked off.
+  const row  = document.getElementById('pm-step-row-' + idx);
+  const text = document.getElementById('pm-step-text-' + idx);
+  if (row) {
+    if (checked) {
+      row.style.background = '#dcfce7';                // light green
+      row.style.borderColor = '#16a34a';               // green border
+      row.style.color = '#14532d';                     // darker green text
+    } else {
+      row.style.background = 'transparent';
+      row.style.borderColor = 'transparent';
+      row.style.color = '#0c4a6e';                     // restore default blue
+    }
+  }
+  if (text) {
+    text.style.textDecoration = checked ? 'line-through' : 'none';
+    text.style.opacity = checked ? '0.75' : '1';
+  }
+
   // Update the counter label
   const total = (_pmProcedureCache && _pmProcedureCache.instructions || []).length;
   const done = Object.keys(_pmCheckedSteps).length;
   const counter = document.getElementById('pm-step-counter');
-  if (counter) counter.textContent = `${done} / ${total}`;
+  if (counter) {
+    counter.textContent = `${done} / ${total}`;
+    counter.style.color = (done >= total && total > 0) ? '#16a34a' : '#0369a1';
+  }
   _pmRefreshConfirmGate();
 }
 

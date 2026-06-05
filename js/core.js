@@ -12,6 +12,24 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+// ── OFFLINE PERSISTENCE ──────────────────────────────────────────────────
+// Keeps a copy of Firestore data in the browser's IndexedDB so the app loads
+// and shows live data even with no signal in the barns. Writes made while
+// offline are also cached by Firestore and replayed automatically on
+// reconnect. MUST be called before any other Firestore use, so it lives here
+// right after db is created. synchronizeTabs lets multiple open tabs share
+// one cache instead of fighting over the lock.
+try {
+  db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+    // failed-precondition = multiple tabs without sync support;
+    // unimplemented = browser doesn't support it. Either way the app still
+    // works online — it just won't have the offline cache.
+    console.warn('Firestore offline persistence unavailable:', err && err.code);
+  });
+} catch (e) {
+  console.warn('enablePersistence threw:', e);
+}
+
 // Login was removed (too many farm staff don't have email accounts).
 // The ADMIN_PIN below still gates admin actions inside the app.
 
@@ -136,7 +154,7 @@ const FREQ = {
   semiannual: {label:'Bi-Annual',    icon:'🟣', days:180},
   annual:     {label:'Annual',       icon:'🔴', days:365},
 };
-const SYS_TAG  = {Ventilation:'t-vent',Water:'t-water',Feed:'t-feed','Feed System':'t-feed',Feeders:'t-feed',Manure:'t-manure','Egg Collectors':'t-egg',Building:'t-building',Alarms:'t-water',Lubing:'t-lubing',Packaging:'t-egg'};
+const SYS_TAG  = {Ventilation:'t-vent',Water:'t-water',Feed:'t-feed','Feed System':'t-feed',Feeders:'t-feed',Manure:'t-manure','Egg Collectors':'t-egg',Building:'t-building',Alarms:'t-water',Lubing:'t-lubing','Processing Plant':'t-egg',Packaging:'t-egg'};
 
 // Maps WO problem type keywords → parts system categories
 const PROBLEM_TO_PARTS = {
@@ -221,7 +239,7 @@ async function mintWoId() {
   if (typeof woCounter !== 'undefined') woCounter = next + 1;
   return 'WO-' + String(next).padStart(3, '0');
 }
-const SYS_ICON = {Ventilation:'💨',Water:'💧',Feed:'🌾','Feed System':'🌾',Feeders:'🌾',Manure:'♻️','Egg Collectors':'🥚',Building:'🏚️',Alarms:'🚨',Lubing:'🛢️',Packaging:'📦'};
+const SYS_ICON = {Ventilation:'💨',Water:'💧',Feed:'🌾','Feed System':'🌾',Feeders:'🌾',Manure:'♻️','Egg Collectors':'🥚',Building:'🏚️',Alarms:'🚨',Lubing:'🛢️','Processing Plant':'📦',Packaging:'📦'};
 
 const PM_DEFS = [
   // ── MANURE SYSTEM ─────────────────────────────────────────
@@ -324,8 +342,8 @@ const PM_DEFS = [
   {id:'lb7',sys:'Lubing',task:'Check rod counter sprockets for wear and adjustment',freq:'daily',hrs:0.25},
   {id:'lb8',sys:'Lubing',task:'Fill oil reservoirs as needed',freq:'daily',hrs:0.25},
 
-  // ── PACKAGING (Processing Plant Equipment) ────────────────
-  {id:'pk-rodcon',sys:'Packaging',task:'Rod Conveyor — weekly inspection',freq:'weekly',hrs:0.33, farms:['Processing Plant'],
+  // ── PROCESSING PLANT (Egg Processing Equipment — Master List #100–#126) ─
+  {id:'pk-rodcon',sys:'Processing Plant',pmNum:100,task:'Rod Conveyor — weekly inspection',freq:'weekly',hrs:0.33, farms:['Processing Plant'],
     safety:['Lock out / tag out equipment before inspection','Verify conveyor cannot start automatically'],
     tools:['Grease gun','Wrenches','Flashlight','Cleaning rag'],
     instructions:[
@@ -340,7 +358,7 @@ const PM_DEFS = [
     ],
     corrective:['Replace damaged rods','Tighten loose hardware','Report worn sprockets or bearings','Create WO for repairs outside PM scope']
   },
-  {id:'pk-slk',sys:'Packaging',task:'SLK — weekly inspection',freq:'weekly',hrs:0.25, farms:['Processing Plant'],
+  {id:'pk-slk',sys:'Processing Plant',pmNum:101,task:'SLK — weekly inspection',freq:'weekly',hrs:0.25, farms:['Processing Plant'],
     instructions:[
       'Verify proper machine cycling',
       'Inspect chains and sprockets',
@@ -352,7 +370,7 @@ const PM_DEFS = [
     ],
     corrective:['Adjust timing if required','Replace damaged sensors','Create WO for major issues']
   },
-  {id:'pk-washer',sys:'Packaging',task:'Washer — monthly inspection',freq:'monthly',hrs:0.75, farms:['Processing Plant'],
+  {id:'pk-washer',sys:'Processing Plant',pmNum:102,task:'Washer — test eggs + transfer points + check master links',freq:'monthly',hrs:0.75, farms:['Processing Plant'],
     instructions:[
       'Run test eggs through washer',
       'Inspect transfer points',
@@ -367,7 +385,7 @@ const PM_DEFS = [
     ],
     corrective:['Replace worn brushes','Adjust belts','Replace damaged chains or links','Create WO for motor or bearing issues']
   },
-  {id:'pk-blower',sys:'Packaging',task:'Blower — weekly inspection',freq:'weekly',hrs:0.25, farms:['Processing Plant'],
+  {id:'pk-blower',sys:'Processing Plant',pmNum:103,task:'Blower — check belts',freq:'weekly',hrs:0.25, farms:['Processing Plant'],
     instructions:[
       'Inspect blower motor',
       'Check fan blades for damage',
@@ -379,7 +397,7 @@ const PM_DEFS = [
     ],
     corrective:['Replace damaged belts','Report vibration issues','Create WO for motor repairs']
   },
-  {id:'pk-candler',sys:'Packaging',task:'Candler — monthly inspection',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
+  {id:'pk-candler',sys:'Processing Plant',pmNum:104,task:'Candler — check copper plug-ins',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
     instructions:[
       'Verify candler light operation',
       'Inspect copper plug-ins',
@@ -391,7 +409,7 @@ const PM_DEFS = [
     ],
     corrective:['Replace failed lights','Repair loose connections','Create WO for electrical repairs']
   },
-  {id:'pk-dirtdet',sys:'Packaging',task:'Dirt Detector — monthly inspection',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
+  {id:'pk-dirtdet',sys:'Processing Plant',pmNum:105,task:'Dirt Detector — calibrate',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
     instructions:[
       'Calibrate detector',
       'Verify reject operation',
@@ -402,7 +420,7 @@ const PM_DEFS = [
     ],
     corrective:['Recalibrate unit','Replace damaged sensors','Create WO if reject system fails']
   },
-  {id:'pk-pusher',sys:'Packaging',task:'Pusher Pin Chain — monthly inspection',freq:'monthly',hrs:0.42, farms:['Processing Plant'],
+  {id:'pk-pusher',sys:'Processing Plant',pmNum:106,task:'Pusher Pin Chain — check tightness',freq:'monthly',hrs:0.42, farms:['Processing Plant'],
     instructions:[
       'Inspect chain tension',
       'Check alignment',
@@ -414,7 +432,7 @@ const PM_DEFS = [
     ],
     corrective:['Replace damaged pins','Adjust chain tension','Create WO for excessive wear']
   },
-  {id:'pk-transfer',sys:'Packaging',task:'Transfer — monthly inspection',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
+  {id:'pk-transfer',sys:'Processing Plant',pmNum:107,task:'Transfer — time transfer',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
     instructions:[
       'Check transfer timing',
       'Inspect rollers and belts',
@@ -426,7 +444,7 @@ const PM_DEFS = [
     ],
     corrective:['Adjust alignment','Replace damaged rollers','Create WO for major repairs']
   },
-  {id:'pk-scales',sys:'Packaging',task:'Scales — monthly inspection',freq:'monthly',hrs:0.5, farms:['Processing Plant'],
+  {id:'pk-scales',sys:'Processing Plant',pmNum:108,task:'Scales — auto calibrate',freq:'monthly',hrs:0.5, farms:['Processing Plant'],
     instructions:[
       'Auto calibrate scales',
       'Verify accuracy with test weights',
@@ -437,7 +455,7 @@ const PM_DEFS = [
     ],
     corrective:['Recalibrate scales','Replace damaged load cells','Create WO for electrical issues']
   },
-  {id:'pk-basket',sys:'Packaging',task:'Basket Conveyor — monthly inspection',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
+  {id:'pk-basket',sys:'Processing Plant',pmNum:109,task:'Basket Conveyor — check basket gap 1/2"',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
     instructions:[
       'Inspect conveyor alignment',
       'Inspect baskets for wear',
@@ -448,7 +466,7 @@ const PM_DEFS = [
     ],
     corrective:['Replace damaged baskets','Tighten loose hardware','Create WO for major repairs']
   },
-  {id:'pk-blood',sys:'Packaging',task:'Blood Detector — monthly inspection',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
+  {id:'pk-blood',sys:'Processing Plant',pmNum:110,task:'Blood Detector — test blood detector',freq:'monthly',hrs:0.33, farms:['Processing Plant'],
     instructions:[
       'Test blood detector operation',
       'Verify reject system works',
@@ -458,7 +476,7 @@ const PM_DEFS = [
     ],
     corrective:['Recalibrate detector','Replace failed sensors','Create WO for electrical repairs']
   },
-  {id:'pk-packers',sys:'Packaging',task:'Packers — monthly inspection',freq:'monthly',hrs:1.0, farms:['Processing Plant'],
+  {id:'pk-packers',sys:'Processing Plant',pmNum:111,task:'Packers — run 100 test eggs through all packers',freq:'monthly',hrs:1.0, farms:['Processing Plant'],
     instructions:[
       'Run 100 test eggs through all packers',
       'Verify proper packing operation',
@@ -471,7 +489,7 @@ const PM_DEFS = [
     ],
     corrective:['Replace worn rubber','Adjust timing','Create WO for major mechanical issues']
   },
-  {id:'pk-cagebelt',sys:'Packaging',task:'Cage Belt — weekly inspection',freq:'weekly',hrs:0.33, farms:['Processing Plant'],
+  {id:'pk-cagebelt',sys:'Processing Plant',pmNum:121,task:'Cage Belt — check rubber, chain and sprockets',freq:'weekly',hrs:0.33, farms:['Processing Plant'],
     instructions:[
       'Inspect belt condition',
       'Verify belt tracking',
@@ -482,7 +500,7 @@ const PM_DEFS = [
     ],
     corrective:['Adjust tracking','Replace damaged rollers','Create WO for torn belts']
   },
-  {id:'pk-loader',sys:'Packaging',task:'Loader — weekly inspection',freq:'weekly',hrs:0.33, farms:['Processing Plant'],
+  {id:'pk-loader',sys:'Processing Plant',pmNum:122,task:'Loader — weekly inspection',freq:'weekly',hrs:0.33, farms:['Processing Plant'],
     instructions:[
       'Inspect loader timing',
       'Check chains and sprockets',
@@ -493,7 +511,7 @@ const PM_DEFS = [
     ],
     corrective:['Adjust timing','Replace damaged chains','Create WO for major repairs']
   },
-  {id:'pk-lights',sys:'Packaging',task:'Plant Lights — weekly inspection',freq:'weekly',hrs:0.25, farms:['Processing Plant'],
+  {id:'pk-lights',sys:'Processing Plant',pmNum:123,task:'Plant Lights — replace bad bulbs or ballasts',freq:'weekly',hrs:0.25, farms:['Processing Plant'],
     instructions:[
       'Inspect all plant lighting',
       'Replace bad bulbs',
@@ -503,7 +521,7 @@ const PM_DEFS = [
     ],
     corrective:['Replace failed fixtures','Create WO for electrical issues']
   },
-  {id:'pk-aircomp',sys:'Packaging',task:'Air Compressor — monthly inspection',freq:'monthly',hrs:0.5, farms:['Processing Plant'],
+  {id:'pk-aircomp',sys:'Processing Plant',pmNum:124,task:'Air Compressor — change oil',freq:'monthly',hrs:0.5, farms:['Processing Plant'],
     instructions:[
       'Change oil',
       'Drain moisture from tank',
@@ -515,7 +533,7 @@ const PM_DEFS = [
     ],
     corrective:['Replace leaking hoses','Tighten fittings','Create WO for compressor issues']
   },
-  {id:'pk-boiler',sys:'Packaging',task:'Boiler — weekly inspection',freq:'weekly',hrs:0.33, farms:['Processing Plant'],
+  {id:'pk-boiler',sys:'Processing Plant',pmNum:125,task:'Boiler — visually inspect',freq:'weekly',hrs:0.33, farms:['Processing Plant'],
     instructions:[
       'Visually inspect boiler',
       'Check for leaks',
@@ -526,8 +544,9 @@ const PM_DEFS = [
     ],
     corrective:['Report pressure issues immediately','Create WO for leaks or unsafe conditions']
   },
-  {id:'pk-bldg',sys:'Packaging',task:'Building Maintenance — weekly walk',freq:'weekly',hrs:0.5, farms:['Processing Plant'],
+  {id:'pk-bldg',sys:'Processing Plant',pmNum:126,task:'Building Maintenance — check fire extinguishers + walk',freq:'weekly',hrs:0.5, farms:['Processing Plant'],
     instructions:[
+      'Check fire extinguishers — inspect tags, gauge in green, no damage, mounted correctly',
       'Inspect walls, floors, and ceilings',
       'Inspect doors and docks',
       'Check handrails and guards',
@@ -535,7 +554,7 @@ const PM_DEFS = [
       'Inspect housekeeping and 5S conditions',
       'Identify structural or utility repairs needed'
     ],
-    corrective:['Create WO for repairs','Correct housekeeping issues immediately']
+    corrective:['Replace any failed or out-of-date extinguishers immediately','Create WO for repairs','Correct housekeeping issues immediately']
   },
 ];
 
@@ -624,6 +643,7 @@ for (const farm of FACILITIES) {
     ALL_PM.push({
       id:`${farm}-${def.id}`, defId:def.id, farm,
       sys:def.sys, task:def.task, freq:def.freq, hrs:def.hrs,
+      pmNum:def.pmNum||null,
       // Procedural details (optional — used by PM modal if present)
       safety:def.safety||null, tools:def.tools||null,
       instructions:def.instructions||null, corrective:def.corrective||null
@@ -712,6 +732,173 @@ function toast(msg, opts) {
 }
 // Make sure it's reachable from every module / inline handler.
 if (typeof window !== 'undefined') window.toast = toast;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OFFLINE WORK ORDER QUEUE
+// ───────────────────────────────────────────────────────────────────────────
+// Lets staff fill out and "submit" a work order with no signal. The order is
+// saved on the device (localStorage, so it survives closing the app), shown in
+// the Work Orders list with a "Pending sync" badge, and automatically sent to
+// Firestore the moment the phone is back online.
+//
+// Why a hand-rolled queue instead of relying only on Firestore's own offline
+// writes: the WO-### number is minted with a Firestore transaction, and
+// transactions cannot run offline. So offline orders are parked here without a
+// number, and the real WO-### is assigned during the flush once we're online.
+// ═══════════════════════════════════════════════════════════════════════════
+const OFFLINE_WO_KEY = 'rtp_offline_wo_v1';
+let _flushingWOQueue = false;
+
+function getOfflineWOQueue() {
+  try { return JSON.parse(localStorage.getItem(OFFLINE_WO_KEY) || '[]'); }
+  catch (e) { return []; }
+}
+function saveOfflineWOQueue(arr) {
+  try { localStorage.setItem(OFFLINE_WO_KEY, JSON.stringify(arr || [])); }
+  catch (e) { console.warn('offline WO queue save failed:', e); }
+  updateOfflineBanner();
+}
+
+// Park a work order on the device. `data` is the plain WO form payload.
+function queueOfflineWO(data) {
+  const q = getOfflineWOQueue();
+  const localId = 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+  const item = { ...data, _localId: localId, _queuedAt: Date.now() };
+  q.push(item);
+  saveOfflineWOQueue(q);
+  injectPendingWOs();
+  if (typeof refreshCurrentPanel === 'function') refreshCurrentPanel();
+  return item;
+}
+
+// Prepend not-yet-synced orders into the in-memory workOrders list so they
+// show up in the Work Orders view immediately. Skips any whose _localId is
+// already present (i.e. already synced and rebuilt from the Firestore snapshot).
+function injectPendingWOs() {
+  const q = getOfflineWOQueue();
+  if (!q.length) return;
+  const have = new Set(workOrders.map(w => w && w._localId).filter(Boolean));
+  // Oldest first so the newest queued WO ends up on top after unshift.
+  q.slice().reverse().forEach(item => {
+    if (have.has(item._localId)) return;
+    workOrders.unshift({
+      ...item,
+      id: 'WO-PENDING',
+      _fbId: item._localId,   // placeholder id so card buttons don't blow up
+      _pending: true,
+      status: item.status || 'open',
+      ts: item._queuedAt
+    });
+  });
+}
+
+// Send every parked order to Firestore. Safe to call repeatedly; a lock keeps
+// two callers (e.g. the 'online' event and the startup pass) from double-sending.
+async function flushOfflineWOs() {
+  if (_flushingWOQueue) return;
+  if (!navigator.onLine) return;
+  if (!getOfflineWOQueue().length) return;
+
+  _flushingWOQueue = true;
+  setSyncDot('saving');
+  const startCount = getOfflineWOQueue().length;
+  try {
+    for (const item of getOfflineWOQueue().slice()) {
+      try {
+        const woId = await mintWoId();          // transaction — needs network
+        const wo = {
+          id: woId,
+          date: item.date,
+          tech: item.tech, farm: item.farm, house: item.house,
+          problem: item.problem, desc: item.desc,
+          priority: item.priority,
+          assignedTo: item.assignedTo || '',
+          estHours: (item.estHours != null) ? item.estHours : null,
+          parts: item.parts || '',
+          down: item.down || 'no',
+          status: 'open',
+          notes: item.notes || '',
+          photos: item.photos || [],
+          submitted: item.submitted,
+          ts: item._queuedAt || Date.now(),
+          _localId: item._localId,   // dedupe key carried into Firestore
+          queuedOffline: true
+        };
+        await db.collection('workOrders').add(wo);
+        try {
+          await db.collection('activityLog').add({
+            type: 'wo', id: wo.id,
+            desc: `WO submitted (offline sync): ${wo.farm} · ${wo.house} — ${wo.problem}`,
+            tech: wo.tech, date: wo.submitted, ts: Date.now()
+          });
+        } catch (logErr) { console.warn('activityLog (offline sync) failed:', logErr); }
+
+        // Drop just this item from the queue now that it's committed.
+        saveOfflineWOQueue(getOfflineWOQueue().filter(x => x._localId !== item._localId));
+      } catch (itemErr) {
+        // Likely lost signal again mid-flush — stop and retry on next 'online'.
+        console.warn('offline WO flush stopped, will retry:', itemErr);
+        break;
+      }
+    }
+  } finally {
+    _flushingWOQueue = false;
+    const left = getOfflineWOQueue().length;
+    setSyncDot(navigator.onLine ? 'live' : 'offline');
+    updateOfflineBanner();
+    if (typeof refreshCurrentPanel === 'function') refreshCurrentPanel();
+    const sent = startCount - left;
+    if (sent > 0 && typeof toast === 'function') {
+      toast(`✓ ${sent} offline work order${sent > 1 ? 's' : ''} synced`, { ok: true });
+    }
+  }
+}
+
+// Bottom-of-screen status bar: shown while offline and/or while orders wait.
+function updateOfflineBanner() {
+  if (typeof document === 'undefined') return;
+  const n = getOfflineWOQueue().length;
+  const offline = !navigator.onLine;
+  let bar = document.getElementById('offline-banner');
+
+  if (!n && !offline) { if (bar) bar.remove(); return; }
+
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'offline-banner';
+    bar.style.cssText = [
+      'position:fixed', 'left:0', 'right:0', 'bottom:0', 'z-index:15000',
+      'padding:9px 14px', 'text-align:center',
+      'font-family:"IBM Plex Sans",sans-serif', 'font-size:13px', 'font-weight:600',
+      'color:#1a1a1a', 'box-shadow:0 -2px 10px rgba(0,0,0,0.3)'
+    ].join(';');
+    document.body.appendChild(bar);
+  }
+
+  if (offline && n) {
+    bar.textContent = `📴 Offline — ${n} work order${n > 1 ? 's' : ''} saved on this device, will send when you're back online`;
+    bar.style.background = '#f6c453';
+  } else if (offline) {
+    bar.textContent = '📴 Offline — your changes will sync when you reconnect';
+    bar.style.background = '#f6c453';
+  } else {
+    bar.textContent = `🔄 Back online — syncing ${n} work order${n > 1 ? 's' : ''}…`;
+    bar.style.background = '#7ed957';
+  }
+}
+
+// React to the browser going on/offline.
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    setSyncDot('live');
+    updateOfflineBanner();
+    flushOfflineWOs();
+  });
+  window.addEventListener('offline', () => {
+    setSyncDot('offline');
+    updateOfflineBanner();
+  });
+}
 
 // ═══════════════════════════════════════════
 // FIREBASE LOAD
@@ -1663,6 +1850,9 @@ async function initApp() {
     db.collection('workOrders').orderBy('ts','desc').onSnapshot(snap => {
       workOrders = [];
       snap.forEach(d => workOrders.push({...d.data(), _fbId: d.id}));
+      // Re-add any work orders still parked on this device (offline, not yet
+      // synced) so they keep showing in the list across snapshot rebuilds.
+      injectPendingWOs();
       if (workOrders.length > 0) {
         const nums = workOrders.map(w => parseInt((w.id||'').replace('WO-',''))).filter(n => !isNaN(n));
         woCounter = nums.length ? nums.reduce((m,n) => Math.max(m,n), 0) + 1 : 1;
@@ -1738,6 +1928,14 @@ async function initApp() {
           if (r && typeof r.catch === 'function') r.catch(e => console.warn(label+' bg-fail:', e));
         } catch(e) { console.warn(label+' bg-fail:', e); }
       };
+
+      // Show any orders parked offline + try to send them now that we're up.
+      safeRun(() => {
+        injectPendingWOs();
+        updateOfflineBanner();
+        if (!navigator.onLine) setSyncDot('offline');
+      }, 'offlineWOInit');
+      safeRun(flushOfflineWOs, 'flushOfflineWOs');
 
       safeRun(loadDowntime, 'loadDowntime');
       safeRun(loadPOCounter, 'loadPOCounter');

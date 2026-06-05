@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Rushtown Poultry — Operations Hub</title>
 <script>
-(function(){var V='20260525-danville-fix';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
+(function(){var V='20260605-trim';if(localStorage.getItem('_rv')!==V){localStorage.setItem('_rv',V);if(!location.search.includes('_f=')){location.replace(location.pathname+'?_f='+V+(location.hash||''));}}})();
 </script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0f1a0f">
@@ -49,6 +49,7 @@ body { font-family: 'IBM Plex Sans', sans-serif; background: var(--dark); min-he
 .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; margin-left: 6px; transition: background 0.3s; }
 .sync-dot.live { background: var(--green-bright); box-shadow: 0 0 6px var(--green-bright); }
 .sync-dot.saving { background: var(--amber); }
+.sync-dot.offline { background: #e53e3e; box-shadow: 0 0 6px #e53e3e; }
 .nav-tabs { display: flex; gap: 3px; flex-wrap: wrap; }
 .nav-tab { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; padding: 8px 13px; border-radius: 4px; border: none; cursor: pointer; transition: all 0.2s; background: transparent; color: var(--green-light); white-space: nowrap; }
 .nav-tab.active { background: var(--green-bright); color: #fff; }
@@ -3063,13 +3064,11 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button class="sub-btn active" data-section="wo"       onclick="goMaintSection('wo')"       data-i18n="sub.wo">🔧 Work Orders</button>
     <button class="sub-btn"        data-section="pm"       onclick="goMaintSection('pm')"       data-i18n="sub.pm">📋 PM Schedule</button>
     <button class="sub-btn"        data-section="parts"    onclick="goMaintSection('parts')"    data-i18n="sub.parts">🔩 Parts <span id="parts-alert-badge" style="display:none;background:#e53e3e;color:white;border-radius:50%;font-size:10px;padding:1px 5px;margin-left:3px;"></span></button>
-    <button class="sub-btn"        data-section="assets"   onclick="goMaintSection('assets')"   data-i18n="sub.assets">🏭 Assets</button>
     <button class="sub-btn"        data-section="wi"       onclick="goMaintSection('wi')"       data-i18n="sub.wi">📖 Work Instructions</button>
     <button class="sub-btn"        data-section="log"      onclick="goMaintSection('log')"      data-i18n="sub.log">📁 Log</button>
-    <button class="sub-btn"        data-section="calendar"    onclick="goMaintSection('calendar')">📅 Calendar</button>
-    <button class="sub-btn"        data-section="contractor"    onclick="goMaintSection('contractor')">🏗️ Contractors</button>
-    <button class="sub-btn"        data-section="weekly-agenda" onclick="goMaintSection('weekly-agenda')">📅 Weekly Agenda</button>
-    <button class="sub-btn"        data-section="redtags"       onclick="goMaintSection('redtags')">🏷️ Red Tags</button>
+    <!-- Removed 2026-06-05 per Joe: Assets, Calendar, Contractors, Weekly Agenda, Red Tags -->
+    <!-- Underlying render functions left intact in case any panel needs to be brought back -->
+
   </div>
 
   <!-- Work Orders section -->
@@ -3168,7 +3167,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         </div>
         <div id="wo-success" style="display:none;text-align:center;padding:40px 20px;">
           <div style="font-size:48px;">✅</div>
-          <h2 style="color:#2e7d32;margin:10px 0;">Work Order Submitted!</h2>
+          <h2 id="wo-success-title" style="color:#2e7d32;margin:10px 0;">Work Order Submitted!</h2>
           <p id="wo-success-num" style="font-weight:700;font-size:15px;color:#555;margin-bottom:20px;"></p>
           <button class="btn-confirm" onclick="afterWOSubmit()">Submit Another</button>
         </div>
@@ -3203,7 +3202,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <button class="pill" onclick="pmSys('Feed System',this)">🌾 Feed System</button>
       <button class="pill" onclick="pmSys('Ventilation',this)">💨 Ventilation</button>
       <button class="pill" onclick="pmSys('Manure',this)">♻️ Manure</button>
-      <button class="pill" onclick="pmSys('Packaging',this)">📦 Packaging</button>
+      <button class="pill" onclick="pmSys('Processing Plant',this)">📦 Processing Plant</button>
     </div>
     <div id="pm-container"></div>
   </div>
@@ -3233,37 +3232,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div id="parts-container"></div>
   </div>
 
-  <!-- Assets section -->
-  <div class="maint-section" id="maint-assets">
-    <div class="section-sub">All equipment registered across Hegins &amp; Danville — click any asset to view full history</div>
-    <div class="stats-grid g4" id="asset-stats"></div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
-      <div style="flex:1;min-width:200px;position:relative;">
-        <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;">🔍</span>
-        <input type="text" id="asset-search-input" placeholder="Search by name, ID, system, location, house..." oninput="renderAssets()" style="width:100%;padding:9px 12px 9px 34px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'IBM Plex Sans',sans-serif;box-sizing:border-box;">
-      </div>
-      <div class="pill-bar" style="margin-bottom:0;flex-shrink:0;" id="asset-farm-bar">
-        <button class="loc-pill active" onclick="assetFarm('all',this)">All Locations</button>
-        <button class="loc-pill" onclick="assetFarm('Hegins',this)">📍 Hegins</button>
-        <button class="loc-pill" onclick="assetFarm('Danville',this)">📍 Danville</button>
-        <button class="loc-pill" onclick="assetFarm('Processing Plant',this)">📦 Processing Plant</button>
-      </div>
-      <button onclick="openAssetForm()" style="padding:9px 18px;background:var(--green-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">➕ Add Asset</button>
-    </div>
-    <div class="pill-bar" id="asset-sys-bar">
-      <button class="pill active" onclick="assetSys('all',this)">All Systems</button>
-      <button class="pill" onclick="assetSys('Ventilation',this)">💨 Vent</button>
-      <button class="pill" onclick="assetSys('Water',this)">💧 Water</button>
-      <button class="pill" onclick="assetSys('Feed',this)">🌾 Feed</button>
-      <button class="pill" onclick="assetSys('Manure',this)">♻️ Manure</button>
-      <button class="pill" onclick="assetSys('Egg Collectors',this)">🥚 Eggs</button>
-      <button class="pill" onclick="assetSys('Heating',this)">🔥 Heat</button>
-      <button class="pill" onclick="assetSys('Electrical',this)">⚡ Elec</button>
-      <button class="pill" onclick="assetSys('Lubing',this)">🛢️ Lube</button>
-      <button class="pill" onclick="assetSys('Other',this)">📦 Other</button>
-    </div>
-    <div id="asset-list"></div>
-  </div>
+  <!-- Assets section REMOVED 2026-06-05 per Joe — render functions kept in maintenance.js -->
 
   <!-- Work Instructions section -->
   <div class="maint-section" id="maint-wi">
@@ -3370,28 +3339,11 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div id="log-container"></div>
   </div>
 
-  <!-- Calendar section -->
-  <div class="maint-section" id="maint-calendar" style="display:none;">
-    <div class="section-sub">Upcoming PMs for the next 14 days — plan your week</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-      <button class="pill active" onclick="maintCalFarm('all',this)">All Farms</button>
-      <button class="pill" onclick="maintCalFarm('Hegins',this)">📍 Hegins</button>
-      <button class="pill" onclick="maintCalFarm('Danville',this)">📍 Danville</button>
-    </div>
-    <div id="maint-calendar-container"></div>
-  </div>
-
-  <!-- Contractor Tracker section -->
-  <div class="maint-section" id="maint-contractor" style="display:none;"></div>
-
   <!-- Cost Dashboard section -->
   <div class="maint-section" id="maint-cost" style="display:none;"></div>
 
-  <!-- Weekly Agenda section -->
-  <div class="maint-section" id="maint-weekly-agenda" style="display:none;"></div>
-
-  <!-- Red Tags section -->
-  <div class="maint-section" id="maint-redtags" style="display:none;padding:14px;"></div>
+  <!-- Calendar / Contractor / Weekly Agenda / Red Tags sections REMOVED 2026-06-05 per Joe -->
+  <!-- Render functions still exist in maintenance.js in case any of these need to come back -->
 </div>
 
 <!-- ═══ PACKAGING PANEL ═══ -->
@@ -5050,11 +5002,11 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260525-pp-views"></script>
+<script defer src="js/core.js?v=20260605-trim"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
-<script defer src="js/maintenance.js?v=20260525-pp-views"></script>
+<script defer src="js/maintenance.js?v=20260605-trim"></script>
 <script defer src="js/trending-wo.js?v=20260501"></script>
 <script defer src="js/packaging.js?v=20260427k"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
