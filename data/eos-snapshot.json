@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-05T13:54:05.986323Z",
-  "date": "2026-06-05",
+  "generatedAt": "2026-06-06T12:09:40.412132Z",
+  "date": "2026-06-06",
   "scope": {
     "farms": [
       "Hegins",
@@ -9,10 +9,10 @@
     "houses": 13
   },
   "headline": {
-    "openWOTotal": 9,
+    "openWOTotal": 3,
     "redTagsActive": 0,
     "overdue7d": 0,
-    "walksToday": 4,
+    "walksToday": 3,
     "totalHouses": 13
   },
   "byHouse": [
@@ -102,18 +102,18 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Feed System",
-      "topItemDays": 31
+      "topItemDays": 32
     },
     {
       "farm": "Danville",
       "house": "1",
-      "openWO": 3,
+      "openWO": 1,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": "Feed System",
-      "topItemDays": 31
+      "topItem": "Ventilation / Fans",
+      "topItemDays": 5
     },
     {
       "farm": "Danville",
@@ -140,24 +140,24 @@
     {
       "farm": "Danville",
       "house": "4",
-      "openWO": 1,
+      "openWO": 0,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": "",
-      "topItemDays": 7
+      "topItem": null,
+      "topItemDays": null
     },
     {
       "farm": "Danville",
       "house": "5",
-      "openWO": 3,
+      "openWO": 0,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
-      "topItem": "Sistema de Alimento",
-      "topItemDays": 1
+      "morningWalkToday": false,
+      "topItem": null,
+      "topItemDays": null
     }
   ],
   "openWOs": [
@@ -170,50 +170,6 @@
       "priority": "high",
       "status": "in-progress",
       "ts": 1779886109797,
-      "urgent": false
-    },
-    {
-      "id": "7o4frUlxHrKVWtu8nxF0",
-      "farm": "Danville",
-      "house": "1",
-      "title": "Recolecci\u00f3n de Huevos",
-      "desc": "",
-      "priority": "urgent",
-      "status": "in-progress",
-      "ts": 1780509034023,
-      "urgent": false
-    },
-    {
-      "id": "8PGhH6Wxu39qiZRPmZfD",
-      "farm": "Danville",
-      "house": "5",
-      "title": "Sistema de Alimento",
-      "desc": "",
-      "priority": "urgent",
-      "status": "in-progress",
-      "ts": 1780508775862,
-      "urgent": false
-    },
-    {
-      "id": "B7FKHi74CPElnf8IbVnC",
-      "farm": "Danville",
-      "house": "4",
-      "title": "",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780054503966,
-      "urgent": false
-    },
-    {
-      "id": "BOjMuezopPi3XpVhvyZ5",
-      "farm": "Danville",
-      "house": "5",
-      "title": "Sistema de Esti\u00e9rcol",
-      "desc": "",
-      "priority": "urgent",
-      "status": "open",
-      "ts": 1780510354203,
       "urgent": false
     },
     {
@@ -247,28 +203,6 @@
       "priority": "urgent",
       "status": "open",
       "ts": 1780247335743,
-      "urgent": false
-    },
-    {
-      "id": "IrShGZTnpME9ijExMTJJ",
-      "farm": "Danville",
-      "house": "5",
-      "title": "",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780662262720,
-      "urgent": false
-    },
-    {
-      "id": "JjJ1HuKohAQSvaiTYmfH",
-      "farm": "Danville",
-      "house": "1",
-      "title": "Feed System",
-      "desc": "",
-      "priority": "normal",
-      "status": "open",
-      "ts": 1777979335752,
       "urgent": false
     },
     {
@@ -323,25 +257,19 @@
       "farm": "Danville",
       "house": "4",
       "employee": "Aracely",
-      "time": "8:15 AM"
-    },
-    {
-      "farm": "Danville",
-      "house": "1",
-      "employee": "Aracely",
-      "time": "7:01 AM"
-    },
-    {
-      "farm": "Danville",
-      "house": "5",
-      "employee": "Aracely",
-      "time": "8:24 AM"
+      "time": "8:08 AM"
     },
     {
       "farm": "Danville",
       "house": "2",
       "employee": "Aracely",
-      "time": "7:34 AM"
+      "time": "7:20 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "1",
+      "employee": "Aracely",
+      "time": "7:10 AM"
     }
   ]
 }
