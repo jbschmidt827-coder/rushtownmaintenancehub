@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-06T12:09:40.412132Z",
-  "date": "2026-06-06",
+  "generatedAt": "2026-06-07T12:23:40.377610Z",
+  "date": "2026-06-07",
   "scope": {
     "farms": [
       "Hegins",
@@ -12,7 +12,7 @@
     "openWOTotal": 3,
     "redTagsActive": 0,
     "overdue7d": 0,
-    "walksToday": 3,
+    "walksToday": 4,
     "totalHouses": 13
   },
   "byHouse": [
@@ -102,7 +102,7 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Feed System",
-      "topItemDays": 32
+      "topItemDays": 33
     },
     {
       "farm": "Danville",
@@ -113,7 +113,7 @@
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Ventilation / Fans",
-      "topItemDays": 5
+      "topItemDays": 6
     },
     {
       "farm": "Danville",
@@ -155,7 +155,7 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": false,
+      "morningWalkToday": true,
       "topItem": null,
       "topItemDays": null
     }
@@ -255,21 +255,27 @@
   "morningWalksToday": [
     {
       "farm": "Danville",
-      "house": "4",
-      "employee": "Aracely",
-      "time": "8:08 AM"
-    },
-    {
-      "farm": "Danville",
       "house": "2",
       "employee": "Aracely",
-      "time": "7:20 AM"
+      "time": "7:25 AM"
     },
     {
       "farm": "Danville",
       "house": "1",
       "employee": "Aracely",
-      "time": "7:10 AM"
+      "time": "6:53 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "5",
+      "employee": "Aracely",
+      "time": "7:44 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "4",
+      "employee": "Aracely",
+      "time": "8:05 AM"
     }
   ]
 }
