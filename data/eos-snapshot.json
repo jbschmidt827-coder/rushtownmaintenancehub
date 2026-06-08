@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-06-07T12:23:40.377610Z",
-  "date": "2026-06-07",
+  "generatedAt": "2026-06-08T14:50:30.644553Z",
+  "date": "2026-06-08",
   "scope": {
     "farms": [
-      "Hegins",
-      "Danville"
+      "Danville",
+      "Hegins"
     ],
     "houses": 13
   },
   "headline": {
-    "openWOTotal": 3,
+    "openWOTotal": 10,
     "redTagsActive": 0,
     "overdue7d": 0,
     "walksToday": 4,
@@ -102,29 +102,29 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Feed System",
-      "topItemDays": 33
+      "topItemDays": 34
     },
     {
       "farm": "Danville",
       "house": "1",
-      "openWO": 1,
+      "openWO": 3,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Ventilation / Fans",
-      "topItemDays": 6
+      "topItemDays": 7
     },
     {
       "farm": "Danville",
       "house": "2",
-      "openWO": 0,
+      "openWO": 2,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": null,
-      "topItemDays": null
+      "topItem": "Building / Structure",
+      "topItemDays": 0
     },
     {
       "farm": "Danville",
@@ -140,24 +140,24 @@
     {
       "farm": "Danville",
       "house": "4",
-      "openWO": 0,
+      "openWO": 1,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": null,
-      "topItemDays": null
+      "topItem": "",
+      "topItemDays": 0
     },
     {
       "farm": "Danville",
       "house": "5",
-      "openWO": 0,
+      "openWO": 2,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": null,
-      "topItemDays": null
+      "topItem": "Egg Collection",
+      "topItemDays": 0
     }
   ],
   "openWOs": [
@@ -170,6 +170,17 @@
       "priority": "high",
       "status": "in-progress",
       "ts": 1779886109797,
+      "urgent": false
+    },
+    {
+      "id": "7RqkyJANEVZjn0rvA07i",
+      "farm": "Danville",
+      "house": "1",
+      "title": "Feed System",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1780921249198,
       "urgent": false
     },
     {
@@ -195,14 +206,47 @@
       "urgent": false
     },
     {
+      "id": "EX8FnOED8Cs5PIXv5b1s",
+      "farm": "Danville",
+      "house": "4",
+      "title": "",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1780922169710,
+      "urgent": false
+    },
+    {
       "id": "HRb3dRMt1ciLITzPrw6m",
       "farm": "Danville",
       "house": "1",
       "title": "Ventilation / Fans",
       "desc": "",
       "priority": "urgent",
-      "status": "open",
+      "status": "on-hold",
       "ts": 1780247335743,
+      "urgent": false
+    },
+    {
+      "id": "IMlJqYLk6wSNyWV3lNXX",
+      "farm": "Danville",
+      "house": "2",
+      "title": "Building / Structure",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1780861997042,
+      "urgent": false
+    },
+    {
+      "id": "KEzQ1EZgIslUaXbN9rsr",
+      "farm": "Danville",
+      "house": "2",
+      "title": "",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1780919906676,
       "urgent": false
     },
     {
@@ -248,6 +292,39 @@
       "status": "open",
       "ts": 1779806316319,
       "urgent": false
+    },
+    {
+      "id": "ueixWuXFUbYRUiRapddu",
+      "farm": "Danville",
+      "house": "5",
+      "title": "",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1780922826276,
+      "urgent": false
+    },
+    {
+      "id": "v7z0ZLQg8j4oIzgSrfye",
+      "farm": "Danville",
+      "house": "5",
+      "title": "Egg Collection",
+      "desc": "",
+      "priority": "urgent",
+      "status": "open",
+      "ts": 1780859324579,
+      "urgent": false
+    },
+    {
+      "id": "xXk7nql4kDtt6CNTdu5E",
+      "farm": "Danville",
+      "house": "1",
+      "title": "Egg Collection",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1780859551227,
+      "urgent": false
     }
   ],
   "redTags": [],
@@ -255,27 +332,27 @@
   "morningWalksToday": [
     {
       "farm": "Danville",
-      "house": "2",
-      "employee": "Aracely",
-      "time": "7:25 AM"
-    },
-    {
-      "farm": "Danville",
       "house": "1",
-      "employee": "Aracely",
-      "time": "6:53 AM"
-    },
-    {
-      "farm": "Danville",
-      "house": "5",
-      "employee": "Aracely",
-      "time": "7:44 AM"
+      "employee": "Celia",
+      "time": "7:52 AM"
     },
     {
       "farm": "Danville",
       "house": "4",
-      "employee": "Aracely",
-      "time": "8:05 AM"
+      "employee": "Celia",
+      "time": "8:36 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "2",
+      "employee": "Celia",
+      "time": "7:58 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "5",
+      "employee": "Celia",
+      "time": "8:47 AM"
     }
   ]
 }
