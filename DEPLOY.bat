@@ -25,12 +25,32 @@ echo === Committing ===
 git commit -m "%MSG%"
 echo.
 
-echo === Pushing to GitHub (triggers Firebase deploy) ===
+echo === Syncing with GitHub (pulls bot snapshot commits first) ===
+REM The daily-report GitHub Action adds a "daily snapshot" commit to main
+REM every day. Without this pull, the push below gets rejected.
+git pull --rebase --autostash origin main
+if errorlevel 1 (
+  echo.
+  echo  !!! PULL FAILED — fix the conflict above, then run DEPLOY.bat again.
+  echo.
+  pause
+  exit /b 1
+)
+echo.
+
+echo === Pushing to GitHub (triggers deploy) ===
 git push origin main
+if errorlevel 1 (
+  echo.
+  echo  !!! PUSH FAILED — nothing was deployed. Read the error above.
+  echo.
+  pause
+  exit /b 1
+)
 echo.
 
 echo === Done ===
-echo GitHub Actions will deploy in ~2 minutes.
-echo Then refresh the app — Processing Plant pill appears under PM Schedule.
+echo Push succeeded. Netlify + Firebase will deploy in ~2 minutes.
+echo Then refresh the app on a tablet to pick up the new version.
 echo.
 pause
