@@ -2522,6 +2522,19 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .bw-weekly-step{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #1a3a1a;font-size:12px;color:#a0c8a0;line-height:1.5;}
 .bw-weekly-step:last-child{border-bottom:none;}
 .bw-step-num{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4caf50;font-weight:700;min-width:18px;margin-top:2px;}
+/* ── Block flow: locked / collapsed states ── */
+.bw-card.bw-locked{display:none!important;}
+.bw-card.bw-collapsed{padding:0;border-color:#4caf50;}
+.bw-card.bw-collapsed > *:not(.bw-done-bar){display:none!important;}
+.bw-done-bar{display:none;}
+.bw-card.bw-collapsed .bw-done-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;cursor:pointer;border-radius:14px;background:#143514;}
+.bw-done-title{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#4caf50;}
+.bw-done-edit{font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+.bw-block-done-btn{width:100%;margin-top:14px;padding:13px;border-radius:10px;border:none;background:#4caf50;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:background .15s;}
+.bw-block-done-btn:disabled{background:#234a23;color:#5a8a5a;cursor:not-allowed;}
+.bw-block-done-btn:not(:disabled):hover{background:#43a047;}
+.bw-na-btn{padding:12px 16px;border-radius:10px;border:1.5px solid #2a5a2a;background:#163016;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;transition:all .15s;}
+.bw-na-btn.active{background:#1a2a3a;border-color:#4a90d9;color:#4a90d9;}
 </style>
 <div style="max-width:min(720px,96vw);margin:0 auto;padding:20px 16px 40px;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #2a5a2a;">
@@ -2533,13 +2546,13 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 
   <!-- Employee -->
-  <div class="bw-card">
+  <div class="bw-card" data-bw-block="employee">
     <div class="bw-card-title">👤 Employee Check-In</div>
     <input type="text" id="bw-employee" class="bw-input" placeholder="Enter your name..." oninput="checkBWReady()" list="staff-datalist" autocomplete="off">
   </div>
 
   <!-- Mortality -->
-  <div class="bw-card">
+  <div class="bw-card" data-bw-block="mortality">
     <div class="bw-card-title">💀 Mortality</div>
     <div style="margin-bottom:12px;">
       <div class="bw-row-label">Mortality found?</div>
@@ -2562,7 +2575,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 
   <!-- Equipment -->
-  <div class="bw-card">
+  <div class="bw-card" data-bw-block="equipment">
     <div class="bw-card-title">⚙️ Equipment</div>
     <div style="margin-bottom:12px;">
       <div class="bw-row-label">Manure Dryers</div>
@@ -2600,7 +2613,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 
   <!-- Air & Environment -->
-  <div class="bw-card">
+  <div class="bw-card" data-bw-block="air">
     <div class="bw-card-title">🌡️ Air & Environment</div>
     <div style="margin-bottom:12px;">
       <div class="bw-row-label">Air Quality Anomaly?</div>
@@ -2612,7 +2625,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 
   <!-- Feeding & Water -->
-  <div class="bw-card">
+  <div class="bw-card" data-bw-block="feedwater">
     <div class="bw-card-title">🍗 Feeding & Water</div>
     <div style="margin-bottom:12px;">
       <div class="bw-row-label">Feeders</div>
@@ -2638,7 +2651,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 
   <!-- Belts -->
-  <div class="bw-card">
+  <div class="bw-card" data-bw-block="belts">
     <div class="bw-card-title">🥚 Belts</div>
     <div style="margin-bottom:12px;">
       <div class="bw-row-label">Egg Belt Working?</div>
@@ -2652,12 +2665,15 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     </div>
     <div style="margin-top:12px;">
       <div class="bw-row-label">Egg count (approx. total today)</div>
-      <input type="number" id="bw-egg-count" class="bw-input" placeholder="e.g. 134500" min="0">
+      <div style="display:flex;gap:8px;">
+        <input type="number" id="bw-egg-count" class="bw-input" placeholder="e.g. 134500" min="0" style="flex:1;">
+        <button class="bw-na-btn" id="bw-egg-count-na" onclick="bwToggleNA('bw-egg-count')">N/A</button>
+      </div>
     </div>
   </div>
 
   <!-- Pest -->
-  <div class="bw-card">
+  <div class="bw-card" data-bw-block="pest">
     <div class="bw-card-title">🐀 Pest Control</div>
     <div style="margin-bottom:12px;">
       <div class="bw-row-label">Rodents present?</div>
@@ -2683,12 +2699,15 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     </div>
     <div style="margin-top:12px;">
       <div class="bw-row-label">Weekly rodent trap count</div>
-      <input type="number" id="bw-weekly-rodent-count" class="bw-input" placeholder="Total rodents caught this week" min="0">
+      <div style="display:flex;gap:8px;">
+        <input type="number" id="bw-weekly-rodent-count" class="bw-input" placeholder="Total rodents caught this week" min="0" style="flex:1;">
+        <button class="bw-na-btn" id="bw-weekly-rodent-count-na" onclick="bwToggleNA('bw-weekly-rodent-count')">N/A</button>
+      </div>
     </div>
   </div>
 
   <!-- Daily Checklist -->
-  <div class="bw-card">
+  <div class="bw-card" data-bw-block="checklist">
     <div class="bw-card-title">✅ Daily Checklist</div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;">MARK EACH ITEM PASS OR FAIL — IN ORDER</div>
@@ -2841,13 +2860,13 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 
   <!-- Weekly Tasks (day-conditional) -->
-  <div class="bw-card" id="bw-weekly-card" style="display:none;">
+  <div class="bw-card" id="bw-weekly-card" data-bw-block="weekly" style="display:none;">
     <div class="bw-card-title" id="bw-weekly-title">📅 Weekly Task</div>
     <div id="bw-weekly-content"></div>
   </div>
 
   <!-- Clean Under Cages (House 1: Sun/Thu · House 2: Mon/Sat) -->
-  <div class="bw-card" id="bw-cage-clean-card" style="display:none;border-color:#3a6a8a;">
+  <div class="bw-card" id="bw-cage-clean-card" data-bw-block="cageclean" style="display:none;border-color:#3a6a8a;">
     <div class="bw-card-title" style="color:#7ab8d9;">🧹 Clean Under Cages</div>
     <div id="bw-cage-clean-note" style="font-size:11px;color:#5a8aaa;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;"></div>
     <div style="font-size:12px;color:#a0c8e0;margin-bottom:10px;line-height:1.5;">Scheduled deep-clean task: sweep and remove buildup from under all cage rows on both floors.</div>
@@ -2860,7 +2879,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 
   <!-- Notes -->
-  <div class="bw-card">
+  <div class="bw-card" data-bw-block="notes">
     <div class="bw-card-title">📝 Notes / Corrective Actions</div>
     <textarea id="bw-notes" class="bw-input" rows="3" placeholder="Anything to flag for the manager..." style="resize:none;"></textarea>
   </div>
@@ -5010,12 +5029,12 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
-<script defer src="js/maintenance.js?v=20260605-trim"></script>
+<script defer src="js/maintenance.js?v=20260607-railmove"></script>
 <script defer src="js/trending-wo.js?v=20260501"></script>
 <script defer src="js/packaging.js?v=20260427k"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260524b"></script>
-<script defer src="js/production.js?v=20260605-walklogs"></script>
+<script defer src="js/production.js?v=20260611-blockflow"></script>
 <script defer src="js/time-blocks.js?v=20260524-break930"></script>
 <script defer src="js/feed-mill.js?v=20260424"></script>
 <script defer src="js/egg-quality.js?v=20260424"></script>

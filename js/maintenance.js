@@ -110,6 +110,10 @@ function renderWO() {
 
   // ── Action Rail ──────────────────────────────
   const actionRailWOs = base.filter(w => w.actionRail && w.status !== 'completed');
+  // Once a WO is moved to the Action Rail (L-10 to-do list), it leaves the main
+  // WO list and lives only in the rail above. Completed WOs still show in the log.
+  const railIds = new Set(actionRailWOs.map(w => w._fbId));
+  list = list.filter(w => !railIds.has(w._fbId));
   const railEl = document.getElementById('wo-action-rail');
   if (railEl) {
     if (actionRailWOs.length > 0) {

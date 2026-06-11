@@ -448,6 +448,7 @@ function bwSaveDraft() {
 }
 
 function bwRestoreFromData(data) {
+  _bwRestoring = true;
   if (data.fields) {
     Object.entries(data.fields).forEach(([id, val]) => {
       const el = document.getElementById(id);
@@ -504,6 +505,7 @@ function bwRestoreFromData(data) {
       statusEl.style.display = 'block';
     }
   }
+  _bwRestoring = false;
   checkBWReady();
 }
 
@@ -528,10 +530,186 @@ function bwRecordToDraft(rec) {
       footpan: rec.footpan, waste: rec.waste,
       _cageCleanEmployee: rec.cageCleanEmployee || '',
       _cageCleanTime:     rec.cageCleanTime     || '',
+      _na:        rec.naFields || {},
+      _weeklyAck: !!rec.weeklyAck,
     },
     bwChecklist: rec.checklist || {},
     clNotes:     rec.checklistNotes || {},
   };
+}
+
+// ── Barn Walk Block Flow ──
+// Each .bw-card[data-bw-block] is a task block. The employee works top-to-bottom:
+// a block's "✓ DONE — NEXT" button enables once every required answer in it is
+// given; tapping it (or finishing the last tap-question) collapses the block to
+// a green summary bar (tap to edit) and reveals the next block. The final
+// Submit button only enables when EVERY block is complete.
+var _bwRestoring = false;
+var _bwFlowActive = 0;
+const _BW_BLOCK_ORDER = ['employee','mortality','equipment','air','feedwater','belts','pest','checklist','weekly','cageclean','notes'];
+// Blocks that auto-collapse when a button tap completes them (no free-text the employee may still want to fill)
+const _BW_BLOCK_AUTO = ['mortality','equipment','air','feedwater','belts','pest','cageclean'];
+
+function _bwCard(name) { return document.querySelector('#barn-walk-modal .bw-card[data-bw-block="' + name + '"]'); }
+function _bwVisibleBlocks() {
+  return _BW_BLOCK_ORDER.filter(n => { const c = _bwCard(n); return c && c.style.display !== 'none'; });
+}
+function _bwHasVal(id) { const el = document.getElementById(id); return !!(el && el.value.trim() !== ''); }
+function _bwIsNA(id) { return !!(_bwData._na && _bwData._na[id]); }
+
+function bwBlockComplete(name) {
+  switch (name) {
+    case 'employee':
+      return !!(document.getElementById('bw-employee')?.value || '').trim();
+    case 'mortality':
+      if (_bwData.mort === undefined || _bwData.mortrem === undefined) return false;
+      return _bwData.mort !== 'yes' || _bwHasVal('bw-mort-count');
+    case 'equipment':
+      if (['dryers','feather','doors','loose'].some(k => _bwData[k] === undefined)) return false;
+      return _bwData.loose !== 'yes' || _bwHasVal('bw-loose-count');
+    case 'air':
+      return _bwData.air !== undefined;
+    case 'feedwater':
+      return ['feed','waste','stand'].every(k => _bwData[k] !== undefined);
+    case 'belts':
+      if (_bwData.eggbelt === undefined) return false;
+      return _bwHasVal('bw-egg-count') || _bwIsNA('bw-egg-count');
+    case 'pest': {
+      if (_bwData.rodent === undefined) return false;
+      if (_bwData.rodent === 'yes' && !_bwHasVal('bw-rodent-count')) return false;
+      if (new Date().getDay() === 2 && _bwData.fly === undefined) return false; // fly check required Tuesdays only
+      if (_bwData.fly === 'yes' && !_bwHasVal('bw-fly-count')) return false;
+      return _bwHasVal('bw-weekly-rodent-count') || _bwIsNA('bw-weekly-rodent-count');
+    }
+    case 'checklist':
+      return Array.from(document.querySelectorAll('#bw-checklist-items .bw-cl-row'))
+        .every(r => _bwChecklist[r.id.replace('bw-cl-','')]);
+    case 'weekly':
+      return !!_bwData._weeklyAck; // acknowledged via its REVIEWED button
+    case 'cageclean':
+      return _bwData.cageclean !== undefined;
+    case 'notes':
+      return true; // notes optional — final Submit lives in this last block
+    default:
+      return true;
+  }
+}
+
+function bwToggleNA(id) {
+  _bwData._na = _bwData._na || {};
+  const on = !_bwData._na[id];
+  _bwData._na[id] = on;
+  const input = document.getElementById(id);
+  if (on && input) input.value = '';
+  const btn = document.getElementById(id + '-na');
+  if (btn) btn.classList.toggle('active', on);
+  bwSaveDraft();
+  bwFlowRefresh(true);
+}
+
+function bwInitFlow() {
+  const isEs = (typeof _lang !== 'undefined' && _lang === 'es');
+  _BW_BLOCK_ORDER.forEach(name => {
+    const card = _bwCard(name); if (!card) return;
+    card.classList.remove('bw-collapsed','bw-locked');
+    // Collapsed summary bar (tap to edit)
+    let bar = card.querySelector('.bw-done-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.className = 'bw-done-bar';
+      card.insertBefore(bar, card.firstChild);
+    }
+    bar.onclick = () => bwExpandBlock(name);
+    const title = (card.querySelector('.bw-card-title')?.textContent || name).trim();
+    bar.innerHTML = '<span class="bw-done-title">✅ ' + title + '</span>'
+      + '<span class="bw-done-edit">' + (isEs ? 'Tocar para editar' : 'Tap to edit') + '</span>';
+    // Per-block DONE button (notes block uses the main Submit instead)
+    let btn = card.querySelector('.bw-block-done-btn');
+    if (name === 'notes') { if (btn) btn.remove(); return; }
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.className = 'bw-block-done-btn';
+      card.appendChild(btn);
+    }
+    btn.onclick = () => bwCompleteBlock(name);
+    btn.textContent = name === 'weekly'
+      ? (isEs ? '✓ Revisado — Siguiente' : '✓ Reviewed — Next')
+      : (isEs ? '✓ Listo — Siguiente' : '✓ Done — Next');
+  });
+  // N/A button states
+  ['bw-egg-count','bw-weekly-rodent-count'].forEach(id => {
+    const b = document.getElementById(id + '-na');
+    if (b) b.classList.toggle('active', _bwIsNA(id));
+  });
+  // Collapse already-complete blocks; lock everything after the first incomplete one
+  const vis = _bwVisibleBlocks();
+  const first = vis.findIndex(n => !bwBlockComplete(n));
+  if (first === -1) {
+    // Everything complete (re-opening a submitted check) — collapse all blocks
+    _bwFlowActive = vis.length;
+    vis.forEach(n => _bwCard(n).classList.add('bw-collapsed'));
+  } else {
+    _bwFlowActive = first;
+    vis.forEach((n, i) => {
+      if (i < first) _bwCard(n).classList.add('bw-collapsed');
+      else if (i > first) _bwCard(n).classList.add('bw-locked');
+    });
+  }
+  bwFlowRefresh(false);
+}
+
+function bwCompleteBlock(name) {
+  if (name === 'weekly' && !_bwData._weeklyAck) { _bwData._weeklyAck = true; bwSaveDraft(); }
+  if (!bwBlockComplete(name)) return;
+  const card = _bwCard(name); if (!card) return;
+  card.classList.add('bw-collapsed');
+  const vis = _bwVisibleBlocks();
+  const i = vis.indexOf(name);
+  if (i === _bwFlowActive) {
+    let nx = i + 1;
+    // Skip past blocks already complete (e.g. restored draft) — always stop at the last block
+    while (nx < vis.length - 1 && bwBlockComplete(vis[nx])) {
+      const c = _bwCard(vis[nx]);
+      c.classList.remove('bw-locked'); c.classList.add('bw-collapsed');
+      nx++;
+    }
+    _bwFlowActive = Math.min(nx, vis.length - 1);
+    const nextCard = _bwCard(vis[_bwFlowActive]);
+    if (nextCard) {
+      nextCard.classList.remove('bw-locked','bw-collapsed');
+      setTimeout(() => { try { nextCard.scrollIntoView({behavior:'smooth', block:'start'}); } catch(e) {} }, 80);
+    }
+  }
+  bwFlowRefresh(false);
+}
+
+function bwExpandBlock(name) {
+  const card = _bwCard(name); if (!card) return;
+  card.classList.remove('bw-collapsed');
+  bwFlowRefresh(false);
+}
+
+function bwFlowRefresh(fromTap) {
+  if (_bwRestoring) return;
+  _BW_BLOCK_ORDER.forEach(name => {
+    const card = _bwCard(name); if (!card) return;
+    const btn = card.querySelector('.bw-block-done-btn');
+    if (btn) btn.disabled = (name === 'weekly') ? false : !bwBlockComplete(name);
+  });
+  // Auto-collapse the active block when a tap (not typing) completes it
+  if (fromTap) {
+    const vis = _bwVisibleBlocks();
+    const name = vis[_bwFlowActive];
+    if (name && _BW_BLOCK_AUTO.includes(name) && bwBlockComplete(name)) {
+      const card = _bwCard(name);
+      if (card && !card.classList.contains('bw-collapsed')) {
+        setTimeout(() => {
+          if (!_bwRestoring && bwBlockComplete(name) && !card.classList.contains('bw-collapsed')) bwCompleteBlock(name);
+        }, 350);
+      }
+    }
+  }
+  checkBWReady();
 }
 
 // items that auto-generate a WO on fail
@@ -555,6 +733,7 @@ function bwSetCheck(key, val, btn) {
   if (detail) detail.style.display = val === 'fail' ? 'block' : 'none';
   bwUpdateTimeBadge();
   bwSaveDraft();
+  bwFlowRefresh(true);
 }
 
 function openBarnWalk(farm, house) {
@@ -590,10 +769,21 @@ function openBarnWalk(farm, house) {
   document.getElementById('barn-walk-modal').scrollTop = 0;
   applyFormTextTranslation();
 
-  // Auto-save on any text input inside the modal
+  bwInitFlow();
+
+  // Auto-save on any text input inside the modal; typing in a field clears its N/A flag
   const modal = document.getElementById('barn-walk-modal');
-  modal._bwInputHandler = modal._bwInputHandler || function() { bwSaveDraft(); };
-  modal.removeEventListener('input', modal._bwInputHandler);
+  if (modal._bwInputHandler) modal.removeEventListener('input', modal._bwInputHandler);
+  modal._bwInputHandler = function(e) {
+    const id = e && e.target ? e.target.id : '';
+    if (id && _bwData._na && _bwData._na[id]) {
+      _bwData._na[id] = false;
+      const naBtn = document.getElementById(id + '-na');
+      if (naBtn) naBtn.classList.remove('active');
+    }
+    bwSaveDraft();
+    bwFlowRefresh(false);
+  };
   modal.addEventListener('input', modal._bwInputHandler);
 
   const today = new Date().toISOString().slice(0,10);
@@ -605,6 +795,7 @@ function openBarnWalk(farm, house) {
     if (draftStr) {
       const draft = JSON.parse(draftStr);
       bwRestoreFromData(draft);
+      bwInitFlow();
       return;
     }
   } catch(e) {}
@@ -631,6 +822,7 @@ function openBarnWalk(farm, house) {
           : '✏️ Editing today\'s submission — changes will update the existing record';
         const sb = document.getElementById('bw-submit-btn');
         if (sb) { sb.textContent = _isEs ? 'Actualizar Entrega' : 'Update Submission'; sb.style.background = '#1a3a4a'; }
+        bwInitFlow();
         return;
       }
       // 3. No draft, no submission — pre-fill employee from last barn walk
@@ -640,7 +832,7 @@ function openBarnWalk(farm, house) {
           if (snap2.empty) return;
           const docs = snap2.docs.map(d => d.data()).sort((a,b) => (b.ts||0) - (a.ts||0));
           const e = document.getElementById('bw-employee');
-          if (e && !e.value) { e.value = docs[0].employee || ''; checkBWReady(); }
+          if (e && !e.value) { e.value = docs[0].employee || ''; bwFlowRefresh(false); }
         }).catch(()=>{});
     }).catch(()=>{});
 }
@@ -749,13 +941,14 @@ function bwSet(key, val) {
   }
   checkBWReady();
   bwSaveDraft();
+  bwFlowRefresh(true);
 }
 
 function checkBWReady() {
-  const emp  = (document.getElementById('bw-employee')?.value || '').trim();
-  const mort = _bwData.mort !== undefined;
-  const feed = _bwData.feed !== undefined;
-  document.getElementById('bw-submit-btn').disabled = !(emp && mort && feed);
+  // Submit only enables once EVERY visible block is fully answered
+  const allDone = _bwVisibleBlocks().every(bwBlockComplete);
+  const btn = document.getElementById('bw-submit-btn');
+  if (btn) btn.disabled = !allDone;
 }
 
 async function submitBarnWalk() {
@@ -769,6 +962,7 @@ async function submitBarnWalk() {
   const flyCount    = document.getElementById('bw-fly-count').value    ? Number(document.getElementById('bw-fly-count').value)    : null;
   const weeklyRodentCount = document.getElementById('bw-weekly-rodent-count')?.value ? Number(document.getElementById('bw-weekly-rodent-count').value) : null;
   const feedBinReading    = document.getElementById('bw-feed-bin-reading')?.value ? Number(document.getElementById('bw-feed-bin-reading').value) : null;
+  const eggCountVal       = document.getElementById('bw-egg-count')?.value ? Number(document.getElementById('bw-egg-count').value) : null;
 
   const flags = [];
   // NOTE: Mortality and Loose Birds are logged to mortalityLog only — never create a WO
@@ -795,6 +989,9 @@ async function submitBarnWalk() {
   const record = {
     farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
     waterPSI, temp, mortCount, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading,
+    eggCount: eggCountVal,
+    naFields: _bwData._na || {},
+    weeklyAck: !!_bwData._weeklyAck,
     mort: _bwData.mort, feather: _bwData.feather, air: _bwData.air,
     feed: _bwData.feed, rodent: _bwData.rodent, loose: _bwData.loose,
     dryers: _bwData.dryers, eggbelt: _bwData.eggbelt,
@@ -1004,6 +1201,9 @@ async function submitBarnWalk() {
   banner.textContent = (typeof _lang !== 'undefined' && _lang === 'es')
     ? ('✅ Guardado a las ' + record.time + ' — edita cualquier campo arriba y toca Actualizar para volver a guardar')
     : ('✅ Saved at ' + record.time + ' — edit any field above and tap Update to re-save');
+
+  // Collapse all completed blocks into summary bars (tap any to edit)
+  bwInitFlow();
 
   renderProdPanel();
   renderECContent();
