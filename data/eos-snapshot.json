@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-05T13:54:05.986323Z",
-  "date": "2026-06-05",
+  "generatedAt": "2026-06-11T14:44:22.573010Z",
+  "date": "2026-06-11",
   "scope": {
     "farms": [
       "Hegins",
@@ -9,7 +9,7 @@
     "houses": 13
   },
   "headline": {
-    "openWOTotal": 9,
+    "openWOTotal": 13,
     "redTagsActive": 0,
     "overdue7d": 0,
     "walksToday": 4,
@@ -74,13 +74,13 @@
     {
       "farm": "Hegins",
       "house": "6",
-      "openWO": 0,
+      "openWO": 1,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": false,
-      "topItem": null,
-      "topItemDays": null
+      "topItem": "Manure System",
+      "topItemDays": 0
     },
     {
       "farm": "Hegins",
@@ -102,7 +102,7 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Feed System",
-      "topItemDays": 31
+      "topItemDays": 37
     },
     {
       "farm": "Danville",
@@ -112,19 +112,19 @@
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": "Feed System",
-      "topItemDays": 31
+      "topItem": "Ventilation / Fans",
+      "topItemDays": 10
     },
     {
       "farm": "Danville",
       "house": "2",
-      "openWO": 0,
+      "openWO": 4,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": null,
-      "topItemDays": null
+      "topItem": "Feed System",
+      "topItemDays": 2
     },
     {
       "farm": "Danville",
@@ -140,24 +140,24 @@
     {
       "farm": "Danville",
       "house": "4",
+      "openWO": 2,
+      "redTags": 0,
+      "overdue7d": 0,
+      "walkedToday": false,
+      "morningWalkToday": true,
+      "topItem": "Watering System",
+      "topItemDays": 2
+    },
+    {
+      "farm": "Danville",
+      "house": "5",
       "openWO": 1,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "",
-      "topItemDays": 7
-    },
-    {
-      "farm": "Danville",
-      "house": "5",
-      "openWO": 3,
-      "redTags": 0,
-      "overdue7d": 0,
-      "walkedToday": false,
-      "morningWalkToday": true,
-      "topItem": "Sistema de Alimento",
-      "topItemDays": 1
+      "topItemDays": 0
     }
   ],
   "openWOs": [
@@ -173,47 +173,47 @@
       "urgent": false
     },
     {
-      "id": "7o4frUlxHrKVWtu8nxF0",
+      "id": "3KIvYBKUKlFm761RUylJ",
+      "farm": "Danville",
+      "house": "2",
+      "title": "Feed System",
+      "desc": "",
+      "priority": "normal",
+      "status": "open",
+      "ts": 1781007910539,
+      "urgent": false
+    },
+    {
+      "id": "7RqkyJANEVZjn0rvA07i",
       "farm": "Danville",
       "house": "1",
-      "title": "Recolecci\u00f3n de Huevos",
+      "title": "Feed System",
       "desc": "",
-      "priority": "urgent",
-      "status": "in-progress",
-      "ts": 1780509034023,
+      "priority": "high",
+      "status": "open",
+      "ts": 1780921249198,
       "urgent": false
     },
     {
-      "id": "8PGhH6Wxu39qiZRPmZfD",
+      "id": "9A7YXyAaIYoFTBC1dKg2",
       "farm": "Danville",
-      "house": "5",
-      "title": "Sistema de Alimento",
-      "desc": "",
-      "priority": "urgent",
-      "status": "in-progress",
-      "ts": 1780508775862,
-      "urgent": false
-    },
-    {
-      "id": "B7FKHi74CPElnf8IbVnC",
-      "farm": "Danville",
-      "house": "4",
+      "house": "2",
       "title": "",
       "desc": "",
       "priority": "high",
       "status": "open",
-      "ts": 1780054503966,
+      "ts": 1781177275187,
       "urgent": false
     },
     {
-      "id": "BOjMuezopPi3XpVhvyZ5",
+      "id": "AaceHYbd0F872b4amQo7",
       "farm": "Danville",
-      "house": "5",
-      "title": "Sistema de Esti\u00e9rcol",
+      "house": "2",
+      "title": "Egg Collection",
       "desc": "",
-      "priority": "urgent",
+      "priority": "high",
       "status": "open",
-      "ts": 1780510354203,
+      "ts": 1781012611078,
       "urgent": false
     },
     {
@@ -245,30 +245,19 @@
       "title": "Ventilation / Fans",
       "desc": "",
       "priority": "urgent",
-      "status": "open",
+      "status": "in-progress",
       "ts": 1780247335743,
       "urgent": false
     },
     {
-      "id": "IrShGZTnpME9ijExMTJJ",
+      "id": "SUBnwjmquJmScIuBWgEG",
       "farm": "Danville",
-      "house": "5",
+      "house": "2",
       "title": "",
       "desc": "",
       "priority": "high",
       "status": "open",
-      "ts": 1780662262720,
-      "urgent": false
-    },
-    {
-      "id": "JjJ1HuKohAQSvaiTYmfH",
-      "farm": "Danville",
-      "house": "1",
-      "title": "Feed System",
-      "desc": "",
-      "priority": "normal",
-      "status": "open",
-      "ts": 1777979335752,
+      "ts": 1781004814751,
       "urgent": false
     },
     {
@@ -283,6 +272,28 @@
       "urgent": false
     },
     {
+      "id": "V3E5rihReOyQRUL6sHBT",
+      "farm": "Hegins",
+      "house": "6",
+      "title": "Manure System",
+      "desc": "",
+      "priority": "normal",
+      "status": "in-progress",
+      "ts": 1781174522466,
+      "urgent": false
+    },
+    {
+      "id": "ZPA74ylRTgnDDMVy9DsR",
+      "farm": "Danville",
+      "house": "4",
+      "title": "",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1781178430105,
+      "urgent": false
+    },
+    {
       "id": "bnJWO4M4L9fh4H59HCbM",
       "farm": "Danville",
       "house": "",
@@ -291,6 +302,17 @@
       "priority": "high",
       "status": "open",
       "ts": 1780328951420,
+      "urgent": false
+    },
+    {
+      "id": "ecEL9nX6Nu0QxaSGjbBz",
+      "farm": "Hegins",
+      "house": "",
+      "title": "Electrical",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1781121495798,
       "urgent": false
     },
     {
@@ -314,6 +336,39 @@
       "status": "open",
       "ts": 1779806316319,
       "urgent": false
+    },
+    {
+      "id": "rjTwHEAEe1x5zkfNXrhl",
+      "farm": "Danville",
+      "house": "5",
+      "title": "",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1781178783288,
+      "urgent": false
+    },
+    {
+      "id": "xXk7nql4kDtt6CNTdu5E",
+      "farm": "Danville",
+      "house": "1",
+      "title": "Egg Collection",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1780859551227,
+      "urgent": false
+    },
+    {
+      "id": "zCutK7XfAVS3D1X7S0Ou",
+      "farm": "Danville",
+      "house": "4",
+      "title": "Watering System",
+      "desc": "",
+      "priority": "high",
+      "status": "open",
+      "ts": 1781007952755,
+      "urgent": false
     }
   ],
   "redTags": [],
@@ -321,27 +376,27 @@
   "morningWalksToday": [
     {
       "farm": "Danville",
-      "house": "4",
-      "employee": "Aracely",
-      "time": "8:15 AM"
-    },
-    {
-      "farm": "Danville",
       "house": "1",
-      "employee": "Aracely",
-      "time": "7:01 AM"
+      "employee": "Celia",
+      "time": "7:21 AM"
     },
     {
       "farm": "Danville",
-      "house": "5",
-      "employee": "Aracely",
-      "time": "8:24 AM"
+      "house": "4",
+      "employee": "Celia",
+      "time": "7:47 AM"
     },
     {
       "farm": "Danville",
       "house": "2",
-      "employee": "Aracely",
-      "time": "7:34 AM"
+      "employee": "Celia",
+      "time": "7:27 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "5",
+      "employee": "Celia",
+      "time": "7:53 AM"
     }
   ]
 }
