@@ -2937,8 +2937,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   <div style="background:#0d1f3a;border:1px solid #1e3a6a;border-radius:14px;padding:18px 16px;margin-bottom:14px;">
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6a90d9;margin-bottom:12px;">👤 Lead / WNO Name</div>
     <input type="text" id="mw-employee" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter your name..." oninput="checkMWReady()" list="staff-datalist" autocomplete="off">
-    <div style="font-size:11px;color:#6a90d9;margin:14px 0 6px;">👥 Employees Present at This Barn</div>
-    <input type="number" id="mw-ee-count" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Headcount" min="0" oninput="checkMWReady()">
+    <div style="font-size:11px;color:#6a90d9;margin:14px 0 6px;">👥 Employees Present at This Barn (optional)</div>
+    <input type="number" id="mw-ee-count" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Headcount" min="0" inputmode="numeric" oninput="checkMWReady()">
   </div>
 
   <!-- Readings -->
@@ -2947,28 +2947,30 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
       <div>
         <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">Water Pressure (PSI)</div>
-        <input type="number" id="mw-water" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="10–60 PSI" oninput="checkMWReady()">
+        <input type="number" id="mw-water" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="10–60 PSI" inputmode="decimal" oninput="mwCheckReading('water')">
+        <div id="mw-water-status" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:4px;min-height:14px;"></div>
       </div>
       <div>
         <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">House Temp (°F)</div>
-        <input type="number" id="mw-temp" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="e.g. 72" oninput="checkMWReady()">
+        <input type="number" id="mw-temp" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="e.g. 72" inputmode="decimal" oninput="mwCheckReading('temp')">
+        <div id="mw-temp-status" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:4px;min-height:14px;"></div>
       </div>
     </div>
     <div>
       <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">🌾 Feed Meter Reading (lbs) — updates bin level instantly</div>
-      <input type="number" id="mw-feed-meter" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter total lbs remaining" min="0" onchange="liveUpdateFeedBin('mw-feed-meter','mw-feed-meter-status',_mwFarm,_mwHouse)">
+      <input type="number" id="mw-feed-meter" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter total lbs remaining" min="0" inputmode="numeric" onchange="liveUpdateFeedBin('mw-feed-meter','mw-feed-meter-status',_mwFarm,_mwHouse)">
       <div id="mw-feed-meter-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:6px;min-height:18px;"></div>
     </div>
     <!-- Bin A / Bin B -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
       <div>
         <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">🌾 Bin A (tons)</div>
-        <input type="number" id="mw-bin-a" class="bw-input" style="border-color:#1e3a6a;background:#091529;text-align:center;font-size:18px;" placeholder="0.0" min="0" step="0.1" oninput="mwCheckBinLevel('mw-bin-a','mw-bin-a-status')">
+        <input type="number" id="mw-bin-a" class="bw-input" style="border-color:#1e3a6a;background:#091529;text-align:center;font-size:18px;" placeholder="0.0" min="0" step="0.1" inputmode="decimal" oninput="mwCheckBinLevel('mw-bin-a','mw-bin-a-status')">
         <div id="mw-bin-a-status" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:4px;min-height:14px;text-align:center;"></div>
       </div>
       <div>
         <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">🌾 Bin B (tons)</div>
-        <input type="number" id="mw-bin-b" class="bw-input" style="border-color:#1e3a6a;background:#091529;text-align:center;font-size:18px;" placeholder="0.0" min="0" step="0.1" oninput="mwCheckBinLevel('mw-bin-b','mw-bin-b-status')">
+        <input type="number" id="mw-bin-b" class="bw-input" style="border-color:#1e3a6a;background:#091529;text-align:center;font-size:18px;" placeholder="0.0" min="0" step="0.1" inputmode="decimal" oninput="mwCheckBinLevel('mw-bin-b','mw-bin-b-status')">
         <div id="mw-bin-b-status" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:4px;min-height:14px;text-align:center;"></div>
       </div>
     </div>
@@ -3006,7 +3008,11 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <textarea id="mw-notes" class="bw-input" rows="3" placeholder="Anything to flag..." style="resize:none;border-color:#1e3a6a;background:#091529;"></textarea>
   </div>
 
-  <button class="bw-submit" id="mw-submit-btn" onclick="submitMorningWalk()" disabled style="background:#3a6aaa;">☀️ Submit Morning Walk</button>
+  <div id="mw-missing-hint" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#d69e2e;background:#1a1505;border:1px solid #4a3a10;border-radius:10px;padding:10px 12px;margin-bottom:10px;line-height:1.6;"></div>
+  <style>#mw-submit-btn:disabled{pointer-events:none;}</style>
+  <div onclick="mwSubmitTap()" style="cursor:pointer;">
+    <button class="bw-submit" id="mw-submit-btn" onclick="submitMorningWalk()" disabled style="background:#3a6aaa;">☀️ Submit Morning Walk</button>
+  </div>
 </div>
 </div>
 
@@ -5025,7 +5031,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260605-walklogs"></script>
+<script defer src="js/core.js?v=20260612-mwfriendly"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
@@ -5034,7 +5040,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script defer src="js/packaging.js?v=20260427k"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260524b"></script>
-<script defer src="js/production.js?v=20260611-blockflow"></script>
+<script defer src="js/production.js?v=20260612-mwfriendly"></script>
 <script defer src="js/time-blocks.js?v=20260611-blockclose"></script>
 <script defer src="js/feed-mill.js?v=20260424"></script>
 <script defer src="js/egg-quality.js?v=20260424"></script>

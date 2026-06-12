@@ -1212,29 +1212,95 @@ async function submitBarnWalk() {
 
 // ── Morning Walk (Lead / WNO) ──
 var _mwFarm = '', _mwHouse = 0, _mwData = {};
+var _MW_FIELD_IDS = ['mw-employee','mw-ee-count','mw-water','mw-temp','mw-feed-meter','mw-bin-a','mw-bin-b','mw-notes'];
+var _MW_STATUS_IDS = ['mw-water-status','mw-temp-status','mw-feed-meter-status','mw-bin-a-status','mw-bin-b-status'];
+
+// ── Morning Walk Draft Persistence (mirrors barn walk drafts) ──
+function _mwDraftKey() {
+  return 'mwDraft-' + _mwFarm + '-' + _mwHouse + '-' + new Date().toISOString().slice(0,10);
+}
+
+function mwSaveDraft() {
+  if (!_mwFarm) return;
+  const fields = {};
+  _MW_FIELD_IDS.forEach(id => { const el = document.getElementById(id); if (el) fields[id] = el.value; });
+  try {
+    localStorage.setItem(_mwDraftKey(), JSON.stringify({ fields, mwData: _mwData, ts: Date.now() }));
+  } catch(e) {}
+}
+
+function _mwCleanOldDrafts() {
+  const today = new Date().toISOString().slice(0,10);
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf('mwDraft-') === 0 && k.slice(-10) !== today) localStorage.removeItem(k);
+    }
+  } catch(e) {}
+}
+
+function mwRestoreDraft() {
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(_mwDraftKey()) || 'null'); } catch(e) {}
+  if (!data) return false;
+  if (data.fields) {
+    Object.entries(data.fields).forEach(([id, val]) => {
+      const el = document.getElementById(id); if (el) el.value = val;
+    });
+  }
+  if (data.mwData) {
+    Object.entries(data.mwData).forEach(([key, val]) => { if (val != null) mwSet(key, val); });
+  }
+  mwCheckBinLevel('mw-bin-a','mw-bin-a-status');
+  mwCheckBinLevel('mw-bin-b','mw-bin-b-status');
+  mwCheckReading('water');
+  mwCheckReading('temp');
+  return true;
+}
 
 function openMorningWalk(farm, house) {
   _mwFarm = farm; _mwHouse = house; _mwData = {};
   const _t = (typeof t === 'function') ? t : (k => k);
   document.getElementById('mw-title').textContent = farm + ' — ' + _t('prod.barn') + ' ' + house;
-  ['mw-employee','mw-water','mw-temp','mw-notes','mw-ee-count'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = '';
+  _MW_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value = ''; el.style.borderColor = '#1e3a6a'; }
+  });
+  _MW_STATUS_IDS.forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = '';
   });
   document.querySelectorAll('#morning-walk-modal .bw-yn-btn').forEach(b => b.className = 'bw-yn-btn');
+  document.querySelectorAll('#morning-walk-modal .bw-yn-row').forEach(r => { r.style.outline = 'none'; });
   document.getElementById('mw-submit-btn').disabled = true;
-  document.getElementById('morning-walk-modal').style.display = 'block';
-  document.getElementById('morning-walk-modal').scrollTop = 0;
+  const modal = document.getElementById('morning-walk-modal');
+  modal.style.display = 'block';
+  modal.scrollTop = 0;
+  // Autosave every keystroke to the draft (listener attached once)
+  if (!modal._mwInputHandler) {
+    modal._mwInputHandler = function() { mwSaveDraft(); };
+    modal.addEventListener('input', modal._mwInputHandler);
+  }
   if (typeof applyFormTextTranslation === 'function') applyFormTextTranslation();
-  // Pre-populate employee from last submission for this barn
-  db.collection('morningWalks').where('farm','==',farm).where('house','==',String(house))
-    .limit(20).get()
-    .then(snap => {
-      if (snap.empty) return;
-      const docs = snap.docs.map(d => d.data()).sort((a,b) => (b.ts||0) - (a.ts||0));
-      const l = docs[0];
-      const e = document.getElementById('mw-employee');
-      if (e && !e.value) { e.value = l.employee || ''; checkMWReady(); }
-    }).catch(()=>{});
+  _mwCleanOldDrafts();
+  const restored = mwRestoreDraft();
+  if (restored && typeof toast === 'function') {
+    toast((typeof _lang !== 'undefined' && _lang === 'es')
+      ? '📝 Borrador restaurado — continúa donde quedaste'
+      : '📝 Draft restored — picking up where you left off');
+  }
+  if (!restored) {
+    // Pre-populate employee from last submission for this barn
+    db.collection('morningWalks').where('farm','==',farm).where('house','==',String(house))
+      .limit(20).get()
+      .then(snap => {
+        if (snap.empty) return;
+        const docs = snap.docs.map(d => d.data()).sort((a,b) => (b.ts||0) - (a.ts||0));
+        const l = docs[0];
+        const e = document.getElementById('mw-employee');
+        if (e && !e.value) { e.value = l.employee || ''; checkMWReady(); }
+      }).catch(()=>{});
+  }
+  checkMWReady();
 }
 
 function closeMorningWalk() {
@@ -1264,19 +1330,111 @@ function mwSet(key, val) {
   document.querySelectorAll(`#morning-walk-modal .bw-yn-btn[id^="mw-${key}-"]`).forEach(b => b.className = 'bw-yn-btn');
   const sel = document.getElementById(`mw-${key}-${val}`);
   if (sel) sel.className = 'bw-yn-btn ' + (badge[key]?.[val] || 'bw-sel');
+  mwSaveDraft();
   checkMWReady();
 }
 
+// Live reading feedback — water PSI mirrors the submit-time flag range (10–60),
+// temp is advisory only (no flag), typical layer-house comfort 65–85°F.
+function mwCheckReading(kind) {
+  const _isEs  = (typeof _lang !== 'undefined' && _lang === 'es');
+  const input  = document.getElementById(kind === 'water' ? 'mw-water' : 'mw-temp');
+  const status = document.getElementById(kind === 'water' ? 'mw-water-status' : 'mw-temp-status');
+  if (input && status) {
+    const val = parseFloat(input.value);
+    if (isNaN(val) || input.value === '') {
+      status.textContent = '';
+    } else if (kind === 'water') {
+      if (val < 10 || val > 60) {
+        status.style.color = '#e53e3e';
+        status.textContent = _isEs ? '🔴 Fuera de rango (10–60) — creará una orden' : '🔴 Out of range (10–60) — will flag a work order';
+      } else {
+        status.style.color = '#4ade80';
+        status.textContent = _isEs ? '🟢 En rango' : '🟢 In range';
+      }
+    } else {
+      if (val < 50 || val > 95) {
+        status.style.color = '#e53e3e';
+        status.textContent = _isEs ? '🔴 Extremo — verifica la lectura' : '🔴 Extreme — double-check reading';
+      } else if (val < 65 || val > 85) {
+        status.style.color = '#d69e2e';
+        status.textContent = _isEs ? '🟡 Fuera del rango típico 65–85' : '🟡 Outside typical 65–85';
+      } else {
+        status.style.color = '#4ade80';
+        status.textContent = _isEs ? '🟢 Normal' : '🟢 Normal';
+      }
+    }
+  }
+  checkMWReady();
+}
+
+// What's still required before submit unlocks
+function _mwMissing() {
+  const _isEs = (typeof _lang !== 'undefined' && _lang === 'es');
+  const miss = [];
+  if (!(document.getElementById('mw-employee')?.value || '').trim()) miss.push({ id:'mw-employee', label:_isEs?'Nombre':'Name' });
+  if (!(document.getElementById('mw-water')?.value || '').trim())    miss.push({ id:'mw-water',    label:_isEs?'Presión de agua':'Water PSI' });
+  if (!(document.getElementById('mw-temp')?.value || '').trim())     miss.push({ id:'mw-temp',     label:_isEs?'Temperatura':'House temp' });
+  if (_mwData.feed === undefined)    miss.push({ id:'mw-feed-yes',    label:_isEs?'Comederos SÍ/NO':'Feeders YES/NO' });
+  if (_mwData.fans === undefined)    miss.push({ id:'mw-fans-yes',    label:_isEs?'Ventiladores SÍ/NO':'Fans YES/NO' });
+  if (_mwData.blowers === undefined) miss.push({ id:'mw-blowers-yes', label:_isEs?'Sopladores SÍ/NO':'Blowers YES/NO' });
+  return miss;
+}
+
 function checkMWReady() {
-  const emp   = (document.getElementById('mw-employee')?.value || '').trim();
-  const water = (document.getElementById('mw-water')?.value || '').trim();
-  const temp  = (document.getElementById('mw-temp')?.value || '').trim();
-  const ready = emp && water && temp &&
-    _mwData.feed !== undefined && _mwData.fans !== undefined && _mwData.blowers !== undefined;
-  document.getElementById('mw-submit-btn').disabled = !ready;
+  const _isEs = (typeof _lang !== 'undefined' && _lang === 'es');
+  const miss  = _mwMissing();
+  const btn   = document.getElementById('mw-submit-btn');
+  if (btn) btn.disabled = miss.length > 0;
+  const hint = document.getElementById('mw-missing-hint');
+  if (hint) {
+    if (miss.length === 0) {
+      hint.style.display = 'none';
+    } else {
+      hint.style.display = 'block';
+      hint.textContent = (_isEs ? '✏️ Falta: ' : '✏️ Still needed: ') + miss.map(m => m.label).join(' · ');
+    }
+  }
+  // Un-highlight anything that's now filled in
+  ['mw-employee','mw-water','mw-temp'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value.trim() !== '') el.style.borderColor = '#1e3a6a';
+  });
+  ['feed','fans','blowers'].forEach(k => {
+    if (_mwData[k] !== undefined) {
+      const row = document.getElementById('mw-' + k + '-yes')?.closest('.bw-yn-row');
+      if (row) row.style.outline = 'none';
+    }
+  });
+}
+
+// Tap on a disabled submit → highlight what's missing and jump to the first one
+function mwSubmitTap() {
+  const btn = document.getElementById('mw-submit-btn');
+  if (!btn || !btn.disabled) return; // enabled → the button's own onclick submits
+  const miss = _mwMissing();
+  if (!miss.length) return;
+  miss.forEach(m => {
+    const el = document.getElementById(m.id);
+    if (!el) return;
+    if (m.id.slice(-4) === '-yes') {
+      const row = el.closest('.bw-yn-row');
+      if (row) { row.style.outline = '2px solid #d69e2e'; row.style.outlineOffset = '2px'; row.style.borderRadius = '8px'; }
+    } else {
+      el.style.borderColor = '#d69e2e';
+    }
+  });
+  const first = document.getElementById(miss[0].id);
+  if (first) {
+    try { first.scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e) {}
+    if (miss[0].id.slice(-4) !== '-yes') {
+      setTimeout(() => { try { first.focus({ preventScroll:true }); } catch(e) {} }, 350);
+    }
+  }
 }
 
 async function submitMorningWalk() {
+  if (_mwMissing().length > 0) { mwSubmitTap(); return; }
   const employee = document.getElementById('mw-employee').value.trim();
   const notes    = document.getElementById('mw-notes').value.trim();
   const waterPSI = Number(document.getElementById('mw-water').value) || 0;
@@ -1346,6 +1504,7 @@ async function submitMorningWalk() {
     } catch(e) { console.error(e); }
   }
 
+  try { localStorage.removeItem(_mwDraftKey()); } catch(e) {}
   closeMorningWalk();
   renderProdPanel();
   renderMWContent();
