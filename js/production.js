@@ -153,6 +153,7 @@ function renderProdPanel() {
         <div style="height:100%;background:${col};width:${p}%;border-radius:3px;transition:width 0.4s;"></div>
       </div>
       ${iss > 0 ? `<div style="font-size:10px;color:#e53e3e;font-family:'IBM Plex Mono',monospace;margin-top:5px;">⚠ ${iss} flagged</div>` : `<div style="font-size:10px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;margin-top:5px;">${d===total?'✅ All checked':'—'}</div>`}
+      ${farmWalkDueBadge(farm, total)}
     </div>`;
   }
 
