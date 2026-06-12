@@ -32,9 +32,9 @@
       color:'#e0b048', bg:'#1a1200', border:'#4a3500',
       defaultTasks:['watertubes','frontofhouse','undercages'] },
     { id:'b3',
-      label:'BLOCK 3 — LUNCH → END OF SHIFT',
+      label:'BLOCK 3 — LUNCH → PRODUCTION DONE',
       shortLabel:'Block 3',
-      window:'~12:30 PM – End',
+      window:'~12:30 PM – until production is done',
       color:'#5aa8f8', bg:'#0d1f3a', border:'#1e3a6a',
       defaultTasks:['blowoff','wheelbarrow','hallways'] },
   ];
@@ -55,6 +55,18 @@
       window: '~' + cfg.breakLabel + ' – ' + cfg.lunchLabel
     };
     return { label: b.label, window: b.window };
+  }
+
+  // Headers are built once at boot (before a barn is picked), so re-stamp
+  // the farm-specific times every time the barn-walk modal opens.
+  function refreshBlockHeaders() {
+    BLOCKS.forEach(b => {
+      const m = blockMeta(b);
+      const lbl = document.querySelector('[data-block-label="' + b.id + '"]');
+      const win = document.querySelector('[data-block-window="' + b.id + '"]');
+      if (lbl) lbl.textContent = m.label;
+      if (win) win.textContent = m.window;
+    });
   }
 
   // task short id → blockId currently assigned
@@ -135,8 +147,8 @@
       block.innerHTML =
         '<div class="bw-cl-block-header" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid ' + b.border + ';">' +
           '<div>' +
-            '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;color:' + b.color + ';letter-spacing:1.5px;">' + blockMeta(b).label + '</div>' +
-            '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#5a8a5a;margin-top:3px;">' + blockMeta(b).window + '</div>' +
+            '<div data-block-label="' + b.id + '" style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;color:' + b.color + ';letter-spacing:1.5px;">' + blockMeta(b).label + '</div>' +
+            '<div data-block-window="' + b.id + '" style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#5a8a5a;margin-top:3px;">' + blockMeta(b).window + '</div>' +
           '</div>' +
           '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
             '<span class="bw-block-elapsed" data-block-elapsed="' + b.id + '" style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#5a8a5a;background:#0a1a0a;border:1px solid #1a3a1a;border-radius:8px;padding:3px 8px;">⏱ —</span>' +
@@ -493,6 +505,7 @@
     // Modal open / state reset
     wrap('bwInitChecklist', function () {
       resetState();
+      refreshBlockHeaders();   // stamp this farm's start/break/lunch times
       applyVisibility();   // re-evaluate dow rules every open
       // Then attempt to load any saved block state for this farm/house/date
       // (runs once _bwFarm/_bwHouse are set, which happens before bwInitChecklist
