@@ -127,6 +127,10 @@
         '</div>' +
         '<div class="bw-cl-block-body" data-block-body="' + b.id + '"></div>';
       root.appendChild(block);
+      // Tap the header of a closed block to collapse/expand it
+      const hdr = block.querySelector('.bw-cl-block-header');
+      hdr.style.cursor = 'pointer';
+      hdr.onclick = function () { toggleBlockCollapse(b.id); };
     });
 
     // Distribute the existing rows into blocks (default schedule)
@@ -252,11 +256,18 @@
     const elap = document.querySelector('[data-block-elapsed="' + blockId + '"]');
     const stat = document.querySelector('[data-block-status="' + blockId + '"]');
     const blkEl = document.querySelector('.bw-cl-block[data-block="' + blockId + '"]');
+    const body  = document.querySelector('[data-block-body="' + blockId + '"]');
     if (!elap || !stat) return;
     const tasks    = blockTaskKeys(blockId);
     const reviewed = blockReviewedCount(blockId);
     const expected = blockExpectedMinutes(blockId);
     const st       = _state[blockId] || {};
+
+    // Collapse closed blocks down to their header bar (tap header to reopen)
+    const collapsed = !!(st.closedAt && st.collapsed);
+    if (body) body.style.display = collapsed ? 'none' : '';
+    const hdr = blkEl ? blkEl.querySelector('.bw-cl-block-header') : null;
+    if (hdr) { hdr.style.marginBottom = collapsed ? '0' : ''; hdr.style.paddingBottom = collapsed ? '0' : ''; hdr.style.borderBottom = collapsed ? 'none' : ''; }
 
     if (tasks.length === 0) {
       elap.textContent = '⏱ no tasks';
@@ -270,7 +281,7 @@
     // Closed
     if (st.closedAt) {
       const min = Math.round((st.closedAt - (st.startedAt || st.closedAt)) / 60000);
-      stat.textContent = '✓ closed · ' + fmt(min) + ' actual';
+      stat.textContent = '✓ closed · ' + fmt(min) + ' actual' + (collapsed ? ' · tap to view' : '');
       stat.style.color = '#4caf50'; stat.style.borderColor = '#2a5a2a'; stat.style.background = '#0a2a0a';
       elap.textContent = '⏱ planned ' + fmt(expected) + ' · actual ' + fmt(min);
       elap.style.color = (min <= expected) ? '#4caf50' : '#d69e2e';
@@ -318,15 +329,25 @@
       if (all && !st.closedAt) {
         if (!st.startedAt) st.startedAt = Date.now();
         st.closedAt = Date.now();
+        st.collapsed = true;   // closed blocks fold up out of the way
         updateBlock(b.id);
         saveBlockState();
       } else if (!all && st.closedAt) {
         // user un-reviewed a task — re-open the block
         st.closedAt = null;
+        st.collapsed = false;
         updateBlock(b.id);
         saveBlockState();
       }
     });
+  }
+
+  function toggleBlockCollapse(blockId) {
+    const st = _state[blockId] || (_state[blockId] = {});
+    if (!st.closedAt) return;   // only closed blocks fold
+    st.collapsed = !st.collapsed;
+    updateBlock(blockId);
+    saveBlockState();
   }
 
   // ── Persistence ─────────────────────────────────────────────────
