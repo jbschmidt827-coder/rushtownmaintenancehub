@@ -3776,6 +3776,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button class="sub-btn" data-section="readings"   onclick="goFeedSection('readings')">📖 Readings</button>
     <button class="sub-btn" data-section="deliveries" onclick="goFeedSection('deliveries')">🚛 Deliveries</button>
     <button class="sub-btn" data-section="made"       onclick="goFeedSection('made')">🏭 Feed Made</button>
+    <button class="sub-btn" data-section="grid"       onclick="goFeedSection('grid')">📅 Daily Grid</button>
     <button class="sub-btn" data-section="consumption" onclick="goFeedSection('consumption')">📉 Consumption</button>
     <button class="sub-btn" data-section="medications" onclick="goFeedSection('medications')">💊 Medications <span id="med-alert-badge" style="display:none;background:#e53e3e;color:#fff;border-radius:50%;font-size:10px;padding:1px 5px;margin-left:3px;vertical-align:middle;"></span></button>
     <button class="sub-btn" data-section="bins"       onclick="goFeedSection('bins')">⚙️ Bins</button>
@@ -3855,7 +3856,20 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <div class="ops-qf-title">🏭 Log Feed Made</div>
       <div class="ops-form-grid">
         <div class="fg"><label>Date *</label><input type="date" id="fm-date"></div>
-        <div class="fg"><label>Tons Made *</label><input type="number" id="fm-tons" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="fg"><label>Tons Made *</label><input type="number" id="fm-tons" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div>
+        <div class="fg"><label>Farm</label>
+          <select id="fm-farm" onchange="fmFarmChange()">
+            <option value="">— Select Farm —</option>
+            <option value="Danville">Danville</option>
+            <option value="Turbotville">Turbotville</option>
+            <option value="W&M">W&amp;M Farms</option>
+            <option value="Hegins">Hegins</option>
+            <option value="Rushtown">Rushtown</option>
+          </select>
+        </div>
+        <div class="fg"><label>House</label>
+          <select id="fm-house"><option value="">— Select House —</option></select>
+        </div>
         <div class="fg"><label>Feed Type</label><input type="text" id="fm-type" placeholder="e.g. Layer Mash"></div>
         <div class="fg"><label>Destination</label>
           <select id="fm-dest" onchange="feedMadeDestChange()">
@@ -3875,6 +3889,12 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     </div>
     <div class="recent-hdr" style="margin-bottom:10px;">Feed Made Log</div>
     <div style="overflow-x:auto;"><table class="ops-table" id="feed-made-table"></table></div>
+  </div>
+
+  <!-- ── Daily Tons Grid (per farm/house, like the mill spreadsheet) ── -->
+  <div class="feed-section" id="feed-grid">
+    <div class="stats-grid g4" id="feed-grid-summary" style="margin-bottom:16px;"></div>
+    <div id="feed-grid-tables"></div>
   </div>
 
   <!-- ── Bins Setup ── -->
@@ -5044,7 +5064,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script defer src="js/packaging.js?v=20260427k"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260524b"></script>
-<script defer src="js/production.js?v=20260612c-plants"></script>
+<script defer src="js/production.js?v=20260612d-heginsbreak"></script>
 <script defer src="js/time-blocks.js?v=20260612c-plants"></script>
 <script defer src="js/feed-mill.js?v=20260424"></script>
 <script defer src="js/egg-quality.js?v=20260424"></script>

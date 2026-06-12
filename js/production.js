@@ -58,12 +58,12 @@ function kpiCol(pct) {
 }
 
 // ── Per-plant schedule (set by Joe, 2026-06-12) ──────────────────────────
-// Hegins starts 5:30 AM, morning walk at 6:00 AM, break 8:30, lunch 12:00.
+// Hegins starts 5:30 AM, morning walk at 6:00 AM, break 8:00, lunch 12:00.
 // Danville starts 7:00 AM, morning walk at 7:00 AM.
 // walkDue = when all morning walks should be submitted (start + 90 min).
 var FARM_SCHEDULE = {
   Hegins:   { shiftStart:'5:30 AM', walkStart:'6:00 AM', walkDueH:7, walkDueM:30, walkDueLabel:'7:30 AM',
-              breakLabel:'8:30 AM', breakH:8, breakM:30, lunchLabel:'12:00 PM' },
+              breakLabel:'8:00 AM', breakH:8, breakM:0, lunchLabel:'12:00 PM' },
   Danville: { shiftStart:'7:00 AM', walkStart:'7:00 AM', walkDueH:8, walkDueM:30, walkDueLabel:'8:30 AM',
               breakLabel:'9:30 AM', breakH:9, breakM:30, lunchLabel:'12:00 PM' },
 };
