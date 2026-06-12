@@ -285,7 +285,7 @@ function renderECContent() {
       <div style="font-size:13px;color:#5a8a5a;margin-bottom:20px;font-family:'IBM Plex Mono',monospace;">${t('prod.select_farm')}</div>
       <div style="display:grid;gap:14px;">
         ${['Hegins','Danville'].map(f=>`
-        <button onclick="_ecFarm='${f}';renderECContent()" style="width:100%;padding:28px 20px;background:#1a3a1a;border:2px solid #2a5a2a;border-radius:16px;color:#fff;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;">
+        <button onclick="_ecFarm='${f}';if(typeof setPreferredFarm==='function')setPreferredFarm('${f}');renderECContent()" style="width:100%;padding:28px 20px;background:#1a3a1a;border:2px solid #2a5a2a;border-radius:16px;color:#fff;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">📍 ${f}</div>
             <div style="font-size:12px;color:#7ab07a;margin-top:6px;">${bsDone(f)}/${bsCnt(f)} ${t('prod.barns_checked')}</div>
@@ -345,14 +345,18 @@ function renderMWContent() {
     document.getElementById('mw-content').innerHTML = `
       <div style="font-size:13px;color:#3a5a8a;margin-bottom:20px;font-family:'IBM Plex Mono',monospace;">${t('prod.select_walk')}</div>
       <div style="display:grid;gap:14px;">
-        ${['Hegins','Danville'].map(f=>`
-        <button onclick="_mwSectionFarm='${f}';renderMWContent()" style="width:100%;padding:28px 20px;background:#0d1f3a;border:2px solid #1e3a6a;border-radius:16px;color:#fff;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;">
+        ${['Hegins','Danville'].map(f=>{
+          const cfg  = FARM_SCHEDULE[f] || {};
+          const late = farmWalksLate(f) && msDone(f) < msCnt(f);
+          return `
+        <button onclick="_mwSectionFarm='${f}';if(typeof setPreferredFarm==='function')setPreferredFarm('${f}');renderMWContent()" style="width:100%;padding:28px 20px;background:#0d1f3a;border:2px solid ${late?'#e53e3e':'#1e3a6a'};border-radius:16px;color:#fff;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#f0ead8;">📍 ${f}</div>
             <div style="font-size:12px;color:#6a90d9;margin-top:6px;">${msDone(f)}/${msCnt(f)} ${t('prod.barns_walked')}</div>
+            <div style="font-size:11px;color:${late?'#e53e3e':'#4a6a9a'};margin-top:4px;font-family:'IBM Plex Mono',monospace;${late?'font-weight:700;':''}">${late ? '⏰ LATE — due ' + (cfg.walkDueLabel||'') : '☀️ Walk ' + (cfg.walkStart||'') + ' · due by ' + (cfg.walkDueLabel||'')}</div>
           </div>
           <div style="font-size:28px;">→</div>
-        </button>`).join('')}
+        </button>`;}).join('')}
       </div>`;
   }
 }
@@ -1824,7 +1828,12 @@ var _bwHistFarm = 'All', _bwHistPage = 0;
 const _BW_HIST_PER_PAGE = 20;
 
 function openBarnWalkHistory() {
-  _bwHistFarm = 'All'; _bwHistPage = 0;
+  // Open pre-filtered to this device's plant (tap "All Farms" to widen)
+  const pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+  _bwHistFarm = pref || 'All'; _bwHistPage = 0;
+  document.querySelectorAll('#bw-history-overlay .pill').forEach(b => {
+    b.classList.toggle('active', (b.getAttribute('onclick') || '').indexOf("'" + _bwHistFarm + "'") !== -1);
+  });
   document.getElementById('bw-history-overlay').style.display = 'block';
   document.getElementById('bw-history-overlay').scrollTop = 0;
   loadBarnWalkHistory();
@@ -2342,6 +2351,14 @@ var _pestFarmFilter = 'all';
 var _pestTypeFilter = 'all';
 
 async function openPestLog() {
+  // Open pre-filtered to this device's plant (tap "All Farms" to widen)
+  const pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+  if (pref) {
+    _pestFarmFilter = pref;
+    document.querySelectorAll('#pest-log-overlay .pill[data-farm]').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-farm') === pref);
+    });
+  }
   document.getElementById('pest-log-overlay').style.display = 'block';
   document.getElementById('pest-log-count').textContent = 'Loading…';
   const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
