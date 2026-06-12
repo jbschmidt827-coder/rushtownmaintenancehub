@@ -39,6 +39,24 @@
       defaultTasks:['blowoff','wheelbarrow','hallways'] },
   ];
 
+  // Farm-aware labels/windows — Hegins starts 5:30 AM with an 8:30 break,
+  // Danville starts 7:00 AM with a 9:30 break (see FARM_SCHEDULE in
+  // production.js). Falls back to the generic BLOCKS text if unknown.
+  function blockMeta(b) {
+    const farm = (typeof window._bwFarm === 'string' && window._bwFarm) ? window._bwFarm : null;
+    const cfg  = (farm && typeof window.FARM_SCHEDULE !== 'undefined' && window.FARM_SCHEDULE[farm]) ? window.FARM_SCHEDULE[farm] : null;
+    if (!cfg) return { label: b.label, window: b.window };
+    if (b.id === 'b1') return {
+      label: 'BLOCK 1 — START → ' + cfg.breakLabel + ' BREAK',
+      window: '~' + cfg.shiftStart.replace(' AM','') + ' – ' + cfg.breakLabel
+    };
+    if (b.id === 'b2') return {
+      label: 'BLOCK 2 — ' + cfg.breakLabel + ' → LUNCH',
+      window: '~' + cfg.breakLabel + ' – ' + cfg.lunchLabel
+    };
+    return { label: b.label, window: b.window };
+  }
+
   // task short id → blockId currently assigned
   const _taskBlock = {};
   // blockId → { startedAt, closedAt }  (epoch millis)
@@ -117,8 +135,8 @@
       block.innerHTML =
         '<div class="bw-cl-block-header" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid ' + b.border + ';">' +
           '<div>' +
-            '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;color:' + b.color + ';letter-spacing:1.5px;">' + b.label + '</div>' +
-            '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#5a8a5a;margin-top:3px;">' + b.window + '</div>' +
+            '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;color:' + b.color + ';letter-spacing:1.5px;">' + blockMeta(b).label + '</div>' +
+            '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#5a8a5a;margin-top:3px;">' + blockMeta(b).window + '</div>' +
           '</div>' +
           '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
             '<span class="bw-block-elapsed" data-block-elapsed="' + b.id + '" style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#5a8a5a;background:#0a1a0a;border:1px solid #1a3a1a;border-radius:8px;padding:3px 8px;">⏱ —</span>' +
@@ -188,7 +206,7 @@
       opt.style.cssText = 'display:block;width:100%;text-align:left;padding:9px 10px;margin:0 0 4px;background:' + (isCurrent ? '#1a3a1a' : '#050f05') + ';border:1px solid ' + b.color + '55;border-radius:7px;color:#f0ead8;font-family:\'IBM Plex Mono\',monospace;font-size:11px;cursor:' + (isCurrent ? 'default' : 'pointer') + ';';
       opt.innerHTML =
         '<span style="color:' + b.color + ';font-weight:700;">' + b.shortLabel + '</span><br>' +
-        '<span style="font-size:9px;color:#7a9a7a;">' + b.window + (isCurrent ? ' · current' : '') + '</span>';
+        '<span style="font-size:9px;color:#7a9a7a;">' + blockMeta(b).window + (isCurrent ? ' · current' : '') + '</span>';
       if (!isCurrent) opt.onclick = function () { moveTask(key, b.id); menu.remove(); };
       menu.appendChild(opt);
     });
