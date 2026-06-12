@@ -6,7 +6,13 @@
 // ═══════════════════════════════════════════════════════════════════════
 
 // ── State ────────────────────────────────────────────────────────────────────
-let _drFarm = 'Danville';
+let _drFarm = (function() {
+  try {
+    const f = localStorage.getItem('preferredFarm');
+    if (f === 'Hegins' || f === 'Danville') return f;
+  } catch(e) {}
+  return 'Danville';
+})();
 let _drSection = 'production';  // 'production' | 'maintenance' | '5s'
 let _drMorningWalks  = [];
 let _drBarnWalks     = [];
@@ -779,7 +785,6 @@ function drAddProjectModal() {
           <select id="dr-farm-sel" style="width:100%;padding:10px;background:#0a1a0a;border:1.5px solid #2a5a2a;border-radius:8px;color:#c8e6c9;font-family:'IBM Plex Mono',monospace;font-size:12px;">
             <option value="Danville">Danville</option>
             <option value="Hegins">Hegins</option>
-            <option value="All">Both Farms</option>
           </select>
         </div>
 
@@ -823,6 +828,7 @@ function drFormField(label, id, type, placeholder) {
 // ── Actions ──────────────────────────────────────────────────────────────────
 function drSwitchFarm(farm) {
   _drFarm = farm;
+  if (typeof setPreferredFarm === 'function') setPreferredFarm(farm);
   drRender();
 }
 
@@ -845,7 +851,9 @@ async function drSaveProject() {
   const area     = document.getElementById('dr-area')?.value.trim();
   const owner    = document.getElementById('dr-owner')?.value.trim();
   const dueDate  = document.getElementById('dr-due')?.value;
-  const farm     = document.getElementById('dr-farm-sel')?.value || _drFarm;
+  // Every project/action item belongs to exactly one plant (no more 'All')
+  let farm = document.getElementById('dr-farm-sel')?.value || _drFarm;
+  if (farm !== 'Hegins' && farm !== 'Danville') farm = _drFarm;
   const focus    = document.getElementById('dr-focus')?.value || '5S';
   const priority = document.getElementById('dr-priority')?.value || 'Planned';
 
