@@ -2933,6 +2933,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button onclick="closeMorningWalk()" style="background:#1a1a3a;border:1px solid #3a3a6a;color:#9090f0;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Exit</button>
   </div>
 
+  <!-- Walk instructions (per-farm guide) -->
+  <button id="mw-instr-btn" onclick="mwToggleInstructions()" style="display:block;width:100%;background:#0d1f3a;border:1px solid #2a4a8a;color:#8ab0f0;border-radius:12px;padding:12px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;margin-bottom:14px;text-align:left;">📖 WALK INSTRUCTIONS — WHAT TO CHECK &amp; WHY</button>
+  <div id="mw-instructions" style="display:none;margin-bottom:14px;"></div>
+
   <!-- Lead name + EE headcount -->
   <div style="background:#0d1f3a;border:1px solid #1e3a6a;border-radius:14px;padding:18px 16px;margin-bottom:14px;">
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6a90d9;margin-bottom:12px;">👤 Lead / WNO Name</div>
@@ -5031,7 +5035,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260612-mwfriendly"></script>
+<script defer src="js/core.js?v=20260612b-mwguide"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
@@ -5040,7 +5044,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script defer src="js/packaging.js?v=20260427k"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260524b"></script>
-<script defer src="js/production.js?v=20260612-mwfriendly"></script>
+<script defer src="js/production.js?v=20260612b-mwguide"></script>
 <script defer src="js/time-blocks.js?v=20260611-blockclose"></script>
 <script defer src="js/feed-mill.js?v=20260424"></script>
 <script defer src="js/egg-quality.js?v=20260424"></script>

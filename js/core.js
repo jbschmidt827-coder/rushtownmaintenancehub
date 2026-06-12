@@ -1594,6 +1594,7 @@ const FORM_TEXT = {
   '👤 Lead / WNO Name':                                           { es:'👤 Nombre del Líder / WNO' },
   '👥 Employees Present at This Barn':                            { es:'👥 Empleados Presentes en Este Galpón' },
   '👥 Employees Present at This Barn (optional)':                 { es:'👥 Empleados Presentes en Este Galpón (opcional)' },
+  '📖 WALK INSTRUCTIONS — WHAT TO CHECK & WHY':                   { es:'📖 INSTRUCCIONES DE LA RONDA — QUÉ REVISAR Y POR QUÉ' },
   '📊 Readings':                                                  { es:'📊 Lecturas' },
   'Water Pressure (PSI)':                                         { es:'Presión de Agua (PSI)' },
   'House Temp (°F)':                                              { es:'Temperatura del Galpón (°F)' },

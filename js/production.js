@@ -1215,6 +1215,81 @@ var _mwFarm = '', _mwHouse = 0, _mwData = {};
 var _MW_FIELD_IDS = ['mw-employee','mw-ee-count','mw-water','mw-temp','mw-feed-meter','mw-bin-a','mw-bin-b','mw-notes'];
 var _MW_STATUS_IDS = ['mw-water-status','mw-temp-status','mw-feed-meter-status','mw-bin-a-status','mw-bin-b-status'];
 
+// ── Morning Walk Instructions (per-farm guide, EN/ES) ──
+function mwToggleInstructions() {
+  const box = document.getElementById('mw-instructions');
+  const btn = document.getElementById('mw-instr-btn');
+  if (!box) return;
+  const open = box.style.display !== 'none';
+  if (open) {
+    box.style.display = 'none';
+    if (btn) btn.style.borderColor = '#2a4a8a';
+  } else {
+    box.innerHTML = _mwInstructionsHTML(_mwFarm);
+    box.style.display = 'block';
+    if (btn) btn.style.borderColor = '#6a90d9';
+  }
+}
+
+function _mwInstructionsHTML(farm) {
+  const es = (typeof _lang !== 'undefined' && _lang === 'es');
+  const houses = farm === 'Hegins' ? 8 : (farm === 'Danville' ? 5 : 0);
+  const farmLine = houses
+    ? (es ? farm.toUpperCase() + ' — las ' + houses + ' casas, cada mañana, todas las filas'
+          : farm.toUpperCase() + ' — all ' + houses + ' houses, every morning, every row')
+    : '';
+  const intro = es
+    ? 'Esta ronda es el primer chequeo de bienestar del día. Las aves no pueden avisarnos si algo falló durante la noche — tú eres su alarma. Confirma que cada ave tiene ALIMENTO, AGUA y AIRE FRESCO. Un problema encontrado a las 6 AM es barato; encontrado en la tarde es caro.'
+    : 'This walk is the first wellness check of the day. The birds can\'t tell us if something failed overnight — you are their alarm system. Confirm every bird has FEED, WATER, and FRESH AIR. A problem found at 6 AM is cheap; found in the afternoon it\'s expensive.';
+  const S = [
+    { icon:'🐔', t: es ? 'Seguridad de las aves — primero' : 'Bird safety — first', items: [
+      es ? 'Camina cada fila. Las aves deben estar activas y bien repartidas.' : 'Walk every row. Birds should be active and evenly spread out.',
+      es ? 'Amontonamiento, jadeo o silencio inusual = algo anda mal. Revisa temperatura y aire primero.' : 'Piling, panting, or unusual quiet = something\'s wrong. Check temp & air first.',
+      es ? 'Retira la mortalidad. Si es más de lo normal, anótalo en Notas.' : 'Pull mortality. Anything above normal goes in Notes.',
+      es ? 'Puertas de jaula cerradas; sin aves sueltas ni atrapadas.' : 'Cage doors shut; no loose or trapped birds.',
+    ]},
+    { icon:'💧', t: es ? 'Agua' : 'Water', items: [
+      es ? 'Registra la presión — debe estar entre 10–60 PSI. Fuera de rango crea una orden de trabajo automáticamente.' : 'Record the pressure — must be 10–60 PSI. Out of range auto-creates a work order.',
+      es ? 'Recorre las líneas de agua adelante y atrás: sin fugas, sin bebederos secos.' : 'Walk the water lines front & back: no leaks, no dry nipples/drinkers.',
+      es ? 'Pisos mojados o reguladores goteando → Notas + orden de trabajo.' : 'Wet floors or dripping regulators → Notes + work order.',
+    ]},
+    { icon:'🌾', t: es ? 'Alimento' : 'Feed', items: [
+      es ? 'Los comederos deben estar funcionando — responde SÍ/NO con honestidad.' : 'Feeders must be running — answer the YES/NO honestly.',
+      es ? 'Ingresa la lectura del medidor (lbs) y los niveles de tolva (toneladas).' : 'Enter the feed meter reading (lbs) and bin levels (tons).',
+      es ? 'Menos de 2.5 ton = pedir pronto. Menos de 1 ton = pedir HOY (se marca solo).' : 'Below 2.5 tons = order soon. Below 1 ton = order TODAY (auto-flags).',
+      es ? 'Escucha motores y sinfines — chirridos o golpeteo = orden de trabajo antes de que falle.' : 'Listen to motors & augers — grinding or squealing = work order before it fails.',
+    ]},
+    { icon:'🌬️', t: es ? 'Ventilación y temperatura' : 'Ventilation & temperature', items: [
+      es ? 'Todos los ventiladores girando, bandas tensas, persianas abriendo. Un ventilador muerto = NO.' : 'All fans spinning, belts tight, shutters opening. One dead fan = answer NO.',
+      es ? 'Sopladores funcionando.' : 'Blowers working.',
+      es ? 'Registra la temperatura — objetivo 65–85°F. Fuera de eso, revisa el controlador.' : 'Record house temp — target 65–85°F. Outside that, check the controller.',
+      es ? 'Huele el aire al entrar: amoníaco fuerte o mucho polvo = problema de ventilación.' : 'Smell the air walking in: strong ammonia or heavy dust = ventilation problem.',
+    ]},
+    { icon:'⚙️', t: es ? 'Vistazo rápido al equipo' : 'Quick equipment glance', items: [
+      es ? 'Bandas de huevo moviéndose, sin daños ni atascos.' : 'Egg belts moving, not damaged or jammed.',
+      es ? 'Luces funcionando — sin parpadeos ni filas oscuras.' : 'Lights working — no flickering or dark rows.',
+      es ? 'Controlador/alarma sin alertas activas.' : 'Controller/alarm panel has no active alerts.',
+    ]},
+    { icon:'🛠️', t: es ? 'Si algo necesita reparación' : 'If something needs fixed', items: [
+      es ? 'Responder NO en comederos, ventiladores o sopladores crea una orden de trabajo de alta prioridad automáticamente — para eso existe. Nunca respondas SÍ para evitar papeleo.' : 'Answering NO on feeders, fans, or blowers automatically creates a high-priority work order — that\'s what it\'s for. Never answer YES to avoid paperwork.',
+      es ? 'Cualquier otra cosa rota (luces, puertas, fugas, bandas, motores): escríbelo en Notas Y crea una Orden de Trabajo en Mantenimiento para que se asigne.' : 'Anything else broken (lights, doors, leaks, belts, motors): write it in Notes AND enter a Work Order under Maintenance so it gets assigned.',
+      es ? 'Ante la duda, repórtalo. Una nota toma 10 segundos; un galpón caído cuesta una parvada.' : 'When in doubt, log it. A note costs 10 seconds; a down barn costs a flock.',
+    ]},
+  ];
+  let h = '<div style="background:#0a1830;border:1px solid #2a4a8a;border-radius:14px;padding:16px 14px;">';
+  if (farmLine) h += '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;letter-spacing:1px;color:#f0ead8;margin-bottom:8px;">📍 ' + farmLine + '</div>';
+  h += '<div style="font-size:12px;color:#a8c0e8;line-height:1.6;margin-bottom:14px;">' + intro + '</div>';
+  S.forEach(sec => {
+    h += '<div style="margin-bottom:12px;">'
+      +  '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#8ab0f0;margin-bottom:6px;">' + sec.icon + ' ' + sec.t + '</div>'
+      +  '<ul style="margin:0;padding-left:18px;">';
+    sec.items.forEach(it => { h += '<li style="font-size:12px;color:#c8d8f0;line-height:1.55;margin-bottom:4px;">' + it + '</li>'; });
+    h += '</ul></div>';
+  });
+  h += '</div>';
+  return h;
+}
+
 // ── Morning Walk Draft Persistence (mirrors barn walk drafts) ──
 function _mwDraftKey() {
   return 'mwDraft-' + _mwFarm + '-' + _mwHouse + '-' + new Date().toISOString().slice(0,10);
@@ -1271,6 +1346,8 @@ function openMorningWalk(farm, house) {
   });
   document.querySelectorAll('#morning-walk-modal .bw-yn-btn').forEach(b => b.className = 'bw-yn-btn');
   document.querySelectorAll('#morning-walk-modal .bw-yn-row').forEach(r => { r.style.outline = 'none'; });
+  const ibox = document.getElementById('mw-instructions');
+  if (ibox) ibox.style.display = 'none';
   document.getElementById('mw-submit-btn').disabled = true;
   const modal = document.getElementById('morning-walk-modal');
   modal.style.display = 'block';
