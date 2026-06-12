@@ -695,6 +695,21 @@ function setSyncDot(state) {
 function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
+// ── Preferred plant (per device) ─────────────────────────────────────────
+// Each device remembers which plant it belongs to so panels open
+// pre-filtered to that location. Set whenever a user picks a farm.
+function getPreferredFarm() {
+  try {
+    const f = localStorage.getItem('preferredFarm');
+    if (f === 'Hegins' || f === 'Danville') return f;
+  } catch(e) {}
+  return null;
+}
+function setPreferredFarm(f) {
+  if (f !== 'Hegins' && f !== 'Danville') return;
+  try { localStorage.setItem('preferredFarm', f); } catch(e) {}
+}
+
 // Several modules (maintenance.js, production.js, daily-checklist.js, etc.)
 // call `if (typeof toast === 'function') toast(msg)` to surface a quick error
 // or status message. Previously no global `toast` existed so those messages
