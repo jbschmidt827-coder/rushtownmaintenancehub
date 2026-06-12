@@ -607,19 +607,34 @@ function feedMadeDestChange() {
   }
 }
 
+// Houses per farm for the Feed Made form + Daily Grid
+var FEED_FARM_HOUSES = { Danville:5, Turbotville:4, 'W&M':2, Hegins:8, Rushtown:5 };
+
+function fmFarmChange() {
+  const farm = document.getElementById('fm-farm')?.value || '';
+  const sel  = document.getElementById('fm-house');
+  if (!sel) return;
+  const n = FEED_FARM_HOUSES[farm] || 0;
+  let html = '<option value="">— Select House —</option>';
+  for (let i = 1; i <= n; i++) html += `<option value="${i}">House #${i}</option>`;
+  sel.innerHTML = html;
+}
+
 async function saveFeedMade() {
   const date  = document.getElementById('fm-date')?.value;
   const tons  = parseFloat(document.getElementById('fm-tons')?.value || '0') || 0;
   const type  = document.getElementById('fm-type')?.value?.trim() || '';
   const dest  = document.getElementById('fm-dest')?.value || '';
+  const farm  = document.getElementById('fm-farm')?.value || '';
+  const house = document.getElementById('fm-house')?.value || '';
   const binId = document.getElementById('fm-bin')?.value || '';
   const by    = document.getElementById('fm-by')?.value?.trim() || '';
   const notes = document.getElementById('fm-notes')?.value?.trim() || '';
   if (!date || !tons) return alert('Date and Tons Made are required.');
   const bin = feedBins.find(b => b.binId === binId);
   try {
-    const ref = await db.collection('feedMade').add({ date, tons, type, dest, binId, binName: bin?.name||binId||'', by, notes, ts: Date.now() });
-    feedMadeLog.unshift({ date, tons, type, dest, binId, binName: bin?.name||binId||'', by, notes, ts: Date.now(), _fbId: ref.id });
+    const ref = await db.collection('feedMade').add({ date, tons, type, dest, farm, house, binId, binName: bin?.name||binId||'', by, notes, ts: Date.now() });
+    feedMadeLog.unshift({ date, tons, type, dest, farm, house, binId, binName: bin?.name||binId||'', by, notes, ts: Date.now(), _fbId: ref.id });
     clearFeedMadeForm();
     renderFeedMade();
     try {
@@ -636,18 +651,20 @@ async function saveFeedMade() {
 function clearFeedMadeForm() {
   const t = new Date().toISOString().slice(0,10);
   document.getElementById('fm-date').value = t;
-  ['fm-tons','fm-type','fm-dest','fm-bin','fm-by','fm-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['fm-tons','fm-type','fm-dest','fm-farm','fm-house','fm-bin','fm-by','fm-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
 }
 
 function renderFeedMade() {
   const tbl = document.getElementById('feed-made-table'); if (!tbl) return;
-  if (!feedMadeLog.length) { tbl.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;">No feed made records yet.</td></tr>'; return; }
-  let html = '<thead><tr><th>Date</th><th>Tons</th><th>Type</th><th>Dest</th><th>Bin / Site</th><th>By</th><th></th></tr></thead><tbody>';
+  if (!feedMadeLog.length) { tbl.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;">No feed made records yet.</td></tr>'; return; }
+  let html = '<thead><tr><th>Date</th><th>Tons</th><th>Farm / House</th><th>Type</th><th>Dest</th><th>Bin / Site</th><th>By</th><th></th></tr></thead><tbody>';
   feedMadeLog.slice(0,50).forEach(r => {
     const destLabel = r.dest === 'own' ? '🐔 Own Barns' : r.dest === 'external' ? '🚚 External' : '—';
+    const farmLabel = r.farm ? r.farm + (r.house ? ' H' + r.house : '') : '—';
     html += `<tr>
       <td style="font-family:'IBM Plex Mono',monospace;">${fmtDate(r.date)}</td>
       <td style="font-weight:700;color:#4caf50;">${r.tons} T</td>
+      <td>${farmLabel}</td>
       <td>${r.type||'—'}</td>
       <td>${destLabel}</td>
       <td>${r.binName||r.binId||'—'}</td>
@@ -656,6 +673,92 @@ function renderFeedMade() {
     </tr>`;
   });
   tbl.innerHTML = html + '</tbody>';
+}
+
+// ── Daily Tons Grid — farm/house × day matrix (mirrors the mill spreadsheet) ──
+function renderFeedGrid() {
+  const summaryEl = document.getElementById('feed-grid-summary');
+  const tablesEl  = document.getElementById('feed-grid-tables');
+  if (!tablesEl) return;
+
+  // Last 14 days, oldest → newest
+  const DAYS = 14;
+  const days = [];
+  for (let i = DAYS - 1; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  const dayLabel = ds => { const d = new Date(ds + 'T12:00:00'); return (d.getMonth()+1) + '/' + d.getDate(); };
+  const today = days[DAYS-1];
+
+  // tons[farm][house][date] — records without a farm fall into 'Unassigned'
+  const tons = {};
+  (feedMadeLog || []).forEach(r => {
+    if (!r.date || days.indexOf(r.date) === -1) return;
+    const farm  = r.farm || 'Unassigned';
+    const house = r.farm && r.house ? String(r.house) : '—';
+    tons[farm] = tons[farm] || {};
+    tons[farm][house] = tons[farm][house] || {};
+    tons[farm][house][r.date] = (tons[farm][house][r.date] || 0) + (Number(r.tons) || 0);
+  });
+
+  // Week summary: last 7 days vs the 7 before
+  const wk  = days.slice(7), prevWk = days.slice(0,7);
+  const sumDates = ds => (feedMadeLog || []).reduce((s,r) => s + (ds.indexOf(r.date) !== -1 ? (Number(r.tons)||0) : 0), 0);
+  const wkT = sumDates(wk), prevT = sumDates(prevWk);
+  const todayT = sumDates([today]);
+  const delta = prevT > 0 ? Math.round((wkT - prevT) / prevT * 100) : null;
+  if (summaryEl) summaryEl.innerHTML = `
+    <div class="stat-card"><div class="stat-num" style="color:#4caf50;">${todayT.toFixed(1)}</div><div class="stat-label">Tons Today</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#4caf50;">${wkT.toFixed(1)}</div><div class="stat-label">Tons — Last 7 Days</div></div>
+    <div class="stat-card"><div class="stat-num">${(wkT/7).toFixed(1)}</div><div class="stat-label">Avg Tons / Day</div></div>
+    <div class="stat-card"><div class="stat-num" style="${delta===null?'':'color:'+(delta>=0?'#4caf50':'#e53e3e')+';'}">${delta===null?'—':(delta>=0?'+':'')+delta+'%'}</div><div class="stat-label">vs Prior Week</div></div>`;
+
+  const farms = Object.keys(tons).sort((a,b) => (a==='Unassigned')-(b==='Unassigned') || a.localeCompare(b));
+  if (!farms.length) {
+    tablesEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:12px;">No feed made in the last 14 days.<br>Log entries under 🏭 Feed Made with a Farm + House to fill this grid.</div>';
+    return;
+  }
+
+  let html = '';
+  farms.forEach(farm => {
+    // Show every house the farm has, even with no data, so gaps are visible
+    const houseCount = FEED_FARM_HOUSES[farm] || 0;
+    const houses = houseCount
+      ? Array.from({length: houseCount}, (_,i) => String(i+1))
+      : Object.keys(tons[farm]).sort();
+    const colTotals = {}; let farmTotal = 0;
+    let rows = '';
+    houses.forEach(h => {
+      let rowTotal = 0;
+      let cells = '';
+      days.forEach(ds => {
+        const v = tons[farm][h]?.[ds];
+        rowTotal += v || 0;
+        colTotals[ds] = (colTotals[ds] || 0) + (v || 0);
+        const isToday = ds === today;
+        cells += `<td style="text-align:center;font-family:'IBM Plex Mono',monospace;${isToday?'background:#0c2a0c;':''}color:${v?'#4caf50':'#2a4a2a'};">${v ? (v % 1 ? v.toFixed(1) : v) : '·'}</td>`;
+      });
+      farmTotal += rowTotal;
+      rows += `<tr><td style="white-space:nowrap;font-weight:700;">${houseCount ? 'H' + h : h}</td>${cells}<td style="text-align:center;font-weight:700;color:#a0c060;background:#0c1f0c;">${rowTotal % 1 ? rowTotal.toFixed(1) : rowTotal}</td></tr>`;
+    });
+    let totCells = '';
+    days.forEach(ds => { const v = colTotals[ds] || 0; totCells += `<td style="text-align:center;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${v?'#a0c060':'#2a4a2a'};">${v ? (v % 1 ? v.toFixed(1) : v) : '·'}</td>`; });
+    html += `
+    <div style="margin-bottom:22px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;color:#a0c0a0;">📍 ${farm.toUpperCase()}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#4caf50;font-weight:700;">${farmTotal % 1 ? farmTotal.toFixed(1) : farmTotal} T / 14 days</div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="ops-table" style="min-width:760px;">
+          <thead><tr><th>House</th>${days.map(ds => `<th style="text-align:center;${ds===today?'color:#4ade80;':''}">${dayLabel(ds)}</th>`).join('')}<th style="text-align:center;">Total</th></tr></thead>
+          <tbody>${rows}<tr class="total-row"><td style="font-weight:700;">Total</td>${totCells}<td style="text-align:center;font-weight:700;color:#4ade80;background:#0c2a0c;">${farmTotal % 1 ? farmTotal.toFixed(1) : farmTotal}</td></tr></tbody>
+        </table>
+      </div>
+    </div>`;
+  });
+  tablesEl.innerHTML = html;
 }
 
 async function deleteFeedMade(fbId) {
