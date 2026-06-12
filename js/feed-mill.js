@@ -22,6 +22,7 @@ function goFeedSection(sec) {
   }
   if (sec === 'deliveries')  { populateFeedBinSelect('fd-bin'); renderFeedDeliveries(); }
   if (sec === 'made')        { populateFeedBinSelect('fm-bin'); renderFeedMade(); }
+  if (sec === 'grid')        renderFeedGrid();
   if (sec === 'bins')        renderFeedBinsList();
   if (sec === 'consumption') {
     const dateEl = document.getElementById('fc-date');
