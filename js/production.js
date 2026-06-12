@@ -57,6 +57,44 @@ function kpiCol(pct) {
   return pct >= 90 ? '#4caf50' : pct >= 75 ? '#d69e2e' : '#e53e3e';
 }
 
+// ── Per-plant schedule (set by Joe, 2026-06-12) ──────────────────────────
+// Hegins starts 5:30 AM, morning walk at 6:00 AM, break 8:30, lunch 12:00.
+// Danville starts 7:00 AM, morning walk at 7:00 AM.
+// walkDue = when all morning walks should be submitted (start + 90 min).
+var FARM_SCHEDULE = {
+  Hegins:   { shiftStart:'5:30 AM', walkStart:'6:00 AM', walkDueH:7, walkDueM:30, walkDueLabel:'7:30 AM',
+              breakLabel:'8:30 AM', breakH:8, breakM:30, lunchLabel:'12:00 PM' },
+  Danville: { shiftStart:'7:00 AM', walkStart:'7:00 AM', walkDueH:8, walkDueM:30, walkDueLabel:'8:30 AM',
+              breakLabel:'9:30 AM', breakH:9, breakM:30, lunchLabel:'12:00 PM' },
+};
+
+// Are this farm's morning walks past their due time today?
+function farmWalksLate(farm) {
+  const cfg = FARM_SCHEDULE[farm];
+  if (!cfg) return false;
+  const now = new Date();
+  return (now.getHours() * 60 + now.getMinutes()) > (cfg.walkDueH * 60 + cfg.walkDueM);
+}
+
+// Count of submitted morning walks for a farm today (from MORNING_STATUS)
+function farmMWDone(farm) {
+  const ms = typeof MORNING_STATUS !== 'undefined' ? MORNING_STATUS : {};
+  return Object.entries(ms).filter(([k,v]) => k.indexOf(farm + '-') === 0 && (v === 'done' || v === 'issue')).length;
+}
+
+// Small status line for walk deadline — gray before due, red when late
+function farmWalkDueBadge(farm, total) {
+  const cfg = FARM_SCHEDULE[farm];
+  if (!cfg) return '';
+  const _isEs = (typeof _lang !== 'undefined' && _lang === 'es');
+  const done = farmMWDone(farm);
+  if (done >= total) return '';
+  if (farmWalksLate(farm)) {
+    return `<div style="font-size:10px;color:#e53e3e;font-family:'IBM Plex Mono',monospace;margin-top:4px;font-weight:700;">⏰ ${_isEs ? 'TARDE' : 'LATE'} — ${_isEs ? 'rondas para las' : 'walks due'} ${cfg.walkDueLabel} (${done}/${total})</div>`;
+  }
+  return `<div style="font-size:10px;color:#5a8a9a;font-family:'IBM Plex Mono',monospace;margin-top:4px;">☀️ ${_isEs ? 'Ronda' : 'Walk'} ${cfg.walkStart} · ${_isEs ? 'completa para' : 'due by'} ${cfg.walkDueLabel}</div>`;
+}
+
 function renderProdPanel() {
   const bs = typeof BARN_STATUS !== 'undefined' ? BARN_STATUS : {};
   const ms = typeof MORNING_STATUS !== 'undefined' ? MORNING_STATUS : {};
