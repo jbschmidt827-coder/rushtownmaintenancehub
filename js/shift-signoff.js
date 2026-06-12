@@ -95,6 +95,23 @@ function drSignoffPanel(farm) {
     return c && c.date === today && (!t.farm || t.farm===farm || t.farm==='Both');
   }).length : 0;
 
+  // ── Auto-fill carry-forward issues from today's data (editable — X removes) ──
+  if (!_ssIssueList[farm] || !_ssIssueList[farm].length) {
+    const sugg = [];
+    (_drMorningWalks||[]).filter(w => w.farm===farm && w.flags && w.flags.length)
+      .forEach(w => w.flags.forEach(f => sugg.push('H' + w.house + ': ' + f)));
+    (_drBarnWalks||[]).filter(w => w.farm===farm && w.flags && w.flags.length)
+      .forEach(w => (w.flags||[]).forEach(f => sugg.push('H' + w.house + ': ' + f)));
+    (workOrders||[]).filter(w => w.farm===farm && w.status!=='completed' && w.date===today)
+      .forEach(w => sugg.push('Open WO ' + (w.id||'') + ' — ' + String(w.desc||w.problem||'').slice(0,60)));
+    if (sugg.length) {
+      _ssIssueList[farm] = [...new Set(sugg)].slice(0, 12);
+      setTimeout(() => { try { ssRenderIssues(farm); } catch(e) {} }, 0);
+    }
+  } else {
+    setTimeout(() => { try { ssRenderIssues(farm); } catch(e) {} }, 0);
+  }
+
   return `
   <div id="ss-form-${farm}" style="background:#0a1a0a;border:2px solid #2a5a2a;border-radius:14px;padding:16px 18px;">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:#c8e6c9;margin-bottom:14px;">END-OF-SHIFT SIGN-OFF — ${farm.toUpperCase()}</div>

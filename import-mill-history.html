@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Import Mill History — One-Time Tool</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+  body { background:#0a140a; color:#c8e6c9; font-family:'Courier New',monospace; padding:30px 16px; max-width:620px; margin:0 auto; }
+  h1 { font-size:18px; letter-spacing:2px; color:#4ade80; }
+  p { font-size:13px; line-height:1.6; color:#7ab07a; }
+  button { padding:14px 22px; background:#1a4a1a; border:2px solid #4ade80; border-radius:10px; color:#4ade80; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; letter-spacing:1px; }
+  button:disabled { opacity:.4; cursor:default; }
+  #log { margin-top:18px; font-size:12px; line-height:1.7; white-space:pre-wrap; }
+  .ok { color:#4ade80; } .err { color:#f87171; }
+</style>
+</head>
+<body>
+<h1>🌾 IMPORT MILL HISTORY</h1>
+<p>One-time tool. Loads the <b>91 records (1,811 tons, May 21 – Jun 11 2026)</b> from the
+"Rushtown Mill, tons produced per day" spreadsheet into the Feed Mill Daily Grid.</p>
+<p>Safe to run more than once — each record has a fixed ID, so re-importing overwrites
+instead of duplicating.</p>
+<button id="go" onclick="runImport()">▶ IMPORT 91 RECORDS</button>
+<div id="log"></div>
+
+<script>
+firebase.initializeApp({
+  apiKey:            'AIzaSyBRPjACWaVeHXw4ztydZVB-_MTMwEWfWmY',
+  authDomain:        'rushtown-poultry.firebaseapp.com',
+  projectId:         'rushtown-poultry',
+  storageBucket:     'rushtown-poultry.firebasestorage.app',
+  messagingSenderId: '1050651051862',
+  appId:             '1:1050651051862:web:c83d671abaec7f4c8378f7'
+});
+const db = firebase.firestore();
+
+// [farm, house, date, tons] — extracted from the spreadsheet
+const DATA = [["Danville","1","2026-05-21",17],["Danville","1","2026-05-22",3],["Danville","1","2026-05-23",15],["Danville","1","2026-05-25",10],["Danville","1","2026-05-26",8],["Danville","1","2026-05-27",15],["Danville","1","2026-05-28",15],["Danville","1","2026-05-29",34],["Danville","1","2026-06-01",20],["Danville","1","2026-06-02",30],["Danville","1","2026-06-04",35],["Danville","1","2026-06-05",14],["Danville","1","2026-06-09",20],["Danville","1","2026-06-10",15],["Danville","1","2026-06-11",10],["Danville","2","2026-05-22",25],["Danville","2","2026-05-23",22],["Danville","2","2026-05-25",10],["Danville","2","2026-05-26",10],["Danville","2","2026-05-27",15],["Danville","2","2026-05-28",15],["Danville","2","2026-05-29",40],["Danville","2","2026-06-01",15],["Danville","2","2026-06-02",19],["Danville","2","2026-06-03",10],["Danville","2","2026-06-04",40],["Danville","2","2026-06-05",25],["Danville","2","2026-06-09",20],["Danville","2","2026-06-10",15],["Danville","4","2026-05-21",10],["Danville","4","2026-05-22",15],["Danville","4","2026-05-26",10],["Danville","4","2026-05-27",15],["Danville","4","2026-05-28",10],["Danville","4","2026-05-29",25],["Danville","4","2026-05-30",10],["Danville","4","2026-06-01",10],["Danville","4","2026-06-02",5],["Danville","4","2026-06-03",10],["Danville","4","2026-06-04",28],["Danville","4","2026-06-05",19],["Danville","4","2026-06-10",12],["Danville","4","2026-06-11",12],["Danville","5","2026-05-21",25],["Danville","5","2026-05-22",25],["Danville","5","2026-05-23",26],["Danville","5","2026-05-25",10],["Danville","5","2026-05-26",15],["Danville","5","2026-05-27",10],["Danville","5","2026-05-28",16],["Danville","5","2026-05-29",30],["Danville","5","2026-05-30",10],["Danville","5","2026-06-01",26],["Danville","5","2026-06-02",30],["Danville","5","2026-06-03",20],["Danville","5","2026-06-04",48],["Danville","5","2026-06-05",25],["Danville","5","2026-06-09",34],["Danville","5","2026-06-10",16],["Turbotville","1","2026-05-26",13],["Turbotville","1","2026-05-30",13],["Turbotville","1","2026-06-03",26],["Turbotville","2","2026-05-26",13],["Turbotville","2","2026-05-30",13],["Turbotville","2","2026-06-03",26],["Turbotville","3","2026-05-21",26],["Turbotville","3","2026-05-23",26],["Turbotville","3","2026-05-27",13],["Turbotville","3","2026-05-28",26],["Turbotville","3","2026-06-01",26],["Turbotville","3","2026-06-02",13],["Turbotville","3","2026-06-04",26],["Turbotville","3","2026-06-09",26],["Turbotville","3","2026-06-10",26],["Turbotville","3","2026-06-11",26],["Turbotville","4","2026-05-21",26],["Turbotville","4","2026-05-26",26],["Turbotville","4","2026-05-27",13],["Turbotville","4","2026-05-28",26],["Turbotville","4","2026-06-01",26],["Turbotville","4","2026-06-02",13],["Turbotville","4","2026-06-04",26],["Turbotville","4","2026-06-09",26],["Turbotville","4","2026-06-10",5],["Turbotville","4","2026-06-11",57],["W&M","1","2026-05-26",26],["W&M","1","2026-06-02",13],["W&M","1","2026-06-09",26],["W&M","2","2026-05-27",26],["W&M","2","2026-06-02",13],["W&M","2","2026-06-09",26]];
+
+const log = m => { document.getElementById('log').innerHTML += m + '\n'; };
+
+async function runImport() {
+  const btn = document.getElementById('go');
+  btn.disabled = true; btn.textContent = '⏳ IMPORTING…';
+  let ok = 0, fail = 0;
+  // Batched writes — 500 max per batch, we have 91
+  try {
+    const batch = db.batch();
+    DATA.forEach(([farm, house, date, tons]) => {
+      const id = 'hist-' + farm.replace(/[^A-Za-z]/g,'') + '-' + house + '-' + date;
+      batch.set(db.collection('feedMade').doc(id), {
+        date, tons, farm, house,
+        type: '', dest: 'own', binId: '', binName: '',
+        by: 'Spreadsheet import', notes: 'Imported from mill spreadsheet',
+        ts: new Date(date + 'T12:00:00').getTime()
+      });
+    });
+    await batch.commit();
+    ok = DATA.length;
+    log('<span class="ok">✅ ' + ok + ' records imported successfully.</span>');
+    log('Open the app → Feed Mill → 📅 Daily Grid to see the history.');
+    btn.textContent = '✅ DONE';
+  } catch(e) {
+    fail++;
+    log('<span class="err">❌ Import failed: ' + e.message + '</span>');
+    btn.disabled = false; btn.textContent = '▶ RETRY IMPORT';
+  }
+}
+</script>
+</body>
+</html>

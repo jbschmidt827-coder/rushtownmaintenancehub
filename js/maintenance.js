@@ -717,6 +717,21 @@ async function submitWO() {
   if (!desc)    return alert('Please describe the problem.');
   if (!selPri)  return alert('Please select a priority level.');
 
+  // ── Duplicate catcher — same farm + house + problem type already open? ──
+  const dup = (workOrders || []).find(w =>
+    w.status !== 'completed' &&
+    w.farm === farm &&
+    String(w.house) === String(house) &&
+    w.problem === problem);
+  if (dup) {
+    const keep = confirm(
+      '⚠ A similar work order is already OPEN:\n\n' +
+      (dup.id ? dup.id + ' — ' : '') + (dup.desc || dup.problem || '') +
+      (dup.tech ? '\nSubmitted by ' + dup.tech : '') + (dup.submitted ? ' on ' + dup.submitted : '') +
+      '\n\nCreate a second one anyway?\n(Cancel = don\'t duplicate — add a note to the existing WO instead.)');
+    if (!keep) return;
+  }
+
   _woSubmitting = true;
   const submitBtn = document.querySelector('#wo-form-card .btn-confirm');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting…'; }
@@ -2842,7 +2857,17 @@ function logSetHouse(val, btn) {
   renderLog();
 }
 
+var _logFarmDefaulted = false;
 function renderLog() {
+  // First open on this device → default the farm filter to this device's plant
+  if (!_logFarmDefaulted) {
+    _logFarmDefaulted = true;
+    const pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+    if (pref && logFarmFilter === 'all') {
+      const btn = document.querySelector(`#log-farm-bar .pill[onclick*="'${pref}'"]`);
+      if (btn) { logSetFarm(pref, btn); return; }
+    }
+  }
   let entries = actLog.map(e => ({...e, _classified: logClassify(e)}));
 
   if (logFilterVal !== 'all') {

@@ -319,8 +319,9 @@ async function copyLastWeek() {
 function _initBuildDate() {
   var el = document.getElementById('ls-build-date');
   if (!el) return;
-  // The build date is baked in at deploy time via the cache version name
-  // For live tracking we show today's cached-asset date
+  // Show the real build version (set in core.js, bumped at every deploy)
+  // so anyone can tell at a glance whether they're on the latest code.
+  if (typeof APP_VERSION !== 'undefined') { el.textContent = APP_VERSION; return; }
   var d = new Date();
   el.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
 }

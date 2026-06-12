@@ -68,6 +68,115 @@ var FARM_SCHEDULE = {
               breakLabel:'9:30 AM', breakH:9, breakM:30, lunchLabel:'12:00 PM' },
 };
 
+// Load schedule overrides saved from the in-app editor (settings/farmSchedule)
+function loadFarmScheduleOverrides() {
+  if (typeof db === 'undefined') return;
+  try {
+    db.collection('settings').doc('farmSchedule').get().then(doc => {
+      if (!doc.exists) return;
+      const d = doc.data() || {};
+      Object.keys(FARM_SCHEDULE).forEach(f => { if (d[f]) Object.assign(FARM_SCHEDULE[f], d[f]); });
+      try { if (typeof renderProdPanel === 'function') renderProdPanel(); } catch(e) {}
+    }).catch(()=>{});
+  } catch(e) {}
+}
+document.addEventListener('DOMContentLoaded', () => setTimeout(loadFarmScheduleOverrides, 4000));
+
+// ── In-app schedule editor (no code edit / deploy needed to change times) ──
+function _fmt12(h, m) {
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return hh + ':' + String(m).padStart(2,'0') + (h >= 12 ? ' PM' : ' AM');
+}
+function openScheduleSettings() {
+  document.getElementById('sched-settings-modal')?.remove();
+  const wrap = document.createElement('div');
+  wrap.id = 'sched-settings-modal';
+  wrap.style.cssText = 'position:fixed;inset:0;background:#000a;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+  const row = (farm, field, label, val) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <div style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;text-transform:uppercase;letter-spacing:1px;">${label}</div>
+      <input type="time" id="sched-${farm}-${field}" value="${val}" style="padding:7px;background:#0a1a0a;border:1.5px solid #2a5a2a;border-radius:7px;color:#c8e6c9;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+    </div>`;
+  const t24 = lbl => { // '8:00 AM' → '08:00'
+    const m = String(lbl||'').match(/(\d+):(\d+)\s*(AM|PM)/i); if (!m) return '06:00';
+    let h = Number(m[1]) % 12; if (/pm/i.test(m[3])) h += 12;
+    return String(h).padStart(2,'0') + ':' + m[2];
+  };
+  wrap.innerHTML = `
+    <div style="background:#0f1a0f;border:2px solid #2a5a2a;border-radius:16px;padding:22px;width:100%;max-width:460px;max-height:88vh;overflow-y:auto;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#4ade80;letter-spacing:2px;margin-bottom:6px;">⏰ PLANT SCHEDULES</div>
+      <div style="font-size:11px;color:#5a8a5a;margin-bottom:16px;">Changes apply to everyone immediately — no deploy needed.</div>
+      ${Object.keys(FARM_SCHEDULE).map(farm => { const c = FARM_SCHEDULE[farm]; return `
+        <div style="background:#0a1a0a;border:1px solid #1a3a1a;border-radius:10px;padding:12px;margin-bottom:12px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#c8e6c9;margin-bottom:10px;">📍 ${farm}</div>
+          ${row(farm,'shift','Shift start', t24(c.shiftStart))}
+          ${row(farm,'walk','Walk start', t24(c.walkStart))}
+          ${row(farm,'due','Walks due by', t24(c.walkDueLabel))}
+          ${row(farm,'break','First break', t24(c.breakLabel))}
+          ${row(farm,'lunch','Lunch', t24(c.lunchLabel))}
+        </div>`; }).join('')}
+      <div style="display:flex;gap:10px;">
+        <button onclick="saveScheduleSettings()" style="flex:1;padding:12px;background:#1a4a1a;border:2px solid #4ade80;border-radius:10px;color:#4ade80;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">✓ SAVE</button>
+        <button onclick="document.getElementById('sched-settings-modal').remove()" style="padding:12px 18px;background:#1a0a0a;border:1.5px solid #4a2a2a;border-radius:10px;color:#f87171;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">✕</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+}
+async function saveScheduleSettings() {
+  const out = {};
+  Object.keys(FARM_SCHEDULE).forEach(farm => {
+    const get = f => {
+      const v = document.getElementById('sched-' + farm + '-' + f)?.value || '';
+      const m = v.match(/^(\d+):(\d+)$/);
+      return m ? { h: Number(m[1]), m: Number(m[2]) } : null;
+    };
+    const shift = get('shift'), walk = get('walk'), due = get('due'), brk = get('break'), lunch = get('lunch');
+    if (!shift || !walk || !due || !brk || !lunch) return;
+    out[farm] = {
+      shiftStart: _fmt12(shift.h, shift.m),
+      walkStart:  _fmt12(walk.h,  walk.m),
+      walkDueH: due.h, walkDueM: due.m, walkDueLabel: _fmt12(due.h, due.m),
+      breakH: brk.h, breakM: brk.m, breakLabel: _fmt12(brk.h, brk.m),
+      lunchLabel: _fmt12(lunch.h, lunch.m)
+    };
+  });
+  try {
+    await db.collection('settings').doc('farmSchedule').set(out, { merge: true });
+    Object.keys(out).forEach(f => Object.assign(FARM_SCHEDULE[f], out[f]));
+    document.getElementById('sched-settings-modal')?.remove();
+    if (typeof toast === 'function') toast('✅ Plant schedules updated');
+    try { renderProdPanel(); } catch(e) {}
+  } catch(e) { alert('Could not save: ' + e.message); }
+}
+
+// ── Late-walk auto-flag — posts once per farm per day to the activity log ──
+var _lateWalkFlagged = {};
+function checkLateWalks() {
+  if (typeof db === 'undefined' || typeof MORNING_STATUS === 'undefined') return;
+  const today = new Date().toISOString().slice(0,10);
+  Object.keys(FARM_SCHEDULE).forEach(farm => {
+    const cfg = FARM_SCHEDULE[farm];
+    const total = farm === 'Hegins' ? 8 : 5;
+    if (!farmWalksLate(farm)) return;
+    const now = new Date();
+    if (now.getHours() > cfg.walkDueH + 4) return;           // stop nagging mid-afternoon
+    const done = farmMWDone(farm);
+    if (done >= total) return;
+    const key = farm + '-' + today;
+    if (_lateWalkFlagged[key]) return;
+    _lateWalkFlagged[key] = true;
+    // Fixed doc id = one entry per farm per day no matter how many devices see it
+    db.collection('activityLog').doc('lateWalk-' + key).set({
+      type: 'barnwalk', id: 'LATE-' + farm, farm,
+      desc: '⏰ ' + farm + ' morning walks LATE — ' + done + '/' + total + ' done by ' + cfg.walkDueLabel,
+      tech: 'System', flagCount: total - done,
+      date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}),
+      ts: Date.now()
+    }).catch(()=>{});
+  });
+}
+setInterval(() => { try { checkLateWalks(); } catch(e) {} }, 5 * 60 * 1000);
+
 // Are this farm's morning walks past their due time today?
 function farmWalksLate(farm) {
   const cfg = FARM_SCHEDULE[farm];
@@ -239,7 +348,8 @@ function renderProdPanel() {
 var _ecFarm = null;
 
 function openECSection() {
-  _ecFarm = null;
+  // Jump straight to this device's plant ("Back to farms" still switches)
+  _ecFarm = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
   document.getElementById('ec-section').style.display = 'block';
   document.getElementById('ec-section').scrollTop = 0;
   renderECContent();
@@ -300,7 +410,8 @@ function renderECContent() {
 var _mwSectionFarm = null;
 
 function openMWSection() {
-  _mwSectionFarm = null;
+  // Jump straight to this device's plant ("Back to farms" still switches)
+  _mwSectionFarm = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
   document.getElementById('mw-section').style.display = 'block';
   document.getElementById('mw-section').scrollTop = 0;
   renderMWContent();
@@ -786,6 +897,12 @@ function openBarnWalk(farm, house) {
   const _isEs = (typeof _lang !== 'undefined' && _lang === 'es');
   document.getElementById('bw-title').textContent = farm + ' — ' + _bLbl + ' ' + house;
   document.getElementById('bw-subtitle').textContent = new Date().toLocaleDateString(_isEs ? 'es-MX' : 'en-US',{weekday:'long',month:'long',day:'numeric'});
+  // Prefill the employee name from this device's remembered user
+  setTimeout(() => {
+    const _du = (typeof getDeviceUser === 'function') ? getDeviceUser() : '';
+    const e = document.getElementById('bw-employee');
+    if (_du && e && !e.value) { e.value = _du; if (typeof checkBWReady === 'function') checkBWReady(); }
+  }, 50);
   ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count','bw-egg-count'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
@@ -1409,7 +1526,10 @@ function openMorningWalk(farm, house) {
       : '📝 Draft restored — picking up where you left off');
   }
   if (!restored) {
-    // Pre-populate employee from last submission for this barn
+    // Pre-populate employee — this device's remembered user first
+    const _du = (typeof getDeviceUser === 'function') ? getDeviceUser() : '';
+    if (_du) { const e = document.getElementById('mw-employee'); if (e && !e.value) { e.value = _du; } }
+    // Fall back to the last submission for this barn
     db.collection('morningWalks').where('farm','==',farm).where('house','==',String(house))
       .limit(20).get()
       .then(snap => {

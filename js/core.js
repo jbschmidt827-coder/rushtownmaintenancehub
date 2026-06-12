@@ -695,6 +695,33 @@ function setSyncDot(state) {
 function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
+// ── App version (bump on every deploy — shown on the landing screen) ─────
+var APP_VERSION = 'v71 · Jun 12 2026';
+
+// ── Device user (per device) ─────────────────────────────────────────────
+// Remembers the last name typed into any staff-name field on this device
+// and offers it automatically — tap a name field and it fills itself.
+function getDeviceUser() {
+  try { return localStorage.getItem('deviceUser') || ''; } catch(e) { return ''; }
+}
+document.addEventListener('change', function(e) {
+  const el = e.target;
+  if (el && el.tagName === 'INPUT' && el.getAttribute('list') === 'staff-datalist' && el.value.trim()) {
+    try { localStorage.setItem('deviceUser', el.value.trim()); } catch(err) {}
+  }
+});
+document.addEventListener('focusin', function(e) {
+  const el = e.target;
+  if (el && el.tagName === 'INPUT' && el.getAttribute('list') === 'staff-datalist' && !el.value) {
+    const u = getDeviceUser();
+    if (u) {
+      el.value = u;
+      try { el.dispatchEvent(new Event('input',  { bubbles: true })); } catch(err) {}
+      try { el.dispatchEvent(new Event('change', { bubbles: true })); } catch(err) {}
+    }
+  }
+});
+
 // ── Preferred plant (per device) ─────────────────────────────────────────
 // Each device remembers which plant it belongs to so panels open
 // pre-filtered to that location. Set whenever a user picks a farm.

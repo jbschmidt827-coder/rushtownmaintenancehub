@@ -3887,6 +3887,31 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <button class="ops-cancel-btn" onclick="clearFeedMadeForm()">Clear</button>
       </div>
     </div>
+    <!-- Bulk entry — whole farm at once -->
+    <div class="ops-quick-form" style="margin-top:14px;">
+      <div class="ops-qf-title">📅 Bulk Entry — Whole Farm at Once</div>
+      <div class="ops-form-grid">
+        <div class="fg"><label>Date *</label><input type="date" id="fmb-date"></div>
+        <div class="fg"><label>Farm *</label>
+          <select id="fmb-farm" onchange="fmbRenderHouseInputs()">
+            <option value="">— Select Farm —</option>
+            <option value="Danville">Danville</option>
+            <option value="Turbotville">Turbotville</option>
+            <option value="W&M">W&amp;M Farms</option>
+            <option value="Hegins">Hegins</option>
+            <option value="Rushtown">Rushtown</option>
+          </select>
+        </div>
+        <div class="fg"><label>Feed Type</label><input type="text" id="fmb-type" placeholder="e.g. Layer Mash"></div>
+        <div class="fg"><label>Made By</label><input type="text" id="fmb-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
+      </div>
+      <div id="fmb-house-inputs" style="margin-top:10px;"></div>
+      <div class="ops-form-actions" id="fmb-save-row" style="display:none;">
+        <button class="ops-save-btn" onclick="saveBulkFeedMade()">✓ Save All Houses</button>
+        <button class="ops-cancel-btn" onclick="fmbClear()">Clear</button>
+      </div>
+    </div>
+
     <div class="recent-hdr" style="margin-bottom:10px;">Feed Made Log</div>
     <div style="overflow-x:auto;"><table class="ops-table" id="feed-made-table"></table></div>
   </div>
@@ -5055,21 +5080,21 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260612c-plants"></script>
+<script defer src="js/core.js?v=20260612g-v71"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
-<script defer src="js/maintenance.js?v=20260607-railmove"></script>
+<script defer src="js/maintenance.js?v=20260612g-v71"></script>
 <script defer src="js/trending-wo.js?v=20260501"></script>
 <script defer src="js/packaging.js?v=20260427k"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260524b"></script>
-<script defer src="js/production.js?v=20260612d-heginsbreak"></script>
-<script defer src="js/time-blocks.js?v=20260612c-plants"></script>
-<script defer src="js/feed-mill.js?v=20260612e-dailygrid"></script>
+<script defer src="js/production.js?v=20260612g-v71"></script>
+<script defer src="js/time-blocks.js?v=20260612f-heginstimes"></script>
+<script defer src="js/feed-mill.js?v=20260612g-v71"></script>
 <script defer src="js/egg-quality.js?v=20260424"></script>
 <script defer src="js/biosecurity.js?v=20260424"></script>
-<script defer src="js/scheduling.js?v=20260525-boot-fix"></script>
+<script defer src="js/scheduling.js?v=20260612g-v71"></script>
 <script defer src="js/tv-scoreboard.js?v=20260515-resilience"></script>
 <script defer src="js/staff.js?v=20260513-wonames"></script>
 <script defer src="js/staff-roster.js?v=20260513-roster"></script>
@@ -5077,7 +5102,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script defer src="js/contractor.js?v=20260424"></script>
 <script defer src="js/cost-dashboard.js?v=20260424"></script>
 <script defer src="js/weekly-agenda.js?v=20260424"></script>
-<script defer src="js/shift-signoff.js?v=20260605-walklogs"></script>
+<script defer src="js/shift-signoff.js?v=20260612g-v71"></script>
 <script defer src="js/red-tags.js?v=20260424"></script>
 <script defer src="js/director-brief.js?v=20260424"></script>
 <script defer src="js/barn-entry.js?v=20260424"></script>
@@ -5086,7 +5111,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script defer src="js/daily-checklist.js?v=20260519-i18n-walk-check"></script>
 <script defer src="js/eos.js?v=20260430b"></script>
 <script defer src="js/eos-hours.js?v=20260430b"></script>
-<script defer src="js/daily-report.js?v=20260612c-plants"></script>
+<script defer src="js/daily-report.js?v=20260612g-v71"></script>
 <style>
 @keyframes notif-slide-in {
   from { opacity:0; transform:translateX(20px); }

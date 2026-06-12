@@ -21,7 +21,12 @@ function goFeedSection(sec) {
     renderFeedReadings();
   }
   if (sec === 'deliveries')  { populateFeedBinSelect('fd-bin'); renderFeedDeliveries(); }
-  if (sec === 'made')        { populateFeedBinSelect('fm-bin'); renderFeedMade(); }
+  if (sec === 'made')        {
+    populateFeedBinSelect('fm-bin');
+    const bd = document.getElementById('fmb-date');
+    if (bd && !bd.value) bd.value = new Date().toISOString().slice(0,10);
+    renderFeedMade();
+  }
   if (sec === 'grid')        renderFeedGrid();
   if (sec === 'bins')        renderFeedBinsList();
   if (sec === 'consumption') {
@@ -673,6 +678,56 @@ function renderFeedMade() {
     </tr>`;
   });
   tbl.innerHTML = html + '</tbody>';
+}
+
+// ── Bulk Feed Made — every house on a farm in one save ──────────────────
+function fmbRenderHouseInputs() {
+  const farm = document.getElementById('fmb-farm')?.value || '';
+  const box  = document.getElementById('fmb-house-inputs');
+  const row  = document.getElementById('fmb-save-row');
+  if (!box) return;
+  const n = FEED_FARM_HOUSES[farm] || 0;
+  if (!n) { box.innerHTML = ''; if (row) row.style.display = 'none'; return; }
+  let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;">';
+  for (let i = 1; i <= n; i++) {
+    html += `<div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7ab07a;margin-bottom:4px;">House #${i} (tons)</div>
+      <input type="number" id="fmb-h${i}" min="0" step="0.1" inputmode="decimal" placeholder="0"
+        style="width:100%;box-sizing:border-box;padding:9px;background:#0c1f0c;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;font-family:'IBM Plex Mono',monospace;font-size:13px;"></div>`;
+  }
+  box.innerHTML = html + '</div>';
+  if (row) row.style.display = 'flex';
+}
+
+async function saveBulkFeedMade() {
+  const date = document.getElementById('fmb-date')?.value;
+  const farm = document.getElementById('fmb-farm')?.value || '';
+  const type = document.getElementById('fmb-type')?.value?.trim() || '';
+  const by   = document.getElementById('fmb-by')?.value?.trim() || '';
+  if (!date || !farm) return alert('Date and Farm are required.');
+  const n = FEED_FARM_HOUSES[farm] || 0;
+  const entries = [];
+  for (let i = 1; i <= n; i++) {
+    const v = parseFloat(document.getElementById('fmb-h' + i)?.value || '');
+    if (v > 0) entries.push({ house: String(i), tons: v });
+  }
+  if (!entries.length) return alert('Enter tons for at least one house.');
+  try {
+    for (const en of entries) {
+      const rec = { date, tons: en.tons, type, dest: 'own', farm, house: en.house, binId: '', binName: '', by, notes: '', ts: Date.now() };
+      const ref = await db.collection('feedMade').add(rec);
+      feedMadeLog.unshift({ ...rec, _fbId: ref.id });
+    }
+    if (typeof toast === 'function') toast('✅ ' + entries.length + ' house entr' + (entries.length === 1 ? 'y' : 'ies') + ' saved for ' + farm);
+    fmbClear();
+    renderFeedMade();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+function fmbClear() {
+  ['fmb-farm','fmb-type','fmb-by'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const box = document.getElementById('fmb-house-inputs'); if (box) box.innerHTML = '';
+  const row = document.getElementById('fmb-save-row'); if (row) row.style.display = 'none';
+  const d = document.getElementById('fmb-date'); if (d) d.value = new Date().toISOString().slice(0,10);
 }
 
 // ── Daily Tons Grid — farm/house × day matrix (mirrors the mill spreadsheet) ──
@@ -1743,8 +1798,9 @@ async function loadOpsData() {
     opsPackData=[]; pS.forEach(d=>opsPackData.push({...d.data(),_fbId:d.id}));
     opsShipData=[]; sS.forEach(d=>opsShipData.push({...d.data(),_fbId:d.id}));
     opsExcData=[]; xS.forEach(d=>opsExcData.push({...d.data(),_fbId:d.id}));
-    if(!opsEggData.length&&!opsPackData.length&&!opsShipData.length&&!opsExcData.length) seedOpsDemo();
-  } catch(e){ console.warn('loadOpsData:',e.message,'— loading demo data'); seedOpsDemo(); }
+    // Demo seeding removed — fake "Giant Food"/"Acme" loads were appearing
+    // whenever the load failed or collections were empty. Real data only.
+  } catch(e){ console.warn('loadOpsData:',e.message); }
   opsInitForms();
 }
 

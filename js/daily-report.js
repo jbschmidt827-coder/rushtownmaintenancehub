@@ -307,6 +307,8 @@ function drRender() {
                  letter-spacing:1px;text-transform:uppercase;transition:all .15s;">
           ${f} <span style="font-size:10px;opacity:.7;">(${DR_FARMS[f].houses} houses)</span>
         </button>`).join('')}
+      <button onclick="if(typeof openScheduleSettings==='function')openScheduleSettings()" title="Edit plant schedules"
+        style="margin-left:auto;padding:9px 14px;border-radius:8px;border:2px solid #2a5a2a;background:transparent;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">⏰</button>
     </div>
 
     <div style="display:flex;gap:6px;padding:10px 16px 14px 16px;flex-wrap:wrap;">
