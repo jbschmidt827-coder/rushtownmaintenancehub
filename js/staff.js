@@ -34,11 +34,28 @@ function getActiveStaff(farm, role) {
   return list.map(s => s.name).filter(Boolean).sort((a,b) => a.localeCompare(b));
 }
 
+// ── Active staff at a given location (canonical filter) ──
+// loc '' / null → everyone. Otherwise: that plant + 'Both'/'All', plus any
+// untagged person (blank farm) as a safety so new hires aren't hidden.
+function staffAtLocation(loc) {
+  let list = (typeof staffList !== 'undefined' && Array.isArray(staffList))
+    ? staffList.filter(s => s && s.active !== false) : [];
+  if (loc) {
+    list = list.filter(s => !s.farm || s.farm === loc || s.farm === 'Both' || s.farm === 'All' || s.farm === 'All Farms');
+  }
+  return list;
+}
+
 // ── Populate all name datalists and selects in the app ──
+// Scoped to THIS device's plant (preferredFarm) so a Hegins tablet only
+// offers Hegins people, a Danville tablet only Danville — not all 71.
+// People tagged 'Both' (drivers, mgmt) appear at every location.
 function updateStaffDropdowns() {
-  const active = staffList.filter(s => s.active !== false);
+  const loc    = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+  const active = staffAtLocation(loc);
   // Staff list is the SINGLE SOURCE OF TRUTH — no fallback names.
-  const names = active.map(s => s.name).filter(Boolean);
+  const names = active.map(s => s.name).filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
 
   // Datalist for text inputs with list="staff-datalist"
   const datalistOpts = names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">`).join('');

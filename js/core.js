@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v72 · Jun 14 2026';
+var APP_VERSION = 'v73 · Jun 14 2026';
 
 // ── Device user (per device) ─────────────────────────────────────────────
 // Remembers the last name typed into any staff-name field on this device
@@ -735,6 +735,8 @@ function getPreferredFarm() {
 function setPreferredFarm(f) {
   if (f !== 'Hegins' && f !== 'Danville') return;
   try { localStorage.setItem('preferredFarm', f); } catch(e) {}
+  // Re-scope all name pickers to the newly selected plant.
+  if (typeof updateStaffDropdowns === 'function') updateStaffDropdowns();
 }
 
 // Several modules (maintenance.js, production.js, daily-checklist.js, etc.)
@@ -2020,6 +2022,7 @@ async function initApp() {
       // Seeders run last — they write back to Firestore, lowest priority.
       setTimeout(() => {
         safeRun(() => typeof seedStaffRosterIfEmpty === 'function' && seedStaffRosterIfEmpty(), 'seedStaffRoster');
+        safeRun(() => typeof assignStaffLocationsIfNeeded === 'function' && assignStaffLocationsIfNeeded(), 'assignStaffLocations');
         safeRun(() => typeof seedMortalityCompostingWI === 'function' && seedMortalityCompostingWI(), 'seedMort');
         safeRun(() => typeof seedWaterRegulatorWI === 'function' && seedWaterRegulatorWI(), 'seedWater');
         safeRun(() => typeof seedAugerRollerWI === 'function' && seedAugerRollerWI(), 'seedAuger');
