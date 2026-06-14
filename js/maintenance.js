@@ -3867,7 +3867,7 @@ function goHome() {
     'prod-summary-section','barn-walk-modal','morning-walk-modal',
     'bw-history-overlay','egg-trends-overlay',
     'ops-overlay','staff-edit-modal',
-    'admin-pin-modal','briefing-modal'
+    'admin-pin-modal','briefing-modal','scorecard-overlay'
   ];
   OVERLAYS.forEach(function(id) {
     var el = document.getElementById(id);

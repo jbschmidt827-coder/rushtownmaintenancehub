@@ -731,6 +731,16 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         </div>
       </div>
 
+      <!-- Daily Scorecard — Six Sigma CTQ view, scoped to this location -->
+      <button onclick="openScorecard()" style="width:100%;padding:16px 16px;background:linear-gradient(135deg,#10241a,#0d1f3a);border:2px solid #4ade80;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+        <span style="font-size:30px;line-height:1;">📈</span>
+        <div style="flex:1;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">Daily Scorecard</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab07a;line-height:1.4;margin-top:3px;">Livability &amp; maintenance CTQs · red flags · trends</div>
+        </div>
+        <span style="font-size:20px;color:#4ade80;">→</span>
+      </button>
+
       <!-- 2-column card grid -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
 
@@ -792,6 +802,19 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     </div>
   </div>
 
+</div>
+
+<!-- ═══ DAILY SCORECARD OVERLAY (rendered by js/scorecard.js) ═══ -->
+<div id="scorecard-overlay" style="display:none;position:fixed;inset:0;background:#0f1a0f;z-index:600;overflow-y:auto;">
+  <div style="position:sticky;top:0;background:#0f1a0f;border-bottom:2px solid #1e3a1e;padding:max(env(safe-area-inset-top,12px),12px) 16px 12px;display:flex;align-items:center;gap:12px;z-index:10;">
+    <button onclick="closeScorecard()" style="padding:9px 14px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">← Home</button>
+    <div style="flex:1;min-width:0;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:#f0ead8;letter-spacing:2px;line-height:1;">📈 DAILY SCORECARD</div>
+      <div id="scorecard-title" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4ade80;letter-spacing:2px;margin-top:2px;"></div>
+    </div>
+    <button onclick="renderScorecard()" title="Refresh" style="padding:9px 13px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">↻</button>
+  </div>
+  <div id="scorecard-body" style="max-width:760px;margin:0 auto;padding:16px;"></div>
 </div>
 
 <!-- ═══ UPDATE BANNER ═══ -->
@@ -5089,16 +5112,17 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260614-loc6"></script>
+<script defer src="js/core.js?v=20260614-scorecard"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
-<script defer src="js/maintenance.js?v=20260614-loc3"></script>
+<script defer src="js/maintenance.js?v=20260614-scorecard"></script>
 <script defer src="js/trending-wo.js?v=20260501"></script>
 <script defer src="js/packaging.js?v=20260614-loc3"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260524b"></script>
 <script defer src="js/production.js?v=20260614-lochome"></script>
+<script defer src="js/scorecard.js?v=20260614-scorecard"></script>
 <script defer src="js/time-blocks.js?v=20260612f-heginstimes"></script>
 <script defer src="js/feed-mill.js?v=20260612g-v71"></script>
 <script defer src="js/egg-quality.js?v=20260424"></script>
