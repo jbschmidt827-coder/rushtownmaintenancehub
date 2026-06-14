@@ -700,11 +700,20 @@ function openBulkPM(preFilter) {
     if (typeof renderBulkPMList === 'function') renderBulkPMList();
 
     if (preFilter === 'daily' && Array.isArray(ALL_PM) && typeof pmStatus === 'function') {
-      // Auto-select all daily overdue
+      // "Mark Daily PMs Done" — auto-select the recurring near-daily tasks
+      // that are overdue: true daily PMs PLUS the Mon/Wed/Fri (mwf) belt-running
+      // PMs. Previously only freq==='daily' was selected, so on days the mwf
+      // tasks were overdue the button selected nothing and looked broken.
       ALL_PM
-        .filter(t => t && t.freq === 'daily' && pmStatus(t.id) === 'overdue')
+        .filter(t => t && (t.freq === 'daily' || t.freq === 'mwf') && pmStatus(t.id) === 'overdue')
         .forEach(t => bulkPMSelected.add(t.id));
       if (typeof renderBulkPMList === 'function') renderBulkPMList();
+      // If nothing is overdue, say so rather than showing an empty/unchecked
+      // list that makes the user think the update failed.
+      const cnt = document.getElementById('bulk-selected-count');
+      if (cnt && bulkPMSelected.size === 0) {
+        cnt.innerHTML = '<span style="color:#2e7d32;font-weight:700;">✅ No daily PMs are overdue — nothing to mark done.</span>';
+      }
     }
   } catch (e) {
     console.error('[openBulkPM] init error:', e);
@@ -785,12 +794,33 @@ function updateBulkCount() {
 }
 
 async function submitBulkPM() {
-  const tech = document.getElementById('bulk-tech').value;
+  const techEl = document.getElementById('bulk-tech');
+  const tech = techEl ? techEl.value : '';
   const date = document.getElementById('bulk-date').value;
   const notes = document.getElementById('bulk-notes').value.trim() || 'Bulk catch-up completion';
+
+  // If the "Completed By" dropdown has no real names, the only option is the
+  // blank placeholder — so no tech can ever be picked and the update silently
+  // can't proceed. Tell the user exactly why instead of a vague prompt.
+  const techHasNames = techEl && Array.from(techEl.options).some(o => o.value);
+  if (!techHasNames) {
+    alert('No staff are set up yet, so there\'s no one to credit the work to.\n\nAdd at least one active person in the Staff panel, then try again.');
+    return;
+  }
   if (!tech) { alert('Please select who completed these tasks.'); return; }
   if (!date) { alert('Please select a completion date.'); return; }
   if (!bulkPMSelected.size) { alert('No tasks selected.'); return; }
+
+  // Bulk PM writes go straight to Firestore (no offline queue). If the device
+  // is offline the commit will hang or fail, so block early with a clear note.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    alert('You appear to be offline. Bulk PM updates need a connection — reconnect and try again.');
+    return;
+  }
+  if (typeof db === 'undefined' || !db) {
+    alert('The database isn\'t ready yet. Please reload the page and try again.');
+    return;
+  }
 
   const ids = Array.from(bulkPMSelected);
   const submitBtn = document.getElementById('bulk-pm-submit-btn');
@@ -848,7 +878,8 @@ async function submitBulkPM() {
   } catch(err) {
     console.error('submitBulkPM error:', err);
     setSyncDot('live');
-    document.getElementById('bulk-pm-status').textContent = `❌ Save failed — please try again`;
+    const reason = (err && (err.code || err.message)) ? ` (${err.code || err.message})` : '';
+    document.getElementById('bulk-pm-status').textContent = `❌ Save failed${reason} — please try again`;
     document.getElementById('bulk-pm-bar').style.background = '#e53e3e';
     submitBtn.disabled = false;
   }

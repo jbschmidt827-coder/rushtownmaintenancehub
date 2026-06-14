@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v71 · Jun 12 2026';
+var APP_VERSION = 'v72 · Jun 14 2026';
 
 // ── Device user (per device) ─────────────────────────────────────────────
 // Remembers the last name typed into any staff-name field on this device
@@ -2228,8 +2228,13 @@ function daysAgo(str) {
 }
 function pmStatus(id) {
   const t = ALL_PM.find(x => x.id === id);
+  // Defensive: a missing task or an unknown frequency must never throw —
+  // a single bad record used to crash the whole PM list and the bulk modal.
+  if (!t) { console.warn('[pmStatus] no PM task for id', id); return 'ok'; }
+  const freqDef = FREQ[t.freq];
+  if (!freqDef) { console.warn('[pmStatus] unknown freq', t.freq, 'on', id); return 'ok'; }
   const c = pmComps[id];
-  const days = FREQ[t.freq].days;
+  const days = freqDef.days;
   if (!c) return 'overdue';
   // If completed today, always show as OK regardless of frequency
   if (c.date === todayStr) return 'ok';
@@ -2242,6 +2247,7 @@ function nextDueLabel(id) {
   const t = ALL_PM.find(x => x.id === id);
   const c = pmComps[id];
   if (!c) return 'Never done';
+  if (!t || !FREQ[t.freq]) return '—';
   const next = new Date(c.date); next.setDate(next.getDate() + FREQ[t.freq].days);
   const diff = Math.floor((next - TODAY) / 86400000);
   if (diff < 0) return Math.abs(diff) + 'd overdue';
