@@ -117,6 +117,10 @@ function goMaintSection(section) {
   document.querySelectorAll('#panel-maint .sub-btn').forEach(b => {
     if (b.dataset.section === section) b.classList.add('active');
   });
+  // Default WO / PM lists to the location chosen on the home screen.
+  if ((section === 'wo' || section === 'pm') && typeof syncMaintLocToActive === 'function') {
+    syncMaintLocToActive(section);
+  }
   // Calendar / Contractor / Weekly Agenda / Red Tags / Assets removed from nav 2026-06-05 per Joe.
   // Their render functions still exist (parts inventory rebuild planned separately).
   const renders = {wo:renderWO, pm:renderPM, parts:renderParts, log:renderLog, wi:renderWI, cost:renderCostDashboard};

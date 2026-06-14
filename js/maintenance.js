@@ -21,6 +21,20 @@ setTimeout(requestNotifPermission, 3000);
 // ═══════════════════════════════════════════
 // WORK ORDERS
 // ═══════════════════════════════════════════
+// Default the Work-Order / PM location filter to the site picked on the home
+// screen. getPreferredFarm() is null at Master → 'all' (show everything).
+// The in-view location pills still let you switch while you're in the section.
+function syncMaintLocToActive(section) {
+  const pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+  const val  = pref || 'all';
+  const barId = section === 'pm' ? '#pm-loc-bar' : '#wo-loc-bar';
+  if (section === 'pm') pmLocFilter = val; else woLocFilter = val;
+  document.querySelectorAll(barId + ' .loc-pill').forEach(b => {
+    const oc = b.getAttribute('onclick') || '';
+    b.classList.toggle('active', oc.indexOf("'" + val + "'") !== -1);
+  });
+}
+
 function woLoc(v,btn) {
   woLocFilter=v;
   document.querySelectorAll('#wo-loc-bar .loc-pill').forEach(b=>b.classList.remove('active'));

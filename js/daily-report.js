@@ -29,6 +29,12 @@ const DR_FARMS = {
 async function renderDailyReport() {
   const el = document.getElementById('panel-daily');
   if (!el) return;
+  // Follow the location picked on the home screen (Master has no combined
+  // report view, so it keeps the last/selected farm and the tabs still work).
+  try {
+    const pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+    if (pref === 'Hegins' || pref === 'Danville') _drFarm = pref;
+  } catch(e) {}
   el.innerHTML = drLoadingHTML();
   try {
     await drLoadData();
