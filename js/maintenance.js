@@ -1043,8 +1043,11 @@ function pmMachine(t) {
     case 'Building': return 'Building';
     case 'Alarms':   return 'Alarm System';
     case 'Lubing':   return 'Lubing System';
-    case 'Packaging': {
-      // Packaging PMs are per-machine; collapse the 18 machines into 4 areas.
+    case 'Packaging':
+    case 'Processing Plant': {
+      // Processing Plant (formerly "Packaging") PMs are per-machine; collapse
+      // the 18 machines into 4 areas. The sys was renamed but the pk-* ids and
+      // these buckets stayed, so both labels route here.
       const id = (t && t.id) || '';
       if (/pk-(rodcon|basket|cagebelt|pusher|transfer|loader)/.test(id)) return 'Egg Handling';
       if (/pk-(washer|blower|slk|packers)/.test(id))                     return 'Wash & Pack';
@@ -1074,7 +1077,7 @@ function togglePMMachine(hdrEl) {
 function pmCardHtml(t) {
   const status=pmStatus(t.id);
   const done=doneToday(t.id);
-  const f=FREQ[t.freq];
+  const f=FREQ[t.freq] || {icon:'🔧', label:t.freq||'—', days:9999};
   const comp=pmComps[t.id];
   const cardCls=done?'done-today':status;
   const badgeCls=done?'done':status;
@@ -3582,15 +3585,41 @@ async function prodSubmit() {
     ts: Date.now()
   };
 
-  setSyncDot('saving');
-  await db.collection('barnWalks').add(record);
-  await db.collection('activityLog').add({
-    type:'barnwalk', id:'BW',
-    desc: 'Barn walk completed: ' + CL.loc + ' House ' + PROD_HEADER.house +
-      ' — ' + barnStatus.toUpperCase() + ' (' + critCount + ' critical, ' + needsCount + ' needs attention)',
-    tech: PROD_HEADER.tech, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), ts: Date.now()
-  });
-  setSyncDot('live');
+  // Barn walk writes go straight to Firestore (no offline queue like WO entry
+  // has). If the device is offline the write would hang and the walk would look
+  // lost, so block early with a clear note instead of silently failing.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    alert('You appear to be offline. Reconnect to signal and submit again — your answers are still here on screen.');
+    return;
+  }
+  if (typeof db === 'undefined' || !db) {
+    alert('The database isn\'t ready yet. Please reload the page and try again.');
+    return;
+  }
+
+  var prodBtn = document.getElementById('prod-submit-btn');
+  if (prodBtn) { prodBtn.disabled = true; prodBtn.textContent = 'Submitting…'; }
+
+  try {
+    setSyncDot('saving');
+    await db.collection('barnWalks').add(record);
+    // Log write is best-effort — don't let it block the success screen.
+    try {
+      await db.collection('activityLog').add({
+        type:'barnwalk', id:'BW',
+        desc: 'Barn walk completed: ' + CL.loc + ' House ' + PROD_HEADER.house +
+          ' — ' + barnStatus.toUpperCase() + ' (' + critCount + ' critical, ' + needsCount + ' needs attention)',
+        tech: PROD_HEADER.tech, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), ts: Date.now()
+      });
+    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
+    setSyncDot('live');
+  } catch(err) {
+    console.error('prodSubmit error:', err);
+    setSyncDot(navigator.onLine ? 'live' : 'offline');
+    alert('Something went wrong saving the barn walk. Please try again.\n\nError: ' + (err && err.message ? err.message : err));
+    if (prodBtn) { prodBtn.disabled = false; prodBtn.textContent = '✓ Submit Barn Walk'; }
+    return;
+  }
 
   PROD_SUBMITTED = true;
 
