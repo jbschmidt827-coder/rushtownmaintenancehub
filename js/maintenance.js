@@ -3128,6 +3128,29 @@ var PROD_HEADER = { house:'', tech:'', date:'', shift:'day', start:'', end:'' };
 var PROD_WOS_CREATED = 0;
 var PROD_SUBMITTED = false;
 
+// ── Daily Employee Check draft autosave ──────────────────────────────────
+// A barn walk is 40+ taps; losing it to an accidental refresh or a screen
+// lock is demoralizing. We snapshot the in-progress walk to localStorage on
+// every change and offer to restore it when the same house is reopened the
+// same day. The draft is cleared once the walk is submitted.
+function prodDraftKey(farm, house, date) {
+  return 'prodDraft|' + (farm||'') + '|H' + (house||'') + '|' + (date||'');
+}
+function prodSaveDraft() {
+  try {
+    if (PROD_SUBMITTED || !PROD_HEADER || !PROD_HEADER.house) return;
+    localStorage.setItem(prodDraftKey(CL.loc, PROD_HEADER.house, PROD_HEADER.date), JSON.stringify({
+      header: PROD_HEADER, state: PROD_STATE, wos: PROD_WOS_CREATED, savedAt: Date.now()
+    }));
+  } catch(e) { /* storage full or blocked — autosave is best-effort */ }
+}
+function prodClearDraft() {
+  try {
+    if (!PROD_HEADER || !PROD_HEADER.house) return;
+    localStorage.removeItem(prodDraftKey(CL.loc, PROD_HEADER.house, PROD_HEADER.date));
+  } catch(e) {}
+}
+
 // Legacy fly/rodent tabs (used by weekly/friday checks)
 var CL_TKS = {
   fly:{label:'Fly Test',note:'Tuesdays — walk house with fly trap',tasks:[
@@ -3249,8 +3272,35 @@ function prodOpenHouse(n) {
       PROD_STATE[item.id] = { status: null, note: '', woId: '' };
     });
   });
+
+  // Offer to restore an unsubmitted draft for this same house + day.
+  try {
+    var dKey = prodDraftKey(CL.loc, PROD_HEADER.house, PROD_HEADER.date);
+    var draftRaw = localStorage.getItem(dKey);
+    if (draftRaw) {
+      var draft = JSON.parse(draftRaw);
+      var answered = (draft && draft.state)
+        ? Object.keys(draft.state).filter(function(k){ return draft.state[k] && draft.state[k].status; }).length
+        : 0;
+      if (answered > 0 && confirm('You have an unfinished walk for House ' + PROD_HEADER.house + ' with ' + answered + ' item' + (answered!==1?'s':'') + ' already answered.\n\nPick up where you left off?')) {
+        // Merge saved answers onto the fresh state so any newly-added items still appear.
+        Object.keys(draft.state).forEach(function(id){ if (PROD_STATE[id]) PROD_STATE[id] = draft.state[id]; });
+        if (draft.header) {
+          PROD_HEADER.tech  = draft.header.tech  || PROD_HEADER.tech;
+          PROD_HEADER.start = draft.header.start || PROD_HEADER.start;
+          PROD_HEADER.shift = draft.header.shift || PROD_HEADER.shift;
+        }
+        PROD_WOS_CREATED = draft.wos || 0;
+      } else {
+        // Declined, or a stale empty draft — clear it so it stops prompting.
+        localStorage.removeItem(dKey);
+      }
+    }
+  } catch(e) { console.warn('prod draft restore failed:', e); }
+
   prodRenderHeader();
   prodRenderSections();
+  prodApplyState();   // repaint restored answers (no-op for a fresh walk)
   prodRenderSummary();
   opsBwInitForHouse();
   clGoSc('cl-s-prod');
@@ -3264,6 +3314,13 @@ function prodRenderHeader() {
   document.getElementById('prod-hdr-shift').value        = h.shift;
   document.getElementById('prod-hdr-start').value        = h.start;
   document.getElementById('prod-hdr-end').value          = h.end;
+
+  // Keep PROD_HEADER + the saved draft in sync as the header fields change,
+  // so a restored walk keeps its shift/start time. Listeners are idempotent
+  // (replaced via onchange) so re-rendering the header won't stack them.
+  document.getElementById('prod-hdr-shift').onchange = function(){ PROD_HEADER.shift = this.value; prodSaveDraft(); };
+  document.getElementById('prod-hdr-start').onchange = function(){ PROD_HEADER.start = this.value; prodSaveDraft(); };
+  document.getElementById('prod-hdr-end').onchange   = function(){ PROD_HEADER.end   = this.value; prodSaveDraft(); };
 }
 
 function prodRenderSections() {
@@ -3321,7 +3378,7 @@ function prodRenderSections() {
       ta.id = 'prod-note-' + item.id;
       ta.rows = 2;
       ta.placeholder = 'Describe the issue — what you saw, heard, or measured...';
-      (function(iid){ ta.addEventListener('input', function(){ PROD_STATE[iid].note = this.value; prodRenderSummary(); }); })(item.id);
+      (function(iid){ ta.addEventListener('input', function(){ PROD_STATE[iid].note = this.value; prodRenderSummary(); prodSaveDraft(); }); })(item.id);
       fields.appendChild(ta);
 
       var actions = document.createElement('div');
@@ -3362,6 +3419,38 @@ function prodRenderSections() {
     });
 
     container.appendChild(secEl);
+  });
+}
+
+// Paint the current PROD_STATE onto a freshly-rendered section list. Used after
+// restoring a saved draft so the buttons, issue notes, and section colors match
+// the saved answers. A no-op for a brand-new walk (all statuses null).
+function prodApplyState() {
+  PROD_SECTIONS.forEach(function(sec){
+    sec.items.forEach(function(item){
+      var st = PROD_STATE[item.id];
+      if (!st) return;
+      var itemEl = document.getElementById('prod-item-' + item.id);
+      if (itemEl && st.status) {
+        itemEl.className = 'prod-item' + (st.status==='pass'?' prod-pass': st.status==='needs'?' prod-needs': st.status==='critical'?' prod-crit':'');
+        itemEl.querySelectorAll('.prod-sbtn').forEach(function(b){ b.classList.remove('active'); });
+        var map = { pass:'prod-sbtn-pass', needs:'prod-sbtn-needs', critical:'prod-sbtn-critical' };
+        var ab = itemEl.querySelector('.' + map[st.status]);
+        if (ab) ab.classList.add('active');
+      }
+      var fields = document.getElementById('prod-fields-' + item.id);
+      if (fields) fields.style.display = (st.status==='needs'||st.status==='critical') ? 'block' : 'none';
+      var note = document.getElementById('prod-note-' + item.id);
+      if (note && st.note) note.value = st.note;
+    });
+    var secEl = document.querySelector('.prod-section[data-sec="' + sec.id + '"]');
+    if (secEl) {
+      var hasIssue = sec.items.some(function(it){ var s=PROD_STATE[it.id]; return s&&(s.status==='needs'||s.status==='critical'); });
+      var hasCrit  = sec.items.some(function(it){ var s=PROD_STATE[it.id]; return s&&s.status==='critical'; });
+      secEl.className = 'prod-section' + (hasCrit?' prod-sec-crit':hasIssue?' prod-sec-warn':'');
+      var prog = document.getElementById('prog-' + sec.id);
+      if (prog) { var done = sec.items.filter(function(it){ return PROD_STATE[it.id]&&PROD_STATE[it.id].status; }).length; prog.textContent = done + '/' + sec.items.length; }
+    }
   });
 }
 
@@ -3413,6 +3502,7 @@ function prodSetStatus(itemId, status) {
   });
 
   prodRenderSummary();
+  prodSaveDraft();
 }
 
 function prodAttachPhoto(itemId, input) {
@@ -3622,6 +3712,7 @@ async function prodSubmit() {
   }
 
   PROD_SUBMITTED = true;
+  prodClearDraft();  // walk is saved to Firestore — drop the local draft
 
   // Mark barn done on home screen
   var allFlags = [];
