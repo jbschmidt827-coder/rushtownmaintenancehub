@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v74-locswitch';
+const CACHE_NAME = 'rushtown-v75-autoupdate';
 
 const SHELL_FILES = [
   '/',
@@ -98,7 +98,11 @@ self.addEventListener('install', event => {
             .catch(() => null)
         )
       ))
-      .then(() => self.skipWaiting())
+      // NOTE: intentionally NO self.skipWaiting() here. The new worker WAITS so
+      // the page can show a "New version ready" bar; it activates only when the
+      // user taps Update (which posts SKIP_WAITING, handled below). This avoids
+      // surprise reloads mid-task. On a first install (no existing worker) the
+      // browser activates it immediately anyway.
   );
 });
 

@@ -5164,12 +5164,64 @@ if (typeof injectLandingStaffCard === 'function') injectLandingStaffCard();
 </script>
 
 <script>
-// ── PWA Service Worker Registration ──
+// ── PWA Service Worker Registration + in-app update prompt ──
+// The app is a long-lived PWA on shared tablets. Without this, a tablet keeps
+// serving its cached copy until it is fully closed, so devices drift onto
+// different versions. We register the SW, watch for a newer one, and show a
+// tap-to-update bar. The new worker WAITS (it no longer self-skipWaiting), so
+// the refresh only happens when the user taps Update — never mid-task.
 if ('serviceWorker' in navigator) {
+  function showUpdateBar(worker) {
+    if (document.getElementById('sw-update-bar')) return;
+    var bar = document.createElement('div');
+    bar.id = 'sw-update-bar';
+    bar.setAttribute('style', 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:100000;display:flex;align-items:center;gap:14px;background:#143018;border:2px solid #4caf50;border-radius:14px;padding:12px 16px;box-shadow:0 8px 28px rgba(0,0,0,.45);font-family:\'IBM Plex Mono\',monospace;color:#f0ead8;font-size:14px;font-weight:700;max-width:92vw;');
+    var txt = document.createElement('span');
+    txt.textContent = '🔄 New version ready';
+    var btn = document.createElement('button');
+    btn.textContent = 'Update now';
+    btn.setAttribute('style', 'background:#4caf50;color:#06210a;border:none;border-radius:9px;padding:9px 16px;font-weight:800;font-family:inherit;font-size:14px;cursor:pointer;');
+    btn.onclick = function() {
+      btn.textContent = 'Updating…';
+      btn.disabled = true;
+      // Reload as soon as the new worker takes control.
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        window.location.reload();
+      }, { once: true });
+      if (worker) worker.postMessage({ type: 'SKIP_WAITING' });
+      // Safety net in case controllerchange doesn't fire.
+      setTimeout(function() { window.location.reload(); }, 2500);
+    };
+    bar.appendChild(txt);
+    bar.appendChild(btn);
+    document.body.appendChild(bar);
+  }
+
   window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/sw.js')
-      .then(function(reg) { console.log('SW registered:', reg.scope); })
-      .catch(function(err) { console.warn('SW registration failed:', err); });
+    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+      console.log('SW registered:', reg.scope);
+
+      // Only prompt when there's already a controller — otherwise this is the
+      // first install and there's nothing to "update" from.
+      function offerUpdate(worker) {
+        if (worker && navigator.serviceWorker.controller) showUpdateBar(worker);
+      }
+
+      if (reg.waiting) offerUpdate(reg.waiting);
+      reg.addEventListener('updatefound', function() {
+        var nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', function() {
+          if (nw.state === 'installed') offerUpdate(nw);
+        });
+      });
+
+      // Tablets are rarely closed, so check for a new build each time the app
+      // is brought back to the foreground.
+      document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) { try { reg.update(); } catch (e) {} }
+      });
+    }).catch(function(err) { console.warn('SW registration failed:', err); });
   });
 }
 </script>
