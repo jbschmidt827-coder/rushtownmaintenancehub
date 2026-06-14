@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v83 · Jun 14 2026';
+var APP_VERSION = 'v84 · Jun 14 2026';
 
 // ── Device user (per device) ─────────────────────────────────────────────
 // Remembers the last name typed into any staff-name field on this device
@@ -2317,7 +2317,7 @@ function go(tab) {
   if (tab === 'kpi')   { goKpiSection(window._kpiSection || 'dashboard'); }
   if (tab === 'reports') renderReports();
   if (tab === 'sched')   loadSchedule();
-  if (tab === 'staff')   renderStaff();
+  if (tab === 'staff')   { if (typeof syncStaffFarmToActive === 'function') syncStaffFarmToActive(); renderStaff(); }
   if (tab === 'oncall')  renderOnCallPanel();
   if (tab === 'daily')   { if (typeof renderDailyReport === 'function') renderDailyReport(); }
 }

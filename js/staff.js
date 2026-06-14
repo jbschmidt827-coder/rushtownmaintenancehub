@@ -289,6 +289,19 @@ function staffFarmFilter(val, btn) {
   renderStaff();
 }
 
+// Default the directory's farm filter to the site picked on the home screen.
+// Master (getPreferredFarm()===null) → 'all'. Call on Staff-tab ENTRY only so
+// the pills still let you switch sites while you're in the directory.
+function syncStaffFarmToActive() {
+  const pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+  const val  = pref || 'all';
+  _staffFarmFilter = val;
+  document.querySelectorAll('#staff-farm-bar .pill').forEach(b => {
+    const oc = b.getAttribute('onclick') || '';
+    b.classList.toggle('active', oc.indexOf("'" + val + "'") !== -1);
+  });
+}
+
 // ── Allow Enter key on add form ─────────────
 document.addEventListener('DOMContentLoaded', () => {
   ['staff-new-fname','staff-new-lname','staff-new-phone'].forEach(id => {
