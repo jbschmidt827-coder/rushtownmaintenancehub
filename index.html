@@ -689,6 +689,20 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <span onclick="chickenClick(event)" style="font-size:46px;line-height:1;margin-bottom:6px;cursor:pointer;user-select:none;display:block;">🐔</span>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#f0ead8;letter-spacing:4px;">RUSHTOWN POULTRY</div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a7a4a;letter-spacing:3px;text-transform:uppercase;margin-top:2px;">HEGINS &amp; DANVILLE OPERATIONS</div>
+
+    <!-- ── Location switch: pick the plant the whole hub is scoped to ── -->
+    <style>
+      .loc-pill{padding:9px 18px;background:#0f1a0f;border:2px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.5px;cursor:pointer;transition:all .15s;}
+      .loc-pill:hover{border-color:#3a7a3a;}
+      .loc-pill.active{background:#1a3a1a;border-color:#4caf50;color:#fff;box-shadow:0 0 0 3px rgba(76,175,80,.15);}
+      .loc-current-chip{display:flex;align-items:center;gap:5px;padding:7px 13px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.5px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+      .loc-current-chip:hover{border-color:#4caf50;color:#fff;}
+    </style>
+    <div id="loc-switch" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;">
+      <button class="loc-pill" data-loc="Hegins"   onclick="setActiveLocation('Hegins')">📍 Hegins</button>
+      <button class="loc-pill" data-loc="Danville" onclick="setActiveLocation('Danville')">📍 Danville</button>
+      <button class="loc-pill" data-loc="Master"   onclick="setActiveLocation('Master')">🏢 Master</button>
+    </div>
   </div>
 
   <!-- ── Cards + Quick Actions ── -->
@@ -1026,6 +1040,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <div class="logo-sub">Operations Hub</div>
       </div>
     </div>
+    <button class="loc-current-chip" onclick="goHome()" title="Switch location">📍 <span class="loc-current-label">Hegins</span></button>
     <nav class="nav-tabs">
       <button class="nav-tab" id="tab-dash" onclick="go('dash')" data-i18n="nav.dash" style="display:none;">📊 Dashboard</button>
       <button class="nav-tab" id="tab-prod" onclick="go('prod')" data-i18n="nav.prod" style="display:none;">🏭 Production</button>

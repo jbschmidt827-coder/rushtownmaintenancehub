@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v73 · Jun 14 2026';
+var APP_VERSION = 'v74 · Jun 14 2026';
 
 // ── Device user (per device) ─────────────────────────────────────────────
 // Remembers the last name typed into any staff-name field on this device
@@ -722,22 +722,82 @@ document.addEventListener('focusin', function(e) {
   }
 });
 
-// ── Preferred plant (per device) ─────────────────────────────────────────
-// Each device remembers which plant it belongs to so panels open
-// pre-filtered to that location. Set whenever a user picks a farm.
-function getPreferredFarm() {
+// ── Location context: one app, three views ──────────────────────────────
+// Hegins / Danville scope the whole hub to that plant. Master shows
+// everything aggregated. Persisted per device; defaults to Hegins on first
+// run ("just start with Hegins"), then remembers the last choice.
+const LOCATIONS = ['Hegins', 'Danville', 'Master'];
+
+function getActiveLocation() {
   try {
-    const f = localStorage.getItem('preferredFarm');
-    if (f === 'Hegins' || f === 'Danville') return f;
+    const v = localStorage.getItem('activeLocation');
+    if (LOCATIONS.includes(v)) return v;
   } catch(e) {}
-  return null;
+  return 'Hegins';
 }
+
+// The plant used for filtering. Master → null, which every farm filter in
+// the app already treats as "all locations".
+function getPreferredFarm() {
+  const loc = getActiveLocation();
+  return (loc === 'Hegins' || loc === 'Danville') ? loc : null;
+}
+
+function setActiveLocation(loc) {
+  if (!LOCATIONS.includes(loc)) return;
+  try {
+    localStorage.setItem('activeLocation', loc);
+    if (loc === 'Master') localStorage.removeItem('preferredFarm');
+    else localStorage.setItem('preferredFarm', loc);
+  } catch(e) {}
+  renderLocationSwitch();
+  if (typeof updateStaffDropdowns === 'function') updateStaffDropdowns();
+  rerenderActiveView();
+}
+
+// Back-compat: older flows (egg counts, morning walk, daily report) call
+// setPreferredFarm('Hegins'|'Danville'). Route them through the new model.
 function setPreferredFarm(f) {
   if (f !== 'Hegins' && f !== 'Danville') return;
-  try { localStorage.setItem('preferredFarm', f); } catch(e) {}
-  // Re-scope all name pickers to the newly selected plant.
-  if (typeof updateStaffDropdowns === 'function') updateStaffDropdowns();
+  setActiveLocation(f);
 }
+
+// Paint the active state on every location control (landing pills + header).
+function renderLocationSwitch() {
+  const loc = getActiveLocation();
+  document.querySelectorAll('.loc-pill').forEach(btn => {
+    const on = btn.dataset.loc === loc;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('.loc-current-label').forEach(el => {
+    el.textContent = (loc === 'Master') ? 'All Locations' : loc;
+  });
+}
+
+// Re-render whatever view is showing so a location change takes effect now.
+function rerenderActiveView() {
+  try {
+    const landing = document.getElementById('landing-screen');
+    if (landing && landing.style.display !== 'none') {
+      if (typeof renderLandingStatus === 'function') renderLandingStatus();
+      return;
+    }
+    if (typeof go === 'function' && window._activeTab) go(window._activeTab);
+  } catch(e) { console.warn('rerenderActiveView failed:', e); }
+}
+
+// On boot: keep the legacy preferredFarm key in sync with the default so
+// code paths that read it directly behave, then paint the switch.
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    const loc = getActiveLocation();
+    if (loc !== 'Master' && !localStorage.getItem('preferredFarm')) {
+      localStorage.setItem('preferredFarm', loc);
+    }
+  } catch(e) {}
+  if (typeof renderLocationSwitch === 'function') renderLocationSwitch();
+});
 
 // Several modules (maintenance.js, production.js, daily-checklist.js, etc.)
 // call `if (typeof toast === 'function') toast(msg)` to surface a quick error
@@ -2202,6 +2262,7 @@ function go(tab) {
   const pm = {dash:'panel-dash', prod:'panel-prod', maint:'panel-maint', pkg:'panel-pkg', feed:'panel-feed', ship:'panel-ship', kpi:'panel-kpi', reports:'panel-reports', sched:'panel-sched', staff:'panel-staff', check:'panel-check', mw:'panel-mw', oncall:'panel-oncall', daily:'panel-daily'};
   const tm = {dash:'tab-dash', prod:'tab-prod', maint:'tab-maint', pkg:'tab-pkg', feed:'tab-feed', ship:'tab-ship', kpi:'tab-kpi', reports:'tab-reports', sched:'tab-sched', staff:'tab-staff', check:'tab-check', mw:'tab-mw', oncall:'tab-oncall', daily:'tab-daily'};
   if (!pm[tab]) return;
+  window._activeTab = tab;   // remembered so a location switch can re-render
   document.getElementById(pm[tab]).classList.add('active');
   const tabEl = document.getElementById(tm[tab]);
   if (tabEl) tabEl.classList.add('active');

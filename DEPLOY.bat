@@ -2,7 +2,8 @@
 REM ===============================================================
 REM  Rushtown Operations Hub — Deploy script
 REM  Double-click this file to push changes to GitHub.
-REM  GitHub Actions will auto-deploy to Firebase Hosting in ~2 min.
+REM  Netlify auto-builds the live app from GitHub in ~2 min:
+REM  https://rushtownmaintenancehub.netlify.app/
 REM ===============================================================
 
 cd /d "%~dp0"
@@ -13,7 +14,7 @@ git status --short
 echo.
 
 echo === Staging changed files ===
-git add -A js/ index.html sw.js DEPLOY.bat DEPLOY-FIREBASE-DIRECT.bat firestore.rules functions/index.js firebase.json
+git add -A js/ index.html sw.js DEPLOY.bat netlify.toml firestore.rules functions/index.js firebase.json
 git status --short
 echo.
 
@@ -50,7 +51,8 @@ if errorlevel 1 (
 echo.
 
 echo === Done ===
-echo Push succeeded. Netlify + Firebase will deploy in ~2 minutes.
-echo Then refresh the app on a tablet to pick up the new version.
+echo Push succeeded. The app will rebuild at:
+echo     https://rushtownmaintenancehub.netlify.app/
+echo in about 2 minutes. Refresh a tablet to pick up the new version.
 echo.
 pause
