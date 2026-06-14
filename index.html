@@ -684,33 +684,52 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button id="landing-lang-btn" onclick="toggleLang()" style="padding:9px 16px;background:#0a1a2a;border:2px solid #3b82f6;border-radius:50px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;display:flex;align-items:center;gap:6px;flex-shrink:0;">🌐 <span id="landing-lang-label">ES</span></button>
   </div>
 
-  <!-- ── Logo / Title ── -->
-  <div style="text-align:center;padding:10px 18px 12px;flex-shrink:0;">
+  <style>
+    .loc-pill{padding:9px 18px;background:#0f1a0f;border:2px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.5px;cursor:pointer;transition:all .15s;}
+    .loc-pill:hover{border-color:#3a7a3a;}
+    .loc-pill.active{background:#1a3a1a;border-color:#4caf50;color:#fff;box-shadow:0 0 0 3px rgba(76,175,80,.15);}
+    .loc-current-chip{display:flex;align-items:center;gap:5px;padding:7px 13px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.5px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+    .loc-current-chip:hover{border-color:#4caf50;color:#fff;}
+    .loc-choice{padding:22px 24px;background:#12241200;border:2px solid #2a5a2a;border-radius:16px;color:#f0ead8;font-family:'IBM Plex Mono',monospace;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:14px;text-align:left;transition:all .15s;}
+    .loc-choice:hover{border-color:#4caf50;background:#1a3a1a;box-shadow:0 0 0 3px rgba(76,175,80,.12);}
+    .loc-choice .lc-emoji{font-size:30px;line-height:1;}
+    .loc-choice .lc-name{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:3px;line-height:1;}
+    .loc-choice .lc-sub{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab07a;letter-spacing:1.5px;text-transform:uppercase;margin-top:4px;}
+    .loc-choice .lc-arrow{margin-left:auto;font-size:22px;color:#4caf50;}
+  </style>
+
+  <!-- ── LOCATION PICKER: choose a site, then its home opens ── -->
+  <div id="loc-picker" style="text-align:center;padding:18px 18px 24px;flex-shrink:0;">
     <span onclick="chickenClick(event)" style="font-size:46px;line-height:1;margin-bottom:6px;cursor:pointer;user-select:none;display:block;">🐔</span>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#f0ead8;letter-spacing:4px;">RUSHTOWN POULTRY</div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a7a4a;letter-spacing:3px;text-transform:uppercase;margin-top:2px;">HEGINS &amp; DANVILLE OPERATIONS</div>
 
-    <!-- ── Location switch: pick the plant the whole hub is scoped to ── -->
-    <style>
-      .loc-pill{padding:9px 18px;background:#0f1a0f;border:2px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.5px;cursor:pointer;transition:all .15s;}
-      .loc-pill:hover{border-color:#3a7a3a;}
-      .loc-pill.active{background:#1a3a1a;border-color:#4caf50;color:#fff;box-shadow:0 0 0 3px rgba(76,175,80,.15);}
-      .loc-current-chip{display:flex;align-items:center;gap:5px;padding:7px 13px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.5px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
-      .loc-current-chip:hover{border-color:#4caf50;color:#fff;}
-    </style>
-    <div id="loc-switch" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;">
-      <button class="loc-pill" data-loc="Hegins"   onclick="setActiveLocation('Hegins')">📍 Hegins</button>
-      <button class="loc-pill" data-loc="Danville" onclick="setActiveLocation('Danville')">📍 Danville</button>
-      <button class="loc-pill" data-loc="Master"   onclick="setActiveLocation('Master')">🏢 Master</button>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a8a5a;letter-spacing:3px;text-transform:uppercase;margin:26px 0 14px;">Select a location</div>
+    <div id="loc-switch" style="display:flex;flex-direction:column;gap:12px;max-width:360px;margin:0 auto;">
+      <button class="loc-pill loc-choice" data-loc="Hegins" onclick="openLocationHome('Hegins')">
+        <span class="lc-emoji">📍</span><span><span class="lc-name">HEGINS</span><span class="lc-sub" style="display:block;">Layer houses · this site only</span></span><span class="lc-arrow">→</span>
+      </button>
+      <button class="loc-pill loc-choice" data-loc="Danville" onclick="openLocationHome('Danville')">
+        <span class="lc-emoji">📍</span><span><span class="lc-name">DANVILLE</span><span class="lc-sub" style="display:block;">Layer houses · this site only</span></span><span class="lc-arrow">→</span>
+      </button>
+      <button class="loc-pill loc-choice" data-loc="Master" onclick="openLocationHome('Master')" style="border-color:#3b82f6;">
+        <span class="lc-emoji">🏢</span><span><span class="lc-name" style="color:#bcd3f6;">MASTER</span><span class="lc-sub" style="display:block;color:#7ab0f6;">All locations combined</span></span><span class="lc-arrow" style="color:#3b82f6;">→</span>
+      </button>
     </div>
-
-    <!-- ── Active-location context: makes it obvious what the home screen is scoped to ── -->
-    <div id="landing-loc-context" style="margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#4ade80;"></div>
   </div>
 
-  <!-- ── Cards + Quick Actions ── -->
-  <div style="flex:1;padding:0 12px 16px;">
+  <!-- ── PER-LOCATION HOME: opens after a site is picked, scoped to it ── -->
+  <div id="loc-home" style="display:none;flex:1;padding:0 12px 16px;">
     <div style="max-width:700px;margin:0 auto;">
+
+      <!-- Location header: name of the site you're inside -->
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 2px 18px;">
+        <button onclick="showLocationPicker()" style="padding:9px 14px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">← Locations</button>
+        <div style="flex:1;min-width:0;">
+          <div id="loc-home-title" style="font-family:'Bebas Neue',sans-serif;font-size:34px;color:#f0ead8;letter-spacing:3px;line-height:1;">HEGINS</div>
+          <div id="loc-home-sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4ade80;letter-spacing:2px;text-transform:uppercase;margin-top:3px;">This location only</div>
+        </div>
+      </div>
 
       <!-- 2-column card grid -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">

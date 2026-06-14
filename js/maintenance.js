@@ -3873,6 +3873,8 @@ function goHome() {
 
 
   injectLandingStaffCard();
+  // Land on the location picker (not a stale site home) every time Home is hit.
+  if (typeof showLocationPicker === 'function') showLocationPicker();
   updateHomeFeedStatus();
   if (typeof renderLandingStatus === 'function') renderLandingStatus();
 }

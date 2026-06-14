@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v77 · Jun 14 2026';
+var APP_VERSION = 'v78 · Jun 14 2026';
 
 // ── Device user (per device) ─────────────────────────────────────────────
 // Remembers the last name typed into any staff-name field on this device
@@ -776,21 +776,44 @@ function renderLocationSwitch() {
   renderLocationContext();
 }
 
-// The "Viewing: ___" banner under the location pills on the home screen.
-// Spells out exactly what the home screen is currently scoped to so a Hegins
-// tablet never has to wonder whether it's looking at Danville's numbers.
+// Paint the per-location home header (the site name you're inside) so the
+// screen always says which location it's tracking. Hegins/Danville → that
+// site only; Master → everything combined.
 function renderLocationContext() {
-  const el = document.getElementById('landing-loc-context');
-  if (!el) return;
   const loc = getActiveLocation();
-  if (loc === 'Master') {
-    el.innerHTML = '🏢 Viewing: <b style="color:#f0ead8;">All Locations</b> — Hegins + Danville combined';
-    el.style.color = '#7ab0f6';
-  } else {
-    el.innerHTML = `📍 Viewing: <b style="color:#f0ead8;">${loc}</b> — this location only`;
-    el.style.color = '#4ade80';
+  const title = document.getElementById('loc-home-title');
+  const sub   = document.getElementById('loc-home-sub');
+  if (title) title.textContent = (loc === 'Master') ? 'ALL LOCATIONS' : String(loc).toUpperCase();
+  if (sub) {
+    if (loc === 'Master') { sub.textContent = 'Hegins + Danville combined'; sub.style.color = '#7ab0f6'; }
+    else { sub.textContent = 'This location only'; sub.style.color = '#4ade80'; }
   }
 }
+
+// ── Two-screen flow: location picker → per-site home ─────────────────────
+// Tapping a location on the landing screen opens a home screen titled with
+// that site's name; everything below it is already scoped via getPreferredFarm.
+function openLocationHome(loc) {
+  if (typeof setActiveLocation === 'function') setActiveLocation(loc);
+  const picker = document.getElementById('loc-picker');
+  const home   = document.getElementById('loc-home');
+  if (picker) picker.style.display = 'none';
+  if (home)   home.style.display   = '';
+  renderLocationContext();
+  if (typeof renderLandingStatus === 'function') renderLandingStatus();
+  if (typeof updateHomeFeedStatus === 'function') updateHomeFeedStatus();
+  try { window.scrollTo(0, 0); } catch(e) {}
+}
+
+// Back to the location chooser.
+function showLocationPicker() {
+  const picker = document.getElementById('loc-picker');
+  const home   = document.getElementById('loc-home');
+  if (home)   home.style.display   = 'none';
+  if (picker) picker.style.display = '';
+  try { window.scrollTo(0, 0); } catch(e) {}
+}
+if (typeof window !== 'undefined') { window.openLocationHome = openLocationHome; window.showLocationPicker = showLocationPicker; }
 
 // Re-render whatever view is showing so a location change takes effect now.
 function rerenderActiveView() {
