@@ -3,28 +3,39 @@
 const EGG_BIRDS_PER_BARN = 150000;
 
 // ── Landing page live status badges ──────────────────
+// Scoped to the active location: Hegins / Danville show ONLY that plant's
+// numbers; Master combines everything. `pref` is null at Master, which means
+// "all locations" — the same convention every farm filter in the app uses.
 async function renderLandingStatus() {
   const today = new Date().toISOString().slice(0,10);
   const badge = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  const pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+  const here = (rowFarm) => !pref || rowFarm === pref;   // Master → keep all
 
-  // Production: barn walk count today
+  // Keep the "Viewing: ___" banner in sync whenever the home screen repaints.
+  if (typeof renderLocationContext === 'function') renderLocationContext();
+
+  // Production: barn walks done today, out of this location's house count.
   try {
     const snap = await db.collection('barnWalks')
       .where('date','==',today).get().catch(() =>
         db.collection('barnWalks').where('ts','>=', new Date(today)).get()
       );
-    const done = snap.docs.length;
-    const total = 13;
-    const color = done >= total ? '#4caf50' : done > 0 ? '#d69e2e' : '#e53e3e';
-    badge('ls-prod', `<span style="color:${color};font-weight:700;">${done}/${total} barns checked today</span>`);
+    const done = snap.docs.filter(d => here((d.data()||{}).farm)).length;
+    // Total expected barns: just this plant's houses, or both plants at Master.
+    const houseCount = (f) => (typeof FARM_HOUSES !== 'undefined' && FARM_HOUSES[f]) ? FARM_HOUSES[f].length : 0;
+    const total = pref ? houseCount(pref) : (houseCount('Hegins') + houseCount('Danville'));
+    const color = (total && done >= total) ? '#4caf50' : done > 0 ? '#d69e2e' : '#e53e3e';
+    badge('ls-prod', `<span style="color:${color};font-weight:700;">${done}/${total||'—'} barns checked today</span>`);
   } catch(e) { badge('ls-prod',''); }
 
-  // Maintenance: open work orders
+  // Maintenance: open work orders for this location.
   try {
     const snap = await db.collection('workOrders')
       .where('status','in',['open','in-progress']).get();
-    const count = snap.docs.length;
-    const urgent = snap.docs.filter(d => d.data().priority === 'urgent').length;
+    const open = snap.docs.map(d => d.data()).filter(w => here(w.farm));
+    const count = open.length;
+    const urgent = open.filter(w => w.priority === 'urgent').length;
     const color = urgent > 0 ? '#e53e3e' : count > 0 ? '#d69e2e' : '#4caf50';
     const txt = count === 0 ? '✓ No open work orders'
       : urgent > 0 ? `${urgent} urgent · ${count} total open`
@@ -32,15 +43,15 @@ async function renderLandingStatus() {
     badge('ls-maint', `<span style="color:${color};font-weight:700;">${txt}</span>`);
   } catch(e) { badge('ls-maint',''); }
 
-  // On-Call: today's scheduled people across sites
+  // On-Call: today's scheduled people, scoped to this site.
   try {
     const ocSnap = await db.collection('onCallSchedule').where('date','==',today).get();
-    const ocDocs = ocSnap.docs.map(d => d.data());
-    // Also count any open (unresolved) on-call log entries today
+    const ocDocs = ocSnap.docs.map(d => d.data()).filter(d => here(d.site));
+    // Open (unresolved) on-call log entries, scoped the same way.
     const ocLogSnap = await db.collection('onCallLog').where('resolved','==',false).get();
-    const openCount = ocLogSnap.docs.length;
+    const openCount = ocLogSnap.docs.map(d => d.data()).filter(d => here(d.site)).length;
     if (ocDocs.length > 0) {
-      const names = ocDocs.map(d => `${d.site}: ${d.staffName}`).join(' · ');
+      const names = ocDocs.map(d => pref ? d.staffName : `${d.site}: ${d.staffName}`).join(' · ');
       const suffix = openCount > 0 ? ` · <span style="color:#e53e3e;">${openCount} open</span>` : '';
       badge('ls-oncall', `<span style="color:#4caf50;font-weight:700;">${names}</span>${suffix}`);
     } else if (openCount > 0) {

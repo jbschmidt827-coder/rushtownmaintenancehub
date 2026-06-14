@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v75 · Jun 14 2026';
+var APP_VERSION = 'v76 · Jun 14 2026';
 
 // ── Device user (per device) ─────────────────────────────────────────────
 // Remembers the last name typed into any staff-name field on this device
@@ -773,6 +773,23 @@ function renderLocationSwitch() {
   document.querySelectorAll('.loc-current-label').forEach(el => {
     el.textContent = (loc === 'Master') ? 'All Locations' : loc;
   });
+  renderLocationContext();
+}
+
+// The "Viewing: ___" banner under the location pills on the home screen.
+// Spells out exactly what the home screen is currently scoped to so a Hegins
+// tablet never has to wonder whether it's looking at Danville's numbers.
+function renderLocationContext() {
+  const el = document.getElementById('landing-loc-context');
+  if (!el) return;
+  const loc = getActiveLocation();
+  if (loc === 'Master') {
+    el.innerHTML = '🏢 Viewing: <b style="color:#f0ead8;">All Locations</b> — Hegins + Danville combined';
+    el.style.color = '#7ab0f6';
+  } else {
+    el.innerHTML = `📍 Viewing: <b style="color:#f0ead8;">${loc}</b> — this location only`;
+    el.style.color = '#4ade80';
+  }
 }
 
 // Re-render whatever view is showing so a location change takes effect now.
