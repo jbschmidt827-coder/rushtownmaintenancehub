@@ -218,11 +218,18 @@ function farmWalkDueBadge(farm, total) {
 function renderProdPanel() {
   const bs = typeof BARN_STATUS !== 'undefined' ? BARN_STATUS : {};
   const ms = typeof MORNING_STATUS !== 'undefined' ? MORNING_STATUS : {};
-  const totalBarns = 13;
+  // ── Scope the whole panel to the active location ──────────────────────────
+  // Hegins / Danville show ONLY that plant; Master (null) shows both.
+  const _pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+  const farmsToShow = _pref ? [_pref] : ['Hegins','Danville'];
+  const inScope = (key) => farmsToShow.some(f => String(key).startsWith(f + '-'));
+
+  const FARM_BARN_CT = { Hegins: 8, Danville: 5 };
+  const totalBarns = farmsToShow.reduce((s,f) => s + (FARM_BARN_CT[f]||0), 0) || 13;
   // A barn counts as checked if either a barn walk OR a morning walk was submitted
   const allKeys = new Set([...Object.keys(bs), ...Object.keys(ms)]);
-  const done   = [...allKeys].filter(k => bs[k]==='done'||bs[k]==='issue'||ms[k]==='done'||ms[k]==='issue').length;
-  const issues = Object.values(bs).filter(s => s==='issue').length;
+  const done   = [...allKeys].filter(k => inScope(k) && (bs[k]==='done'||bs[k]==='issue'||ms[k]==='done'||ms[k]==='issue')).length;
+  const issues = Object.entries(bs).filter(([k,s]) => inScope(k) && s==='issue').length;
   const pct    = Math.round(done / totalBarns * 100);
   const todayStr = new Date().toISOString().slice(0,10);
 
@@ -235,7 +242,9 @@ function renderProdPanel() {
       eggMap[k] = (eggMap[k] || 0) + (Number(r.eggs) || 0);
     });
 
-  const todayEggs = Object.values(eggMap).reduce((s,v) => s + v, 0);
+  const todayEggs = Object.entries(eggMap)
+    .filter(([k]) => inScope(k))
+    .reduce((s,[,v]) => s + v, 0);
 
   // Per-location progress
   const FARM_BARNS = { Hegins: 8, Danville: 5 };
@@ -279,8 +288,7 @@ function renderProdPanel() {
 
   const kpiBar = document.getElementById('prod-kpi-bar');
   if (kpiBar) kpiBar.innerHTML = `
-    ${locationTile('Hegins')}
-    ${locationTile('Danville')}
+    ${farmsToShow.map(f => locationTile(f)).join('')}
     <div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px 12px;text-align:center;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:#f0ead8;line-height:1;">${fmtNum(todayEggs)}</div>
       <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">${t('prod.kpi.eggs')}</div>
@@ -297,10 +305,13 @@ function renderProdPanel() {
   const farmOrder = ['Hegins','Danville','Rushtown','Turbotville','W&M'];
   const farmHouses = { Hegins:8, Danville:5, Rushtown:5, Turbotville:4, 'W&M':2 };
 
-  // Only show farms that have at least one barn with reported eggs today
-  const farmsWithData = farmOrder.filter(farm =>
-    Object.keys(eggMap).some(k => k.startsWith(farm + '-'))
-  );
+  // Only show farms that have at least one barn with reported eggs today,
+  // and only the active location (Master → all farms).
+  const farmsWithData = farmOrder
+    .filter(farm => !_pref || farm === _pref)
+    .filter(farm =>
+      Object.keys(eggMap).some(k => k.startsWith(farm + '-'))
+    );
 
   if (farmsWithData.length === 0) {
     eggKpi.innerHTML = `

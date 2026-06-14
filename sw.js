@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v76-autoupdate';
+const CACHE_NAME = 'rushtown-v77-autoupdate';
 
 const SHELL_FILES = [
   '/',
