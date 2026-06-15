@@ -5112,7 +5112,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260614-scorecard"></script>
+<script defer src="js/core.js?v=20260615-autoupdate"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
@@ -5182,13 +5182,50 @@ if (typeof injectLandingStaffCard === 'function') injectLandingStaffCard();
 </script>
 
 <script>
-// ── PWA Service Worker Registration + in-app update prompt ──
-// The app is a long-lived PWA on shared tablets. Without this, a tablet keeps
-// serving its cached copy until it is fully closed, so devices drift onto
-// different versions. We register the SW, watch for a newer one, and show a
-// tap-to-update bar. The new worker WAITS (it no longer self-skipWaiting), so
-// the refresh only happens when the user taps Update — never mid-task.
+// ── PWA Service Worker Registration + AUTO-UPDATE ──
+// The app is a long-lived PWA on shared, locked iPads. They are almost never
+// fully closed, so without help a tablet keeps serving its cached copy until
+// someone manually taps an update bar — which, with screens locked, never
+// happens. Devices then drift onto stale versions.
+//
+// Strategy: when a newer worker is ready, apply it AUTOMATICALLY at the next
+// safe moment — i.e. when the tablet is asleep/backgrounded, or wakes up with
+// nobody mid-task. If someone IS actively typing/has a dialog open, we fall
+// back to the tap-to-update bar so we never yank the page out from under them.
 if ('serviceWorker' in navigator) {
+  var swRefreshing = false;
+  var updateInitiated = false;  // only true once WE apply an update
+
+  // Reload exactly once, the instant the new worker takes control — but only
+  // for a real update we triggered, never for the first-ever install claim.
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    if (!updateInitiated || swRefreshing) return;
+    swRefreshing = true;
+    window.location.reload();
+  });
+
+  // Is the person in the middle of something we shouldn't interrupt?
+  function userIsBusy() {
+    var el = document.activeElement;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ||
+               el.tagName === 'SELECT' || el.isContentEditable)) return true;
+    // Any open modal / overlay counts as "busy".
+    if (document.querySelector(
+      '.modal.open, .modal.show, .modal[style*="display: flex"], ' +
+      '.overlay.open, .overlay.active, [data-modal-open="true"]')) return true;
+    return false;
+  }
+
+  function applyUpdate(worker) {
+    if (!worker) return;
+    updateInitiated = true;
+    worker.postMessage({ type: 'SKIP_WAITING' });
+    // Safety net in case controllerchange never fires.
+    setTimeout(function() {
+      if (!swRefreshing) { swRefreshing = true; window.location.reload(); }
+    }, 3000);
+  }
+
   function showUpdateBar(worker) {
     if (document.getElementById('sw-update-bar')) return;
     var bar = document.createElement('div');
@@ -5202,13 +5239,7 @@ if ('serviceWorker' in navigator) {
     btn.onclick = function() {
       btn.textContent = 'Updating…';
       btn.disabled = true;
-      // Reload as soon as the new worker takes control.
-      navigator.serviceWorker.addEventListener('controllerchange', function() {
-        window.location.reload();
-      }, { once: true });
-      if (worker) worker.postMessage({ type: 'SKIP_WAITING' });
-      // Safety net in case controllerchange doesn't fire.
-      setTimeout(function() { window.location.reload(); }, 2500);
+      applyUpdate(worker);
     };
     bar.appendChild(txt);
     bar.appendChild(btn);
@@ -5219,26 +5250,49 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then(function(reg) {
       console.log('SW registered:', reg.scope);
 
-      // Only prompt when there's already a controller — otherwise this is the
-      // first install and there's nothing to "update" from.
-      function offerUpdate(worker) {
-        if (worker && navigator.serviceWorker.controller) showUpdateBar(worker);
+      // Decide what to do with a freshly-installed worker. Only act when there's
+      // already a controller — otherwise this is the very first install and
+      // there's nothing to "update" from.
+      function handleNewWorker(worker) {
+        if (!worker || !navigator.serviceWorker.controller) return;
+        // Safe to auto-apply when the tablet is asleep/backgrounded, or awake
+        // but nobody is mid-task. Otherwise let them tap when ready.
+        if (document.hidden || !userIsBusy()) {
+          applyUpdate(worker);
+        } else {
+          showUpdateBar(worker);
+        }
       }
 
-      if (reg.waiting) offerUpdate(reg.waiting);
+      if (reg.waiting) handleNewWorker(reg.waiting);
       reg.addEventListener('updatefound', function() {
         var nw = reg.installing;
         if (!nw) return;
         nw.addEventListener('statechange', function() {
-          if (nw.state === 'installed') offerUpdate(nw);
+          if (nw.state === 'installed') handleNewWorker(nw);
         });
       });
 
-      // Tablets are rarely closed, so check for a new build each time the app
-      // is brought back to the foreground.
+      function checkForUpdate() { try { reg.update(); } catch (e) {} }
+
+      // Tablets are rarely closed, so check for a new build whenever the app is
+      // woken/foregrounded — and apply anything already waiting now that it's
+      // awake and (usually) idle.
       document.addEventListener('visibilitychange', function() {
-        if (!document.hidden) { try { reg.update(); } catch (e) {} }
+        if (!document.hidden) {
+          checkForUpdate();
+          if (reg.waiting) handleNewWorker(reg.waiting);
+        }
       });
+      window.addEventListener('focus', checkForUpdate);
+      window.addEventListener('pageshow', checkForUpdate);
+
+      // Belt-and-suspenders for a tablet that stays awake all day: poll every
+      // 30 minutes so it never sits more than half an hour behind a deploy.
+      setInterval(function() {
+        checkForUpdate();
+        if (reg.waiting) handleNewWorker(reg.waiting);
+      }, 30 * 60 * 1000);
     }).catch(function(err) { console.warn('SW registration failed:', err); });
   });
 }
