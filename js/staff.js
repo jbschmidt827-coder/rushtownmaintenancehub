@@ -20,15 +20,22 @@ function startStaffListener() {
   } catch(e) { console.error('Staff listener error:', e); }
 }
 
+// Maintenance techs cover every plant, so a 'Both'/'All'-tagged tech shows at
+// all facilities. Other 'Both' people (mgmt, office, etc.) stay out of the
+// per-facility pickers. Adjust the roles here if "maintenance tech" should be wider.
+function _isMaintTech(s) {
+  return !!s && (s.role === 'Technician' || s.role === 'Lead');
+}
+
 // ── Canonical name source for the entire app ──
 // Returns ONLY active staff added via the Staff panel. No fallback names.
 function getActiveStaff(farm, role) {
   if (typeof staffList === 'undefined' || !Array.isArray(staffList)) return [];
   let list = staffList.filter(s => s && s.active !== false);
   if (farm) {
-    // Strict: only people assigned to this facility (or 'Both'/'All'). Someone
-    // with no facility set won't appear here until they're assigned in Staff.
-    list = list.filter(s => s.farm === farm || s.farm === 'Both' || s.farm === 'All');
+    // Only this facility's people — plus maintenance techs tagged 'Both'/'All'
+    // (they cover every plant). Other 'Both' people don't show at each facility.
+    list = list.filter(s => s.farm === farm || ((s.farm === 'Both' || s.farm === 'All') && _isMaintTech(s)));
   }
   if (role) {
     list = list.filter(s => !s.role || s.role === role);
@@ -37,13 +44,13 @@ function getActiveStaff(farm, role) {
 }
 
 // ── Active staff at a given location (canonical filter) ──
-// loc '' / null → everyone. Otherwise: ONLY that plant + 'Both'/'All'. People
-// with no facility set are NOT shown at a specific plant — assign them in Staff.
+// loc '' / null → everyone. Otherwise: ONLY that plant's people, plus
+// maintenance techs tagged 'Both'/'All' (they cover every plant).
 function staffAtLocation(loc) {
   let list = (typeof staffList !== 'undefined' && Array.isArray(staffList))
     ? staffList.filter(s => s && s.active !== false) : [];
   if (loc) {
-    list = list.filter(s => s.farm === loc || s.farm === 'Both' || s.farm === 'All' || s.farm === 'All Farms');
+    list = list.filter(s => s.farm === loc || ((s.farm === 'Both' || s.farm === 'All' || s.farm === 'All Farms') && _isMaintTech(s)));
   }
   return list;
 }
