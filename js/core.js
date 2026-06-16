@@ -696,7 +696,29 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v102 · Jun 16 2026';
+var APP_VERSION = 'v103 · Jun 16 2026';
+
+// ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
+// Applies app-wide via a single root filter, remembered per device. The early
+// inline script in index.html applies the saved level before paint (no flash);
+// this updates it live when the toggle is tapped and highlights the active button.
+function setScreenMode(mode) {
+  mode = (mode === 'mid' || mode === 'bright') ? mode : 'dark';
+  var f = mode === 'bright' ? 'brightness(1.65) contrast(1.08)'
+        : mode === 'mid'    ? 'brightness(1.3) contrast(1.04)'
+        : 'none';
+  try { document.documentElement.style.filter = f; } catch (e) {}
+  try { localStorage.setItem('screenMode', mode); } catch (e) {}
+  ['dark','mid','bright'].forEach(function (m) {
+    var b = document.getElementById('mode-btn-' + m);
+    if (!b) return;
+    var on = (m === mode);
+    b.style.background = on ? '#2e7d32' : 'transparent';
+    b.style.color      = on ? '#ffffff' : '#7ab07a';
+  });
+}
+if (typeof window !== 'undefined') window.setScreenMode = setScreenMode;
+try { setScreenMode(localStorage.getItem('screenMode') || 'dark'); } catch (e) {}
 
 // ── Device user (per device) ─────────────────────────────────────────────
 // Remembers the last name typed into any staff-name field on this device

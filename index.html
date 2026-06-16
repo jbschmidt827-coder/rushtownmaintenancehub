@@ -671,6 +671,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 </style>
 </head>
 <body>
+<script>/* apply saved screen brightness before paint — no flash */try{var _sm=localStorage.getItem('screenMode');if(_sm==='mid')document.documentElement.style.filter='brightness(1.3) contrast(1.04)';else if(_sm==='bright')document.documentElement.style.filter='brightness(1.65) contrast(1.08)';}catch(e){}</script>
 
 
 
@@ -683,7 +684,14 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       <div id="ls-clock" style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:700;color:#f0ead8;letter-spacing:1px;line-height:1.1;"></div>
       <div id="ls-date"  style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a8a5a;letter-spacing:2px;text-transform:uppercase;margin-top:3px;"></div>
     </div>
-    <button id="landing-lang-btn" onclick="toggleLang()" style="padding:9px 16px;background:#0a1a2a;border:2px solid #3b82f6;border-radius:50px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;display:flex;align-items:center;gap:6px;flex-shrink:0;">🌐 <span id="landing-lang-label">ES</span></button>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      <div style="display:flex;border:2px solid #2a5a2a;border-radius:50px;overflow:hidden;">
+        <button id="mode-btn-dark"   onclick="setScreenMode('dark')"   style="padding:8px 12px;background:transparent;border:none;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">Dark</button>
+        <button id="mode-btn-mid"    onclick="setScreenMode('mid')"    style="padding:8px 12px;background:transparent;border:none;border-left:1px solid #2a5a2a;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">Mid</button>
+        <button id="mode-btn-bright" onclick="setScreenMode('bright')" style="padding:8px 12px;background:transparent;border:none;border-left:1px solid #2a5a2a;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">Bright</button>
+      </div>
+      <button id="landing-lang-btn" onclick="toggleLang()" style="padding:9px 16px;background:#0a1a2a;border:2px solid #3b82f6;border-radius:50px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;display:flex;align-items:center;gap:6px;flex-shrink:0;">🌐 <span id="landing-lang-label">ES</span></button>
+    </div>
   </div>
 
   <style>
@@ -5155,7 +5163,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260616-v102"></script>
+<script defer src="js/core.js?v=20260616-v103"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
