@@ -3857,11 +3857,23 @@ function clFlagToWO(issueText, farm){
 }
 
 function enterApp(tab) {
-  document.getElementById('landing-screen').style.display = 'none';
-  document.getElementById('main-header').style.display = '';
-  document.getElementById('main-content').style.display = '';
-  loadTodayStatus();
-  if (tab) go(tab);
+  // The "New Work Order" card on the location PICKER (before a site is chosen)
+  // routes here too — make sure a location context exists or the scoped WO
+  // dropdowns come up empty. Defaults to the last-used site, else Hegins.
+  try {
+    if (typeof getActiveLocation === 'function') {
+      var _loc = getActiveLocation();
+      if (!_loc && typeof setActiveLocation === 'function') setActiveLocation('Hegins');
+    }
+  } catch (e) { /* non-fatal */ }
+  var ls = document.getElementById('landing-screen'); if (ls) ls.style.display = 'none';
+  var mh = document.getElementById('main-header');    if (mh) mh.style.display = '';
+  var mc = document.getElementById('main-content');   if (mc) mc.style.display = '';
+  try { loadTodayStatus(); } catch (e) { console.warn('enterApp loadTodayStatus:', e); }
+  if (tab) {
+    try { go(tab); }
+    catch (e) { console.error('enterApp: go(' + tab + ') failed —', e); }
+  }
 }
 
 function goHome() {
