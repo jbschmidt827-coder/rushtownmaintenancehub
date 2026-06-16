@@ -602,8 +602,9 @@ async function loadHouses() {
   }
 }
 
-// Currently selected WO priority. Declared so reads never throw before a click.
-var selPri = 'normal';
+// Currently selected WO priority. Declared once in core.js (let selPri = 'normal').
+// Re-declaring it here too threw "Identifier 'selPri' has already been declared",
+// which crashed all of maintenance.js — so this file just uses the core.js global.
 function setPri(val, el) {
   document.querySelectorAll('#wo-pri-bar .pri-pill').forEach(p=>p.classList.remove('sel'));
   if (el) el.classList.add('sel');
