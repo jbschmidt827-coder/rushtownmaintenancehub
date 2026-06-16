@@ -8,6 +8,7 @@
 let _mpProjects   = [];
 let _mpListening  = false;
 let _mpShowAdd    = false;
+let _mpNewStage   = 'upcoming';
 
 function mpFarm() {
   return (typeof getPreferredFarm === 'function' && getPreferredFarm()) || 'Hegins';
@@ -100,6 +101,7 @@ function mpAddFormHtml(farm) {
   return `
   <div style="background:#0a1f0a;border:1.5px solid #2a5a2a;border-radius:12px;padding:16px;margin-bottom:16px;">
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;color:#4ade80;text-transform:uppercase;margin-bottom:10px;">New Project — ${mpEsc(farm)}</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a8a5a;margin-bottom:9px;">Just a title is required — everything else is optional.</div>
     <input id="mp-title" placeholder="Project title (e.g. Bearing redundancy — pack line)" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:9px;">
     <input id="mp-machine" placeholder="Machine / equipment (e.g. Washer + Blower)" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:9px;">
     <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:9px;">
@@ -108,8 +110,8 @@ function mpAddFormHtml(farm) {
     </div>
     <textarea id="mp-tasks" rows="4" placeholder="Tasks — one per line, e.g.&#10;Order bearings — Machine A&#10;Order bearings — Machine B&#10;Rebuild Machine A&#10;Rebuild Machine B" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:10px;"></textarea>
     <div style="display:flex;gap:9px;margin-bottom:11px;">
-      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#e8f5ec;"><input type="radio" name="mp-stage" value="upcoming" checked> 📅 Upcoming</label>
-      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#e8f5ec;"><input type="radio" name="mp-stage" value="active"> 🔧 In progress</label>
+      <button type="button" id="mp-stage-upcoming" onclick="mpPickStage('upcoming')" style="${mpStageBtnStyle(_mpNewStage==='upcoming')}">📅 Upcoming</button>
+      <button type="button" id="mp-stage-active" onclick="mpPickStage('active')" style="${mpStageBtnStyle(_mpNewStage==='active')}">🔧 In progress</button>
     </div>
     <button onclick="mpCreateProject()" style="width:100%;padding:13px;border:none;border-radius:10px;background:#2e7d32;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:800;letter-spacing:1px;cursor:pointer;">✓ Create Project</button>
   </div>`;
@@ -159,7 +161,19 @@ function mpCardHtml(p, isDone) {
 }
 
 // ── Actions ──────────────────────────────────────────────────────────────────
-function mpToggleAdd() { _mpShowAdd = !_mpShowAdd; renderMaintProjects(); }
+function mpToggleAdd() { _mpShowAdd = !_mpShowAdd; if (_mpShowAdd) _mpNewStage = 'upcoming'; renderMaintProjects(); }
+
+function mpStageBtnStyle(on) {
+  return `flex:1;padding:13px;border-radius:8px;border:2px solid ${on?'#4ade80':'#2a5a2a'};background:${on?'#16351b':'#06120a'};color:${on?'#fff':'#7ab07a'};font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;`;
+}
+
+function mpPickStage(s) {
+  _mpNewStage = s;
+  const up = document.getElementById('mp-stage-upcoming');
+  const ac = document.getElementById('mp-stage-active');
+  if (up) up.setAttribute('style', mpStageBtnStyle(s === 'upcoming'));
+  if (ac) ac.setAttribute('style', mpStageBtnStyle(s === 'active'));
+}
 
 async function mpCreateProject() {
   const title = (document.getElementById('mp-title')   || {}).value || '';
@@ -168,9 +182,7 @@ async function mpCreateProject() {
   const due = (document.getElementById('mp-due')      || {}).value || '';
   const tasksRaw = (document.getElementById('mp-tasks')  || {}).value || '';
   if (!title.trim()) { alert('Please give the project a title.'); return; }
-  let stage = 'upcoming';
-  const stageEls = document.getElementsByName('mp-stage');
-  for (let i = 0; i < stageEls.length; i++) if (stageEls[i].checked) stage = stageEls[i].value;
+  const stage = _mpNewStage || 'upcoming';
   const tasks = tasksRaw.split('\n').map(s => s.trim()).filter(Boolean).map(text => ({ text, done: false }));
   const rec = {
     farm: mpFarm(),
@@ -255,4 +267,5 @@ if (typeof window !== 'undefined') {
   window.mpAddTask = mpAddTask;
   window.mpDeleteTask = mpDeleteTask;
   window.mpDeleteProject = mpDeleteProject;
+  window.mpPickStage = mpPickStage;
 }
