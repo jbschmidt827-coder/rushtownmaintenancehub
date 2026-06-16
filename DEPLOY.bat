@@ -8,6 +8,21 @@ REM ===============================================================
 
 cd /d "%~dp0"
 
+REM === Auto-heal git (OneDrive can leave a stale lock or corrupt the index) ===
+REM These settings stop OneDrive's permission/timestamp churn from showing as
+REM fake changes, and clear/rebuild git's lock + index if they got corrupted.
+REM Your actual files are never touched by this — only git's internal cache.
+git config core.fileMode false >nul 2>&1
+git config core.trustctime false >nul 2>&1
+git config core.checkStat minimal >nul 2>&1
+if exist ".git\index.lock" ( echo Clearing stale git lock... & del /f /q ".git\index.lock" )
+git status >nul 2>&1
+if errorlevel 1 (
+  echo Repairing git index ^(OneDrive corruption^) — your files are safe...
+  del /f /q ".git\index" >nul 2>&1
+  git reset --mixed HEAD >nul 2>&1
+)
+
 echo.
 echo === Current changes ===
 git status --short
