@@ -58,35 +58,40 @@ function renderMaintProjects() {
   if (!el) return;
   const farm = mpFarm();
   const all  = _mpProjects.filter(p => !p.farm || p.farm === farm);
-  const active = all.filter(p => !mpIsDone(p));
-  const done   = all.filter(p =>  mpIsDone(p));
-  // active: overdue/soonest due first, then newest
-  active.sort((a,b) => {
+  const sortFn = (a,b) => {
     const ad = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
     const bd = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
     return ad - bd || (b.createdTs||0) - (a.createdTs||0);
-  });
+  };
+  const done     = all.filter(p =>  mpIsDone(p)).sort(sortFn);
+  const notDone  = all.filter(p => !mpIsDone(p));
+  const upcoming = notDone.filter(p => (p.stage || 'active') === 'upcoming').sort(sortFn);
+  const active   = notDone.filter(p => (p.stage || 'active') !== 'upcoming').sort(sortFn);
 
   let html = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
       <div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;color:#7ab07a;text-transform:uppercase;">📋 Projects · ${mpEsc(farm)}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5a8a5a;margin-top:3px;">${active.length} active · ${done.length} done</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5a8a5a;margin-top:3px;">${upcoming.length} upcoming · ${active.length} in progress · ${done.length} done</div>
       </div>
       <button onclick="mpToggleAdd()" style="padding:10px 16px;background:#1a3a1a;border:1.5px solid #4ade80;border-radius:8px;color:#4ade80;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;">${_mpShowAdd ? '✕ Cancel' : '+ New Project'}</button>
     </div>`;
 
   if (_mpShowAdd) html += mpAddFormHtml(farm);
 
-  if (!active.length && !done.length && !_mpShowAdd) {
-    html += `<div style="text-align:center;padding:40px 16px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;font-size:12px;">No projects yet for ${mpEsc(farm)}.<br>Tap "+ New Project" to start one (e.g. a bearing rebuild).</div>`;
+  if (!all.length && !_mpShowAdd) {
+    html += `<div style="text-align:center;padding:40px 16px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;font-size:12px;">No projects yet for ${mpEsc(farm)}.<br>Tap "+ New Project" to add an upcoming rebuild.</div>`;
   }
 
-  active.forEach(p => { html += mpCardHtml(p); });
-  if (done.length) {
-    html += `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#3a6a3a;text-transform:uppercase;margin:18px 0 8px;">✅ Completed</div>`;
-    done.forEach(p => { html += mpCardHtml(p, true); });
-  }
+  const mpSection = (label, items) => {
+    if (!items.length) return '';
+    let s = `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#3a6a3a;text-transform:uppercase;margin:18px 0 8px;">${label}</div>`;
+    items.forEach(p => { s += mpCardHtml(p, mpIsDone(p)); });
+    return s;
+  };
+  html += mpSection('📅 Upcoming', upcoming);
+  html += mpSection('🔧 In Progress', active);
+  html += mpSection('✅ Completed', done);
 
   el.innerHTML = html;
 }
@@ -102,6 +107,10 @@ function mpAddFormHtml(farm) {
       <input id="mp-due" type="date" style="flex:1;min-width:130px;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;">
     </div>
     <textarea id="mp-tasks" rows="4" placeholder="Tasks — one per line, e.g.&#10;Order bearings — Machine A&#10;Order bearings — Machine B&#10;Rebuild Machine A&#10;Rebuild Machine B" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:10px;"></textarea>
+    <div style="display:flex;gap:9px;margin-bottom:11px;">
+      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#e8f5ec;"><input type="radio" name="mp-stage" value="upcoming" checked> 📅 Upcoming</label>
+      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#e8f5ec;"><input type="radio" name="mp-stage" value="active"> 🔧 In progress</label>
+    </div>
     <button onclick="mpCreateProject()" style="width:100%;padding:13px;border:none;border-radius:10px;background:#2e7d32;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:800;letter-spacing:1px;cursor:pointer;">✓ Create Project</button>
   </div>`;
 }
@@ -138,6 +147,8 @@ function mpCardHtml(p, isDone) {
       <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:${bar};">${pct}%</span>
     </div>
 
+    ${(!isDone && (p.stage || 'active') === 'upcoming') ? `<button onclick="mpStart('${p._id}')" style="margin-bottom:9px;padding:9px 14px;background:#0d2a4a;border:1px solid #3a6aaa;border-radius:8px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;">▶ Start now</button>` : ''}
+
     <div style="margin-top:4px;">${taskHtml || '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#3a6a3a;padding:6px;">No tasks yet — add one below.</div>'}</div>
 
     <div style="display:flex;gap:7px;margin-top:9px;">
@@ -157,6 +168,9 @@ async function mpCreateProject() {
   const due = (document.getElementById('mp-due')      || {}).value || '';
   const tasksRaw = (document.getElementById('mp-tasks')  || {}).value || '';
   if (!title.trim()) { alert('Please give the project a title.'); return; }
+  let stage = 'upcoming';
+  const stageEls = document.getElementsByName('mp-stage');
+  for (let i = 0; i < stageEls.length; i++) if (stageEls[i].checked) stage = stageEls[i].value;
   const tasks = tasksRaw.split('\n').map(s => s.trim()).filter(Boolean).map(text => ({ text, done: false }));
   const rec = {
     farm: mpFarm(),
@@ -165,6 +179,7 @@ async function mpCreateProject() {
     assignedTo: assigned.trim(),
     dueDate: due || null,
     tasks,
+    stage,
     status: 'open',
     createdBy: (typeof getDeviceUser === 'function' ? (getDeviceUser() || '') : ''),
     createdTs: Date.now()
@@ -223,8 +238,17 @@ async function mpDeleteProject(id) {
   catch (e) { console.error('mpDeleteProject:', e); alert('Could not delete: ' + (e && e.message ? e.message : e)); }
 }
 
+async function mpStart(id) {
+  const p = _mpFind(id); if (!p) return;
+  p.stage = 'active';
+  renderMaintProjects();
+  try { await db.collection('maintProjects').doc(id).update({ stage: 'active' }); }
+  catch (e) { console.error('mpStart:', e); }
+}
+
 if (typeof window !== 'undefined') {
   window.renderMaintProjects = renderMaintProjects;
+  window.mpStart = mpStart;
   window.mpToggleAdd = mpToggleAdd;
   window.mpCreateProject = mpCreateProject;
   window.mpToggleTask = mpToggleTask;
