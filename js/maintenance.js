@@ -602,8 +602,10 @@ async function loadHouses() {
   }
 }
 
+// Currently selected WO priority. Declared so reads never throw before a click.
+var selPri = 'normal';
 function setPri(val, el) {
-  document.querySelectorAll('.pri-pill').forEach(p=>p.classList.remove('sel'));
+  document.querySelectorAll('#wo-pri-bar .pri-pill').forEach(p=>p.classList.remove('sel'));
   if (el) el.classList.add('sel');
   selPri = val;
 }
@@ -888,8 +890,10 @@ function afterWOSubmit() {
   const photoPreview = document.getElementById('photo-preview'); if (photoPreview) photoPreview.innerHTML='';
   const photoInput = document.getElementById('photo-input'); if (photoInput) photoInput.value='';
   pendingPhotoData = [];
-  document.querySelectorAll('.pri-pill').forEach(p=>p.classList.remove('sel'));
-  selPri='';
+  document.querySelectorAll('#wo-pri-bar .pri-pill').forEach(p=>p.classList.remove('sel'));
+  const defPri=document.querySelector('#wo-pri-bar .pri-pill.normal');
+  if(defPri) defPri.classList.add('sel');
+  selPri='normal';
   document.getElementById('wo-date').value=todayStr;
   // Re-enable submit button in case it was left disabled by an error
   const submitBtn = document.querySelector('#wo-form-card .btn-confirm');

@@ -266,7 +266,9 @@ textarea { resize: vertical; min-height: 85px; }
 .pri-pill { padding: 9px 16px; border-radius: 50px; border: 2px solid var(--border); cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 1px; transition: all 0.2s; background: #fff; color: var(--muted); user-select: none; }
 .pri-pill.urgent.sel { background: #fde8e6; border-color: var(--red); color: var(--red); }
 .pri-pill.high.sel { background: #fff8e1; border-color: var(--amber); color: #b07a00; }
-.pri-pill.routine.sel { background: var(--green-pale); border-color: var(--green-bright); color: var(--green-mid); }
+.pri-pill.routine.sel, .pri-pill.normal.sel { background: var(--green-pale); border-color: var(--green-bright); color: var(--green-mid); }
+.pri-pill.low.sel { background: #eceff1; border-color: #90a4ae; color: #546e7a; }
+.pri-pill.sel { font-weight: 700; }
 .photo-drop { border: 2px dashed var(--border); border-radius: 8px; padding: 18px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fff; }
 .photo-drop:hover { border-color: var(--green-bright); background: var(--green-pale); }
 .photo-drop input { display: none; }
@@ -3238,10 +3240,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
             </div>
             <div class="fg"><label>Priority <span class="req">*</span></label>
               <div class="pill-bar" id="wo-pri-bar" style="margin-bottom:0;">
-                <button class="pri-pill" onclick="setPri('urgent',this)">🔴 Urgent</button>
-                <button class="pri-pill" onclick="setPri('high',this)">🟡 High</button>
-                <button class="pri-pill sel" onclick="setPri('normal',this)">Normal</button>
-                <button class="pri-pill" onclick="setPri('low',this)">Low</button>
+                <button type="button" class="pri-pill urgent" onclick="setPri('urgent',this)">🔴 Urgent</button>
+                <button type="button" class="pri-pill high" onclick="setPri('high',this)">🟡 High</button>
+                <button type="button" class="pri-pill normal sel" onclick="setPri('normal',this)">Normal</button>
+                <button type="button" class="pri-pill low" onclick="setPri('low',this)">Low</button>
               </div>
             </div>
             <div class="fg"><label>Description <span class="req">*</span></label><textarea id="wo-desc" rows="3" placeholder="Describe the issue in detail..."></textarea></div>
