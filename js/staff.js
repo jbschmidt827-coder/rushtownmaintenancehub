@@ -26,7 +26,9 @@ function getActiveStaff(farm, role) {
   if (typeof staffList === 'undefined' || !Array.isArray(staffList)) return [];
   let list = staffList.filter(s => s && s.active !== false);
   if (farm) {
-    list = list.filter(s => !s.farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All');
+    // Strict: only people assigned to this facility (or 'Both'/'All'). Someone
+    // with no facility set won't appear here until they're assigned in Staff.
+    list = list.filter(s => s.farm === farm || s.farm === 'Both' || s.farm === 'All');
   }
   if (role) {
     list = list.filter(s => !s.role || s.role === role);
@@ -35,13 +37,13 @@ function getActiveStaff(farm, role) {
 }
 
 // ── Active staff at a given location (canonical filter) ──
-// loc '' / null → everyone. Otherwise: that plant + 'Both'/'All', plus any
-// untagged person (blank farm) as a safety so new hires aren't hidden.
+// loc '' / null → everyone. Otherwise: ONLY that plant + 'Both'/'All'. People
+// with no facility set are NOT shown at a specific plant — assign them in Staff.
 function staffAtLocation(loc) {
   let list = (typeof staffList !== 'undefined' && Array.isArray(staffList))
     ? staffList.filter(s => s && s.active !== false) : [];
   if (loc) {
-    list = list.filter(s => !s.farm || s.farm === loc || s.farm === 'Both' || s.farm === 'All' || s.farm === 'All Farms');
+    list = list.filter(s => s.farm === loc || s.farm === 'Both' || s.farm === 'All' || s.farm === 'All Farms');
   }
   return list;
 }
