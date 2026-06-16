@@ -716,6 +716,18 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <span class="lc-emoji">🏢</span><span><span class="lc-name" style="color:#bcd3f6;">MASTER</span><span class="lc-sub" style="display:block;color:#7ab0f6;">All locations combined</span></span><span class="lc-arrow" style="color:#3b82f6;">→</span>
       </button>
     </div>
+
+    <!-- How To Use / Instructions -->
+    <div style="max-width:360px;margin:18px auto 0;">
+      <button onclick="openHelp()" style="width:100%;padding:14px 16px;background:#0d1f0d;border:2px solid #f0c419;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:24px;line-height:1;">📖</span>
+        <div style="flex:1;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">How To Use</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#c7b34a;line-height:1.4;margin-top:2px;">Step-by-step instructions by department</div>
+        </div>
+        <span style="font-size:18px;color:#f0c419;">→</span>
+      </button>
+    </div>
   </div>
 
   <!-- ── PER-LOCATION HOME: opens after a site is picked, scoped to it ── -->
@@ -789,6 +801,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         <div data-i18n="landing.quick_actions" style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:8px;">⚡ QUICK ACTIONS</div>
         <div style="display:grid;grid-template-columns:1fr;gap:8px;">
           <button data-i18n="landing.new_wo" onclick="enterApp('wo-submit')" style="padding:13px 10px;background:#0d1f3a;border:1.5px solid #3b82f6;border-radius:10px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🔧 New Work Order</button>
+          <button onclick="openHelp()" style="padding:13px 10px;background:#0d1f0d;border:1.5px solid #f0c419;border-radius:10px;color:#e8d36a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">📖 How To Use</button>
         </div>
       </div>
 
@@ -815,6 +828,18 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button onclick="renderScorecard()" title="Refresh" style="padding:9px 13px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">↻</button>
   </div>
   <div id="scorecard-body" style="max-width:760px;margin:0 auto;padding:16px;"></div>
+</div>
+
+<!-- ═══ HOW TO USE / INSTRUCTIONS OVERLAY (rendered by js/help.js) ═══ -->
+<div id="help-overlay" style="display:none;position:fixed;inset:0;background:#0a160a;z-index:650;overflow-y:auto;">
+  <div style="position:sticky;top:0;background:#0a160a;border-bottom:2px solid #1e3a1e;padding:max(env(safe-area-inset-top,12px),12px) 16px 12px;display:flex;align-items:center;gap:12px;z-index:10;">
+    <button onclick="closeHelp()" style="padding:9px 14px;background:#0a160a;border:1.5px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">← Home</button>
+    <div style="flex:1;min-width:0;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:#f0ead8;letter-spacing:2px;line-height:1;">📖 HOW TO USE</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#4ade80;letter-spacing:2px;margin-top:2px;">Step-by-step guide by department</div>
+    </div>
+  </div>
+  <div id="help-body" style="max-width:760px;margin:0 auto;padding:16px;"></div>
 </div>
 
 <!-- ═══ UPDATE BANNER ═══ -->
@@ -5123,6 +5148,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 <script defer src="js/danville-loadout.js?v=20260524b"></script>
 <script defer src="js/production.js?v=20260614-lochome"></script>
 <script defer src="js/scorecard.js?v=20260614-scorecard"></script>
+<script defer src="js/help.js?v=20260616-help"></script>
 <script defer src="js/time-blocks.js?v=20260612f-heginstimes"></script>
 <script defer src="js/feed-mill.js?v=20260612g-v71"></script>
 <script defer src="js/egg-quality.js?v=20260424"></script>
