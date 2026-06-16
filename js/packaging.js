@@ -123,7 +123,7 @@ function goMaintSection(section) {
   }
   // Calendar / Contractor / Weekly Agenda / Red Tags / Assets removed from nav 2026-06-05 per Joe.
   // Their render functions still exist (parts inventory rebuild planned separately).
-  const renders = {wo:renderWO, pm:renderPM, parts:renderParts, log:renderLog, wi:renderWI, cost:renderCostDashboard};
+  const renders = {wo:renderWO, pm:renderPM, parts:renderParts, log:renderLog, wi:renderWI, cost:renderCostDashboard, projects:(typeof renderMaintProjects==='function'?renderMaintProjects:null)};
   if (section === 'wi') {
     // Clear any stale search so the list always shows fresh when navigating here
     if (typeof wiSearchVal !== 'undefined') wiSearchVal = '';
