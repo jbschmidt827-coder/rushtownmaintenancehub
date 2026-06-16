@@ -19,6 +19,10 @@ let _drBarnWalks     = [];
 let _drProjects      = [];
 let _drSafetySettings = {};
 let _drLoaded        = false;
+// End-of-Shift report state (simple checklist + sign-off, per facility)
+let _drEosChecks     = {};   // { walked, feedwater, secured, clean }
+let _drEosSubmitting = false;
+let _drEosToday      = {};    // { farm: {employee, ts, time} } — today's sign-offs
 
 const DR_FARMS = {
   Danville: { houses: 5, color: '#2563eb', border: '#3b82f6' },
@@ -53,17 +57,28 @@ function drLoadingHTML() {
 async function drLoadData() {
   const today = new Date().toISOString().slice(0,10);
 
-  const [mwSnap, bwSnap, projSnap, safetySnap] = await Promise.all([
+  const [mwSnap, bwSnap, projSnap, safetySnap, eosSnap] = await Promise.all([
     db.collection('morningWalks').where('date','==',today).get(),
     db.collection('barnWalks').where('date','==',today).get(),
     db.collection('dailyProjects').orderBy('createdTs','desc').limit(100).get(),
-    db.collection('safetySettings').doc('main').get()
+    db.collection('safetySettings').doc('main').get(),
+    db.collection('endOfShift').where('date','==',today).get()
   ]);
 
   _drMorningWalks  = mwSnap.docs.map(d => ({...d.data(), _fbId: d.id}));
   _drBarnWalks     = bwSnap.docs.map(d => ({...d.data(), _fbId: d.id}));
   _drProjects      = projSnap.docs.map(d => ({...d.data(), _fbId: d.id}));
   _drSafetySettings = safetySnap.exists ? safetySnap.data() : {};
+  _drEosToday = {};
+  eosSnap.docs.map(d => d.data()).forEach(r => {
+    if (!_drEosToday[r.farm] || (r.ts || 0) > (_drEosToday[r.farm].ts || 0)) {
+      _drEosToday[r.farm] = {
+        employee: r.employee,
+        ts: r.ts,
+        time: r.ts ? new Date(r.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : ''
+      };
+    }
+  });
   _drLoaded        = true;
 
   // Real-time listener for projects
@@ -264,7 +279,9 @@ function drWalksComplete(farm) {
 }
 
 // ── Main render ──────────────────────────────────────────────────────────────
-function drRender() {
+// NOTE: superseded by the simplified End-of-Shift drRender below (kept as dead
+// code to avoid a risky 180-line delete; never called).
+function drRenderUNUSED_OLD() {
   const el = document.getElementById('panel-daily');
   if (!el) return;
 
@@ -444,6 +461,177 @@ function drRender() {
 }
 
 // ── Stat card helper ─────────────────────────────────────────────────────────
+// ── Simplified END-OF-SHIFT report (replaces the detailed daily report) ──────
+function drRender() {
+  const el = document.getElementById('panel-daily');
+  if (!el) return;
+
+  const today = new Date().toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
+  const farm = _drFarm;
+  const cfg  = DR_FARMS[farm];
+  const totalHouses = cfg.houses;
+  const walksComplete = drWalksComplete(farm);
+  const walkPct  = Math.round((walksComplete / Math.max(totalHouses,1)) * 100);
+  const deadTotal = drTodayDeadTotal(farm);
+  const headcount = drTodayHeadcount(farm);
+  const submitted = (_drEosToday && _drEosToday[farm]) || null;
+  const prefName = (typeof getDeviceUser === 'function' ? (getDeviceUser() || '') : '');
+
+  const CHECKS = [
+    { key:'walked',    label:'All barns walked & issues logged' },
+    { key:'feedwater', label:'Feed & water OK overnight' },
+    { key:'secured',   label:'Equipment secured (doors, lights, heat)' },
+    { key:'clean',     label:'Work area clean (5S)' }
+  ];
+
+  const chips = Array.from({length: totalHouses}, (_, i) => {
+    const h = i + 1;
+    const walked = !!(drGetMW(farm, h) || drGetBW(farm, h));
+    return `<span style="display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:8px;border:1px solid ${walked?'#2e7d32':'#7f1d1d'};background:${walked?'#0f2a0f':'#1a0808'};font-family:'IBM Plex Mono',monospace;font-size:11px;color:${walked?'#7ee08a':'#f0a0a0'};">${walked?'✅':'⬜'} House ${h}</span>`;
+  }).join('');
+
+  el.innerHTML = `
+  <div style="max-width:760px;margin:0 auto;padding:0 0 60px 0;">
+
+    <div style="padding:18px 16px 10px 16px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:4px;">Daily End-of-Shift Report · ${today}</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:#e8f5ec;">END OF SHIFT</div>
+    </div>
+
+    <div style="display:flex;gap:8px;padding:0 16px 14px 16px;border-bottom:1.5px solid #1a3a1a;">
+      ${Object.keys(DR_FARMS).map(f => `
+        <button onclick="drSwitchFarm('${f}')"
+          style="padding:9px 22px;border-radius:8px;border:2px solid ${f===farm ? DR_FARMS[f].border : '#2a5a2a'};
+                 background:${f===farm ? DR_FARMS[f].color+'22' : 'transparent'};
+                 color:${f===farm ? '#fff' : '#7ab07a'};
+                 font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;
+                 letter-spacing:1px;text-transform:uppercase;">
+          ${f} <span style="font-size:10px;opacity:.7;">(${DR_FARMS[f].houses})</span>
+        </button>`).join('')}
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:14px 16px;">
+      ${drStatCard('🏠', walkPct + '%', `Walks ${walksComplete}/${totalHouses}`,
+          walkPct === 100 ? '#1b5e20' : walkPct >= 50 ? '#856404' : '#7f1d1d',
+          walkPct === 100 ? '#4ade80' : walkPct >= 50 ? '#fbbf24' : '#f87171')}
+      ${drStatCard('💀', deadTotal, 'Dead Birds Today',
+          deadTotal === 0 ? '#1b5e20' : deadTotal > 20 ? '#7f1d1d' : '#856404',
+          deadTotal === 0 ? '#4ade80' : deadTotal > 20 ? '#f87171' : '#fbbf24')}
+      ${drStatCard('👥', headcount > 0 ? headcount.toLocaleString() : '—', 'Headcount', '#0d2a4a', '#7ab0f6')}
+    </div>
+
+    <div style="padding:0 16px 8px 16px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:8px;">Houses walked today</div>
+      <div style="display:flex;flex-wrap:wrap;gap:7px;">${chips}</div>
+    </div>
+
+    ${submitted ? `
+      <div style="margin:18px 16px;padding:18px;background:#0f2a0f;border:2px solid #2e7d32;border-radius:12px;text-align:center;font-family:'IBM Plex Mono',monospace;">
+        <div style="font-size:16px;color:#4ade80;font-weight:700;">✅ End of shift submitted</div>
+        <div style="font-size:11px;color:#7ab07a;margin-top:5px;">${farm} · by ${submitted.employee || '—'}${submitted.time ? ' · ' + submitted.time : ''}</div>
+      </div>
+    ` : `
+      <div style="padding:16px 16px 4px 16px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1a3a1a;">Before you go — confirm each</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${CHECKS.map(c => {
+            const on = !!_drEosChecks[c.key];
+            return `<div id="dr-eos-${c.key}" onclick="drEosToggle('${c.key}')" style="display:flex;align-items:center;gap:12px;padding:14px;border-radius:10px;cursor:pointer;border:1.5px solid ${on?'#4ade80':'#2a5a2a'};background:${on?'#16351b':'#0a1f0a'};">
+              <span id="dr-eos-mark-${c.key}" style="font-size:18px;line-height:1;">${on?'✅':'⬜'}</span>
+              <span style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#e8f5ec;">${c.label}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div style="padding:16px;">
+        <label style="display:block;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:#4a8a4a;text-transform:uppercase;margin-bottom:6px;">Your name</label>
+        <input id="dr-eos-name" oninput="drEosUpdateSubmit()" placeholder="Type your name" value="${prefName}"
+          style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:1.5px solid #2a5a2a;background:#0a1f0a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:14px;margin-bottom:12px;">
+        <button id="dr-eos-submit" onclick="drEosSubmit()" disabled
+          style="width:100%;padding:16px;border:none;border-radius:12px;background:#2e7d32;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:800;letter-spacing:1px;cursor:pointer;opacity:.45;">
+          ✓ Submit End of Shift
+        </button>
+      </div>
+    `}
+
+  </div>`;
+
+  drEosUpdateSubmit();
+}
+
+function drEosToggle(key) {
+  _drEosChecks[key] = !_drEosChecks[key];
+  const box = document.getElementById('dr-eos-' + key);
+  if (box) {
+    const on = _drEosChecks[key];
+    box.style.background = on ? '#16351b' : '#0a1f0a';
+    box.style.borderColor = on ? '#4ade80' : '#2a5a2a';
+    const mark = document.getElementById('dr-eos-mark-' + key);
+    if (mark) mark.textContent = on ? '✅' : '⬜';
+  }
+  drEosUpdateSubmit();
+}
+
+function drEosUpdateSubmit() {
+  const btn = document.getElementById('dr-eos-submit');
+  if (!btn) return;
+  const nameEl = document.getElementById('dr-eos-name');
+  const name = nameEl ? nameEl.value.trim() : '';
+  const ready = ['walked','feedwater','secured','clean'].every(k => _drEosChecks[k]) && !!name;
+  btn.disabled = !ready;
+  btn.style.opacity = ready ? '1' : '0.45';
+}
+
+async function drEosSubmit() {
+  if (_drEosSubmitting) return;
+  const nameEl = document.getElementById('dr-eos-name');
+  const name = nameEl ? nameEl.value.trim() : '';
+  const keys = ['walked','feedwater','secured','clean'];
+  if (!keys.every(k => _drEosChecks[k])) { alert('Please confirm all four items before submitting.'); return; }
+  if (!name) { alert('Please enter your name.'); return; }
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) { alert('You appear to be offline — reconnect and submit again.'); return; }
+  _drEosSubmitting = true;
+  const btn = document.getElementById('dr-eos-submit');
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+  const farm = _drFarm;
+  const rec = {
+    farm: farm,
+    date: new Date().toISOString().slice(0,10),
+    employee: name,
+    checklist: { barnsWalked:true, feedWaterOk:true, equipmentSecured:true, areaClean:true },
+    walksComplete: drWalksComplete(farm),
+    totalHouses: DR_FARMS[farm].houses,
+    deadTotal: drTodayDeadTotal(farm),
+    headcount: drTodayHeadcount(farm),
+    ts: Date.now()
+  };
+  try {
+    if (typeof setSyncDot === 'function') setSyncDot('saving');
+    await db.collection('endOfShift').add(rec);
+    try {
+      await db.collection('activityLog').add({
+        type:'eos', id:'EOS-' + farm,
+        desc:'End of shift signed off: ' + farm + ' by ' + name + ' (' + rec.walksComplete + '/' + rec.totalHouses + ' houses walked)',
+        tech:name, farm:farm,
+        date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), ts:Date.now()
+      });
+    } catch(e) { console.warn('activityLog EOS failed:', e); }
+    if (typeof setSyncDot === 'function') setSyncDot('live');
+    _drEosChecks = {};
+    _drEosToday[farm] = { employee:name, ts:rec.ts, time:new Date(rec.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) };
+    _drEosSubmitting = false;
+    if (typeof toast === 'function') toast('✅ End of shift submitted for ' + farm + ' — thanks ' + name + '!');
+    drRender();
+  } catch(e) {
+    _drEosSubmitting = false;
+    if (typeof setSyncDot === 'function') setSyncDot('live');
+    console.error('drEosSubmit error:', e);
+    alert('Could not submit: ' + (e && e.message ? e.message : e) + '\nPlease try again.');
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Submit End of Shift'; }
+  }
+}
+
 function drStatCard(icon, value, label, bg, textColor) {
   return `
     <div style="background:${bg};border:1.5px solid ${textColor}33;border-radius:12px;padding:14px 12px;text-align:center;">
