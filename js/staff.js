@@ -97,6 +97,23 @@ function updateStaffDropdowns() {
 }
 
 // ── Render Staff Panel ──────────────────────
+// Quick-assign a person's home facility straight from the team list — saves
+// instantly and refreshes the name pickers so the change shows everywhere.
+async function staffSetFarm(fbId, farm) {
+  const s = (typeof staffList !== 'undefined' && Array.isArray(staffList)) ? staffList.find(x => x._fbId === fbId) : null;
+  if (s) s.farm = farm;
+  renderStaff();
+  if (typeof updateStaffDropdowns === 'function') updateStaffDropdowns();
+  try {
+    if (typeof setSyncDot === 'function') setSyncDot('saving');
+    await db.collection('staff').doc(fbId).update({ farm });
+    if (typeof setSyncDot === 'function') setSyncDot('live');
+  } catch (e) {
+    console.error('staffSetFarm:', e);
+    if (typeof setSyncDot === 'function') setSyncDot('live');
+  }
+}
+
 function renderStaff() {
   const el = document.getElementById('staff-list');
   if (!el) return;
@@ -138,7 +155,10 @@ function renderStaff() {
         <div style="width:38px;height:38px;border-radius:50%;background:${inactive?'#1a1a1a':'#1a3a2a'};border:2px solid ${inactive?'#2a2a2a':'#2a5a2a'};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${staffInitials(s.name)}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:${inactive?'#4a4a4a':'#f0ead8'};${inactive?'text-decoration:line-through;':''}">${s.name}</div>
-          <div style="font-size:11px;color:#4a6a4a;margin-top:2px;">${s.farm||''}${s.phone?' · 📞 '+s.phone:''}</div>
+          <div style="font-size:11px;color:${s.farm?'#4a6a4a':'#d69e2e'};margin-top:2px;">${s.farm?'':'⚠ no facility set · '}${s.phone?'📞 '+s.phone:(s.farm?'':'tap a facility below')}</div>
+          <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;">
+            ${['Hegins','Danville','Both'].map(f => `<button onclick="staffSetFarm('${s._fbId}','${f}')" style="padding:4px 10px;border-radius:6px;border:1px solid ${s.farm===f?'#4ade80':'#2a4a2a'};background:${s.farm===f?'#16351b':'#0a1f0a'};color:${s.farm===f?'#fff':'#6a8a6a'};font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;cursor:pointer;">${f}</button>`).join('')}
+          </div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
           <button onclick="toggleStaff('${s._fbId}',${!inactive})" style="padding:5px 10px;background:${inactive?'#1a3a1a':'#1a1a1a'};border:1px solid ${inactive?'#2a5a2a':'#2a2a2a'};border-radius:6px;color:${inactive?'#4caf50':'#666'};font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">${inactive?'Activate':'Deactivate'}</button>
