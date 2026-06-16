@@ -54,9 +54,9 @@ function mpDueLabel(p) {
   const done = mpIsDone(p);
   const fmt = due.toLocaleDateString('en-US',{month:'short',day:'numeric'});
   if (done) return `<span style="color:#7ab07a;">🎯 ${fmt}</span>`;
-  if (diff < 0)  return `<span style="color:#f87171;font-weight:700;">⚠ ${Math.abs(diff)}d overdue (${fmt})</span>`;
-  if (diff === 0) return `<span style="color:#fbbf24;font-weight:700;">🎯 Due today</span>`;
-  if (diff <= 3)  return `<span style="color:#fbbf24;">🎯 Due in ${diff}d (${fmt})</span>`;
+  if (diff < 0)  return `<span style="color:#f87171;font-weight:700;">⚠ ${Math.abs(diff)}d ${t('proj.due_overdue')} (${fmt})</span>`;
+  if (diff === 0) return `<span style="color:#fbbf24;font-weight:700;">🎯 ${t('proj.due_today')}</span>`;
+  if (diff <= 3)  return `<span style="color:#fbbf24;">🎯 ${t('proj.due_in')} ${diff}d (${fmt})</span>`;
   return `<span style="color:#7ab07a;">🎯 ${fmt}</span>`;
 }
 
@@ -80,16 +80,16 @@ function renderMaintProjects() {
   let html = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
       <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;color:#7ab07a;text-transform:uppercase;">📋 Projects · ${mpEsc(farm)}</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5a8a5a;margin-top:3px;">${upcoming.length} upcoming · ${active.length} in progress · ${done.length} done</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;color:#7ab07a;text-transform:uppercase;">📋 ${t('proj.header')} · ${mpEsc(farm)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5a8a5a;margin-top:3px;">${upcoming.length} ${t('proj.upcoming')} · ${active.length} ${t('proj.inprogress')} · ${done.length} ${t('proj.done')}</div>
       </div>
-      <button onclick="mpToggleAdd()" style="padding:10px 16px;background:#1a3a1a;border:1.5px solid #4ade80;border-radius:8px;color:#4ade80;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;">${_mpShowAdd ? '✕ Cancel' : '+ New Project'}</button>
+      <button onclick="mpToggleAdd()" style="padding:10px 16px;background:#1a3a1a;border:1.5px solid #4ade80;border-radius:8px;color:#4ade80;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;">${_mpShowAdd ? t('proj.cancel') : t('proj.new')}</button>
     </div>`;
 
   if (_mpShowAdd) html += mpAddFormHtml(farm);
 
   if (!all.length && !_mpShowAdd) {
-    html += `<div style="text-align:center;padding:40px 16px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;font-size:12px;">No projects yet for ${mpEsc(farm)}.<br>Tap "+ New Project" to add an upcoming rebuild.</div>`;
+    html += `<div style="text-align:center;padding:40px 16px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;font-size:12px;">${t('proj.none')}</div>`;
   }
 
   const mpSection = (label, items) => {
@@ -98,9 +98,9 @@ function renderMaintProjects() {
     items.forEach(p => { s += mpCardHtml(p, mpIsDone(p)); });
     return s;
   };
-  html += mpSection('📅 Upcoming', upcoming);
-  html += mpSection('🔧 In Progress', active);
-  html += mpSection('✅ Completed', done);
+  html += mpSection(t('proj.sec_upcoming'), upcoming);
+  html += mpSection(t('proj.sec_inprogress'), active);
+  html += mpSection(t('proj.sec_completed'), done);
 
   el.innerHTML = html;
 }
@@ -108,21 +108,21 @@ function renderMaintProjects() {
 function mpAddFormHtml(farm) {
   return `
   <div style="background:#0a1f0a;border:1.5px solid #2a5a2a;border-radius:12px;padding:16px;margin-bottom:16px;">
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;color:#4ade80;text-transform:uppercase;margin-bottom:10px;">New Project — ${mpEsc(farm)}</div>
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a8a5a;margin-bottom:9px;">Just a title is required — everything else is optional.</div>
-    <input id="mp-title" placeholder="Project title (e.g. Bearing redundancy — pack line)" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:9px;">
-    <input id="mp-machine" placeholder="Machine / equipment (e.g. Washer + Blower)" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:9px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;color:#4ade80;text-transform:uppercase;margin-bottom:10px;">${t('proj.form_new')} — ${mpEsc(farm)}</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a8a5a;margin-bottom:9px;">${t('proj.only_title')}</div>
+    <input id="mp-title" placeholder="${t('proj.ph_title')}" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:9px;">
+    <input id="mp-machine" placeholder="${t('proj.ph_machine')}" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:9px;">
     <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:9px;">
-      <input id="mp-assigned" list="mp-staff-datalist" placeholder="Assigned to" style="flex:1;min-width:130px;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;">
+      <input id="mp-assigned" list="mp-staff-datalist" placeholder="${t('proj.ph_assigned')}" style="flex:1;min-width:130px;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;">
       <datalist id="mp-staff-datalist">${mpStaffOptions(farm)}</datalist>
       <input id="mp-due" type="date" style="flex:1;min-width:130px;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;">
     </div>
-    <textarea id="mp-tasks" rows="4" placeholder="Tasks — one per line, e.g.&#10;Order bearings — Machine A&#10;Order bearings — Machine B&#10;Rebuild Machine A&#10;Rebuild Machine B" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:10px;"></textarea>
+    <textarea id="mp-tasks" rows="4" placeholder="${t('proj.ph_tasks')}" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:10px;"></textarea>
     <div style="display:flex;gap:9px;margin-bottom:11px;">
-      <button type="button" id="mp-stage-upcoming" onclick="mpPickStage('upcoming')" style="${mpStageBtnStyle(_mpNewStage==='upcoming')}">📅 Upcoming</button>
-      <button type="button" id="mp-stage-active" onclick="mpPickStage('active')" style="${mpStageBtnStyle(_mpNewStage==='active')}">🔧 In progress</button>
+      <button type="button" id="mp-stage-upcoming" onclick="mpPickStage('upcoming')" style="${mpStageBtnStyle(_mpNewStage==='upcoming')}">${t('proj.stage_upcoming')}</button>
+      <button type="button" id="mp-stage-active" onclick="mpPickStage('active')" style="${mpStageBtnStyle(_mpNewStage==='active')}">${t('proj.stage_inprogress')}</button>
     </div>
-    <button onclick="mpCreateProject()" style="width:100%;padding:13px;border:none;border-radius:10px;background:#2e7d32;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:800;letter-spacing:1px;cursor:pointer;">✓ Create Project</button>
+    <button onclick="mpCreateProject()" style="width:100%;padding:13px;border:none;border-radius:10px;background:#2e7d32;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:800;letter-spacing:1px;cursor:pointer;">${t('proj.create')}</button>
   </div>`;
 }
 
@@ -158,13 +158,13 @@ function mpCardHtml(p, isDone) {
       <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:${bar};">${pct}%</span>
     </div>
 
-    ${(!isDone && (p.stage || 'active') === 'upcoming') ? `<button onclick="mpStart('${p._id}')" style="margin-bottom:9px;padding:9px 14px;background:#0d2a4a;border:1px solid #3a6aaa;border-radius:8px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;">▶ Start now</button>` : ''}
+    ${(!isDone && (p.stage || 'active') === 'upcoming') ? `<button onclick="mpStart('${p._id}')" style="margin-bottom:9px;padding:9px 14px;background:#0d2a4a;border:1px solid #3a6aaa;border-radius:8px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;">${t('proj.start')}</button>` : ''}
 
-    <div style="margin-top:4px;">${taskHtml || '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#3a6a3a;padding:6px;">No tasks yet — add one below.</div>'}</div>
+    <div style="margin-top:4px;">${taskHtml || ('<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#3a6a3a;padding:6px;">' + t('proj.no_tasks') + '</div>')}</div>
 
     <div style="display:flex;gap:7px;margin-top:9px;">
-      <input id="mp-newtask-${p._id}" placeholder="Add a task…" onkeydown="if(event.key==='Enter')mpAddTask('${p._id}')" style="flex:1;box-sizing:border-box;padding:9px;border-radius:8px;border:1px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:12px;">
-      <button onclick="mpAddTask('${p._id}')" style="padding:9px 13px;background:#1a3a1a;border:1px solid #4ade80;border-radius:8px;color:#4ade80;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">+ Task</button>
+      <input id="mp-newtask-${p._id}" placeholder="${t('proj.add_task_ph')}" onkeydown="if(event.key==='Enter')mpAddTask('${p._id}')" style="flex:1;box-sizing:border-box;padding:9px;border-radius:8px;border:1px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+      <button onclick="mpAddTask('${p._id}')" style="padding:9px 13px;background:#1a3a1a;border:1px solid #4ade80;border-radius:8px;color:#4ade80;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">${t('proj.add_task')}</button>
     </div>
   </div>`;
 }
@@ -190,7 +190,7 @@ async function mpCreateProject() {
   const assigned = (document.getElementById('mp-assigned')|| {}).value || '';
   const due = (document.getElementById('mp-due')      || {}).value || '';
   const tasksRaw = (document.getElementById('mp-tasks')  || {}).value || '';
-  if (!title.trim()) { alert('Please give the project a title.'); return; }
+  if (!title.trim()) { alert(t('proj.need_title')); return; }
   const stage = _mpNewStage || 'upcoming';
   const tasks = tasksRaw.split('\n').map(s => s.trim()).filter(Boolean).map(text => ({ text, done: false }));
   const rec = {
@@ -210,7 +210,7 @@ async function mpCreateProject() {
     await db.collection('maintProjects').add(rec);
     if (typeof setSyncDot === 'function') setSyncDot('live');
     _mpShowAdd = false;
-    if (typeof toast === 'function') toast('✅ Project created: ' + rec.title);
+    if (typeof toast === 'function') toast('✅ ' + t('proj.created') + ': ' + rec.title);
     // listener re-renders
   } catch (e) {
     console.error('mpCreateProject:', e);

@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v103 · Jun 16 2026';
+var APP_VERSION = 'v105 · Jun 16 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -1189,6 +1189,19 @@ const TRANSLATIONS = {
     'landing.feed':'Feed Mill','landing.feed_default':'Bin levels · Deliveries · Readings',
     'landing.dash':'Dashboard','landing.dash_sub':'Directors & Owners overview',
     'landing.staff':'Staff','landing.staff_sub':'Team directory · Add employees',
+    'landing.scorecard':'Daily Scorecard','landing.scorecard_sub':'Livability & maintenance CTQs · red flags · trends',
+    'landing.oncall':'On Call','landing.oncall_sub':'Log · History · Calendar by site',
+    'landing.locations':'← Locations','landing.this_loc':'This location only',
+    'landing.eos_report':'EOS Report','landing.eos_report_sub':'End-of-shift summary & sign-off — before you go home',
+    'mode.dark':'Dark','mode.mid':'Mid','mode.bright':'Bright',
+    'proj.header':'Projects','proj.upcoming':'upcoming','proj.inprogress':'in progress','proj.done':'done',
+    'proj.new':'+ New Project','proj.cancel':'✕ Cancel','proj.none':'No projects yet. Tap "+ New Project" to add an upcoming rebuild.',
+    'proj.sec_upcoming':'📅 Upcoming','proj.sec_inprogress':'🔧 In Progress','proj.sec_completed':'✅ Completed',
+    'proj.form_new':'New Project','proj.only_title':'Just a title is required — everything else is optional.',
+    'proj.ph_title':'Project title (e.g. Bearing redundancy)','proj.ph_machine':'Machine / equipment (e.g. Washer + Blower)','proj.ph_assigned':'Assigned to','proj.ph_tasks':'Tasks — one per line',
+    'proj.stage_upcoming':'📅 Upcoming','proj.stage_inprogress':'🔧 In progress','proj.create':'✓ Create Project',
+    'proj.start':'▶ Start now','proj.no_tasks':'No tasks yet — add one below.','proj.add_task_ph':'Add a task…','proj.add_task':'+ Task',
+    'proj.due_overdue':'overdue','proj.due_today':'Due today','proj.due_in':'Due in','proj.need_title':'Please give the project a title.','proj.created':'Project created',
     'landing.quick_actions':'⚡ QUICK ACTIONS',
     'landing.new_wo':'🔧 New Work Order','landing.log_barn':'🐓 Log Barn Walk',
     'landing.enter_egg':'🥚 Enter Egg Data',
@@ -1376,6 +1389,19 @@ const TRANSLATIONS = {
     'landing.feed':'Molino de Alimento','landing.feed_default':'Niveles · Entregas · Lecturas',
     'landing.dash':'Panel','landing.dash_sub':'Vista para Directores y Dueños',
     'landing.staff':'Personal','landing.staff_sub':'Directorio · Agregar empleados',
+    'landing.scorecard':'Tarjeta Diaria','landing.scorecard_sub':'CTQs de habitabilidad y mantenimiento · alertas · tendencias',
+    'landing.oncall':'De Guardia','landing.oncall_sub':'Registro · Historial · Calendario por sitio',
+    'landing.locations':'← Ubicaciones','landing.this_loc':'Solo esta ubicación',
+    'landing.eos_report':'Reporte Fin de Turno','landing.eos_report_sub':'Resumen de fin de turno y firma — antes de salir',
+    'mode.dark':'Oscuro','mode.mid':'Medio','mode.bright':'Brillante',
+    'proj.header':'Proyectos','proj.upcoming':'próximos','proj.inprogress':'en curso','proj.done':'hechos',
+    'proj.new':'+ Nuevo Proyecto','proj.cancel':'✕ Cancelar','proj.none':'Aún no hay proyectos. Toca "+ Nuevo Proyecto" para agregar una reconstrucción próxima.',
+    'proj.sec_upcoming':'📅 Próximos','proj.sec_inprogress':'🔧 En Curso','proj.sec_completed':'✅ Completados',
+    'proj.form_new':'Nuevo Proyecto','proj.only_title':'Solo el título es obligatorio — lo demás es opcional.',
+    'proj.ph_title':'Título del proyecto (ej. Repuesto de baleros)','proj.ph_machine':'Máquina / equipo (ej. Lavadora + Soplador)','proj.ph_assigned':'Asignado a','proj.ph_tasks':'Tareas — una por línea',
+    'proj.stage_upcoming':'📅 Próximo','proj.stage_inprogress':'🔧 En curso','proj.create':'✓ Crear Proyecto',
+    'proj.start':'▶ Empezar ahora','proj.no_tasks':'Aún no hay tareas — agrega una abajo.','proj.add_task_ph':'Agregar tarea…','proj.add_task':'+ Tarea',
+    'proj.due_overdue':'atrasado','proj.due_today':'Vence hoy','proj.due_in':'Vence en','proj.need_title':'Por favor da un título al proyecto.','proj.created':'Proyecto creado',
     'landing.quick_actions':'⚡ ACCIONES RÁPIDAS',
     'landing.new_wo':'🔧 Nueva Orden de Trabajo','landing.log_barn':'🐓 Registrar Ronda',
     'landing.enter_egg':'🥚 Registrar Huevos',
@@ -1468,6 +1494,7 @@ function toggleLang() {
   // farm-scoped views) — these aren't gated by the panel-active check above.
   try { if (typeof _ecFarm !== 'undefined' && typeof renderECContent === 'function') renderECContent(); } catch(e){}
   try { if (typeof _mwSectionFarm !== 'undefined' && typeof renderMWContent === 'function') renderMWContent(); } catch(e){}
+  try { if (window._maintSection === 'projects' && typeof renderMaintProjects === 'function') renderMaintProjects(); } catch(e){}
   try { if (typeof renderFarms === 'function') renderFarms(); } catch(e){}
   try { if (typeof renderBioLog === 'function') renderBioLog(); } catch(e){}
   // Daily Check / Morning Walk dashboards — always re-render so language flips
