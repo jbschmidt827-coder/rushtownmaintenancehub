@@ -1703,17 +1703,21 @@ async function submitMorningWalk() {
   const temp     = Number(document.getElementById('mw-temp').value) || 0;
   const eeCount  = document.getElementById('mw-ee-count').value !== '' ? Number(document.getElementById('mw-ee-count').value) : null;
 
+  // Each problem carries the maintenance system + priority it should route to,
+  // so the auto work order lands in the right place instead of generic "Production".
   const flags = [];
-  if (waterPSI < 10 || waterPSI > 60) flags.push('Water pressure out of range (' + waterPSI + ' PSI)');
-  if (_mwData.feed === 'no')           flags.push('Feeders not running');
-  if (_mwData.fans === 'no')           flags.push('Fan issue');
-  if (_mwData.blowers === 'no')        flags.push('Blower issue');
+  const woItems = [];
+  const addFlag = (text, system, priority) => { flags.push(text); woItems.push({ text, system, priority }); };
+  if (waterPSI < 10 || waterPSI > 60) addFlag('Water pressure out of range (' + waterPSI + ' PSI)', 'Water', (waterPSI < 5 || waterPSI > 80) ? 'urgent' : 'high');
+  if (_mwData.feed === 'no')           addFlag('Feeders not running', 'Feed', 'urgent');
+  if (_mwData.fans === 'no')           addFlag('Fan issue', 'Ventilation', 'high');
+  if (_mwData.blowers === 'no')        addFlag('Blower issue', 'Ventilation', 'high');
 
   const feedMeterReading = document.getElementById('mw-feed-meter')?.value ? Number(document.getElementById('mw-feed-meter').value) : null;
   const binA = document.getElementById('mw-bin-a')?.value !== '' ? Number(document.getElementById('mw-bin-a').value) : null;
   const binB = document.getElementById('mw-bin-b')?.value !== '' ? Number(document.getElementById('mw-bin-b').value) : null;
-  if (binA !== null && binA < 1)   flags.push('Bin A critically low (' + binA + ' tons)');
-  if (binB !== null && binB < 1)   flags.push('Bin B critically low (' + binB + ' tons)');
+  if (binA !== null && binA < 1)   addFlag('Bin A critically low (' + binA + ' tons)', 'Feed', 'high');
+  if (binB !== null && binB < 1)   addFlag('Bin B critically low (' + binB + ' tons)', 'Feed', 'high');
   const record = {
     farm: _mwFarm, house: String(_mwHouse), employee, notes, flags,
     waterPSI, temp, eeCount, feedMeterReading, binA, binB,
