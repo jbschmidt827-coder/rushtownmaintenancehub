@@ -1757,21 +1757,44 @@ async function submitMorningWalk() {
   const key = _mwFarm + '-' + _mwHouse;
   MORNING_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
 
-  if (flags.length > 0) {
+  // One work order per problem, each routed to its correct system + priority.
+  const createdWOs = [];
+  for (const item of woItems) {
     try {
       const woId = await mintWoId();
       await db.collection('workOrders').add({
-        id: woId, farm: _mwFarm, house: String(_mwHouse), system: 'Production',
-        desc: 'Morning Walk Flag — ' + flags.join('; '), priority: 'high', status: 'open',
+        id: woId, farm: _mwFarm, house: String(_mwHouse), system: item.system,
+        problem: item.text,
+        desc: 'Morning Walk — ' + item.text, priority: item.priority, status: 'open',
         tech: employee, notes: 'Auto-created from morning walk by ' + employee,
         submitted: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
         ts: Date.now(), date: new Date().toISOString().slice(0,10)
       });
-    } catch(e) { console.error(e); }
+      createdWOs.push(woId);
+    } catch(e) { console.error('morning walk WO create failed:', e); }
   }
 
   try { localStorage.removeItem(_mwDraftKey()); } catch(e) {}
   closeMorningWalk();
+
+  // Confirm out loud — no more silent auto-created work orders. Bilingual.
+  const _isEs2 = (typeof _lang !== 'undefined' && _lang === 'es');
+  if (woItems.length > 0 && createdWOs.length > 0) {
+    const n = createdWOs.length;
+    const msg = _isEs2
+      ? '⚠ ' + n + ' problema' + (n!==1?'s':'') + ' marcado — orden' + (n!==1?'es':'') + ' de trabajo ' + createdWOs.join(', ') + ' enviada a Mantenimiento.'
+      : '⚠ ' + n + ' issue' + (n!==1?'s':'') + ' flagged — work order' + (n!==1?'s':'') + ' ' + createdWOs.join(', ') + ' sent to Maintenance.';
+    if (typeof toast === 'function') toast(msg); else alert(msg);
+  } else if (woItems.length > 0) {
+    // Flagged, but the WO write failed (e.g. offline) — make sure they know.
+    const m = _isEs2
+      ? '⚠ Problemas marcados, pero no se pudo crear la orden (¿sin conexión?). Avisa a Mantenimiento.'
+      : '⚠ Issues flagged, but the work order could not be created (offline?). Please tell Maintenance.';
+    if (typeof toast === 'function') toast(m); else alert(m);
+  } else if (typeof toast === 'function') {
+    toast(_isEs2 ? '✅ Recorrido matutino enviado — todo bien.' : '✅ Morning walk submitted — all clear.');
+  }
+
   renderProdPanel();
   renderMWContent();
   if (document.getElementById('panel-dash')?.classList.contains('active')) renderDash();
