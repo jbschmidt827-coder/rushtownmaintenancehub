@@ -3709,6 +3709,22 @@ async function prodSubmit() {
   var prodBtn = document.getElementById('prod-submit-btn');
   if (prodBtn) { prodBtn.disabled = true; prodBtn.textContent = 'Submitting…'; }
 
+  // #3 — never let a CRITICAL item slip through without a work order. Any item
+  // marked Critical that doesn't already have one gets a WO auto-created here
+  // (prodCreateWO defaults a critical item's priority to Urgent).
+  for (var _si = 0; _si < PROD_SECTIONS.length; _si++) {
+    var _sec = PROD_SECTIONS[_si];
+    for (var _ii = 0; _ii < _sec.items.length; _ii++) {
+      var _it = _sec.items[_ii];
+      var _st = PROD_STATE[_it.id];
+      if (_st && _st.status === 'critical' && !_st.woId) {
+        try { await prodCreateWO(_it.id, _it.text, _sec.id); }
+        catch (e) { console.error('auto WO for critical failed:', e); }
+      }
+    }
+  }
+  record.wosCreated = PROD_WOS_CREATED;  // include any just auto-created
+
   try {
     setSyncDot('saving');
     await db.collection('barnWalks').add(record);
