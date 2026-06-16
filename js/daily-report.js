@@ -476,6 +476,9 @@ function drRender() {
   const headcount = drTodayHeadcount(farm);
   const submitted = (_drEosToday && _drEosToday[farm]) || null;
   const prefName = (typeof getDeviceUser === 'function' ? (getDeviceUser() || '') : '');
+  // Scope to the active location only — each facility lives under its own home,
+  // so Danville shows only under Danville and Hegins only under Hegins.
+  const locked = (typeof getPreferredFarm === 'function') && (getPreferredFarm() === 'Hegins' || getPreferredFarm() === 'Danville');
 
   const CHECKS = [
     { key:'walked',    label:'All barns walked & issues logged' },
@@ -498,6 +501,11 @@ function drRender() {
       <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:#e8f5ec;">END OF SHIFT</div>
     </div>
 
+    ${locked ? `
+    <div style="padding:0 16px 14px 16px;border-bottom:1.5px solid #1a3a1a;">
+      <span style="display:inline-block;padding:9px 22px;border-radius:8px;border:2px solid ${DR_FARMS[farm].border};background:${DR_FARMS[farm].color}22;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">📍 ${farm} <span style="font-size:10px;opacity:.7;">(${cfg.houses} houses)</span></span>
+    </div>
+    ` : `
     <div style="display:flex;gap:8px;padding:0 16px 14px 16px;border-bottom:1.5px solid #1a3a1a;">
       ${Object.keys(DR_FARMS).map(f => `
         <button onclick="drSwitchFarm('${f}')"
@@ -509,6 +517,7 @@ function drRender() {
           ${f} <span style="font-size:10px;opacity:.7;">(${DR_FARMS[f].houses})</span>
         </button>`).join('')}
     </div>
+    `}
 
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:14px 16px;">
       ${drStatCard('🏠', walkPct + '%', `Walks ${walksComplete}/${totalHouses}`,
