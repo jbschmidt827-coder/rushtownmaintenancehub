@@ -3171,7 +3171,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     <button class="sub-btn"        data-section="pm"       onclick="goMaintSection('pm')"       data-i18n="sub.pm">📋 PM Schedule</button>
     <button class="sub-btn"        data-section="parts"    onclick="goMaintSection('parts')"    data-i18n="sub.parts">🔩 Parts <span id="parts-alert-badge" style="display:none;background:#e53e3e;color:white;border-radius:50%;font-size:10px;padding:1px 5px;margin-left:3px;"></span></button>
     <button class="sub-btn"        data-section="wi"       onclick="goMaintSection('wi')"       data-i18n="sub.wi">📖 Work Instructions</button>
-    <button class="sub-btn"        data-section="log"      onclick="goMaintSection('log')"      data-i18n="sub.log">📁 Log</button>
+    <!-- Log tab removed per Joe (it wasn't capturing anything). Data + renderLog kept; re-add this button to restore. -->
     <button class="sub-btn"        data-section="projects" onclick="goMaintSection('projects')">📋 Projects</button>
     <!-- Removed 2026-06-05 per Joe: Assets, Calendar, Contractors, Weekly Agenda, Red Tags -->
     <!-- Underlying render functions left intact in case any panel needs to be brought back -->
@@ -5155,7 +5155,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260616-v100"></script>
+<script defer src="js/core.js?v=20260616-v101"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
