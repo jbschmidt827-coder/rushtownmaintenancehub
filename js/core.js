@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v97 · Jun 16 2026';
+var APP_VERSION = 'v98 · Jun 16 2026';
 
 // ── Device user (per device) ─────────────────────────────────────────────
 // Remembers the last name typed into any staff-name field on this device

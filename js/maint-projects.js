@@ -14,6 +14,14 @@ function mpFarm() {
   return (typeof getPreferredFarm === 'function' && getPreferredFarm()) || 'Hegins';
 }
 
+// Staff <option>s scoped to the active location (Hegins shows Hegins + Both,
+// Danville shows Danville + Both) so each plant only sees its own employees.
+function mpStaffOptions(farm) {
+  let names = [];
+  try { if (typeof getActiveStaff === 'function') names = getActiveStaff(farm) || []; } catch (e) {}
+  return names.map(n => `<option value="${mpEsc(n)}"></option>`).join('');
+}
+
 function mpStartListener() {
   if (_mpListening || typeof db === 'undefined' || !db) return;
   _mpListening = true;
@@ -105,7 +113,8 @@ function mpAddFormHtml(farm) {
     <input id="mp-title" placeholder="Project title (e.g. Bearing redundancy — pack line)" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:9px;">
     <input id="mp-machine" placeholder="Machine / equipment (e.g. Washer + Blower)" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:9px;">
     <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:9px;">
-      <input id="mp-assigned" list="staff-datalist" placeholder="Assigned to" style="flex:1;min-width:130px;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;">
+      <input id="mp-assigned" list="mp-staff-datalist" placeholder="Assigned to" style="flex:1;min-width:130px;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;">
+      <datalist id="mp-staff-datalist">${mpStaffOptions(farm)}</datalist>
       <input id="mp-due" type="date" style="flex:1;min-width:130px;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;">
     </div>
     <textarea id="mp-tasks" rows="4" placeholder="Tasks — one per line, e.g.&#10;Order bearings — Machine A&#10;Order bearings — Machine B&#10;Rebuild Machine A&#10;Rebuild Machine B" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:10px;"></textarea>
