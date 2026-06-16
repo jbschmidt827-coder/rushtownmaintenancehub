@@ -717,8 +717,20 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
       </button>
     </div>
 
-    <!-- How To Use / Instructions -->
+    <!-- Quick: New Work Order — no need to pick a location first -->
     <div style="max-width:360px;margin:18px auto 0;">
+      <button onclick="enterApp('wo-submit')" style="width:100%;padding:15px 16px;background:#0d1f3a;border:2px solid #3b82f6;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:24px;line-height:1;">🔧</span>
+        <div style="flex:1;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">New Work Order</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab0f6;line-height:1.4;margin-top:2px;">Report a problem fast — uses your last location</div>
+        </div>
+        <span style="font-size:18px;color:#3b82f6;">→</span>
+      </button>
+    </div>
+
+    <!-- How To Use / Instructions -->
+    <div style="max-width:360px;margin:10px auto 0;">
       <button onclick="openHelp()" style="width:100%;padding:14px 16px;background:#0d1f0d;border:2px solid #f0c419;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;">
         <span style="font-size:24px;line-height:1;">📖</span>
         <div style="flex:1;">
