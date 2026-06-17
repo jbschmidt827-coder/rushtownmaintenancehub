@@ -19,6 +19,18 @@
     ['🥚 SCRAMBLED CODE 🥚',        'No bugs were harmed. The eggs are not so lucky.'],
     ['🐓 ROOSTER BOSS MODE 🐓',     'Crowing at full volume. HR has been notified.'],
     ['🥚 OVA-ACHIEVER 🥚',          'You really, really like that chicken, huh.'],
+    // ── Maintenance roast pack (Joe, Nate, the team & open work orders) ──
+    ['🔧 ETA? 🔧',                  'Joe asked Nate for an ETA. Nate said "define ETA."'],
+    ['📋 HEALTHY BACKLOG 📋',       '{wo} open work orders. Maintenance calls that job security.'],
+    ['⏳ ALMOST DONE ⏳',           'That bearing has been "almost done" so long it qualifies for a pension.'],
+    ['🎂 ANNIVERSARY 🎂',           'Joe & Nate\'s "5-minute fix" just turned one week old.'],
+    ['✅ 100% RATE ✅',             'Maintenance closes 100% of the work orders they actually finish.'],
+    ['🚨 STILL URGENT 🚨',          'This work order has been URGENT for 11 days. Very patient little WO.'],
+    ['🔧 DONE-ISH 🔧',              'Joe: "Is it done?" Nate: "Done-ish." Joe: "...?" Nate: "Not done."'],
+    ['🛠 NATE FIXED IT 🛠',         'Then Joe touched it. Now there is a new work order.'],
+    ['☕ ON IT ☕',                  'Nate gets to the work orders right after this coffee. His 4th.'],
+    ['📋 TIER 2 📋',                'We would close the WOs faster, but then what would we talk about at Tier 2?'],
+    ['🐔 WHY NOT DONE 🐔',          '{wo} open. The chickens filed a complaint with management.'],
   ];
 
   var EFFECTS = [
@@ -52,8 +64,10 @@
   function _trigger(e) {
     _busy = true;
     var phrase = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+    var openWO = 0;
+    try { if (typeof workOrders !== 'undefined' && Array.isArray(workOrders)) openWO = workOrders.filter(function (w) { return w && w.status !== 'completed'; }).length; } catch (e2) {}
     var effect = EFFECTS[Math.floor(Math.random() * EFFECTS.length)];
-    _showBanner(phrase[0], phrase[1]);
+    _showBanner(String(phrase[0]).replace('{wo}', openWO), String(phrase[1]).replace('{wo}', openWO));
     _cluck();
     effect(e);
     setTimeout(function(){ _busy = false; }, 8000);
