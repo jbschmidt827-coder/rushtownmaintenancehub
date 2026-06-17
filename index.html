@@ -3249,7 +3249,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
           </div>
           <div class="form-body">
             <div class="form-row">
-              <div class="fg"><label>Location <span class="req">*</span></label><select id="wo-farm" onchange="loadHouses()"><option value="">— Select Location —</option><option>Hegins</option><option>Danville</option><option>Processing Plant</option></select></div>
+              <div class="fg"><label>Location <span class="req">*</span></label><select id="wo-farm" onchange="loadHouses();woFillNames(this.value)"><option value="">— Select Location —</option><option>Hegins</option><option>Danville</option><option>Processing Plant</option></select></div>
               <div class="fg"><label>Date <span class="req">*</span></label><input type="date" id="wo-date"></div>
             </div>
             <div class="form-row">
@@ -5202,8 +5202,8 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/egg-quality.js?v=20260424"></script>
 <script defer src="js/biosecurity.js?v=20260424"></script>
 <script defer src="js/scheduling.js?v=20260612g-v71"></script>
-<script defer src="js/tv-scoreboard.js?v=20260616-v75"></script>
-<script defer src="js/staff.js?v=20260616-staffassign"></script>
+<script defer src="js/tv-scoreboard.js?v=20260616-namescope"></script>
+<script defer src="js/staff.js?v=20260616-namescope"></script>
 <script defer src="js/staff-roster.js?v=20260513-roster"></script>
 <script defer src="js/enhancements.js?v=20260616-jokes"></script>
 <script defer src="js/contractor.js?v=20260424"></script>

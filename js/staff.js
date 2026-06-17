@@ -59,6 +59,30 @@ function staffAtLocation(loc) {
 // Scoped to THIS device's plant (preferredFarm) so a Hegins tablet only
 // offers Hegins people, a Danville tablet only Danville — not all 71.
 // People tagged 'Both' (drivers, mgmt) appear at every location.
+// Scope ANY name <select> to a location: that facility's people + 'Both'
+// maintenance techs. Pass a falsy farm to show everyone (used by Master/all).
+function scopeNames(selectId, farm, headHtml) {
+  var sel = document.getElementById(selectId);
+  if (!sel) return;
+  var names = (typeof getActiveStaff === 'function') ? (getActiveStaff(farm) || []) : [];
+  var cur = sel.value;
+  sel.innerHTML = headHtml + names.map(function (n) { var e = String(n).replace(/"/g, '&quot;'); return '<option value="' + e + '">' + e + '</option>'; }).join('');
+  if (cur) sel.value = cur;
+}
+
+// Work Order "Your Name" + "Assign To" — follow the form's Location pick.
+// Before a location is chosen, show only the placeholder (no names).
+function woFillNames(farm) {
+  if (!farm) {
+    var t = document.getElementById('wo-tech');   if (t) t.innerHTML = '<option value="">— Select Name —</option>';
+    var a = document.getElementById('wo-assign'); if (a) a.innerHTML = '<option value="">— Unassigned —</option>';
+    return;
+  }
+  scopeNames('wo-tech',   farm, '<option value="">— Select Name —</option>');
+  scopeNames('wo-assign', farm, '<option value="">— Unassigned —</option>');
+}
+if (typeof window !== 'undefined') { window.woFillNames = woFillNames; window.scopeNames = scopeNames; }
+
 function updateStaffDropdowns() {
   const loc    = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
   const active = staffAtLocation(loc);
