@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v106 · Jun 16 2026';
+var APP_VERSION = 'v107 · Jun 16 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -1202,6 +1202,12 @@ const TRANSLATIONS = {
     'proj.stage_upcoming':'📅 Upcoming','proj.stage_inprogress':'🔧 In progress','proj.create':'✓ Create Project',
     'proj.start':'▶ Start now','proj.no_tasks':'No tasks yet — add one below.','proj.add_task_ph':'Add a task…','proj.add_task':'+ Task',
     'proj.due_overdue':'overdue','proj.due_today':'Due today','proj.due_in':'Due in','proj.need_title':'Please give the project a title.','proj.created':'Project created',
+    'eos.subtitle':'Daily End-of-Shift Report','eos.title':'END OF SHIFT','eos.houses':'houses',
+    'eos.walks':'Walks','eos.dead':'Dead Birds Today','eos.headcount':'Headcount','eos.houses_walked':'Houses walked today',
+    'eos.submitted':'✅ End of shift submitted','eos.by':'by','eos.confirm':'Before you go — confirm each',
+    'eos.chk_walked':'All barns walked & issues logged','eos.chk_feedwater':'Feed & water OK overnight','eos.chk_secured':'Equipment secured (doors, lights, heat)','eos.chk_clean':'Work area clean (5S)',
+    'eos.your_name':'Your name','eos.type_name':'Type your name','eos.submit':'✓ Submit End of Shift','eos.submitting':'Submitting…',
+    'eos.need_all':'Please confirm all four items before submitting.','eos.need_name':'Please enter your name.','eos.offline':'You appear to be offline — reconnect and submit again.','eos.thanks':'End of shift submitted — thanks',
     'landing.quick_actions':'⚡ QUICK ACTIONS',
     'landing.new_wo':'🔧 New Work Order','landing.log_barn':'🐓 Log Barn Walk',
     'landing.enter_egg':'🥚 Enter Egg Data',
@@ -1402,6 +1408,12 @@ const TRANSLATIONS = {
     'proj.stage_upcoming':'📅 Próximo','proj.stage_inprogress':'🔧 En curso','proj.create':'✓ Crear Proyecto',
     'proj.start':'▶ Empezar ahora','proj.no_tasks':'Aún no hay tareas — agrega una abajo.','proj.add_task_ph':'Agregar tarea…','proj.add_task':'+ Tarea',
     'proj.due_overdue':'atrasado','proj.due_today':'Vence hoy','proj.due_in':'Vence en','proj.need_title':'Por favor da un título al proyecto.','proj.created':'Proyecto creado',
+    'eos.subtitle':'Reporte de Fin de Turno','eos.title':'FIN DE TURNO','eos.houses':'casas',
+    'eos.walks':'Rondas','eos.dead':'Aves Muertas Hoy','eos.headcount':'Personal','eos.houses_walked':'Casas recorridas hoy',
+    'eos.submitted':'✅ Fin de turno enviado','eos.by':'por','eos.confirm':'Antes de salir — confirma cada uno',
+    'eos.chk_walked':'Todas las casas recorridas y problemas registrados','eos.chk_feedwater':'Alimento y agua bien para la noche','eos.chk_secured':'Equipo asegurado (puertas, luces, calor)','eos.chk_clean':'Área de trabajo limpia (5S)',
+    'eos.your_name':'Tu nombre','eos.type_name':'Escribe tu nombre','eos.submit':'✓ Enviar Fin de Turno','eos.submitting':'Enviando…',
+    'eos.need_all':'Por favor confirma los cuatro puntos antes de enviar.','eos.need_name':'Por favor escribe tu nombre.','eos.offline':'Parece que no tienes conexión — reconéctate y envía de nuevo.','eos.thanks':'Fin de turno enviado — gracias',
     'landing.quick_actions':'⚡ ACCIONES RÁPIDAS',
     'landing.new_wo':'🔧 Nueva Orden de Trabajo','landing.log_barn':'🐓 Registrar Ronda',
     'landing.enter_egg':'🥚 Registrar Huevos',
@@ -1495,6 +1507,7 @@ function toggleLang() {
   try { if (typeof _ecFarm !== 'undefined' && typeof renderECContent === 'function') renderECContent(); } catch(e){}
   try { if (typeof _mwSectionFarm !== 'undefined' && typeof renderMWContent === 'function') renderMWContent(); } catch(e){}
   try { if (window._maintSection === 'projects' && typeof renderMaintProjects === 'function') renderMaintProjects(); } catch(e){}
+  try { var _pd = document.getElementById('panel-daily'); if (_pd && _pd.classList.contains('active') && _drLoaded && typeof drRender === 'function') drRender(); } catch(e){}
   try { if (typeof renderFarms === 'function') renderFarms(); } catch(e){}
   try { if (typeof renderBioLog === 'function') renderBioLog(); } catch(e){}
   // Daily Check / Morning Walk dashboards — always re-render so language flips
