@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v112-railbtns';
+const CACHE_NAME = 'rushtown-v113-woedit';
 
 const SHELL_FILES = [
   '/',

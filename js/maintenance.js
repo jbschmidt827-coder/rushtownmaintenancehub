@@ -149,6 +149,7 @@ function renderWO() {
               ${wo.updates&&wo.updates.length?`<div style="font-size:11px;color:#856404;margin-top:4px;">💬 ${wo.updates[wo.updates.length-1].text}</div>`:''}
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+              <button onclick="event.stopPropagation();openWOEdit('${wo._fbId}')" title="Edit work order details" style="padding:6px 10px;background:#15152a;border:1px solid #2a2a4a;border-radius:6px;color:#9a9ae0;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'IBM Plex Mono',monospace;">✏️ Edit</button>
               <button onclick="event.stopPropagation();openWOUpdate('${wo._fbId}')" title="Add a note / update" style="padding:6px 10px;background:#1a2a1a;border:1px solid #2a4a2a;border-radius:6px;color:#7ab07a;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'IBM Plex Mono',monospace;">💬 Update</button>
               <button onclick="event.stopPropagation();removeFromRail('${wo._fbId}')" title="Move back to the work order list" style="padding:6px 10px;background:#2a1a00;border:1px solid #5a3a00;border-radius:6px;color:#d6a82a;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'IBM Plex Mono',monospace;">↩ To List</button>
             </div>
@@ -274,6 +275,7 @@ function woCardHtml(wo) {
     <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
       ${actionBtns}
       <button onclick="event.stopPropagation();openWOUpdate('${wo._fbId}')" style="padding:9px 12px;background:#1a2a1a;border:1px solid #2a4a2a;border-radius:8px;color:#7ab07a;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">💬 Update</button>
+      <button onclick="event.stopPropagation();openWOEdit('${wo._fbId}')" title="Edit work order details" style="padding:9px 10px;background:#15152a;border:1px solid #2a2a4a;border-radius:8px;color:#9a9ae0;font-size:13px;cursor:pointer;">✏️</button>
       <button onclick="event.stopPropagation();toggleWORail('${wo._fbId}',${!wo.actionRail})" title="${wo.actionRail?'Remove from Action Rail':'Add to Action Rail'}" style="padding:9px 10px;background:${wo.actionRail?'#2a1f00':'#1a1a1a'};border:1px solid ${wo.actionRail?'#856404':'#333'};border-radius:8px;color:${wo.actionRail?'#f59e0b':'#555'};font-size:13px;cursor:pointer;" >⚡</button>
       <button onclick="event.stopPropagation();toggleWOMeeting('${wo._fbId}',${!wo.meetingFlag})" title="${wo.meetingFlag?'Remove from Meeting':'Flag for Meeting'}" style="padding:9px 10px;background:${wo.meetingFlag?'#0d1f3a':'#1a1a1a'};border:1px solid ${wo.meetingFlag?'#2a4a6a':'#333'};border-radius:8px;color:${wo.meetingFlag?'#60a5fa':'#555'};font-size:13px;cursor:pointer;">📋</button>
     </div>`}
@@ -335,6 +337,88 @@ async function saveWOUpdate(fbId) {
   } catch(e) {
     alert('Save failed: ' + e.message);
     if (btn) btn.disabled = false;
+  }
+}
+
+// ── WO Edit (correct fields after submission) ─────────
+let _woEditPri = 'normal';
+function _woEditPriPill(pri, label) {
+  const sel = _woEditPri === pri;
+  const c  = { urgent:'#f87171', high:'#fcd34d', normal:'#86efac', low:'#9ca3af' }[pri];
+  const bg = sel ? ({ urgent:'#2a0a0a', high:'#2a1f00', normal:'#0f2a14', low:'#222' }[pri]) : '#141414';
+  return `<button type="button" onclick="woEditSetPri('${pri}')" style="flex:1;padding:9px 6px;background:${bg};border:1.5px solid ${sel?c:'#333'};border-radius:8px;color:${sel?c:'#777'};font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">${label}</button>`;
+}
+function woEditSetPri(pri) {
+  _woEditPri = pri;
+  const bar = document.getElementById('woedit-pri-bar');
+  if (bar) bar.innerHTML = _woEditPriPill('urgent','🔴 Urgent') + _woEditPriPill('high','🟡 High') + _woEditPriPill('normal','Normal') + _woEditPriPill('low','Low');
+}
+function openWOEdit(fbId) {
+  const wo = (typeof workOrders !== 'undefined' ? workOrders : []).find(w => w._fbId === fbId);
+  if (!wo) { alert('Could not find that work order.'); return; }
+  _woEditPri = wo.priority || 'normal';
+  const ex = document.getElementById('wo-edit-modal'); if (ex) ex.remove();
+  const PROBLEMS = ['Ventilation / Fans','Watering System','Feed System','Heating / Brooders','Manure System','Egg Collection','Electrical','Generator','Building / Structure','Other'];
+  const lbl = 'font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#5a8a5a;font-family:\'IBM Plex Mono\',monospace;display:block;margin-bottom:6px;';
+  const fld = 'width:100%;box-sizing:border-box;background:#0a140a;border:1.5px solid #2a5a2a;border-radius:10px;padding:11px 14px;color:#f0ead8;font-size:14px;font-family:inherit;';
+  const escAttr = s => String(s==null?'':s).replace(/"/g,'&quot;');
+  const escTxt  = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const modal = document.createElement('div');
+  modal.id = 'wo-edit-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.75);display:flex;align-items:flex-end;justify-content:center;';
+  modal.innerHTML = `
+    <div style="background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:16px 16px 0 0;width:100%;max-width:min(720px,96vw);padding:20px 18px 32px;max-height:92vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;">✏️ Edit Work Order — ${wo.id||''}</div>
+          <div style="font-size:11px;color:#5a8a5a;margin-top:2px;">${wo.farm||''} · ${wo.house||''}</div>
+        </div>
+        <button onclick="document.getElementById('wo-edit-modal').remove()" style="background:none;border:none;color:#5a8a5a;font-size:20px;cursor:pointer;line-height:1;">✕</button>
+      </div>
+      <label style="${lbl}">Problem Type</label>
+      <select id="woedit-problem" style="${fld}margin-bottom:14px;">${PROBLEMS.map(p=>`<option ${p===wo.problem?'selected':''}>${p}</option>`).join('')}</select>
+      <label style="${lbl}">Description</label>
+      <textarea id="woedit-desc" style="${fld}resize:none;min-height:80px;margin-bottom:14px;">${escTxt(wo.desc)}</textarea>
+      <label style="${lbl}">Priority</label>
+      <div id="woedit-pri-bar" style="display:flex;gap:6px;margin-bottom:14px;"></div>
+      <label style="${lbl}">Assign To</label>
+      <select id="woedit-assign" style="${fld}margin-bottom:14px;"><option value="">— Unassigned —</option></select>
+      <div style="display:flex;gap:10px;margin-bottom:18px;">
+        <div style="flex:2;"><label style="${lbl}">Parts Needed</label><input type="text" id="woedit-parts" value="${escAttr(wo.parts)}" style="${fld}"></div>
+        <div style="flex:1;"><label style="${lbl}">Est. Hrs</label><input type="number" id="woedit-hours" value="${wo.estHours!=null?wo.estHours:''}" min="0" step="0.5" style="${fld}"></div>
+      </div>
+      <button id="woedit-save-btn" onclick="saveWOEdit('${fbId}')" style="width:100%;padding:13px;background:#1a4a2a;border:2px solid #2a7a3a;border-radius:12px;color:#f0ead8;font-size:14px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">Save Changes</button>
+      <div id="woedit-result" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#4caf50;margin-top:10px;text-align:center;">✓ Saved</div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  woEditSetPri(_woEditPri);
+  if (typeof scopeNames === 'function') scopeNames('woedit-assign', wo.farm, '<option value="">— Unassigned —</option>');
+  const asn = document.getElementById('woedit-assign');
+  if (asn && wo.assignedTo) asn.value = wo.assignedTo;
+}
+async function saveWOEdit(fbId) {
+  const btn = document.getElementById('woedit-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  const hoursRaw = document.getElementById('woedit-hours')?.value;
+  const estHours = hoursRaw ? Number(hoursRaw) : null;
+  const patch = {
+    problem: document.getElementById('woedit-problem')?.value || '',
+    desc:    (document.getElementById('woedit-desc')?.value || '').trim(),
+    assignedTo: document.getElementById('woedit-assign')?.value || '',
+    parts:   (document.getElementById('woedit-parts')?.value || '').trim(),
+    priority: _woEditPri,
+    estHours: (estHours && !isNaN(estHours)) ? estHours : null,
+    editedAt: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+  };
+  try {
+    await db.collection('workOrders').doc(fbId).update(patch);
+    const res = document.getElementById('woedit-result');
+    if (res) res.style.display = 'block';
+    setTimeout(() => document.getElementById('wo-edit-modal')?.remove(), 800);
+  } catch(e) {
+    alert('Save failed: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Changes'; }
   }
 }
 
