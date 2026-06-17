@@ -609,7 +609,7 @@ function bwSaveDraft() {
   const today = new Date().toISOString().slice(0,10);
   const fields = {};
   ['bw-employee','bw-notes','bw-mort-count','bw-loose-count','bw-rodent-count',
-   'bw-fly-count','bw-egg-count','bw-weekly-rodent-count','bw-feed-bin-reading'].forEach(id => {
+   'bw-fly-count','bw-weekly-rodent-count','bw-feed-bin-reading'].forEach(id => {
     const el = document.getElementById(id);
     if (el) fields[id] = el.value;
   });
@@ -694,7 +694,6 @@ function bwRecordToDraft(rec) {
       'bw-loose-count':         rec.looseCount != null ? String(rec.looseCount) : '',
       'bw-rodent-count':        rec.rodentCount!= null ? String(rec.rodentCount): '',
       'bw-fly-count':           rec.flyCount   != null ? String(rec.flyCount)   : '',
-      'bw-egg-count':           rec.eggCount   != null ? String(rec.eggCount)   : '',
       'bw-weekly-rodent-count': rec.weeklyRodentCount != null ? String(rec.weeklyRodentCount) : '',
       'bw-feed-bin-reading':    rec.feedBinReading    != null ? String(rec.feedBinReading)    : '',
     },
@@ -748,8 +747,7 @@ function bwBlockComplete(name) {
     case 'feedwater':
       return ['feed','waste','stand'].every(k => _bwData[k] !== undefined);
     case 'belts':
-      if (_bwData.eggbelt === undefined) return false;
-      return _bwHasVal('bw-egg-count') || _bwIsNA('bw-egg-count');
+      return _bwData.eggbelt !== undefined;
     case 'pest': {
       if (_bwData.rodent === undefined) return false;
       if (_bwData.rodent === 'yes' && !_bwHasVal('bw-rodent-count')) return false;
@@ -813,7 +811,7 @@ function bwInitFlow() {
       : (isEs ? '✓ Listo — Siguiente' : '✓ Done — Next');
   });
   // N/A button states
-  ['bw-egg-count','bw-weekly-rodent-count'].forEach(id => {
+  ['bw-weekly-rodent-count'].forEach(id => {
     const b = document.getElementById(id + '-na');
     if (b) b.classList.toggle('active', _bwIsNA(id));
   });
@@ -925,7 +923,7 @@ function openBarnWalk(farm, house) {
     const e = document.getElementById('bw-employee');
     if (_du && e && !e.value) { e.value = _du; if (typeof checkBWReady === 'function') checkBWReady(); }
   }, 50);
-  ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count','bw-egg-count'].forEach(id => {
+  ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('bw-mort-count-row').style.display    = 'none';
@@ -1144,7 +1142,6 @@ async function submitBarnWalk() {
   const flyCount    = document.getElementById('bw-fly-count').value    ? Number(document.getElementById('bw-fly-count').value)    : null;
   const weeklyRodentCount = document.getElementById('bw-weekly-rodent-count')?.value ? Number(document.getElementById('bw-weekly-rodent-count').value) : null;
   const feedBinReading    = document.getElementById('bw-feed-bin-reading')?.value ? Number(document.getElementById('bw-feed-bin-reading').value) : null;
-  const eggCountVal       = document.getElementById('bw-egg-count')?.value ? Number(document.getElementById('bw-egg-count').value) : null;
 
   const flags = [];
   // NOTE: Mortality and Loose Birds are logged to mortalityLog only — never create a WO
@@ -1171,7 +1168,6 @@ async function submitBarnWalk() {
   const record = {
     farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
     waterPSI, temp, mortCount, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading,
-    eggCount: eggCountVal,
     naFields: _bwData._na || {},
     weeklyAck: !!_bwData._weeklyAck,
     mort: _bwData.mort, feather: _bwData.feather, air: _bwData.air,
@@ -1283,18 +1279,6 @@ async function submitBarnWalk() {
   }
 
   // Feed bin reading is saved live via liveUpdateFeedBin (onchange) — no duplicate save needed here.
-
-  // Auto-save egg count to opsEggProduction (replaces Egg Ops form). Gated on isFirstSubmit.
-  const eggCount = parseInt(document.getElementById('bw-egg-count')?.value||'0')||0;
-  if (isFirstSubmit && eggCount > 0) {
-    try {
-      const eggRec = { date: new Date().toISOString().slice(0,10), farm: _bwFarm, house: String(_bwHouse),
-        shift: shiftFromTime(), eggs: eggCount, by: employee, notes: 'From daily barn check', ts: Date.now() };
-      const eggRef = await db.collection('opsEggProduction').add(eggRec);
-      eggRec._fbId = eggRef.id;
-      opsEggData.unshift(eggRec);
-    } catch(e) { console.error(e); }
-  }
 
   // Auto-create WOs for checklist failures that warrant one.
   // Gated on isFirstSubmit so that re-submitting (Tap to Update) does NOT
