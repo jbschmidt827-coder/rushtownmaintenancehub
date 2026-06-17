@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v107-eoses';
+const CACHE_NAME = 'rushtown-v110-cardpolish';
 
 const SHELL_FILES = [
   '/',
