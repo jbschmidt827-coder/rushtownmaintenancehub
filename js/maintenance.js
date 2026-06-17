@@ -149,6 +149,7 @@ function renderWO() {
               ${wo.updates&&wo.updates.length?`<div style="font-size:11px;color:#856404;margin-top:4px;">💬 ${wo.updates[wo.updates.length-1].text}</div>`:''}
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+              <button onclick="event.stopPropagation();woCloseFromRail('${wo._fbId}')" title="Close out / complete this work order" style="padding:6px 10px;background:#14532d;border:1px solid #2a7a3a;border-radius:6px;color:#86efac;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'IBM Plex Mono',monospace;">✓ Done</button>
               <button onclick="event.stopPropagation();openWOEdit('${wo._fbId}')" title="Edit work order details" style="padding:6px 10px;background:#15152a;border:1px solid #2a2a4a;border-radius:6px;color:#9a9ae0;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'IBM Plex Mono',monospace;">✏️ Edit</button>
               <button onclick="event.stopPropagation();openWOUpdate('${wo._fbId}')" title="Add a note / update" style="padding:6px 10px;background:#1a2a1a;border:1px solid #2a4a2a;border-radius:6px;color:#7ab07a;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'IBM Plex Mono',monospace;">💬 Update</button>
               <button onclick="event.stopPropagation();removeFromRail('${wo._fbId}')" title="Move back to the work order list" style="padding:6px 10px;background:#2a1a00;border:1px solid #5a3a00;border-radius:6px;color:#d6a82a;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'IBM Plex Mono',monospace;">↩ To List</button>
@@ -436,6 +437,16 @@ async function toggleWOMeeting(fbId, state) {
 async function removeFromRail(fbId) {
   try { await db.collection('workOrders').doc(fbId).update({ actionRail: false }); }
   catch(e) { console.error(e); if (typeof toast === 'function') toast('Could not remove from rail — check connection'); }
+}
+
+// Close out (complete) a work order straight from the Action Rail — opens the
+// same closeout modal the list uses. On confirm it's marked completed and
+// leaves the rail automatically (the rail only shows non-completed WOs).
+function woCloseFromRail(fbId) {
+  var wo = workOrders.find(function (w) { return w._fbId === fbId; });
+  if (!wo) { alert('Could not find that work order.'); return; }
+  pendingCycleFbId = fbId;
+  if (typeof openCloseout === 'function') openCloseout(wo);
 }
 
 function openMeetingAgenda() {
