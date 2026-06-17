@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v113 · Jun 17 2026';
+var APP_VERSION = 'v114 · Jun 17 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -1200,6 +1200,7 @@ const TRANSLATIONS = {
     'proj.form_new':'New Project','proj.only_title':'Just a title is required — everything else is optional.',
     'proj.ph_title':'Project title (e.g. Bearing redundancy)','proj.ph_machine':'Machine / equipment (e.g. Washer + Blower)','proj.ph_assigned':'Assigned to','proj.ph_tasks':'Tasks — one per line',
     'proj.stage_upcoming':'📅 Upcoming','proj.stage_inprogress':'🔧 In progress','proj.create':'✓ Create Project',
+    'proj.req_label':'Requested by','proj.req_team':'Team','proj.req_mgmt':'Management','proj.for_label':"What's it for?",'proj.pri_label':'Priority','proj.pri_urgent':'Urgent','proj.pri_high':'High','proj.pri_normal':'Normal',
     'proj.start':'▶ Start now','proj.no_tasks':'No tasks yet — add one below.','proj.add_task_ph':'Add a task…','proj.add_task':'+ Task',
     'proj.due_overdue':'overdue','proj.due_today':'Due today','proj.due_in':'Due in','proj.need_title':'Please give the project a title.','proj.created':'Project created',
     'eos.subtitle':'Daily End-of-Shift Report','eos.title':'END OF SHIFT','eos.houses':'houses',
@@ -1406,6 +1407,7 @@ const TRANSLATIONS = {
     'proj.form_new':'Nuevo Proyecto','proj.only_title':'Solo el título es obligatorio — lo demás es opcional.',
     'proj.ph_title':'Título del proyecto (ej. Repuesto de baleros)','proj.ph_machine':'Máquina / equipo (ej. Lavadora + Soplador)','proj.ph_assigned':'Asignado a','proj.ph_tasks':'Tareas — una por línea',
     'proj.stage_upcoming':'📅 Próximo','proj.stage_inprogress':'🔧 En curso','proj.create':'✓ Crear Proyecto',
+    'proj.req_label':'Solicitado por','proj.req_team':'Equipo','proj.req_mgmt':'Gerencia','proj.for_label':'¿Para qué es?','proj.pri_label':'Prioridad','proj.pri_urgent':'Urgente','proj.pri_high':'Alta','proj.pri_normal':'Normal',
     'proj.start':'▶ Empezar ahora','proj.no_tasks':'Aún no hay tareas — agrega una abajo.','proj.add_task_ph':'Agregar tarea…','proj.add_task':'+ Tarea',
     'proj.due_overdue':'atrasado','proj.due_today':'Vence hoy','proj.due_in':'Vence en','proj.need_title':'Por favor da un título al proyecto.','proj.created':'Proyecto creado',
     'eos.subtitle':'Reporte de Fin de Turno','eos.title':'FIN DE TURNO','eos.houses':'casas',

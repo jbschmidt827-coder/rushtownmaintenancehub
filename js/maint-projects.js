@@ -9,6 +9,9 @@ let _mpProjects   = [];
 let _mpListening  = false;
 let _mpShowAdd    = false;
 let _mpNewStage   = 'upcoming';
+let _mpNewReq     = '';        // requested by: Team | Management
+let _mpNewCat     = '';        // what's it for (work area)
+let _mpNewPri     = 'normal';  // priority: urgent | high | normal
 
 function mpFarm() {
   return (typeof getPreferredFarm === 'function' && getPreferredFarm()) || 'Hegins';
@@ -67,10 +70,11 @@ function renderMaintProjects() {
   if (!el) return;
   const farm = mpFarm();
   const all  = _mpProjects.filter(p => !p.farm || p.farm === farm);
+  const priRank = p => p.priority === 'urgent' ? 0 : (p.priority === 'high' ? 1 : 2);
   const sortFn = (a,b) => {
     const ad = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
     const bd = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
-    return ad - bd || (b.createdTs||0) - (a.createdTs||0);
+    return priRank(a) - priRank(b) || ad - bd || (b.createdTs||0) - (a.createdTs||0);
   };
   const done     = all.filter(p =>  mpIsDone(p)).sort(sortFn);
   const notDone  = all.filter(p => !mpIsDone(p));
@@ -105,6 +109,26 @@ function renderMaintProjects() {
   el.innerHTML = html;
 }
 
+const MP_CATS = ['5S','Barns','Equipment','Feed Mill','Electrical','Safety','Building','Other'];
+
+function mpChipStyle(on, color) {
+  return `padding:9px 13px;border-radius:18px;border:1.5px solid ${on?color:'#2a5a2a'};background:${on?color:'#06120a'};color:${on?'#06120a':'#7ab07a'};font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;`;
+}
+function mpReqRowHtml() {
+  const defs = [['Team','👥 '+t('proj.req_team'),'#4ade80'],['Management','🧑‍💼 '+t('proj.req_mgmt'),'#7ab0f6']];
+  return defs.map(d => `<button type="button" onclick="mpPickReq('${d[0]}')" style="${mpChipStyle(_mpNewReq===d[0],d[2])}">${d[1]}</button>`).join('');
+}
+function mpCatRowHtml() {
+  return MP_CATS.map(c => `<button type="button" onclick="mpPickCat('${c.replace(/'/g,"\\'")}')" style="${mpChipStyle(_mpNewCat===c,'#4ade80')}">${mpEsc(c)}</button>`).join('');
+}
+function mpPriRowHtml() {
+  const defs = [['urgent','🔴 '+t('proj.pri_urgent'),'#f87171'],['high','🟡 '+t('proj.pri_high'),'#fbbf24'],['normal',t('proj.pri_normal'),'#7ab07a']];
+  return defs.map(d => `<button type="button" onclick="mpPickPri('${d[0]}')" style="${mpChipStyle(_mpNewPri===d[0],d[2])}">${d[1]}</button>`).join('');
+}
+function mpPickReq(k){ _mpNewReq=(_mpNewReq===k?'':k); const r=document.getElementById('mp-req-row'); if(r) r.innerHTML=mpReqRowHtml(); }
+function mpPickCat(c){ _mpNewCat=(_mpNewCat===c?'':c); const r=document.getElementById('mp-cat-row'); if(r) r.innerHTML=mpCatRowHtml(); }
+function mpPickPri(p){ _mpNewPri=p; const r=document.getElementById('mp-pri-row'); if(r) r.innerHTML=mpPriRowHtml(); }
+
 function mpAddFormHtml(farm) {
   return `
   <div style="background:#0a1f0a;border:1.5px solid #2a5a2a;border-radius:12px;padding:16px;margin-bottom:16px;">
@@ -117,6 +141,12 @@ function mpAddFormHtml(farm) {
       <datalist id="mp-staff-datalist">${mpStaffOptions(farm)}</datalist>
       <input id="mp-due" type="date" style="flex:1;min-width:130px;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;">
     </div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:#5a8a5a;text-transform:uppercase;margin-bottom:6px;">${t('proj.req_label')}</div>
+    <div id="mp-req-row" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px;">${mpReqRowHtml()}</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:#5a8a5a;text-transform:uppercase;margin-bottom:6px;">${t('proj.for_label')}</div>
+    <div id="mp-cat-row" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px;">${mpCatRowHtml()}</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:#5a8a5a;text-transform:uppercase;margin-bottom:6px;">${t('proj.pri_label')}</div>
+    <div id="mp-pri-row" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px;">${mpPriRowHtml()}</div>
     <textarea id="mp-tasks" rows="4" placeholder="${t('proj.ph_tasks')}" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-bottom:10px;"></textarea>
     <div style="display:flex;gap:9px;margin-bottom:11px;">
       <button type="button" id="mp-stage-upcoming" onclick="mpPickStage('upcoming')" style="${mpStageBtnStyle(_mpNewStage==='upcoming')}">${t('proj.stage_upcoming')}</button>
@@ -143,6 +173,9 @@ function mpCardHtml(p, isDone) {
       <div style="flex:1;">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:#e8f5ec;">${mpEsc(p.title)}</div>
         <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:7px;font-family:'IBM Plex Mono',monospace;font-size:10px;">
+          ${p.priority==='urgent' ? `<span style="background:#2a0a0a;border:1px solid #7f1d1d;border-radius:6px;padding:3px 8px;color:#f87171;font-weight:700;">🔴 ${t('proj.pri_urgent')}</span>` : (p.priority==='high' ? `<span style="background:#2a1f00;border:1px solid #6a4a00;border-radius:6px;padding:3px 8px;color:#fbbf24;font-weight:700;">🟡 ${t('proj.pri_high')}</span>` : '')}
+          ${p.requestedBy==='Management' ? `<span style="background:#16213a;border:1px solid #3a5a8a;border-radius:6px;padding:3px 8px;color:#9cc0f6;">🧑‍💼 ${t('proj.req_mgmt')}</span>` : (p.requestedBy==='Team' ? `<span style="background:#10241a;border:1px solid #2a5a3a;border-radius:6px;padding:3px 8px;color:#9fe0b5;">👥 ${t('proj.req_team')}</span>` : '')}
+          ${p.category ? `<span style="background:#1a1f0a;border:1px solid #4a5a2a;border-radius:6px;padding:3px 8px;color:#cfe0a0;">🏷 ${mpEsc(p.category)}</span>` : ''}
           ${p.machine    ? `<span style="background:#0d1f3a;border:1px solid #1e3a6a;border-radius:6px;padding:3px 8px;color:#7ab0f6;">🔩 ${mpEsc(p.machine)}</span>` : ''}
           ${p.assignedTo ? `<span style="background:#1a2a3a;border:1px solid #3a5a7a;border-radius:6px;padding:3px 8px;color:#9cc0e8;">👤 ${mpEsc(p.assignedTo)}</span>` : ''}
           ${p.dueDate    ? `<span style="background:#0a1f0a;border:1px solid #2a5a2a;border-radius:6px;padding:3px 8px;">${mpDueLabel(p)}</span>` : ''}
@@ -170,7 +203,7 @@ function mpCardHtml(p, isDone) {
 }
 
 // ── Actions ──────────────────────────────────────────────────────────────────
-function mpToggleAdd() { _mpShowAdd = !_mpShowAdd; if (_mpShowAdd) _mpNewStage = 'upcoming'; renderMaintProjects(); }
+function mpToggleAdd() { _mpShowAdd = !_mpShowAdd; if (_mpShowAdd) { _mpNewStage = 'upcoming'; _mpNewReq = ''; _mpNewCat = ''; _mpNewPri = 'normal'; } renderMaintProjects(); }
 
 function mpStageBtnStyle(on) {
   return `flex:1;padding:13px;border-radius:8px;border:2px solid ${on?'#4ade80':'#2a5a2a'};background:${on?'#16351b':'#06120a'};color:${on?'#fff':'#7ab07a'};font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;`;
@@ -199,6 +232,9 @@ async function mpCreateProject() {
     machine: machine.trim(),
     assignedTo: assigned.trim(),
     dueDate: due || null,
+    requestedBy: _mpNewReq || '',
+    category: _mpNewCat || '',
+    priority: _mpNewPri || 'normal',
     tasks,
     stage,
     status: 'open',
@@ -277,4 +313,7 @@ if (typeof window !== 'undefined') {
   window.mpDeleteTask = mpDeleteTask;
   window.mpDeleteProject = mpDeleteProject;
   window.mpPickStage = mpPickStage;
+  window.mpPickReq = mpPickReq;
+  window.mpPickCat = mpPickCat;
+  window.mpPickPri = mpPickPri;
 }
