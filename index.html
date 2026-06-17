@@ -671,7 +671,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 </style>
 </head>
 <body>
-<script>/* apply saved screen brightness before paint — no flash */try{var _sm=localStorage.getItem('screenMode');if(_sm==='mid')document.documentElement.style.filter='brightness(1.3) contrast(1.04)';else if(_sm==='bright')document.documentElement.style.filter='brightness(1.65) contrast(1.08)';}catch(e){}</script>
+<script>/* apply saved background theme before paint — no flash */try{var _sm=localStorage.getItem('screenMode');if(_sm==='mid')_sm='lightgreen';if(_sm==='bright')_sm='white';if(_sm==='lightgreen'||_sm==='white')document.documentElement.setAttribute('data-theme',_sm);}catch(e){}</script>
 <style id="polish-layer">
 /* ── Modern polish layer: app-wide micro-interactions & legibility ── */
 * { -webkit-tap-highlight-color: transparent; }
@@ -707,9 +707,9 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
       <div style="display:flex;border:2px solid #2a5a2a;border-radius:50px;overflow:hidden;">
-        <button id="mode-btn-dark"   data-i18n="mode.dark"   onclick="setScreenMode('dark')"   style="padding:8px 12px;background:transparent;border:none;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">Dark</button>
-        <button id="mode-btn-mid"    data-i18n="mode.mid"    onclick="setScreenMode('mid')"    style="padding:8px 12px;background:transparent;border:none;border-left:1px solid #2a5a2a;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">Mid</button>
-        <button id="mode-btn-bright" data-i18n="mode.bright" onclick="setScreenMode('bright')" style="padding:8px 12px;background:transparent;border:none;border-left:1px solid #2a5a2a;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">Bright</button>
+        <button id="mode-btn-dark"       data-i18n="mode.dark"  onclick="setScreenMode('dark')"       style="padding:8px 12px;background:transparent;border:none;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">Dark</button>
+        <button id="mode-btn-lightgreen" data-i18n="mode.light" onclick="setScreenMode('lightgreen')" style="padding:8px 12px;background:transparent;border:none;border-left:1px solid #2a5a2a;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">Light</button>
+        <button id="mode-btn-white"      data-i18n="mode.white" onclick="setScreenMode('white')"      style="padding:8px 12px;background:transparent;border:none;border-left:1px solid #2a5a2a;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;">White</button>
       </div>
       <button id="landing-lang-btn" onclick="toggleLang()" style="padding:9px 16px;background:#0a1a2a;border:2px solid #3b82f6;border-radius:50px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;display:flex;align-items:center;gap:6px;flex-shrink:0;">🌐 <span id="landing-lang-label">ES</span></button>
     </div>
@@ -729,13 +729,33 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
     .loc-choice .lc-arrow{margin-left:auto;font-size:22px;color:#4caf50;}
   </style>
 
+  <style id="theme-layer">
+    /* Background themes — Dark = default dark green (no rules needed) */
+    html[data-theme="lightgreen"] body, html[data-theme="lightgreen"] #landing-screen { background:#e3f3e6 !important; }
+    html[data-theme="white"] body,      html[data-theme="white"] #landing-screen      { background:#ffffff !important; }
+    /* Bare-background headings → dark so they stay readable on light pages */
+    html[data-theme="lightgreen"] #ls-clock, html[data-theme="white"] #ls-clock,
+    html[data-theme="lightgreen"] #loc-home-title, html[data-theme="white"] #loc-home-title,
+    html[data-theme="lightgreen"] .land-title, html[data-theme="white"] .land-title { color:#12331f !important; }
+    html[data-theme="lightgreen"] #ls-date, html[data-theme="white"] #ls-date,
+    html[data-theme="lightgreen"] #loc-home-sub, html[data-theme="white"] #loc-home-sub,
+    html[data-theme="lightgreen"] .land-sub, html[data-theme="white"] .land-sub,
+    html[data-theme="lightgreen"] .section-title, html[data-theme="white"] .section-title,
+    html[data-theme="lightgreen"] .section-sub, html[data-theme="white"] .section-sub { color:#2e6b3f !important; }
+    /* Transparent location buttons → solid light cards with dark text */
+    html[data-theme="lightgreen"] .loc-choice, html[data-theme="white"] .loc-choice { background:#ffffff !important; border-color:#2a7a3a !important; }
+    html[data-theme="white"] .loc-choice { box-shadow:0 2px 10px rgba(0,0,0,.08); }
+    html[data-theme="lightgreen"] .loc-choice .lc-name, html[data-theme="white"] .loc-choice .lc-name { color:#12331f !important; }
+    html[data-theme="lightgreen"] .loc-choice .lc-sub,  html[data-theme="white"] .loc-choice .lc-sub  { color:#2e6b3f !important; }
+  </style>
+
   <!-- ── LOCATION PICKER: choose a site, then its home opens ── -->
   <div id="loc-picker" style="text-align:center;padding:18px 18px 24px;flex-shrink:0;">
     <span onclick="chickenClick(event)" style="font-size:46px;line-height:1;margin-bottom:6px;cursor:pointer;user-select:none;display:block;">🐔</span>
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#f0ead8;letter-spacing:4px;">RUSHTOWN POULTRY</div>
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a7a4a;letter-spacing:3px;text-transform:uppercase;margin-top:2px;">HEGINS &amp; DANVILLE OPERATIONS</div>
+    <div class="land-title" style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#f0ead8;letter-spacing:4px;">RUSHTOWN POULTRY</div>
+    <div class="land-sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a7a4a;letter-spacing:3px;text-transform:uppercase;margin-top:2px;">HEGINS &amp; DANVILLE OPERATIONS</div>
 
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a8a5a;letter-spacing:3px;text-transform:uppercase;margin:26px 0 14px;">Select a location</div>
+    <div class="land-sub" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a8a5a;letter-spacing:3px;text-transform:uppercase;margin:26px 0 14px;">Select a location</div>
     <div id="loc-switch" style="display:flex;flex-direction:column;gap:12px;max-width:360px;margin:0 auto;">
       <button class="loc-pill loc-choice" data-loc="Hegins" onclick="openLocationHome('Hegins')">
         <span class="lc-emoji">📍</span><span><span class="lc-name">HEGINS</span><span class="lc-sub" style="display:block;">Layer houses · this site only</span></span><span class="lc-arrow">→</span>
@@ -5184,7 +5204,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260616-v110"></script>
+<script defer src="js/core.js?v=20260617-themes"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>

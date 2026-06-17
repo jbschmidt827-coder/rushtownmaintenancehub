@@ -696,20 +696,20 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v114 · Jun 17 2026';
+var APP_VERSION = 'v115 · Jun 17 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
 // inline script in index.html applies the saved level before paint (no flash);
 // this updates it live when the toggle is tapped and highlights the active button.
 function setScreenMode(mode) {
-  mode = (mode === 'mid' || mode === 'bright') ? mode : 'dark';
-  var f = mode === 'bright' ? 'brightness(1.65) contrast(1.08)'
-        : mode === 'mid'    ? 'brightness(1.3) contrast(1.04)'
-        : 'none';
-  try { document.documentElement.style.filter = f; } catch (e) {}
+  if (mode === 'mid') mode = 'lightgreen';   // migrate old brightness names → real themes
+  if (mode === 'bright') mode = 'white';
+  mode = (mode === 'lightgreen' || mode === 'white') ? mode : 'dark';
+  try { document.documentElement.setAttribute('data-theme', mode); } catch (e) {}
+  try { document.documentElement.style.filter = 'none'; } catch (e) {}   // clear any old brightness filter
   try { localStorage.setItem('screenMode', mode); } catch (e) {}
-  ['dark','mid','bright'].forEach(function (m) {
+  ['dark','lightgreen','white'].forEach(function (m) {
     var b = document.getElementById('mode-btn-' + m);
     if (!b) return;
     var on = (m === mode);
@@ -1193,7 +1193,7 @@ const TRANSLATIONS = {
     'landing.oncall':'On Call','landing.oncall_sub':'Log · History · Calendar by site',
     'landing.locations':'← Locations','landing.this_loc':'This location only',
     'landing.eos_report':'EOS Report','landing.eos_report_sub':'End-of-shift summary & sign-off — before you go home',
-    'mode.dark':'Dark','mode.mid':'Mid','mode.bright':'Bright',
+    'mode.dark':'Dark','mode.mid':'Mid','mode.bright':'Bright','mode.light':'Light','mode.white':'White',
     'proj.header':'Projects','proj.upcoming':'upcoming','proj.inprogress':'in progress','proj.done':'done',
     'proj.new':'+ New Project','proj.cancel':'✕ Cancel','proj.none':'No projects yet. Tap "+ New Project" to add an upcoming rebuild.',
     'proj.sec_upcoming':'📅 Upcoming','proj.sec_inprogress':'🔧 In Progress','proj.sec_completed':'✅ Completed',
@@ -1400,7 +1400,7 @@ const TRANSLATIONS = {
     'landing.oncall':'De Guardia','landing.oncall_sub':'Registro · Historial · Calendario por sitio',
     'landing.locations':'← Ubicaciones','landing.this_loc':'Solo esta ubicación',
     'landing.eos_report':'Reporte Fin de Turno','landing.eos_report_sub':'Resumen de fin de turno y firma — antes de salir',
-    'mode.dark':'Oscuro','mode.mid':'Medio','mode.bright':'Brillante',
+    'mode.dark':'Oscuro','mode.mid':'Medio','mode.bright':'Brillante','mode.light':'Claro','mode.white':'Blanco',
     'proj.header':'Proyectos','proj.upcoming':'próximos','proj.inprogress':'en curso','proj.done':'hechos',
     'proj.new':'+ Nuevo Proyecto','proj.cancel':'✕ Cancelar','proj.none':'Aún no hay proyectos. Toca "+ Nuevo Proyecto" para agregar una reconstrucción próxima.',
     'proj.sec_upcoming':'📅 Próximos','proj.sec_inprogress':'🔧 En Curso','proj.sec_completed':'✅ Completados',
