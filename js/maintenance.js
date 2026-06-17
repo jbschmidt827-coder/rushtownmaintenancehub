@@ -148,7 +148,10 @@ function renderWO() {
               <div style="font-size:12px;color:#a09070;margin-top:4px;">${wo.desc}</div>
               ${wo.updates&&wo.updates.length?`<div style="font-size:11px;color:#856404;margin-top:4px;">💬 ${wo.updates[wo.updates.length-1].text}</div>`:''}
             </div>
-            <button onclick="event.stopPropagation();removeFromRail('${wo._fbId}')" style="padding:4px 8px;background:#2a1a00;border:1px solid #5a3a00;border-radius:6px;color:#856404;font-size:11px;cursor:pointer;flex-shrink:0;">✕</button>
+            <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+              <button onclick="event.stopPropagation();openWOUpdate('${wo._fbId}')" title="Add a note / update" style="padding:6px 10px;background:#1a2a1a;border:1px solid #2a4a2a;border-radius:6px;color:#7ab07a;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'IBM Plex Mono',monospace;">💬 Update</button>
+              <button onclick="event.stopPropagation();removeFromRail('${wo._fbId}')" title="Move back to the work order list" style="padding:6px 10px;background:#2a1a00;border:1px solid #5a3a00;border-radius:6px;color:#d6a82a;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'IBM Plex Mono',monospace;">↩ To List</button>
+            </div>
           </div>`).join('')}`;
     } else {
       railEl.style.display = 'none';
