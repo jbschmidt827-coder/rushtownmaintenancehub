@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-06-20T12:53:41.138589Z",
-  "date": "2026-06-20",
+  "generatedAt": "2026-06-21T13:11:21.851441Z",
+  "date": "2026-06-21",
   "scope": {
     "farms": [
-      "Hegins",
-      "Danville"
+      "Danville",
+      "Hegins"
     ],
     "houses": 13
   },
   "headline": {
-    "openWOTotal": 25,
+    "openWOTotal": 17,
     "redTagsActive": 0,
     "overdue7d": 0,
     "walksToday": 4,
@@ -58,7 +58,7 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Watering System",
-      "topItemDays": 2
+      "topItemDays": 3
     },
     {
       "farm": "Hegins",
@@ -102,18 +102,18 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Feed System",
-      "topItemDays": 46
+      "topItemDays": 47
     },
     {
       "farm": "Danville",
       "house": "1",
-      "openWO": 6,
+      "openWO": 3,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": "Feed System",
-      "topItemDays": 12
+      "topItem": "Egg Collection",
+      "topItemDays": 13
     },
     {
       "farm": "Danville",
@@ -124,7 +124,7 @@
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Feed System",
-      "topItemDays": 11
+      "topItemDays": 12
     },
     {
       "farm": "Danville",
@@ -140,24 +140,24 @@
     {
       "farm": "Danville",
       "house": "4",
-      "openWO": 8,
+      "openWO": 4,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Blower issue",
-      "topItemDays": 3
+      "topItemDays": 2
     },
     {
       "farm": "Danville",
       "house": "5",
-      "openWO": 2,
+      "openWO": 1,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": "",
-      "topItemDays": 5
+      "topItem": "Ventilation / Fans",
+      "topItemDays": 3
     }
   ],
   "openWOs": [
@@ -203,17 +203,6 @@
       "priority": "normal",
       "status": "in-progress",
       "ts": 1781790829193,
-      "urgent": false
-    },
-    {
-      "id": "7RqkyJANEVZjn0rvA07i",
-      "farm": "Danville",
-      "house": "1",
-      "title": "Feed System",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780921249198,
       "urgent": false
     },
     {
@@ -305,28 +294,6 @@
       "urgent": false
     },
     {
-      "id": "FAEHQPjhQrxAXIABGNu0",
-      "farm": "Danville",
-      "house": "4",
-      "title": "Feeders not running",
-      "desc": "",
-      "priority": "urgent",
-      "status": "open",
-      "ts": 1781869085819,
-      "urgent": false
-    },
-    {
-      "id": "NXo21y9sGLMKbvwN0ZpI",
-      "farm": "Danville",
-      "house": "4",
-      "title": "",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1781526787856,
-      "urgent": false
-    },
-    {
       "id": "RwYF2fnbVI5csiENWnpk",
       "farm": "Danville",
       "house": "",
@@ -349,39 +316,6 @@
       "urgent": false
     },
     {
-      "id": "W4E2DzrMMcl2e1bX6vcQ",
-      "farm": "Danville",
-      "house": "4",
-      "title": "Blower issue",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1781697245798,
-      "urgent": false
-    },
-    {
-      "id": "aViRciSDSWuZD8tDbgiX",
-      "farm": "Danville",
-      "house": "1",
-      "title": "Feeders not running",
-      "desc": "",
-      "priority": "urgent",
-      "status": "in-progress",
-      "ts": 1781866759659,
-      "urgent": false
-    },
-    {
-      "id": "bnJWO4M4L9fh4H59HCbM",
-      "farm": "Danville",
-      "house": "",
-      "title": "\ud83d\udca8 Ventilation \u2014 PM Follow-up",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1780328951420,
-      "urgent": false
-    },
-    {
       "id": "j6Uuxj4uw6Y0X26m3YIp",
       "farm": "Danville",
       "house": "1",
@@ -390,17 +324,6 @@
       "priority": "normal",
       "status": "open",
       "ts": 1781524417156,
-      "urgent": false
-    },
-    {
-      "id": "jtCMebvIJjqx0HaHfUkJ",
-      "farm": "Danville",
-      "house": "1",
-      "title": "Feed System",
-      "desc": "",
-      "priority": "urgent",
-      "status": "open",
-      "ts": 1781866713962,
       "urgent": false
     },
     {
@@ -421,7 +344,7 @@
       "title": "Other",
       "desc": "",
       "priority": "routine",
-      "status": "open",
+      "status": "in-progress",
       "ts": 1781796935412,
       "urgent": false
     },
@@ -459,28 +382,6 @@
       "urgent": false
     },
     {
-      "id": "vroKrAaKEjWTPG9dBCCr",
-      "farm": "Danville",
-      "house": "5",
-      "title": "",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1781526830943,
-      "urgent": false
-    },
-    {
-      "id": "wkR1vfFQMhesF5uGW0H9",
-      "farm": "Danville",
-      "house": "4",
-      "title": "Feeders not running",
-      "desc": "",
-      "priority": "urgent",
-      "status": "in-progress",
-      "ts": 1781782959713,
-      "urgent": false
-    },
-    {
       "id": "xHepOPTu6eDbtKtQm9ug",
       "farm": "Danville",
       "house": "4",
@@ -508,27 +409,27 @@
   "morningWalksToday": [
     {
       "farm": "Danville",
-      "house": "1",
-      "employee": "Celia",
-      "time": "6:55 AM"
+      "house": "4",
+      "employee": "Aracely",
+      "time": "6:53 AM"
     },
     {
       "farm": "Danville",
       "house": "2",
-      "employee": "Celia",
-      "time": "7:01 AM"
-    },
-    {
-      "farm": "Danville",
-      "house": "4",
-      "employee": "Celia",
-      "time": "7:33 AM"
+      "employee": "Aracely",
+      "time": "6:45 AM"
     },
     {
       "farm": "Danville",
       "house": "5",
-      "employee": "Celia",
-      "time": "7:29 AM"
+      "employee": "Aracely",
+      "time": "6:56 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "1",
+      "employee": "Aracely",
+      "time": "6:43 AM"
     }
   ]
 }
