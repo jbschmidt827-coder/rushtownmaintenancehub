@@ -763,6 +763,9 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
       <button class="loc-pill loc-choice" data-loc="Danville" onclick="openLocationHome('Danville')">
         <span class="lc-emoji">📍</span><span><span class="lc-name">DANVILLE</span><span class="lc-sub" data-i18n="landing.layer_only" style="display:block;">Layer houses · this site only</span></span><span class="lc-arrow">→</span>
       </button>
+      <button class="loc-pill loc-choice" onclick="enterApp('pkg')" style="border-color:#d69e2e;">
+        <span class="lc-emoji">🏭</span><span><span class="lc-name" style="color:#f0d68a;">PROCESSING</span><span class="lc-sub" style="display:block;color:#d6b36a;">Plant · maintenance &amp; units</span></span><span class="lc-arrow" style="color:#d69e2e;">→</span>
+      </button>
       <button class="loc-pill loc-choice" data-loc="Master" onclick="openLocationHome('Master')" style="border-color:#3b82f6;">
         <span class="lc-emoji">🏢</span><span><span class="lc-name" style="color:#bcd3f6;">MASTER</span><span class="lc-sub" data-i18n="landing.all_combined" style="display:block;color:#7ab0f6;">All locations combined</span></span><span class="lc-arrow" style="color:#3b82f6;">→</span>
       </button>
@@ -825,13 +828,6 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
           <div data-i18n="landing.prod" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Production</div>
           <div data-i18n="landing.prod_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab07a;line-height:1.4;">Barn walk · Daily checks · Feed &amp; water</div>
           <div id="ls-prod" style="font-family:'IBM Plex Mono',monospace;font-size:10px;min-height:14px;"></div>
-        </button>
-
-        <!-- Processing (plant) -->
-        <button onclick="enterApp('pkg')" class="hub-card" style="padding:16px 14px;background:#2a1f0a;border:2px solid #d69e2e;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
-          <span style="font-size:28px;line-height:1;">🏭</span>
-          <div data-i18n="landing.processing" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;">Processing</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#d6b36a;line-height:1.4;">Packers · Cleaners · Conveyors · Cleanup</div>
         </button>
 
         <!-- Maintenance -->
@@ -5205,7 +5201,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260619-proc"></script>
+<script defer src="js/core.js?v=20260619-prochome"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
@@ -5213,7 +5209,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/maint-projects.js?v=20260617-projtags"></script>
 <script defer src="js/trending-wo.js?v=20260501"></script>
 <script defer src="js/packaging.js?v=20260616-projects"></script>
-<script defer src="js/processing.js?v=20260619-proc"></script>
+<script defer src="js/processing.js?v=20260619-prochome"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260524b"></script>
 <script defer src="js/production.js?v=20260617-noegg"></script>
