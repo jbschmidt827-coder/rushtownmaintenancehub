@@ -40,7 +40,7 @@ const HELP_CONTENT = [
           'Type the worker name at the top.',
           'Work through each block. A block stays open until every question is answered.',
           'Tap Done on a block — it collapses and the next one opens.',
-          'For egg or rodent counts you do not have, tap N/A.',
+          'For any count you do not have, tap N/A.',
           'When all blocks are done, tap Submit.',
         ],
         detail: [
@@ -89,6 +89,41 @@ const HELP_CONTENT = [
           'To knock out several at once, use Bulk PM select and choose the daily / weekly / MWF group.',
           'Procedures can be edited by a supervisor; changes are saved and show for everyone next time.',
           'Bulk PM and sign-offs also work offline and sync later.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'processing',
+    icon: '🏭',
+    name: 'Processing Plant',
+    color: '#d69e2e',
+    blurb: 'Units · Counts · Maintenance',
+    tasks: [
+      {
+        title: '🏭 Open the Processing Plant',
+        simple: [
+          'On the home screen (where you pick a location), tap the PROCESSING button.',
+          'You will see cards: Maintenance, Processing Units, and Processing PMs.',
+          'Maintenance = work orders & PMs for the plant. Processing PMs = the plant PM schedule.',
+          'Tap Processing Units to work the units: Packers, Cleaners, Conveyors, Cleanup.',
+        ],
+        detail: [
+          'Processing is its own button on the front screen — Hegins and Danville do not show it.',
+          'Master still brings everything together, including processing.',
+        ],
+      },
+      {
+        title: '📦 Log a count or start a work order on a unit',
+        simple: [
+          'Processing → Processing Units.',
+          'Find the unit: Packers, Cleaners, Conveyors, or Cleanup.',
+          'Tap ＋ Count, type the number, and confirm — it logs for today.',
+          'Tap 🔧 WO to start a work order already set to that unit.',
+        ],
+        detail: [
+          'Each unit shows how many work orders are open and today\'s logged count.',
+          'Counts and work orders save and sync like everything else.',
         ],
       },
     ],

@@ -121,6 +121,11 @@ function goMaintSection(section) {
   if ((section === 'wo' || section === 'pm') && typeof syncMaintLocToActive === 'function') {
     syncMaintLocToActive(section);
   }
+  // Location filter row only makes sense in Master (all sites). In a single site
+  // the WO/PM list is already scoped to it, so hide the row to avoid confusion.
+  var _maintMaster = (typeof getActiveLocation === 'function') && getActiveLocation() === 'Master';
+  var _woLocBar = document.getElementById('wo-loc-bar'); if (_woLocBar) _woLocBar.style.display = _maintMaster ? '' : 'none';
+  var _pmLocBar = document.getElementById('pm-loc-bar'); if (_pmLocBar) _pmLocBar.style.display = _maintMaster ? '' : 'none';
   // Calendar / Contractor / Weekly Agenda / Red Tags / Assets removed from nav 2026-06-05 per Joe.
   // Their render functions still exist (parts inventory rebuild planned separately).
   const renders = {wo:renderWO, pm:renderPM, parts:renderParts, log:renderLog, wi:renderWI, cost:renderCostDashboard, projects:(typeof renderMaintProjects==='function'?renderMaintProjects:null)};
