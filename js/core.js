@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v119 · Jun 17 2026';
+var APP_VERSION = 'v120 · Jun 17 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -1076,11 +1076,11 @@ const TRANSLATIONS = {
   en: {
     // Nav
     'nav.home':'🏠 Home','nav.dash':'📊 Dashboard','nav.prod':'🏭 Production',
-    'nav.maint':'🔧 Maintenance','nav.pkg':'📦 Packaging','nav.feed':'🌾 Feed Mill',
+    'nav.maint':'🔧 Maintenance','nav.pkg':'🏭 Processing','nav.feed':'🌾 Feed Mill',
     'nav.ship':'🚚 Shipping','nav.kpi':'🥚 KPI','nav.reports':'📊 Reports','nav.sched':'📅 Schedule',
     // Section titles
     'title.dash':'📊 Operations Dashboard','title.prod':'🏭 Production',
-    'title.maint':'🔧 Maintenance','title.pkg':'📦 Packaging',
+    'title.maint':'🔧 Maintenance','title.pkg':'🏭 Processing',
     'title.feed':'🌾 Feed Mill','title.ship':'🚚 Shipping',
     'title.kpi':'🥚 Egg Production KPI','title.reports':'Reports','title.sched':'📅 Team Schedule',
     // Maintenance sub-buttons
@@ -1191,7 +1191,7 @@ const TRANSLATIONS = {
     'landing.staff':'Staff','landing.staff_sub':'Team directory · Add employees',
     'landing.scorecard':'Daily Scorecard','landing.scorecard_sub':'Livability & maintenance CTQs · red flags · trends',
     'landing.oncall':'On Call','landing.oncall_sub':'Log · History · Calendar by site',
-    'landing.locations':'← Locations','landing.this_loc':'This location only',
+    'landing.locations':'← Locations','landing.this_loc':'This location only','landing.processing':'Processing',
     'landing.eos_report':'EOS Report','landing.eos_report_sub':'End-of-shift summary & sign-off — before you go home',
     'landing.tagline':'Hegins &amp; Danville Operations','landing.select_loc':'Select a location','landing.layer_only':'Layer houses · this site only','landing.all_combined':'All locations combined','landing.newwo_title':'New Work Order','landing.newwo_sub':'Report a problem fast — uses your last location','landing.howto_title':'How To Use','landing.howto_sub':'Step-by-step instructions by department',
     'mode.dark':'Dark','mode.mid':'Mid','mode.bright':'Bright','mode.light':'Light','mode.white':'White',
@@ -1284,11 +1284,11 @@ const TRANSLATIONS = {
   es: {
     // Nav
     'nav.home':'🏠 Inicio','nav.dash':'📊 Panel','nav.prod':'🏭 Producción',
-    'nav.maint':'🔧 Mantenimiento','nav.pkg':'📦 Empaque','nav.feed':'🌾 Molino',
+    'nav.maint':'🔧 Mantenimiento','nav.pkg':'🏭 Procesamiento','nav.feed':'🌾 Molino',
     'nav.ship':'🚚 Envíos','nav.kpi':'🥚 KPI','nav.reports':'📊 Reportes','nav.sched':'📅 Horario',
     // Section titles
     'title.dash':'📊 Panel de Operaciones','title.prod':'🏭 Producción',
-    'title.maint':'🔧 Mantenimiento','title.pkg':'📦 Empaque',
+    'title.maint':'🔧 Mantenimiento','title.pkg':'🏭 Procesamiento',
     'title.feed':'🌾 Molino de Alimento','title.ship':'🚚 Envíos',
     'title.kpi':'🥚 KPI de Producción','title.reports':'Reportes','title.sched':'📅 Horario de Equipo',
     // Maintenance sub-buttons
@@ -1399,7 +1399,7 @@ const TRANSLATIONS = {
     'landing.staff':'Personal','landing.staff_sub':'Directorio · Agregar empleados',
     'landing.scorecard':'Tarjeta Diaria','landing.scorecard_sub':'CTQs de habitabilidad y mantenimiento · alertas · tendencias',
     'landing.oncall':'De Guardia','landing.oncall_sub':'Registro · Historial · Calendario por sitio',
-    'landing.locations':'← Ubicaciones','landing.this_loc':'Solo esta ubicación',
+    'landing.locations':'← Ubicaciones','landing.this_loc':'Solo esta ubicación','landing.processing':'Procesamiento',
     'landing.eos_report':'Reporte Fin de Turno','landing.eos_report_sub':'Resumen de fin de turno y firma — antes de salir',
     'landing.tagline':'Operaciones de Hegins y Danville','landing.select_loc':'Seleccione una ubicación','landing.layer_only':'Casas de ponedoras · solo este sitio','landing.all_combined':'Todas las ubicaciones combinadas','landing.newwo_title':'Nueva Orden de Trabajo','landing.newwo_sub':'Reporte un problema rápido — usa su última ubicación','landing.howto_title':'Cómo Usar','landing.howto_sub':'Instrucciones paso a paso por departamento',
     'mode.dark':'Oscuro','mode.mid':'Medio','mode.bright':'Brillante','mode.light':'Claro','mode.white':'Blanco',
@@ -2375,7 +2375,7 @@ function go(tab) {
   if (tab === 'dash')  renderDash();
   if (tab === 'prod')  { renderProdPanel(); goProdSection('overview'); }
   if (tab === 'maint') { goMaintSection(window._maintSection || 'wo'); }
-  if (tab === 'pkg')   { goPkgSection(window._pkgSection || 'packing'); }
+  if (tab === 'pkg')   { if (typeof renderProcessing === 'function') renderProcessing(); else goPkgSection(window._pkgSection || 'packing'); }
   if (tab === 'feed')  { goFeedSection(window._feedSection || 'dashboard'); }
   if (tab === 'ship')  { goShipSection(window._shipSection || 'shipping'); }
   if (tab === 'check') { renderProdCheck(); if (typeof startChecklistDashboard==='function') startChecklistDashboard(); if (typeof loadWI==='function') loadWI(); }
