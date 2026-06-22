@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v124 · Jun 17 2026';
+var APP_VERSION = 'v126 · Jun 17 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -748,7 +748,7 @@ document.addEventListener('focusin', function(e) {
 // Hegins / Danville scope the whole hub to that plant. Master shows
 // everything aggregated. Persisted per device; defaults to Hegins on first
 // run ("just start with Hegins"), then remembers the last choice.
-const LOCATIONS = ['Hegins', 'Danville', 'Master'];
+const LOCATIONS = ['Hegins', 'Danville', 'Processing Plant', 'Master'];
 
 function getActiveLocation() {
   try {
@@ -762,7 +762,7 @@ function getActiveLocation() {
 // the app already treats as "all locations".
 function getPreferredFarm() {
   const loc = getActiveLocation();
-  return (loc === 'Hegins' || loc === 'Danville') ? loc : null;
+  return (loc === 'Hegins' || loc === 'Danville' || loc === 'Processing Plant') ? loc : null;
 }
 
 function setActiveLocation(loc) {

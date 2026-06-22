@@ -49,6 +49,19 @@ const HELP_CONTENT = [
           'Notes boxes are optional except where the checklist marks them required.',
         ],
       },
+      {
+        title: '📋 End-of-Shift report (before you leave)',
+        simple: [
+          'Location → PRODUCTION → End-of-Shift (under Morning Walk).',
+          'Review the auto-summary of the day at the top.',
+          'Check off the end-of-shift items.',
+          'Type your name to sign off, then tap Submit.',
+        ],
+        detail: [
+          'The summary is built for you from the day\'s walks and work — you just confirm and sign.',
+          'It is per-facility, so do it for the site you worked.',
+        ],
+      },
     ],
   },
   {
@@ -91,6 +104,72 @@ const HELP_CONTENT = [
           'Bulk PM and sign-offs also work offline and sync later.',
         ],
       },
+      {
+        title: '✏️ Edit a work order after it is submitted',
+        simple: [
+          'Open Maintenance → Work Orders and find the order (it may be in the Action Rail).',
+          'Tap the ✏️ Edit button on the card.',
+          'Change the problem, description, priority, who it is assigned to, parts, or hours.',
+          'Tap Save Changes.',
+        ],
+        detail: [
+          'Use this to fix a typo, bump priority, or reassign — no need to delete and re-create.',
+          'It does not change the location or house; make a new one if those are wrong.',
+        ],
+      },
+      {
+        title: '⚡ Action Rail — your live to-do list',
+        simple: [
+          'On any work order card, tap the ⚡ button to move it up to the Action Rail.',
+          'From the rail: ✓ Done closes it out, 💬 Update adds a note, ↩ To List sends it back.',
+          'Use the rail for the few jobs you are actively working right now.',
+        ],
+        detail: [
+          'Closing from the rail opens the normal close-out (who did it, parts, photos), then it drops off the rail.',
+          'The 📋 button flags a work order for the meeting agenda.',
+        ],
+      },
+      {
+        title: '📖 Edit or add a Work Instruction (WI)',
+        simple: [
+          'Open Maintenance → WI (Work Instructions).',
+          'Tap a WI to open it, then tap Edit — or use + New to add one.',
+          'Fill in the title, department, and step-by-step instructions; add photos if helpful.',
+          'Tap Save.',
+        ],
+        detail: [
+          'Edited or new WIs save for everyone and show next time that task is opened.',
+          'Photos store right in the instruction, so they work offline.',
+        ],
+      },
+      {
+        title: '🛠 Edit a PM procedure (its steps)',
+        simple: [
+          'Open Maintenance → PM and tap the PM you want to change.',
+          'Tap Edit Procedure.',
+          'Add or change the Safety, Tools, Steps, and Corrective items.',
+          'Tap Save — the updated procedure then shows for everyone.',
+        ],
+        detail: [
+          'This keeps the checklist current as a machine or process changes.',
+          'The built-in steps stay as a fallback until you save an edit.',
+        ],
+      },
+      {
+        title: '🗂 Add a maintenance project',
+        simple: [
+          'Open Maintenance → Projects.',
+          'Tap + New Project.',
+          'Type a title (that is all that is required) — optionally the machine, who is assigned, and a due date.',
+          'Add tasks one per line, then tap the chips: Requested by (Team / Management), What\'s it for (5S, Barns, Equipment…), and Priority.',
+          'Tap Create Project.',
+        ],
+        detail: [
+          'Use projects for bigger efforts that are more than one work order — a rebuild, a 5S push, etc.',
+          'Tap a task to check it off; the progress bar fills as you go, and urgent projects float to the top.',
+          'Projects are per-location, just like work orders.',
+        ],
+      },
     ],
   },
   {
@@ -98,32 +177,78 @@ const HELP_CONTENT = [
     icon: '🏭',
     name: 'Processing Plant',
     color: '#d69e2e',
-    blurb: 'Units · Counts · Maintenance',
+    blurb: 'Cases · Downtime · Breakage · Maintenance',
     tasks: [
       {
         title: '🏭 Open the Processing Plant',
         simple: [
-          'On the home screen (where you pick a location), tap the PROCESSING button.',
-          'You will see cards: Maintenance, Processing Units, and Processing PMs.',
-          'Maintenance = work orders & PMs for the plant. Processing PMs = the plant PM schedule.',
-          'Tap Processing Units to work the units: Packers, Cleaners, Conveyors, Cleanup.',
+          'On the front screen (where you pick a location), tap the PROCESSING button.',
+          'You will see three cards: Maintenance, Packing Log, and Processing PMs.',
+          'Maintenance and Processing PMs show ONLY the plant now — no Hegins or Danville mixed in.',
+          'You can create new plant work orders right from there.',
         ],
         detail: [
-          'Processing is its own button on the front screen — Hegins and Danville do not show it.',
-          'Master still brings everything together, including processing.',
+          'Processing is its own location button — Hegins and Danville do not show it.',
+          'Master still brings everything together, including the plant.',
         ],
       },
       {
-        title: '📦 Log a count or start a work order on a unit',
+        title: '📦 Log packing — cases, downtime, breakage',
         simple: [
-          'Processing → Processing Units.',
-          'Find the unit: Packers, Cleaners, Conveyors, or Cleanup.',
-          'Tap ＋ Count, type the number, and confirm — it logs for today.',
-          'Tap 🔧 WO to start a work order already set to that unit.',
+          'Processing → Packing Log.',
+          'Pick the line (Packer 1, 2, …).',
+          'Enter Cases packed, any Downtime (minutes + a reason), and Breakage / cracks.',
+          'Tap ✓ Log Packing.',
         ],
         detail: [
-          'Each unit shows how many work orders are open and today\'s logged count.',
-          'Counts and work orders save and sync like everything else.',
+          'The top shows today\'s totals — cases packed, downtime minutes, and breakage.',
+          'Below that is a by-line breakdown so you can compare packers.',
+          'Everything saves and syncs like the rest of the app.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'basics',
+    icon: '⚙️',
+    name: 'Getting Around',
+    color: '#9ca3af',
+    blurb: 'Locations · Language · Brightness',
+    tasks: [
+      {
+        title: '📍 Switch location (Hegins / Danville / Processing / Master)',
+        simple: [
+          'On the front screen, tap the location you want: Hegins, Danville, Processing Plant, or Master.',
+          'Work orders, PMs, and staff then show just that site.',
+          'Master shows every site combined.',
+        ],
+        detail: [
+          'The app remembers your last location for next time.',
+          'To switch while inside, tap ← Locations to go back to the picker.',
+        ],
+      },
+      {
+        title: '🌐 Language & 🔆 brightness',
+        simple: [
+          'Tap the 🌐 button at the top of the front screen to switch English ⇄ Spanish.',
+          'Tap Dark, Light, or White at the top to change the background brightness.',
+        ],
+        detail: [
+          'Both choices are remembered on that tablet.',
+          'Use White or Light when reading in bright daylight.',
+        ],
+      },
+      {
+        title: '👥 Add a team member & set their site',
+        simple: [
+          'Open Staff from the home screen.',
+          'Add the person\'s name and role.',
+          'On their card, tap Hegins, Danville, or Both to set where they work.',
+          'That keeps each site\'s name lists correct when picking who did the work.',
+        ],
+        detail: [
+          'Only people tagged to a site (or Both, for maintenance techs) show in that site\'s pickers.',
+          'Anyone left untagged is flagged in amber so you can fix it.',
         ],
       },
     ],
