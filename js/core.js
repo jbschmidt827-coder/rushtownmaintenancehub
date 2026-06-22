@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v117 · Jun 17 2026';
+var APP_VERSION = 'v119 · Jun 17 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -1193,6 +1193,7 @@ const TRANSLATIONS = {
     'landing.oncall':'On Call','landing.oncall_sub':'Log · History · Calendar by site',
     'landing.locations':'← Locations','landing.this_loc':'This location only',
     'landing.eos_report':'EOS Report','landing.eos_report_sub':'End-of-shift summary & sign-off — before you go home',
+    'landing.tagline':'Hegins &amp; Danville Operations','landing.select_loc':'Select a location','landing.layer_only':'Layer houses · this site only','landing.all_combined':'All locations combined','landing.newwo_title':'New Work Order','landing.newwo_sub':'Report a problem fast — uses your last location','landing.howto_title':'How To Use','landing.howto_sub':'Step-by-step instructions by department',
     'mode.dark':'Dark','mode.mid':'Mid','mode.bright':'Bright','mode.light':'Light','mode.white':'White',
     'proj.header':'Projects','proj.upcoming':'upcoming','proj.inprogress':'in progress','proj.done':'done',
     'proj.new':'+ New Project','proj.cancel':'✕ Cancel','proj.none':'No projects yet. Tap "+ New Project" to add an upcoming rebuild.',
@@ -1400,6 +1401,7 @@ const TRANSLATIONS = {
     'landing.oncall':'De Guardia','landing.oncall_sub':'Registro · Historial · Calendario por sitio',
     'landing.locations':'← Ubicaciones','landing.this_loc':'Solo esta ubicación',
     'landing.eos_report':'Reporte Fin de Turno','landing.eos_report_sub':'Resumen de fin de turno y firma — antes de salir',
+    'landing.tagline':'Operaciones de Hegins y Danville','landing.select_loc':'Seleccione una ubicación','landing.layer_only':'Casas de ponedoras · solo este sitio','landing.all_combined':'Todas las ubicaciones combinadas','landing.newwo_title':'Nueva Orden de Trabajo','landing.newwo_sub':'Reporte un problema rápido — usa su última ubicación','landing.howto_title':'Cómo Usar','landing.howto_sub':'Instrucciones paso a paso por departamento',
     'mode.dark':'Oscuro','mode.mid':'Medio','mode.bright':'Brillante','mode.light':'Claro','mode.white':'Blanco',
     'proj.header':'Proyectos','proj.upcoming':'próximos','proj.inprogress':'en curso','proj.done':'hechos',
     'proj.new':'+ Nuevo Proyecto','proj.cancel':'✕ Cancelar','proj.none':'Aún no hay proyectos. Toca "+ Nuevo Proyecto" para agregar una reconstrucción próxima.',
@@ -2017,7 +2019,7 @@ function startLandingClock() {
     const clockEl = document.getElementById('ls-clock');
     const dateEl  = document.getElementById('ls-date');
     if (clockEl) clockEl.textContent = now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-    if (dateEl)  dateEl.textContent  = now.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'}).toUpperCase();
+    if (dateEl)  dateEl.textContent  = now.toLocaleDateString(_lang === 'es' ? 'es-ES' : 'en-US', {weekday:'long', month:'long', day:'numeric'}).toUpperCase();
   }
   tick();
   setInterval(tick, 1000);

@@ -753,18 +753,18 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   <div id="loc-picker" style="text-align:center;padding:18px 18px 24px;flex-shrink:0;">
     <span onclick="chickenClick(event)" style="font-size:46px;line-height:1;margin-bottom:6px;cursor:pointer;user-select:none;display:block;">🐔</span>
     <div class="land-title" style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#f0ead8;letter-spacing:4px;">RUSHTOWN POULTRY</div>
-    <div class="land-sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a7a4a;letter-spacing:3px;text-transform:uppercase;margin-top:2px;">HEGINS &amp; DANVILLE OPERATIONS</div>
+    <div class="land-sub" data-i18n="landing.tagline" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4a7a4a;letter-spacing:3px;text-transform:uppercase;margin-top:2px;">HEGINS &amp; DANVILLE OPERATIONS</div>
 
-    <div class="land-sub" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a8a5a;letter-spacing:3px;text-transform:uppercase;margin:26px 0 14px;">Select a location</div>
+    <div class="land-sub" data-i18n="landing.select_loc" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a8a5a;letter-spacing:3px;text-transform:uppercase;margin:26px 0 14px;">Select a location</div>
     <div id="loc-switch" style="display:flex;flex-direction:column;gap:12px;max-width:360px;margin:0 auto;">
       <button class="loc-pill loc-choice" data-loc="Hegins" onclick="openLocationHome('Hegins')">
-        <span class="lc-emoji">📍</span><span><span class="lc-name">HEGINS</span><span class="lc-sub" style="display:block;">Layer houses · this site only</span></span><span class="lc-arrow">→</span>
+        <span class="lc-emoji">📍</span><span><span class="lc-name">HEGINS</span><span class="lc-sub" data-i18n="landing.layer_only" style="display:block;">Layer houses · this site only</span></span><span class="lc-arrow">→</span>
       </button>
       <button class="loc-pill loc-choice" data-loc="Danville" onclick="openLocationHome('Danville')">
-        <span class="lc-emoji">📍</span><span><span class="lc-name">DANVILLE</span><span class="lc-sub" style="display:block;">Layer houses · this site only</span></span><span class="lc-arrow">→</span>
+        <span class="lc-emoji">📍</span><span><span class="lc-name">DANVILLE</span><span class="lc-sub" data-i18n="landing.layer_only" style="display:block;">Layer houses · this site only</span></span><span class="lc-arrow">→</span>
       </button>
       <button class="loc-pill loc-choice" data-loc="Master" onclick="openLocationHome('Master')" style="border-color:#3b82f6;">
-        <span class="lc-emoji">🏢</span><span><span class="lc-name" style="color:#bcd3f6;">MASTER</span><span class="lc-sub" style="display:block;color:#7ab0f6;">All locations combined</span></span><span class="lc-arrow" style="color:#3b82f6;">→</span>
+        <span class="lc-emoji">🏢</span><span><span class="lc-name" style="color:#bcd3f6;">MASTER</span><span class="lc-sub" data-i18n="landing.all_combined" style="display:block;color:#7ab0f6;">All locations combined</span></span><span class="lc-arrow" style="color:#3b82f6;">→</span>
       </button>
     </div>
 
@@ -773,8 +773,8 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
       <button onclick="enterApp('wo-submit')" style="width:100%;padding:15px 16px;background:#0d1f3a;border:2px solid #3b82f6;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;">
         <span style="font-size:24px;line-height:1;">🔧</span>
         <div style="flex:1;">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">New Work Order</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab0f6;line-height:1.4;margin-top:2px;">Report a problem fast — uses your last location</div>
+          <div data-i18n="landing.newwo_title" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">New Work Order</div>
+          <div data-i18n="landing.newwo_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab0f6;line-height:1.4;margin-top:2px;">Report a problem fast — uses your last location</div>
         </div>
         <span style="font-size:18px;color:#3b82f6;">→</span>
       </button>
@@ -785,8 +785,8 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
       <button onclick="openHelp()" style="width:100%;padding:14px 16px;background:#0d1f0d;border:2px solid #f0c419;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;">
         <span style="font-size:24px;line-height:1;">📖</span>
         <div style="flex:1;">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">How To Use</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#c7b34a;line-height:1.4;margin-top:2px;">Step-by-step instructions by department</div>
+          <div data-i18n="landing.howto_title" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">How To Use</div>
+          <div data-i18n="landing.howto_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#c7b34a;line-height:1.4;margin-top:2px;">Step-by-step instructions by department</div>
         </div>
         <span style="font-size:18px;color:#f0c419;">→</span>
       </button>
@@ -802,7 +802,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
         <button data-i18n="landing.locations" onclick="showLocationPicker()" style="padding:9px 14px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">← Locations</button>
         <div style="flex:1;min-width:0;">
           <div id="loc-home-title" style="font-family:'Bebas Neue',sans-serif;font-size:34px;color:#f0ead8;letter-spacing:3px;line-height:1;">HEGINS</div>
-          <div id="loc-home-sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4ade80;letter-spacing:2px;text-transform:uppercase;margin-top:3px;">This location only</div>
+          <div id="loc-home-sub" data-i18n="landing.this_loc" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4ade80;letter-spacing:2px;text-transform:uppercase;margin-top:3px;">This location only</div>
         </div>
       </div>
 
@@ -5197,7 +5197,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260617-railclose"></script>
+<script defer src="js/core.js?v=20260619-pmfix"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
@@ -5215,7 +5215,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/egg-quality.js?v=20260424"></script>
 <script defer src="js/biosecurity.js?v=20260424"></script>
 <script defer src="js/scheduling.js?v=20260612g-v71"></script>
-<script defer src="js/tv-scoreboard.js?v=20260616-namescope"></script>
+<script defer src="js/tv-scoreboard.js?v=20260619-pmfix"></script>
 <script defer src="js/staff.js?v=20260616-namescope"></script>
 <script defer src="js/staff-roster.js?v=20260513-roster"></script>
 <script defer src="js/enhancements.js?v=20260616-jokes"></script>
