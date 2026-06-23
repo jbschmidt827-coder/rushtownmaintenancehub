@@ -69,7 +69,7 @@ function renderProcessing() {
   body.innerHTML =
     '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#5a8a5a;margin-bottom:14px;">🏭 Processing Plant</div>' +
     tile("go('maint')", '#0d1f3a', '#3b82f6', '🔧', 'Maintenance', 'Work orders · PM · Parts', plantOpen + ' open work order' + (plantOpen !== 1 ? 's' : ''), '#9cc0f6') +
-    tile("procOpenPacking()", '#2a1f0a', '#d69e2e', '📦', 'Packing Log', 'Cases · Downtime · Breakage, by line', '🥚 ' + procNum(casesToday) + ' cases packed today', '#d6b36a') +
+    tile("procOpenPacking()", '#2a1f0a', '#d69e2e', '📦', 'Packing Log', 'Cases · Downtime · Breakage, by line', procNum(casesToday) + ' cases today', '#d6b36a') +
     tile("go('pm')", '#10241a', '#4ade80', '🛠', 'Processing PMs', 'PM schedule for the plant', '', '');
 }
 
@@ -91,7 +91,7 @@ function procOpenPacking() {
     if (!lr.length) return '';
     return '<div style="display:flex;justify-content:space-between;gap:8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#cfe0a0;padding:7px 9px;border-bottom:1px solid #163016;">' +
       '<span style="font-weight:700;">' + procEsc(ln) + '</span>' +
-      '<span>🥚 ' + procNum(c) + ' · ⏱ ' + procNum(d) + 'm · 💔 ' + procNum(b) + '</span></div>';
+      '<span>📦 ' + procNum(c) + ' · ⏱ ' + procNum(d) + 'm · 💔 ' + procNum(b) + '</span></div>';
   }).join('') || '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#3a6a3a;padding:9px;">No packing logged today yet.</div>';
 
   var lineOpts = PROC_LINES.map(function (l) { return '<option>' + procEsc(l) + '</option>'; }).join('');

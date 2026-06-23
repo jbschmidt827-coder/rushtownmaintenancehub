@@ -1124,14 +1124,50 @@ function bwSet(key, val) {
   bwFlowRefresh(true);
 }
 
+// Friendly labels for the "still to finish" hint.
+const _BW_BLOCK_LABELS = {
+  employee:'Your name', mortality:'Mortality', equipment:'Equipment', air:'Air quality',
+  feedwater:'Feed & water', belts:'Egg belts', pest:'Pest', checklist:'Checklist',
+  weekly:'Weekly review', cageclean:'Cage cleaning', notes:'Notes'
+};
 function checkBWReady() {
-  // Submit only enables once EVERY visible block is fully answered
-  const allDone = _bwVisibleBlocks().every(bwBlockComplete);
+  // The Submit button is ALWAYS tappable. If a section is unfinished we guide
+  // the user to it on tap (see submitBarnWalk) and show a hint here — instead of
+  // a silently-greyed button that makes the team think they "can't submit".
+  const incomplete = _bwVisibleBlocks().filter(n => !bwBlockComplete(n));
+  const ready = incomplete.length === 0;
   const btn = document.getElementById('bw-submit-btn');
-  if (btn) btn.disabled = !allDone;
+  if (btn) { btn.disabled = false; btn.style.opacity = ready ? '1' : '0.55'; }
+  const hint = document.getElementById('bw-submit-hint');
+  if (hint) {
+    if (ready) { hint.style.display = 'none'; hint.textContent = ''; }
+    else {
+      hint.style.display = 'block';
+      hint.textContent = '⚠ Finish first: ' + incomplete.map(n => _BW_BLOCK_LABELS[n] || n).join(' · ');
+    }
+  }
 }
 
 async function submitBarnWalk() {
+  // If any section is unfinished, jump to the first one and highlight it instead
+  // of failing silently — this is what lets the team always reach Submit.
+  const _left = _bwVisibleBlocks().filter(n => !bwBlockComplete(n));
+  if (_left.length) {
+    const first = _left[0];
+    if (typeof bwExpandBlock === 'function') bwExpandBlock(first);
+    const card = (typeof _bwCard === 'function') ? _bwCard(first) : null;
+    if (card) {
+      card.classList.remove('bw-collapsed', 'bw-locked');
+      try { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+      card.style.transition = 'box-shadow .2s';
+      card.style.boxShadow = '0 0 0 3px #fbbf24';
+      setTimeout(function () { card.style.boxShadow = ''; }, 1600);
+    }
+    const _lbl = _BW_BLOCK_LABELS[first] || first;
+    if (typeof toast === 'function') toast('Finish "' + _lbl + '" first');
+    else alert('Please finish "' + _lbl + '" first.');
+    return;
+  }
   const employee   = document.getElementById('bw-employee').value.trim();
   const notes      = document.getElementById('bw-notes').value.trim();
   const waterPSI   = null; // field removed from Daily Employee Check
