@@ -755,13 +755,22 @@ function bwBlockComplete(name) {
       if (_bwData.fly === 'yes' && !_bwHasVal('bw-fly-count')) return false;
       return _bwHasVal('bw-weekly-rodent-count') || _bwIsNA('bw-weekly-rodent-count');
     }
-    case 'checklist':
+    case 'checklist': {
       // The Daily Employee Check shows the block-based daily checklist (_cl in
-      // daily-checklist.js). Use ITS completion so the gate matches what the
-      // employee sees ("X/Y done") instead of the old bw-cl rows.
-      if (typeof clAllReviewed === 'function') return clAllReviewed();
+      // daily-checklist.js). Read its completion DIRECTLY here so the gate works
+      // even if daily-checklist.js is a stale cached copy — only the globals
+      // _cl / CL_TASKS are needed, which exist in every version.
+      try {
+        if (typeof _cl !== 'undefined' && _cl) {
+          if (_cl.submitted) return true;
+          var _ct  = (typeof CL_TASKS !== 'undefined' && CL_TASKS) ? CL_TASKS : [];
+          var _vis = _ct.filter(function (t) { return _cl.include && _cl.include[t.id]; });
+          if (_vis.length) return _vis.every(function (t) { return _cl.checks && _cl.checks[t.id] && _cl.checks[t.id].done; });
+        }
+      } catch (e) {}
       return Array.from(document.querySelectorAll('#bw-checklist-items .bw-cl-row'))
-        .every(r => _bwChecklist[r.id.replace('bw-cl-','')]);
+        .every(function (r) { return _bwChecklist[r.id.replace('bw-cl-', '')]; });
+    }
     case 'weekly':
       return !!_bwData._weeklyAck; // acknowledged via its REVIEWED button
     case 'cageclean':
