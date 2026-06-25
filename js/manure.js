@@ -15,7 +15,9 @@ const MANURE_PCT_COL    = { 0: '#c0392b', 50: '#d69e2e', 100: '#2e7d32' };
 
 let _manureLog = [];
 let _manureWeekly = [];
+let _manureSubmit = [];
 let _manureListening = false;
+let _manurePushed = {}; // dedupe PM-tracker pushes per farm+period this session
 
 function manToday() { return new Date().toISOString().slice(0, 10); }
 function manKey(farm, house, coll, date) { return farm + '__H' + house + '__C' + coll + '__' + date; }
@@ -28,6 +30,7 @@ function manWeekKey() {
   return d.toISOString().slice(0, 10);
 }
 function manWeeklyKey(farm, house) { return farm + '__H' + house + '__W' + manWeekKey(); }
+function manSubKey(farm, house, date) { return farm + '__H' + house + '__' + date; }
 
 function manRec(farm, house, coll) {
   var t = manToday();
@@ -49,6 +52,75 @@ function manFarms() {
 }
 function _manBy() { return (typeof getDeviceUser === 'function' ? (getDeviceUser() || '') : ''); }
 
+function manSubRec(farm, house) {
+  var t = manToday();
+  return _manureSubmit.find(function (r) {
+    return r.farm === farm && String(r.house) === String(house) && r.date === t;
+  });
+}
+function _allHousesSubmittedToday(farm) {
+  var hs = MANURE_HOUSES[farm] || [];
+  return hs.length > 0 && hs.every(function (h) { return !!manSubRec(farm, h); });
+}
+function _allHousesWeeklyDone(farm) {
+  var hs = MANURE_HOUSES[farm] || [];
+  return hs.length > 0 && hs.every(function (h) { var r = manWeeklyRec(farm, h); return !!(r && r.done); });
+}
+
+// ── PM tracker bridge ──────────────────────────────────────────────────────
+// The PM tracker (pmCompletions / pmHistory) keys manure tasks PER FARM as
+// `${farm}-${defId}`. We read the live ALL_PM list instead of hard-coding ids,
+// so any manure PM the shop adds is picked up automatically. Completing a PM =
+// the same writes the PM modal makes (pmCompletions doc + pmHistory log).
+function _manureDailyPMs(farm) {
+  if (typeof ALL_PM === 'undefined' || !Array.isArray(ALL_PM)) return [];
+  return ALL_PM.filter(function (t) { return t.farm === farm && t.sys === 'Manure' && (t.freq === 'daily' || t.freq === 'mwf'); });
+}
+function _manureWeeklyPMs(farm) {
+  if (typeof ALL_PM === 'undefined' || !Array.isArray(ALL_PM)) return [];
+  return ALL_PM.filter(function (t) { return t.farm === farm && t.sys === 'Manure' && t.freq === 'weekly'; });
+}
+function _pmDoneToday(pmId) {
+  try { return typeof pmComps !== 'undefined' && pmComps[pmId] && pmComps[pmId].date === manToday(); } catch (e) { return false; }
+}
+function _pmDoneThisWeek(pmId) {
+  try { var c = (typeof pmComps !== 'undefined') ? pmComps[pmId] : null; return !!(c && c.date && c.date >= manWeekKey()); } catch (e) { return false; }
+}
+async function _markManurePMs(tasks, note) {
+  if (typeof db === 'undefined' || !db || !tasks || !tasks.length || typeof db.batch !== 'function') return;
+  var tech = _manBy() || 'Manure crew';
+  var date = manToday();
+  try {
+    var batch = db.batch();
+    tasks.forEach(function (t) {
+      batch.set(db.collection('pmCompletions').doc(t.id), { tech: tech, date: date, parts: '', notes: note, ts: Date.now() });
+      batch.set(db.collection('pmHistory').doc(), { pmId: t.id, farm: t.farm, sys: t.sys, task: t.task, freq: t.freq, tech: tech, date: date, parts: '', notes: note, ts: Date.now() });
+    });
+    batch.set(db.collection('activityLog').doc(), { type: 'pm', desc: 'Manure tab auto-completed ' + tasks.length + ' ' + tasks[0].farm + ' manure PM(s)', tech: tech, date: (typeof fmtDate === 'function' ? fmtDate(date) : date), ts: Date.now() });
+    await batch.commit();
+  } catch (e) { console.error('_markManurePMs:', e); }
+}
+async function _maybeMarkDailyManurePMs(farm) {
+  if (!_allHousesSubmittedToday(farm)) return false;
+  var pms = _manureDailyPMs(farm);
+  if (!pms.length) return false;
+  var key = farm + '__D__' + manToday();
+  if (_manurePushed[key] || _pmDoneToday(pms[0].id)) return false;
+  _manurePushed[key] = true;
+  await _markManurePMs(pms, 'Auto: all houses manure submitted (daily) via Manure tab');
+  return true;
+}
+async function _maybeMarkWeeklyManurePMs(farm) {
+  if (!_allHousesWeeklyDone(farm)) return false;
+  var pms = _manureWeeklyPMs(farm);
+  if (!pms.length) return false;
+  var key = farm + '__W__' + manWeekKey();
+  if (_manurePushed[key] || _pmDoneThisWeek(pms[0].id)) return false;
+  _manurePushed[key] = true;
+  await _markManurePMs(pms, 'Auto: all houses weekly manure PM done via Manure tab');
+  return true;
+}
+
 function manStartListener() {
   if (_manureListening || typeof db === 'undefined' || !db) return;
   _manureListening = true;
@@ -61,6 +133,10 @@ function manStartListener() {
       _manureWeekly = snap.docs.map(function (d) { return Object.assign({}, d.data(), { _id: d.id }); });
       _manureRerender();
     }, function (err) { console.error('manureWeekly listener:', err); });
+    db.collection('manureSubmit').orderBy('ts', 'desc').limit(400).onSnapshot(function (snap) {
+      _manureSubmit = snap.docs.map(function (d) { return Object.assign({}, d.data(), { _id: d.id }); });
+      _manureRerender();
+    }, function (err) { console.error('manureSubmit listener:', err); });
   } catch (e) { console.error('manStartListener:', e); _manureListening = false; }
 }
 function _manureRerender() {
@@ -140,6 +216,13 @@ function renderManure() {
             '<button onclick="manureWeeklySet(\'' + farm + '\',' + house + ')" style="padding:10px 13px;border-radius:8px;font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;' + (wdone ? 'background:#14532d;border:1.5px solid #2a7a3a;color:#86efac;' : 'background:#13110a;border:1.5px solid #5a4a2a;color:#d8b478;') + '">' + (wdone ? '✓ Done this week' : '☐ Mark weekly PM') + '</button>' +
         '</div>';
 
+        // Per-house daily Submit — finalizes the day. Once every house is
+        // submitted, the farm's daily manure PMs auto-complete in the tracker.
+        var sub = manSubRec(farm, house);
+        var subDone = !!sub;
+        var subBy = (subDone && sub.by) ? ' · ' + sub.by : '';
+        rows += '<button onclick="manureSubmitHouse(\'' + farm + '\',' + house + ')" style="width:100%;margin-top:11px;padding:13px;border-radius:10px;font-family:\'IBM Plex Mono\',monospace;font-size:14px;font-weight:700;cursor:pointer;' + (subDone ? 'background:#14532d;border:1.5px solid #2a7a3a;color:#86efac;' : 'background:#1f7a3a;border:1.5px solid #2a7a3a;color:#eafff0;') + '">' + (subDone ? '✓ House ' + house + ' submitted today' + subBy : '✓ Submit House ' + house + ' — daily') + '</button>';
+
         body += '<div style="background:#0f2410;border:1.5px solid ' + (allRan ? '#2a7a3a' : '#2a5a2a') + ';border-radius:12px;padding:13px 14px;margin-bottom:12px;">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;">' +
             '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:15px;font-weight:700;color:#e8f5ec;">🏚 House ' + house +
@@ -162,7 +245,7 @@ function renderManure() {
         '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#7ab07a;margin-top:3px;">' + dateStr + '</div></div>' +
         '<button onclick="closeManure()" style="padding:9px 14px;background:#2a1010;border:1.5px solid #7f1d1d;border-radius:10px;color:#f8b4b4;font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;cursor:pointer;">✕ Exit</button>' +
       '</div>' +
-      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#9ab09a;line-height:1.5;background:#0d1f0d;border:1px solid #1e3a1e;border-radius:10px;padding:10px 12px;margin:8px 0 16px;">Tap the % of the belt that ran (<b style="color:#86efac;">0 / 50 / 100</b>) for each collector, then tick <b style="color:#86efac;">PM</b> when its daily PM is done. Use <b style="color:#86efac;">All 100%</b> / <b style="color:#a7e08a;">All PM</b> to do a whole house at once. The manure tech ticks the <b style="color:#d8b478;">weekly PM</b> per house. It saves as you go.</div>' +
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#9ab09a;line-height:1.5;background:#0d1f0d;border:1px solid #1e3a1e;border-radius:10px;padding:10px 12px;margin:8px 0 16px;">Tap the % of the belt that ran (<b style="color:#86efac;">0 / 50 / 100</b>) for each collector, then tick <b style="color:#86efac;">PM</b> when its daily PM is done. Use <b style="color:#86efac;">All 100%</b> / <b style="color:#a7e08a;">All PM</b> to do a whole house at once, and the manure tech ticks the <b style="color:#d8b478;">weekly PM</b> per house. Hit <b style="color:#eafff0;">Submit</b> on each house when it&rsquo;s done &mdash; once every house is in, the daily manure PMs check off in the <b style="color:#86efac;">PM tracker</b> automatically (weekly PMs check off once all houses&rsquo; weekly boxes are ticked). It saves as you go.</div>' +
       body +
     '</div>';
 }
@@ -253,10 +336,39 @@ async function manureWeeklySet(farm, house) {
       { farm: farm, house: house, weekKey: manWeekKey(), done: next, by: _manBy(), ts: Date.now() },
       { merge: true }
     );
+    if (next) { try { await _maybeMarkWeeklyManurePMs(farm); } catch (e2) {} }
     if (typeof setSyncDot === 'function') setSyncDot('live');
   } catch (e) {
     console.error('manureWeeklySet:', e);
     alert('Could not save: ' + (e && e.message ? e.message : e));
+    if (typeof setSyncDot === 'function') setSyncDot('live');
+  }
+}
+
+async function manureSubmitHouse(farm, house) {
+  var already = !!manSubRec(farm, house);
+  if (!already) {
+    var logged = 0;
+    for (var c = 1; c <= MANURE_COLLECTORS; c++) { var r = manRec(farm, house, c); if (r && r.pctRun != null) logged++; }
+    if (logged < MANURE_COLLECTORS) {
+      if (!confirm('House ' + house + ': only ' + logged + '/' + MANURE_COLLECTORS + ' collectors logged.\nSubmit anyway?')) return;
+    }
+  }
+  var t = manToday();
+  try {
+    if (typeof setSyncDot === 'function') setSyncDot('saving');
+    await db.collection('manureSubmit').doc(manSubKey(farm, house, t)).set(
+      { farm: farm, house: house, date: t, by: _manBy(), ts: Date.now() },
+      { merge: true }
+    );
+    var pushed = await _maybeMarkDailyManurePMs(farm);
+    if (typeof setSyncDot === 'function') setSyncDot('live');
+    if (typeof toast === 'function') {
+      toast(pushed ? ('All houses in — ' + farm + ' daily manure PMs marked done ✓') : ('House ' + house + ' manure submitted ✓'));
+    }
+  } catch (e) {
+    console.error('manureSubmitHouse:', e);
+    alert('Could not submit: ' + (e && e.message ? e.message : e));
     if (typeof setSyncDot === 'function') setSyncDot('live');
   }
 }
@@ -270,4 +382,5 @@ if (typeof window !== 'undefined') {
   window.manurePMSet = manurePMSet;
   window.manurePMSetAll = manurePMSetAll;
   window.manureWeeklySet = manureWeeklySet;
+  window.manureSubmitHouse = manureSubmitHouse;
 }
