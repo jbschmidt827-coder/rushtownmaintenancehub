@@ -63,7 +63,7 @@
       ['📋 CELIA\'S LIST 📋',      'Celia found ONE thing out of place. One. She remembers.'],
       ['🐔 7 AM DANVILLE 🐔',      'Danville starts at 7. The hens are still negotiating a later shift.'],
       ['🛠 NATE WOLF 🛠',          'Nate Wolf fixed it. The OTHER Nate took the call. Classic.'],
-      ['🔧 RANDT\'S TWO MIN 🔧',   'Randt said "two minutes." That was three coffees ago.'],
+      ['🔧 RANDY\'S TWO MIN 🔧',   'Randy said "two minutes." That was three coffees ago.'],
       ['🥚 NOAH\'S ARK 🥚',        'Noah loaded two of every tool and still couldn\'t find the 9/16.'],
       ['🐓 CAIN ABLE 🐓',          'Cain was able. Then a chicken got involved.'],
       ['📋 DANVILLE CLEAN 📋',     'Celia\'s clipboard has seen things. It does not forgive.'],
