@@ -626,6 +626,9 @@ function renderChecklist() {
     </div>`;
 
   el.innerHTML = html;
+  // Keep the Daily Employee Check's "Finish first" hint + Submit in sync as the
+  // checklist is reviewed (no-op outside the daily check — guarded by element).
+  if (typeof checkBWReady === 'function') checkBWReady();
 }
 
 // ═══════════════════════════════════════════════════════════════════

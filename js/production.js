@@ -765,7 +765,7 @@ function bwBlockComplete(name) {
     case 'weekly':
       return !!_bwData._weeklyAck; // acknowledged via its REVIEWED button
     case 'cageclean':
-      return _bwData.cageclean !== undefined;
+      return true; // optional — answer if today is a cage-clean day, but it never blocks submit
     case 'notes':
       return true; // notes optional — final Submit lives in this last block
     default:
