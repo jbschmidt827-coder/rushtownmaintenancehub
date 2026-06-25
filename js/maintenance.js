@@ -425,8 +425,59 @@ async function saveWOEdit(fbId) {
 
 // ── Action Rail & Meeting Flag ────────────────
 async function toggleWORail(fbId, state) {
-  try { await db.collection('workOrders').doc(fbId).update({ actionRail: state }); }
+  try {
+    await db.collection('workOrders').doc(fbId).update({ actionRail: state });
+    // Pinning a WO to the rail also seeds a Project on that WO's site (once).
+    if (state) {
+      const wo = (typeof workOrders !== 'undefined') ? workOrders.find(w => w._fbId === fbId) : null;
+      if (wo && !wo.addedToProject) await _woSeedProject(wo);
+    }
+  }
   catch(e) { console.error(e); if (typeof toast === 'function') toast('Could not update action rail — check connection'); }
+}
+
+// Map a WO problem/system to one of the Project categories (else blank = Other).
+function _woProjCategory(prob) {
+  const p = (prob || '').toLowerCase();
+  if (p.includes('feed'))                         return 'Feed Mill';
+  if (p.includes('electric'))                     return 'Electrical';
+  if (p.includes('build') || p.includes('structure')) return 'Building';
+  if (p.includes('safety'))                       return 'Safety';
+  if (p.includes('barn'))                         return 'Barns';
+  return '';
+}
+
+// Create a maintProjects entry from a work order, on the WO's own site, linked
+// back by woId so we never seed it twice. Used when a WO is pinned to the rail.
+async function _woSeedProject(wo) {
+  if (!wo || typeof db === 'undefined' || !db) return;
+  // Dedupe: skip if a project already references this WO.
+  if (typeof _mpProjects !== 'undefined' && Array.isArray(_mpProjects) && _mpProjects.some(p => p && p.woId === wo._fbId)) return;
+  try {
+    const houseLabel = wo.house ? ('House ' + String(wo.house).replace(/^\s*house\s*/i, '').trim()) : '';
+    const desc = (wo.desc || '').trim();
+    const prob = (wo.problem || '').trim();
+    const rec = {
+      farm: wo.farm || (typeof getPreferredFarm === 'function' ? (getPreferredFarm() || '') : '') || '',
+      title: (wo.id ? wo.id + ': ' : '') + (desc || prob || 'Work order'),
+      machine: [houseLabel, prob].filter(Boolean).join(' · '),
+      assignedTo: wo.assignedTo || wo.tech || '',
+      dueDate: null,
+      requestedBy: 'Team',
+      category: _woProjCategory(prob),
+      priority: wo.priority || 'normal',
+      tasks: [{ text: desc || prob || 'Complete work order', done: false }],
+      stage: 'active',
+      status: 'open',
+      woId: wo._fbId,
+      woNum: wo.id || '',
+      createdBy: (typeof getDeviceUser === 'function' ? (getDeviceUser() || '') : ''),
+      createdTs: Date.now()
+    };
+    const ref = await db.collection('maintProjects').add(rec);
+    await db.collection('workOrders').doc(wo._fbId).update({ addedToProject: true, projectId: ref.id });
+    if (typeof toast === 'function') toast('➕ Added to ' + rec.farm + ' Projects');
+  } catch (e) { console.error('_woSeedProject:', e); }
 }
 
 async function toggleWOMeeting(fbId, state) {
