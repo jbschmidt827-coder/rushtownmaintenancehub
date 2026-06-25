@@ -756,6 +756,10 @@ function bwBlockComplete(name) {
       return _bwHasVal('bw-weekly-rodent-count') || _bwIsNA('bw-weekly-rodent-count');
     }
     case 'checklist':
+      // The Daily Employee Check shows the block-based daily checklist (_cl in
+      // daily-checklist.js). Use ITS completion so the gate matches what the
+      // employee sees ("X/Y done") instead of the old bw-cl rows.
+      if (typeof clAllReviewed === 'function') return clAllReviewed();
       return Array.from(document.querySelectorAll('#bw-checklist-items .bw-cl-row'))
         .every(r => _bwChecklist[r.id.replace('bw-cl-','')]);
     case 'weekly':

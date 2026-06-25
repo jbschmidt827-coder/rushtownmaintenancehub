@@ -455,6 +455,19 @@ function clToggleInclude(id) {
   renderChecklist();
 }
 
+// True when every applicable checklist task is done (or the day was submitted).
+// The Daily Employee Check uses this to know its checklist block is complete,
+// since that block shows this block-based checklist (not the old bw-cl rows).
+function clAllReviewed() {
+  try {
+    if (typeof _cl === 'undefined' || !_cl) return false;
+    if (_cl.submitted) return true;
+    const vis = CL_TASKS.filter(t => _cl.include && _cl.include[t.id]);
+    return vis.length > 0 && vis.every(t => _cl.checks && _cl.checks[t.id] && _cl.checks[t.id].done);
+  } catch (e) { return false; }
+}
+if (typeof window !== 'undefined') window.clAllReviewed = clAllReviewed;
+
 async function clSubmitDay() {
   if (_cl.submitted) return;
   if (!_cl.farm || !_cl.barn) { alert(_clT('cl.select_first','Select a farm and barn first.')); return; }
