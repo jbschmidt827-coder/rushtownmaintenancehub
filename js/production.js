@@ -755,22 +755,11 @@ function bwBlockComplete(name) {
       if (_bwData.fly === 'yes' && !_bwHasVal('bw-fly-count')) return false;
       return _bwHasVal('bw-weekly-rodent-count') || _bwIsNA('bw-weekly-rodent-count');
     }
-    case 'checklist': {
-      // The Daily Employee Check shows the block-based daily checklist (_cl in
-      // daily-checklist.js). Read its completion DIRECTLY here so the gate works
-      // even if daily-checklist.js is a stale cached copy — only the globals
-      // _cl / CL_TASKS are needed, which exist in every version.
-      try {
-        if (typeof _cl !== 'undefined' && _cl) {
-          if (_cl.submitted) return true;
-          var _ct  = (typeof CL_TASKS !== 'undefined' && CL_TASKS) ? CL_TASKS : [];
-          var _vis = _ct.filter(function (t) { return _cl.include && _cl.include[t.id]; });
-          if (_vis.length) return _vis.every(function (t) { return _cl.checks && _cl.checks[t.id] && _cl.checks[t.id].done; });
-        }
-      } catch (e) {}
-      return Array.from(document.querySelectorAll('#bw-checklist-items .bw-cl-row'))
-        .every(function (r) { return _bwChecklist[r.id.replace('bw-cl-', '')]; });
-    }
+    case 'checklist':
+      // The Daily Checklist has its OWN "All done (100%)" + Submit built into that
+      // block. Don't double-gate it from the Daily Employee Check — that double
+      // check kept falsely blocking submit. Reviewing it is enforced in its own flow.
+      return true;
     case 'weekly':
       return !!_bwData._weeklyAck; // acknowledged via its REVIEWED button
     case 'cageclean':
