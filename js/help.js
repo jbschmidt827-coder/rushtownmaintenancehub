@@ -62,6 +62,24 @@ const HELP_CONTENT = [
           'It is per-facility, so do it for the site you worked.',
         ],
       },
+      {
+        title: '💩 Manure — belt %, daily PM, weekly PM & Submit',
+        simple: [
+          'Location (Hegins or Danville) → tap the 💩 Manure card.',
+          'For each house, for every collector (C1–C6), tap how much of the belt ran: 0, 50, or 100.',
+          'Tap ☐ PM on a collector once its daily PM is done — it turns ✓ PM.',
+          'Per-house shortcuts: All 100% sets every collector to 100; ✓ All PM checks all six PMs.',
+          'When a house is finished, tap ✓ Submit House — daily.',
+          'Manure tech: tap ☐ Mark weekly PM on each house once its weekly manure PM is done.',
+        ],
+        detail: [
+          'Houses shown: Hegins 4–8, Danville 1–5, six collectors each. It saves as you tap — no separate Save.',
+          'Once EVERY house for the site is submitted for the day, the daily manure PMs (run belts, check belts, drying fans, trip switch) check themselves off in the Maintenance PM tracker automatically — no double entry.',
+          'Once EVERY house has its weekly box ticked, the weekly manure PMs (clean pit, auger rollers, belt tracking…) check off in the tracker too.',
+          'Submit a house with fewer than 6 collectors logged and it asks "submit anyway?" — a reminder, not a block.',
+          'Master shows both Hegins and Danville; the Processing Plant has no manure houses.',
+        ],
+      },
     ],
   },
   {

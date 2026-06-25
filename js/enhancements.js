@@ -44,6 +44,11 @@
   // ── Per-facility packs — appended to COMMON for the active site ──
   var PHRASES_BY_FARM = {
     'Hegins': [
+      ['🐔 IS MIKE A CHICKEN? 🐔', 'Mike\'s done chickens so long he basically IS one now — wattle and all.'],
+      ['👴 MIKE THE O.G. 👴',      'Mike was running manure belts before electricity. The original bird.'],
+      ['♿ HERE ROLLS MIKE ♿',     'The old rooster has entered the building. Make a hole!', _oldRoosterWheelchair],
+      ['🐤 SCHOOLIN\' MIKE 🐤',    'The young bird tried to teach Mike the new system. Mike just stared. Beautifully.', _youngTeachesOld],
+      ['🦳 ELDER ROOSTER 🦳',      'Forty seasons in the barns — Mike\'s forgotten more chickens than you\'ll ever meet.'],
       ['🏭 HEGINS HUSTLE 🏭',      'Mike says Hegins runs like a clock — one the chickens keep pecking.'],
       ['☕ MIKE\'S HUDDLE ☕',      'Mike called a 5-minute huddle. The chickens are still waiting.'],
       ['🐔 5:30 CLUB 🐔',          'Hegins clocked in at 5:30. The roosters rolled up at 5:45. Lazy.'],
@@ -88,6 +93,8 @@
     _chickenForklift,
     _eggFireworks,
     _chickenTornado,
+    _oldRoosterWheelchair,
+    _youngTeachesOld,
   ];
 
   // ── Public entry point ──────────────────────────────────────
@@ -118,7 +125,9 @@
     var phrase = pool[Math.floor(Math.random() * pool.length)];
     var openWO = 0;
     try { if (typeof workOrders !== 'undefined' && Array.isArray(workOrders)) openWO = workOrders.filter(function (w) { return w && w.status !== 'completed'; }).length; } catch (e2) {}
-    var effect = EFFECTS[Math.floor(Math.random() * EFFECTS.length)];
+    // A phrase can pin a specific animation as its 3rd element (e.g. Mike → wheelchair);
+    // otherwise pick a random one.
+    var effect = (phrase[2] && typeof phrase[2] === 'function') ? phrase[2] : EFFECTS[Math.floor(Math.random() * EFFECTS.length)];
     _showBanner(String(phrase[0]).replace('{wo}', openWO), String(phrase[1]).replace('{wo}', openWO));
     _cluck();
     effect(e);
@@ -474,6 +483,47 @@
         birds.forEach(function(b){ b.el.style.transition = 'opacity .4s'; b.el.style.opacity = '0'; setTimeout(function(){ b.el.remove(); }, 450); });
       }
     }, 40);
+  }
+
+  // ── Effect 15: Big old rooster in a wheelchair takes over ───
+  function _oldRoosterWheelchair() {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:9998;pointer-events:none;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+    var rig = document.createElement('div');
+    rig.style.cssText = 'display:flex;flex-direction:column;align-items:center;line-height:0.9;transform:translateX(-130vw) scale(0.7);transition:transform 1.2s cubic-bezier(.2,.85,.3,1.25);filter:drop-shadow(0 10px 22px rgba(0,0,0,.6));';
+    rig.innerHTML = '<div style="font-size:120px;">🐔</div><div style="font-size:96px;margin-top:-18px;">♿</div>';
+    wrap.appendChild(rig);
+    document.body.appendChild(wrap);
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ rig.style.transform = 'translateX(0) scale(2.6)'; }); });
+    var wob = 0, iv = setInterval(function(){ wob++; rig.style.marginLeft = (Math.sin(wob / 2) * 10) + 'px'; }, 60);
+    setTimeout(function(){ rig.style.transform = 'translateX(135vw) scale(2.6) rotate(6deg)'; }, 3300);
+    setTimeout(function(){ clearInterval(iv); wrap.remove(); }, 4700);
+  }
+
+  // ── Effect 16: Young chick teaches a baffled old rooster ────
+  function _youngTeachesOld() {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:9998;pointer-events:none;display:flex;align-items:center;justify-content:center;gap:36px;';
+    var young = document.createElement('div');
+    young.style.cssText = 'display:flex;flex-direction:column;align-items:center;line-height:1;opacity:0;transform:translateY(40px);transition:opacity .5s,transform .5s;';
+    young.innerHTML = '<div style="font-size:44px;">📋</div><div class="_yc" style="font-size:88px;transition:transform .25s;">🐤</div>';
+    var old = document.createElement('div');
+    old.style.cssText = 'display:flex;flex-direction:column;align-items:center;line-height:1;opacity:0;transform:translateY(40px);transition:opacity .5s .12s,transform .5s .12s;';
+    old.innerHTML = '<div class="_q" style="font-size:46px;opacity:0;transition:opacity .3s;">❓</div><div class="_oc" style="font-size:118px;transition:transform .25s;">🐔</div>';
+    wrap.appendChild(young); wrap.appendChild(old);
+    document.body.appendChild(wrap);
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      young.style.opacity = '1'; young.style.transform = 'translateY(0)';
+      old.style.opacity = '1'; old.style.transform = 'translateY(0)';
+    }); });
+    var yc = young.querySelector('._yc'), oc = old.querySelector('._oc'), q = old.querySelector('._q');
+    setTimeout(function(){ if (q) q.style.opacity = '1'; }, 750);
+    var t = 0, iv = setInterval(function(){
+      t++;
+      if (yc) yc.style.transform = 'translateY(' + (Math.sin(t / 2) * -9) + 'px)';   // eager teaching bob
+      if (oc) oc.style.transform = 'rotate(' + (Math.sin(t / 3) * 9) + 'deg)';        // confused head-tilt
+    }, 110);
+    setTimeout(function(){ clearInterval(iv); young.style.opacity = '0'; old.style.opacity = '0'; setTimeout(function(){ wrap.remove(); }, 500); }, 4300);
   }
 
   // ── Falling eggs (shared) ───────────────────────────────────
