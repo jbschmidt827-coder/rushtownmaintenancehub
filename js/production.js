@@ -921,7 +921,7 @@ function openBarnWalk(farm, house) {
   setTimeout(() => {
     const _du = (typeof getDeviceUser === 'function') ? getDeviceUser() : '';
     const e = document.getElementById('bw-employee');
-    if (_du && e && !e.value) { e.value = _du; if (typeof checkBWReady === 'function') checkBWReady(); }
+    if (_du && e && !e.value) { e.value = _du; if (typeof bwFlowRefresh === 'function') bwFlowRefresh(false); else if (typeof checkBWReady === 'function') checkBWReady(); }
   }, 50);
   ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
@@ -1149,24 +1149,26 @@ function checkBWReady() {
 }
 
 async function submitBarnWalk() {
-  // If any section is unfinished, jump to the first one and highlight it instead
-  // of failing silently — this is what lets the team always reach Submit.
+  // Easy submit: if a section isn't marked finished, let the team either jump to
+  // it OR submit anyway (confirm). Never hard-block turning in the daily check.
   const _left = _bwVisibleBlocks().filter(n => !bwBlockComplete(n));
   if (_left.length) {
-    const first = _left[0];
-    if (typeof bwExpandBlock === 'function') bwExpandBlock(first);
-    const card = (typeof _bwCard === 'function') ? _bwCard(first) : null;
-    if (card) {
-      card.classList.remove('bw-collapsed', 'bw-locked');
-      try { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
-      card.style.transition = 'box-shadow .2s';
-      card.style.boxShadow = '0 0 0 3px #fbbf24';
-      setTimeout(function () { card.style.boxShadow = ''; }, 1600);
+    const _labels = _left.map(n => _BW_BLOCK_LABELS[n] || n).join(', ');
+    const _go = confirm('Not marked finished yet:\n\n' + _labels + '\n\nOK = submit anyway  ·  Cancel = go finish them');
+    if (!_go) {
+      const first = _left[0];
+      if (typeof bwExpandBlock === 'function') bwExpandBlock(first);
+      const card = (typeof _bwCard === 'function') ? _bwCard(first) : null;
+      if (card) {
+        card.classList.remove('bw-collapsed', 'bw-locked');
+        try { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+        card.style.transition = 'box-shadow .2s';
+        card.style.boxShadow = '0 0 0 3px #fbbf24';
+        setTimeout(function () { card.style.boxShadow = ''; }, 1600);
+      }
+      return;
     }
-    const _lbl = _BW_BLOCK_LABELS[first] || first;
-    if (typeof toast === 'function') toast('Finish "' + _lbl + '" first');
-    else alert('Please finish "' + _lbl + '" first.');
-    return;
+    // OK pressed → fall through and submit with whatever is filled in.
   }
   const employee   = document.getElementById('bw-employee').value.trim();
   const notes      = document.getElementById('bw-notes').value.trim();
