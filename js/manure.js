@@ -18,6 +18,7 @@ let _manureWeekly = [];
 let _manureSubmit = [];
 let _manureListening = false;
 let _manurePushed = {}; // dedupe PM-tracker pushes per farm+period this session
+let _manureExpanded = {}; // submitted houses the user re-opened for editing
 
 function manToday() { return new Date().toISOString().slice(0, 10); }
 function manKey(farm, house, coll, date) { return farm + '__H' + house + '__C' + coll + '__' + date; }
@@ -188,8 +189,26 @@ function renderManure() {
     body = '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;color:#c9a86a;text-align:center;padding:40px 16px;">Manure is tracked at the layer houses.<br>Go back and pick <b>Hegins</b> or <b>Danville</b>.</div>';
   } else {
     farms.forEach(function (farm) {
-      if (farms.length > 1) body += '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:2px;color:#7ab07a;text-transform:uppercase;margin:14px 0 8px;">📍 ' + farm + '</div>';
-      (MANURE_HOUSES[farm] || []).forEach(function (house) {
+      var _hs = MANURE_HOUSES[farm] || [];
+      var _subCount = _hs.filter(function (h) { return !!manSubRec(farm, h); }).length;
+      var _pct = _hs.length ? Math.round(_subCount / _hs.length * 100) : 0;
+      body += '<div style="margin:14px 0 10px;">' +
+        '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:1px;color:' + (_pct === 100 ? '#4ade80' : '#7ab07a') + ';text-transform:uppercase;margin-bottom:5px;">' + (farms.length > 1 ? ('📍 ' + farm + ' · ') : '') + _subCount + '/' + _hs.length + ' houses submitted today · ' + _pct + '%' + (_pct === 100 ? ' ✓ all done' : '') + '</div>' +
+        '<div style="height:8px;background:#0f1f0f;border:1px solid #2a5a2a;border-radius:5px;overflow:hidden;"><div style="height:100%;width:' + _pct + '%;background:' + (_pct === 100 ? '#2e7d32' : '#5a9b4a') + ';transition:width .3s;"></div></div>' +
+      '</div>';
+      _hs.forEach(function (house) {
+        var hkey = farm + '__' + house;
+        var sub = manSubRec(farm, house);
+        var subDone = !!sub;
+        var subBy = (subDone && sub.by) ? ' · ' + sub.by : '';
+        // Submitted houses fold to a thin green bar so the crew only sees what's left.
+        if (subDone && !_manureExpanded[hkey]) {
+          body += '<div onclick="manureToggleHouse(\'' + farm + '\',' + house + ')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0d1f0d;border:1.5px solid #2a7a3a;border-radius:12px;padding:13px 14px;margin-bottom:10px;cursor:pointer;">' +
+            '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:14px;font-weight:700;color:#86efac;">✓ House ' + house + ' — submitted' + subBy + '</span>' +
+            '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#5a8a5a;">tap to reopen ▸</span>' +
+          '</div>';
+          return;
+        }
         var ran = 0, pmCount = 0, rows = '';
         for (var c = 1; c <= MANURE_COLLECTORS; c++) {
           var rec = manRec(farm, house, c);
@@ -216,12 +235,13 @@ function renderManure() {
             '<button onclick="manureWeeklySet(\'' + farm + '\',' + house + ')" style="padding:10px 13px;border-radius:8px;font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;' + (wdone ? 'background:#14532d;border:1.5px solid #2a7a3a;color:#86efac;' : 'background:#13110a;border:1.5px solid #5a4a2a;color:#d8b478;') + '">' + (wdone ? '✓ Done this week' : '☐ Mark weekly PM') + '</button>' +
         '</div>';
 
-        // Per-house daily Submit — finalizes the day. Once every house is
-        // submitted, the farm's daily manure PMs auto-complete in the tracker.
-        var sub = manSubRec(farm, house);
-        var subDone = !!sub;
-        var subBy = (subDone && sub.by) ? ' · ' + sub.by : '';
-        rows += '<button onclick="manureSubmitHouse(\'' + farm + '\',' + house + ')" style="width:100%;margin-top:11px;padding:13px;border-radius:10px;font-family:\'IBM Plex Mono\',monospace;font-size:14px;font-weight:700;cursor:pointer;' + (subDone ? 'background:#14532d;border:1.5px solid #2a7a3a;color:#86efac;' : 'background:#1f7a3a;border:1.5px solid #2a7a3a;color:#eafff0;') + '">' + (subDone ? '✓ House ' + house + ' submitted today' + subBy : '✓ Submit House ' + house + ' — daily') + '</button>';
+        // Per-house daily Submit. Submitting collapses the house; once every
+        // house is in, the farm's daily manure PMs auto-complete in the tracker.
+        if (subDone) {
+          rows += '<button onclick="manureToggleHouse(\'' + farm + '\',' + house + ')" style="width:100%;margin-top:11px;padding:13px;border-radius:10px;font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;cursor:pointer;background:#14532d;border:1.5px solid #2a7a3a;color:#86efac;">✓ Submitted' + subBy + ' — tap to collapse</button>';
+        } else {
+          rows += '<button onclick="manureSubmitHouse(\'' + farm + '\',' + house + ')" style="width:100%;margin-top:11px;padding:13px;border-radius:10px;font-family:\'IBM Plex Mono\',monospace;font-size:14px;font-weight:700;cursor:pointer;background:#1f7a3a;border:1.5px solid #2a7a3a;color:#eafff0;">✓ Submit House ' + house + ' — daily</button>';
+        }
 
         body += '<div style="background:#0f2410;border:1.5px solid ' + (allRan ? '#2a7a3a' : '#2a5a2a') + ';border-radius:12px;padding:13px 14px;margin-bottom:12px;">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;">' +
@@ -361,6 +381,7 @@ async function manureSubmitHouse(farm, house) {
       { farm: farm, house: house, date: t, by: _manBy(), ts: Date.now() },
       { merge: true }
     );
+    _manureExpanded[farm + '__' + house] = false; // fold it away once submitted
     var pushed = await _maybeMarkDailyManurePMs(farm);
     if (typeof setSyncDot === 'function') setSyncDot('live');
     if (typeof toast === 'function') {
@@ -373,6 +394,12 @@ async function manureSubmitHouse(farm, house) {
   }
 }
 
+function manureToggleHouse(farm, house) {
+  var k = farm + '__' + house;
+  _manureExpanded[k] = !_manureExpanded[k];
+  renderManure();
+}
+
 if (typeof window !== 'undefined') {
   window.openManure = openManure;
   window.closeManure = closeManure;
@@ -383,4 +410,5 @@ if (typeof window !== 'undefined') {
   window.manurePMSetAll = manurePMSetAll;
   window.manureWeeklySet = manureWeeklySet;
   window.manureSubmitHouse = manureSubmitHouse;
+  window.manureToggleHouse = manureToggleHouse;
 }
