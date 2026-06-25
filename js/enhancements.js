@@ -2,7 +2,8 @@
 (function(){
   var _cc = 0, _ct = null, _busy = false;
 
-  var PHRASES = [
+  // Company-wide pack — classic chicken chaos + leadership roast (shows everywhere)
+  var PHRASES_COMMON = [
     ['🐔 BAWK BAWK BAWK! 🐔',       'The chickens have taken over!'],
     ['🥚 EGG-CELLENT WORK! 🥚',     'You found the secret 3-tap!'],
     ['🌽 DINNER TIME! 🌽',          'The chickens demand corn. NOW.'],
@@ -31,7 +32,46 @@
     ['☕ ON IT ☕',                  'Nate gets to the work orders right after this coffee. His 4th.'],
     ['📋 TIER 2 📋',                'We would close the WOs faster, but then what would we talk about at Tier 2?'],
     ['🐔 WHY NOT DONE 🐔',          '{wo} open. The chickens filed a complaint with management.'],
+    // ── Leadership roast (Joe & Nate P = Directors, Brad = owner, Natalie/Jill = leads) ──
+    ['🐔 WHICH NATE? 🐔',           'A WO says "ask Nate." Director Nate and Tech Nate both said "the other one."'],
+    ['👔 THE OWNER 👔',             'Brad walked in, nodded at a chicken, and left. Inspection passed.'],
+    ['🐔 BRAD APPROVES 🐔',         'Brad reviewed the budget. The chickens get one (1) extra kernel.'],
+    ['📋 NATALIE LEADS 📋',         'Natalie finished the checklist before the rooster finished crowing.'],
+    ['🦸 BACKUP JILL 🦸',           'Jill stepped in as lead, fixed it all, and let everyone keep the credit.'],
+    ['🐔 TWO DIRECTORS 🐔',         'Joe and Nate both pointed at the same broken fan. Standoff.'],
   ];
+
+  // ── Per-facility packs — appended to COMMON for the active site ──
+  var PHRASES_BY_FARM = {
+    'Hegins': [
+      ['🏭 HEGINS HUSTLE 🏭',      'Mike says Hegins runs like a clock — one the chickens keep pecking.'],
+      ['☕ MIKE\'S HUDDLE ☕',      'Mike called a 5-minute huddle. The chickens are still waiting.'],
+      ['🐔 5:30 CLUB 🐔',          'Hegins clocked in at 5:30. The roosters rolled up at 5:45. Lazy.'],
+      ['🛠 CARLOS DID IT 🛠',      'Carlos fixed it with one zip tie and pure confidence.'],
+      ['🔩 STEVE\'S TORQUE 🔩',    'Steve tightened it "just a little more." It is now permanent.'],
+      ['📋 JOSH ON IT 📋',         'Josh closed 3 work orders and opened a snack. Balance.'],
+      ['🥚 HEGINS RECORD 🥚',      'Hegins logged every barn before coffee. Mike pretended not to be impressed.'],
+      ['🔧 HEGINS CREW 🔧',        'Josh, Steve & Carlos fixed it, broke it, then fixed it better. Probably.'],
+    ],
+    'Danville': [
+      ['🏭 DANVILLE DRIVE 🏭',     'Celia runs Danville so smooth the chickens filed for vacation.'],
+      ['📋 CELIA\'S LIST 📋',      'Celia found ONE thing out of place. One. She remembers.'],
+      ['🐔 7 AM DANVILLE 🐔',      'Danville starts at 7. The hens are still negotiating a later shift.'],
+      ['🛠 NATE WOLF 🛠',          'Nate Wolf fixed it. The OTHER Nate took the call. Classic.'],
+      ['🔧 RANDT\'S TWO MIN 🔧',   'Randt said "two minutes." That was three coffees ago.'],
+      ['🥚 NOAH\'S ARK 🥚',        'Noah loaded two of every tool and still couldn\'t find the 9/16.'],
+      ['🐓 CAIN ABLE 🐓',          'Cain was able. Then a chicken got involved.'],
+      ['📋 DANVILLE CLEAN 📋',     'Celia\'s clipboard has seen things. It does not forgive.'],
+    ],
+    'Processing Plant': [
+      ['📦 PROCESSING POWER 📦',   'The packers ran all shift. {wo} open WOs said "later."'],
+      ['🥚 CASES PACKED 🥚',       'Processing hit a record today. A chicken is demanding royalties.'],
+      ['🔧 PACKER 2 JAM 🔧',       'Packer 2 jammed again. It only does that when you look at it.'],
+      ['🐔 CLEANUP CREW 🐔',       'Cleanup finished spotless. Then a hen strolled through. Again.'],
+      ['⚙️ CONVEYOR LIFE ⚙️',     'The conveyor never stops. Neither does the chicken riding it.'],
+      ['📦 SHIP IT 📦',            'Processing shipped it. The chickens waved goodbye to the eggs.'],
+    ],
+  };
 
   var EFFECTS = [
     _chickenRun,
@@ -45,6 +85,9 @@
     _workOrderBlast,
     _birdRain,
     _chickenDance,
+    _chickenForklift,
+    _eggFireworks,
+    _chickenTornado,
   ];
 
   // ── Public entry point ──────────────────────────────────────
@@ -63,7 +106,16 @@
 
   function _trigger(e) {
     _busy = true;
-    var phrase = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+    // Pool = company-wide jokes + whichever facility you're standing in.
+    // Master / unknown location → everybody is fair game.
+    var farm = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+    var pool = PHRASES_COMMON.slice();
+    if (farm && PHRASES_BY_FARM[farm]) {
+      pool = pool.concat(PHRASES_BY_FARM[farm]);
+    } else {
+      pool = pool.concat(PHRASES_BY_FARM['Hegins'], PHRASES_BY_FARM['Danville'], PHRASES_BY_FARM['Processing Plant']);
+    }
+    var phrase = pool[Math.floor(Math.random() * pool.length)];
     var openWO = 0;
     try { if (typeof workOrders !== 'undefined' && Array.isArray(workOrders)) openWO = workOrders.filter(function (w) { return w && w.status !== 'completed'; }).length; } catch (e2) {}
     var effect = EFFECTS[Math.floor(Math.random() * EFFECTS.length)];
@@ -358,6 +410,70 @@
         }, 300);
       }
     }, 270);
+  }
+
+  // ── Effect 12: Chicken on a forklift hauls eggs across ──────
+  function _chickenForklift() {
+    var rig = document.createElement('div');
+    rig.textContent = '🥚📦 🐔🚜';
+    rig.style.cssText = 'position:fixed;z-index:9998;pointer-events:none;font-size:46px;bottom:26px;left:-240px;white-space:nowrap;transition:left 3.2s linear;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5));';
+    document.body.appendChild(rig);
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ rig.style.left = '120vw'; }); });
+    _dropEggs(8);
+    setTimeout(function(){ rig.remove(); }, 3600);
+  }
+
+  // ── Effect 13: Egg fireworks (bursts from random points) ────
+  function _eggFireworks() {
+    for (var b = 0; b < 5; b++) {
+      (function(b){
+        setTimeout(function(){
+          var cx = (10 + Math.random() * 80) * window.innerWidth / 100;
+          var cy = (15 + Math.random() * 50) * window.innerHeight / 100;
+          for (var i = 0; i < 14; i++) {
+            (function(i){
+              var el = document.createElement('div');
+              var rad = (i / 14) * Math.PI * 2;
+              var dist = 60 + Math.random() * 90;
+              el.textContent = ['🥚','✨','🐣','🌟'][Math.floor(Math.random() * 4)];
+              el.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;font-size:' + (14 + Math.random() * 14) + 'px;left:' + cx + 'px;top:' + cy + 'px;transition:transform .85s cubic-bezier(.15,.85,.4,1),opacity .85s;opacity:1;';
+              document.body.appendChild(el);
+              requestAnimationFrame(function(){ requestAnimationFrame(function(){
+                el.style.transform = 'translate(' + (Math.cos(rad) * dist) + 'px,' + (Math.sin(rad) * dist) + 'px)';
+                el.style.opacity = '0';
+              }); });
+              setTimeout(function(){ el.remove(); }, 1050);
+            })(i);
+          }
+        }, b * 340);
+      })(b);
+    }
+  }
+
+  // ── Effect 14: Chicken tornado (spiraling flock) ────────────
+  function _chickenTornado() {
+    var birds = [];
+    var n = 16, cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+    for (var i = 0; i < n; i++) {
+      var el = document.createElement('div');
+      el.textContent = i % 3 === 0 ? '🥚' : (i % 2 ? '🐓' : '🐔');
+      el.style.cssText = 'position:fixed;z-index:9998;pointer-events:none;font-size:' + (26 + Math.random() * 18) + 'px;left:' + cx + 'px;top:' + cy + 'px;will-change:transform;';
+      document.body.appendChild(el);
+      birds.push({ el: el, a: (i / n) * Math.PI * 2, r: 30 + i * 9 });
+    }
+    var t = 0;
+    var iv = setInterval(function(){
+      t++;
+      birds.forEach(function(b){
+        b.a += 0.25;
+        var r = b.r * (1 + Math.sin(t / 10) * 0.15);
+        b.el.style.transform = 'translate(' + (Math.cos(b.a) * r) + 'px,' + (Math.sin(b.a) * r * 0.6) + 'px) rotate(' + (b.a * 60) + 'deg)';
+      });
+      if (t > 60) {
+        clearInterval(iv);
+        birds.forEach(function(b){ b.el.style.transition = 'opacity .4s'; b.el.style.opacity = '0'; setTimeout(function(){ b.el.remove(); }, 450); });
+      }
+    }, 40);
   }
 
   // ── Falling eggs (shared) ───────────────────────────────────
