@@ -20,11 +20,13 @@ function startStaffListener() {
   } catch(e) { console.error('Staff listener error:', e); }
 }
 
-// Maintenance techs cover every plant, so a 'Both'/'All'-tagged tech shows at
-// all facilities. Other 'Both' people (mgmt, office, etc.) stay out of the
-// per-facility pickers. Adjust the roles here if "maintenance tech" should be wider.
+// Cross-plant roles cover every facility, so a 'Both'/'All'-tagged person in one
+// of these roles shows at ALL plants. This intentionally includes Directors and
+// Drivers (per MAINTENANCE_ROLES above) — e.g. Joe & Nate are Directors tagged
+// 'Both' and must appear in every plant's name pickers. Site-only roles (barn
+// workers, etc.) stay in their own facility. Widen MAINTENANCE_ROLES to add more.
 function _isMaintTech(s) {
-  return !!s && (s.role === 'Technician' || s.role === 'Lead');
+  return !!s && MAINTENANCE_ROLES.indexOf(s.role) !== -1;
 }
 
 // ── Canonical name source for the entire app ──
@@ -35,7 +37,7 @@ function getActiveStaff(farm, role) {
   if (farm) {
     // Only this facility's people — plus maintenance techs tagged 'Both'/'All'
     // (they cover every plant). Other 'Both' people don't show at each facility.
-    list = list.filter(s => s.farm === farm || ((s.farm === 'Both' || s.farm === 'All') && _isMaintTech(s)));
+    list = list.filter(s => s.farm === farm || ((s.farm === 'Both' || s.farm === 'All' || s.farm === 'All Farms') && _isMaintTech(s)));
   }
   if (role) {
     list = list.filter(s => !s.role || s.role === role);
