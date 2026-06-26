@@ -131,6 +131,32 @@
     }).join('');
     const uclY = 46 - Math.round(Math.min(ucl, sparkMax) / sparkMax * 46);
 
+    // ── Daily Completion: the checks the crew actually logs each day —
+    //    Morning Walk / Daily Employee Check / Manure submit, per house, today. ──
+    const _hnum = h => String(h).replace(/\D/g, '');
+    const ckSet = new Set();
+    walks.filter(w => w.date === today).forEach(w => ckSet.add(w.farm + '|' + _hnum(w.house)));
+    const mwSet = new Set(), msSet = new Set();
+    try { (await db.collection('morningWalks').where('date', '==', today).get()).forEach(d => { const x = d.data(); if (x && x.farm && x.house != null) mwSet.add(x.farm + '|' + _hnum(x.house)); }); } catch (e) { console.warn('scorecard morningWalks:', e); }
+    try { (await db.collection('manureSubmit').where('date', '==', today).get()).forEach(d => { const x = d.data(); if (x && x.farm && x.house != null) msSet.add(x.farm + '|' + _hnum(x.house)); }); } catch (e) { console.warn('scorecard manureSubmit:', e); }
+    const COMP_H = { Hegins: [1, 2, 3, 4, 5, 6, 7, 8], Danville: [1, 2, 3, 4, 5] };
+    const MAN_H = (typeof MANURE_HOUSES !== 'undefined') ? MANURE_HOUSES : { Hegins: [4, 5, 6, 7, 8], Danville: [1, 2, 3, 4, 5] };
+    let cDone = 0, cApp = 0, mwD = 0, mwA = 0, ckD = 0, ckA = 0, mnD = 0, mnA = 0;
+    farms.forEach(f => (COMP_H[f] || []).forEach(h => {
+      const key = f + '|' + h;
+      mwA++; if (mwSet.has(key)) mwD++;
+      ckA++; if (ckSet.has(key)) ckD++;
+      const manApplies = (MAN_H[f] || []).indexOf(h) !== -1;
+      if (manApplies) { mnA++; if (msSet.has(key)) mnD++; }
+      cApp += 2 + (manApplies ? 1 : 0);
+      cDone += (mwSet.has(key) ? 1 : 0) + (ckSet.has(key) ? 1 : 0) + (manApplies && msSet.has(key) ? 1 : 0);
+    }));
+    const compPct = cApp ? Math.round(cDone / cApp * 100) : 0;
+    const mwPct = mwA ? Math.round(mwD / mwA * 100) : 0;
+    const ckPct = ckA ? Math.round(ckD / ckA * 100) : 0;
+    const mnPct = mnA ? Math.round(mnD / mnA * 100) : 0;
+    const compColor = compPct >= 100 ? '#4caf50' : (compPct >= 50 ? '#d69e2e' : '#e53e3e');
+
     // ── build the page ─────────────────────────────────────────────────────
     let html = '';
 
@@ -145,7 +171,21 @@
         : `<div style="padding:14px;background:#0a2a0a;border:1px solid #2a5a2a;border-radius:9px;font-family:${MONO};font-size:12px;color:#a8d5b5;text-align:center;">✅ No red flags — all CTQs in control.</div>`)
     );
 
-    // CTQ 1 — Bird Livability
+    // CTQ 1 — Daily Completion (the checks the crew actually logs each day)
+    html += card(
+      secTitle('📋', 'Daily Completion') +
+      `<div style="text-align:center;margin-bottom:12px;">
+        <div style="font-family:${MONO};font-size:40px;font-weight:700;color:${compColor};line-height:1;">${compPct}%</div>
+        <div style="font-family:${MONO};font-size:9px;color:#7ab07a;text-transform:uppercase;letter-spacing:1px;margin-top:5px;">Today complete · ${cDone}/${cApp} checks in</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+        ${tile(mwPct + '%', 'Morning Walk', '#7ab0f6', mwD + '/' + mwA + ' houses')}
+        ${tile(ckPct + '%', 'Daily Check', '#7ab0f6', ckD + '/' + ckA + ' houses')}
+        ${tile(mnPct + '%', 'Manure', '#d69e2e', mnD + '/' + mnA + ' houses')}
+      </div>`
+    );
+
+    // CTQ 2 — Bird Livability
     html += card(
       secTitle('🐔', 'Bird Livability') +
       `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
