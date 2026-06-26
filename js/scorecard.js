@@ -7,6 +7,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 (function () {
   const MONO = "'IBM Plex Mono',monospace";
+  const L = (en, es) => (typeof _lang !== 'undefined' && _lang === 'es') ? es : en;
 
   // ── small stats helpers ──────────────────────────────────────────────────
   const iso        = d => d.toISOString().slice(0, 10);
@@ -173,15 +174,15 @@
 
     // CTQ 1 — Daily Completion (the checks the crew actually logs each day)
     html += card(
-      secTitle('📋', 'Daily Completion') +
+      secTitle('📋', L('Daily Completion', 'Cumplimiento Diario')) +
       `<div style="text-align:center;margin-bottom:12px;">
         <div style="font-family:${MONO};font-size:40px;font-weight:700;color:${compColor};line-height:1;">${compPct}%</div>
-        <div style="font-family:${MONO};font-size:9px;color:#7ab07a;text-transform:uppercase;letter-spacing:1px;margin-top:5px;">Today complete · ${cDone}/${cApp} checks in</div>
+        <div style="font-family:${MONO};font-size:9px;color:#7ab07a;text-transform:uppercase;letter-spacing:1px;margin-top:5px;">${L('Today complete', 'Completo hoy')} · ${cDone}/${cApp} ${L('checks in', 'revisiones')}</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
-        ${tile(mwPct + '%', 'Morning Walk', '#7ab0f6', mwD + '/' + mwA + ' houses')}
-        ${tile(ckPct + '%', 'Daily Check', '#7ab0f6', ckD + '/' + ckA + ' houses')}
-        ${tile(mnPct + '%', 'Manure', '#d69e2e', mnD + '/' + mnA + ' houses')}
+        ${tile(mwPct + '%', L('Morning Walk', 'Caminata Mañana'), '#7ab0f6', mwD + '/' + mwA + ' ' + L('houses', 'casas'))}
+        ${tile(ckPct + '%', L('Daily Check', 'Revisión Diaria'), '#7ab0f6', ckD + '/' + ckA + ' ' + L('houses', 'casas'))}
+        ${tile(mnPct + '%', L('Manure', 'Estiércol'), '#d69e2e', mnD + '/' + mnA + ' ' + L('houses', 'casas'))}
       </div>`
     );
 

@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v142 · Jun 25 2026';
+var APP_VERSION = 'v143 · Jun 25 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -1511,6 +1511,9 @@ function toggleLang() {
   try { if (typeof _ecFarm !== 'undefined' && typeof renderECContent === 'function') renderECContent(); } catch(e){}
   try { if (typeof _mwSectionFarm !== 'undefined' && typeof renderMWContent === 'function') renderMWContent(); } catch(e){}
   try { if (window._maintSection === 'projects' && typeof renderMaintProjects === 'function') renderMaintProjects(); } catch(e){}
+  // Self-contained full-screen overlays — re-render if open so they flip EN/ES live.
+  try { var _mo = document.getElementById('manure-overlay'); if (_mo && _mo.style.display !== 'none' && typeof renderManure === 'function') renderManure(); } catch(e){}
+  try { var _co = document.getElementById('completion-overlay'); if (_co && _co.style.display !== 'none' && typeof renderCompletion === 'function') renderCompletion(); } catch(e){}
   try { var _pd = document.getElementById('panel-daily'); if (_pd && _pd.classList.contains('active') && _drLoaded && typeof drRender === 'function') drRender(); } catch(e){}
   try { if (typeof renderFarms === 'function') renderFarms(); } catch(e){}
   try { if (typeof renderBioLog === 'function') renderBioLog(); } catch(e){}
