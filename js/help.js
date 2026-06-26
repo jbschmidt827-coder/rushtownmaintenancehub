@@ -85,6 +85,19 @@ const HELP_CONTENT = [
           { en: 'Master shows both Hegins and Danville; the Processing Plant has no manure houses.', es: 'Master muestra Hegins y Danville juntos; la Planta de Procesamiento no tiene galpones de estiércol.' },
         ],
       },
+      {
+        title: { en: '📊 Completion dashboard (what\'s done today)', es: '📊 Tablero de Cumplimiento (qué falta hoy)' },
+        simple: [
+          { en: 'On a location home (or Master), tap the 📊 Completion card.', es: 'En el inicio de una ubicación (o Master), toca la tarjeta 📊 Cumplimiento.' },
+          { en: 'You get a grid: each house (rows) vs each daily check — Morning Walk, Daily Check, Manure.', es: 'Verás una cuadrícula: cada galpón (filas) contra cada revisión diaria — Recorrido de la Mañana, Chequeo Diario, Estiércol.' },
+          { en: 'Green ✓ = done today, red ✗ = still open, — = not needed for that house.', es: 'Verde ✓ = hecho hoy, rojo ✗ = pendiente, — = no aplica a ese galpón.' },
+          { en: 'The big number up top is today\'s overall % complete. Tap ↻ Refresh to re-check.', es: 'El número grande de arriba es el % total completo de hoy. Toca ↻ Actualizar para volver a revisar.' },
+        ],
+        detail: [
+          { en: 'Master shows Hegins and Danville together; each site shows only its own houses.', es: 'Master muestra Hegins y Danville juntos; cada sitio muestra solo sus propios galpones.' },
+          { en: 'Use it at the morning standup to spot in seconds which house or check got missed.', es: 'Úsalo en la reunión de la mañana para ver en segundos qué galpón o revisión se saltó.' },
+        ],
+      },
     ],
   },
   {
@@ -149,6 +162,7 @@ const HELP_CONTENT = [
         ],
         detail: [
           { en: 'Closing from the rail opens the normal close-out (who did it, parts, photos), then it drops off the rail.', es: 'Cerrar desde la barra abre el cierre normal (quién lo hizo, piezas, fotos) y luego sale de la barra.' },
+          { en: 'Sending a work order to the rail also adds it to that site\'s Projects list automatically (once), so bigger jobs get tracked.', es: 'Enviar una orden a la barra también la agrega a la lista de Proyectos de ese sitio automáticamente (una vez), para dar seguimiento a trabajos grandes.' },
           { en: 'The 📋 button flags a work order for the meeting agenda.', es: 'El botón 📋 marca una orden de trabajo para la agenda de la reunión.' },
         ],
       },

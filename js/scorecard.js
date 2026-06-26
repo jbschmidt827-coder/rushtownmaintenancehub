@@ -158,6 +158,36 @@
     const mnPct = mnA ? Math.round(mnD / mnA * 100) : 0;
     const compColor = compPct >= 100 ? '#4caf50' : (compPct >= 50 ? '#d69e2e' : '#e53e3e');
 
+    // 7-day completion trend (sparkline on the Daily Completion card)
+    let compSpark = '';
+    try {
+      const since7 = daysAgoISO(6);
+      const sn7 = await Promise.all([
+        db.collection('morningWalks').where('date', '>=', since7).get(),
+        db.collection('manureSubmit').where('date', '>=', since7).get()
+      ]);
+      const mwBy = {}, msBy = {}, ckBy = {};
+      const addDay = (map, x) => { if (x && x.farm && x.house != null && x.date) { (map[x.date] = map[x.date] || new Set()).add(x.farm + '|' + _hnum(x.house)); } };
+      sn7[0].forEach(d => addDay(mwBy, d.data()));
+      sn7[1].forEach(d => addDay(msBy, d.data()));
+      walks.forEach(w => { if (w.date >= since7) addDay(ckBy, w); });
+      const trend = [];
+      for (let di = 6; di >= 0; di--) {
+        const ds = daysAgoISO(di); let dn = 0, da = 0;
+        farms.forEach(f => (COMP_H[f] || []).forEach(h => {
+          const key = f + '|' + h;
+          da += 2; if (mwBy[ds] && mwBy[ds].has(key)) dn++; if (ckBy[ds] && ckBy[ds].has(key)) dn++;
+          if ((MAN_H[f] || []).indexOf(h) !== -1) { da++; if (msBy[ds] && msBy[ds].has(key)) dn++; }
+        }));
+        trend.push({ date: ds, pct: da ? Math.round(dn / da * 100) : 0 });
+      }
+      compSpark = trend.map(x => {
+        const hgt = Math.max(3, Math.round(x.pct / 100 * 34));
+        const col = x.pct >= 100 ? '#4caf50' : x.pct >= 50 ? '#d69e2e' : '#e53e3e';
+        return `<div title="${x.date}: ${x.pct}%" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;"><div style="width:100%;max-width:18px;height:${hgt}px;background:${col};border-radius:2px;opacity:${x.date === today ? 0.55 : 1};"></div></div>`;
+      }).join('');
+    } catch (e) { console.warn('completion trend:', e); }
+
     // ── build the page ─────────────────────────────────────────────────────
     let html = '';
 
@@ -190,7 +220,9 @@
         ${tile(mwPct + '%', L('Morning Walk', 'Caminata Mañana'), '#7ab0f6', mwD + '/' + mwA + ' ' + L('houses', 'casas'))}
         ${tile(ckPct + '%', L('Daily Check', 'Revisión Diaria'), '#7ab0f6', ckD + '/' + ckA + ' ' + L('houses', 'casas'))}
         ${tile(mnPct + '%', L('Manure', 'Estiércol'), '#d69e2e', mnD + '/' + mnA + ' ' + L('houses', 'casas'))}
-      </div>`
+      </div>` +
+      (compSpark ? `<div style="font-family:${MONO};font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px;">${L('7-Day Completion Trend', 'Tendencia de Cumplimiento 7 Días')}</div>
+      <div style="height:34px;display:flex;align-items:flex-end;gap:4px;border-bottom:1px solid #1e3a1e;">${compSpark}</div>` : '')
     );
 
     // CTQ 2 — Bird Livability
