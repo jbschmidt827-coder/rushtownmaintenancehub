@@ -39,6 +39,19 @@
     ['📋 NATALIE LEADS 📋',         'Natalie finished the checklist before the rooster finished crowing.'],
     ['🦸 BACKUP JILL 🦸',           'Jill stepped in as lead, fixed it all, and let everyone keep the credit.'],
     ['🐔 TWO DIRECTORS 🐔',         'Joe and Nate both pointed at the same broken fan. Standoff.'],
+    // ── Good job / inspiring — {name} = a real barn worker at the active site ──
+    ['🌟 GOOD JOB 🌟',              '{name}, the barns have never looked better. The hens noticed.'],
+    ['💪 CREW MVP 💪',              '{name} showed up and showed out today. Respect.'],
+    ['🐔 THE HENS THANK YOU 🐔',    '{name}, every bird in the house is clucking your name. Good job!'],
+    ['👏 NICE WORK 👏',             '{name} kept it clean and kept it tight. That is how it is done.'],
+    ['🏆 BARN HERO 🏆',             '{name} — first one in, barns squared away. Legend.'],
+    ['⭐ KEEP IT UP ⭐',             '{name}, the flock is healthy because you show up. Good job!'],
+    ['🥚 EGG-CELLENT 🥚',           '{name} ran the houses like a pro. The eggs basically packed themselves.'],
+    ['🙌 TEAM STRONG 🙌',           'Big shout to {name} and the whole crew — you make this place run.'],
+    ['🌅 EARLY BIRD 🌅',            '{name} beat the rooster to work again. The rooster is embarrassed.'],
+    ['❤️ THANK YOU ❤️',             '{name}, the birds cannot say it, so we will: thank you. Good job today.'],
+    ['🧤 GLOVES ON 🧤',             '{name} grabbed the dirty job nobody wanted and just handled it. MVP.'],
+    ['🐥 FLOCK FAVORITE 🐥',        'The chicks took a vote. {name} is officially the favorite. Keep it up!'],
   ];
 
   // ── Per-facility packs — appended to COMMON for the active site ──
@@ -111,6 +124,24 @@
     }
   };
 
+  // Pick a real staff name assigned to the active site (barn workers preferred),
+  // so the good-job / inspiring lines name an actual person on the crew.
+  function _siteStaff(farm, barnOnly) {
+    if (typeof staffList === 'undefined' || !Array.isArray(staffList)) return [];
+    return staffList.filter(function (s) {
+      if (!s || s.active === false || !s.name) return false;
+      var atSite = !farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All' || s.farm === 'All Farms';
+      if (!atSite) return false;
+      if (barnOnly) { var r = s.role || ''; return r === 'WNO' || r === 'Barn Worker' || r === 'Other' || r === ''; }
+      return true;
+    }).map(function (s) { return s.name; });
+  }
+  function _pickName(farm) {
+    var list = _siteStaff(farm, true);
+    if (!list.length) list = _siteStaff(farm, false);
+    return list.length ? list[Math.floor(Math.random() * list.length)] : 'the barn crew';
+  }
+
   function _trigger(e) {
     _busy = true;
     // Pool = company-wide jokes + whichever facility you're standing in.
@@ -128,7 +159,9 @@
     // A phrase can pin a specific animation as its 3rd element (e.g. Mike → wheelchair);
     // otherwise pick a random one.
     var effect = (phrase[2] && typeof phrase[2] === 'function') ? phrase[2] : EFFECTS[Math.floor(Math.random() * EFFECTS.length)];
-    _showBanner(String(phrase[0]).replace('{wo}', openWO), String(phrase[1]).replace('{wo}', openWO));
+    var nm = _pickName(farm);
+    var fill = function (s) { return String(s).replace(/\{wo\}/g, openWO).replace(/\{name\}/g, nm); };
+    _showBanner(fill(phrase[0]), fill(phrase[1]));
     _cluck();
     effect(e);
     setTimeout(function(){ _busy = false; }, 8000);
