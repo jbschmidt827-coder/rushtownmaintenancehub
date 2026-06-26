@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v148 · Jun 26 2026';
+var APP_VERSION = 'v150 · Jun 26 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -1212,7 +1212,7 @@ const TRANSLATIONS = {
     'eos.your_name':'Your name','eos.type_name':'Type your name','eos.submit':'✓ Submit End of Shift','eos.submitting':'Submitting…',
     'eos.need_all':'Please confirm all four items before submitting.','eos.need_name':'Please enter your name.','eos.offline':'You appear to be offline — reconnect and submit again.','eos.thanks':'End of shift submitted — thanks',
     'landing.quick_actions':'⚡ QUICK ACTIONS',
-    'landing.new_wo':'🔧 New Work Order','landing.log_barn':'🐓 Log Barn Walk',
+    'landing.new_wo':'🔧 New Work Order','landing.log_barn':'🐓 Log Barn Walk','landing.fortune':'🥠 Farm Fortune',
     'landing.enter_egg':'🥚 Enter Egg Data',
     // Daily Check dashboard (renderProdCheck)
     'chk.loading':'Loading…',
@@ -1420,7 +1420,7 @@ const TRANSLATIONS = {
     'eos.your_name':'Tu nombre','eos.type_name':'Escribe tu nombre','eos.submit':'✓ Enviar Fin de Turno','eos.submitting':'Enviando…',
     'eos.need_all':'Por favor confirma los cuatro puntos antes de enviar.','eos.need_name':'Por favor escribe tu nombre.','eos.offline':'Parece que no tienes conexión — reconéctate y envía de nuevo.','eos.thanks':'Fin de turno enviado — gracias',
     'landing.quick_actions':'⚡ ACCIONES RÁPIDAS',
-    'landing.new_wo':'🔧 Nueva Orden de Trabajo','landing.log_barn':'🐓 Registrar Ronda',
+    'landing.new_wo':'🔧 Nueva Orden de Trabajo','landing.log_barn':'🐓 Registrar Ronda','landing.fortune':'🥠 Fortuna del Día',
     'landing.enter_egg':'🥚 Registrar Huevos',
     // Daily Check dashboard (renderProdCheck)
     'chk.loading':'Cargando…',

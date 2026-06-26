@@ -732,7 +732,7 @@ function renderBulkPMList() {
   const tasks = farm==='all' ? ALL_PM : ALL_PM.filter(t=>t.farm===farm);
   const overdue = tasks.filter(t=>pmStatus(t.id)==='overdue');
 
-  const SYS_IC2 = {Ventilation:'💨',Water:'💧',Feed:'🌾',Manure:'♻️','Egg Collectors':'🥚',Heating:'🔥',Electrical:'⚡',Lubing:'🛢️',Building:'🏗️',Alarms:'🚨'};
+  const SYS_IC2 = {Ventilation:'💨',Water:'💧',Feed:'🌾',Manure:'♻️','Egg Collectors':'🥚',Heating:'🔥',Electrical:'⚡',Lubing:'🛢️',Building:'🏗️',Alarms:'🚨','Processing Plant':'📦',Packaging:'📦'};
   const freqColor = {daily:'#4caf50',weekly:'#3b82f6',monthly:'#d69e2e',quarterly:'#e67e22',annual:'#e53e3e'};
 
   if (!overdue.length) {
