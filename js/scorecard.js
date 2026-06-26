@@ -49,7 +49,7 @@
     const titleEl  = document.getElementById('scorecard-title');
     if (titleEl) titleEl.textContent = (isMaster ? 'ALL LOCATIONS' : pref.toUpperCase()) + ' · ' + new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
-    body.innerHTML = `<div style="padding:48px;text-align:center;color:#4a8a4a;font-family:${MONO};font-size:13px;letter-spacing:1px;">Crunching the numbers…</div>`;
+    body.innerHTML = `<div style="padding:48px;text-align:center;color:#4a8a4a;font-family:${MONO};font-size:13px;letter-spacing:1px;">${L('Crunching the numbers…', 'Calculando los números…')}</div>`;
 
     // ── BIRD LIVABILITY: 30 days of barn walks ─────────────────────────────
     let walks = [];
@@ -113,12 +113,12 @@
 
     // ── RED FLAGS (the standup glance) ─────────────────────────────────────
     const flags = [];
-    if (todayMort > ucl && ucl > 0) flags.push(`Mortality today (${num(todayMort)}) is above the ${num(ucl)} control limit — investigate now.`);
-    houseRows.filter(([, v]) => hUcl > 0 && v > hUcl).forEach(([k, v]) => flags.push(`${k}: ${num(v)} dead yesterday — outlier vs the other houses.`));
-    if (urgent.length) flags.push(`${urgent.length} URGENT work order${urgent.length > 1 ? 's' : ''} open.`);
-    if (sla.length)    flags.push(`${sla.length} work order${sla.length > 1 ? 's' : ''} past SLA.`);
-    if (pmOverdue)     flags.push(`${pmOverdue} PM${pmOverdue > 1 ? 's' : ''} overdue.`);
-    repeats.slice(0, 2).forEach(([k, c]) => flags.push(`Repeat failure: ${k} — ${c}× in 30 days. Root-cause it.`));
+    if (todayMort > ucl && ucl > 0) flags.push(L(`Mortality today (${num(todayMort)}) is above the ${num(ucl)} control limit — investigate now.`, `Mortalidad de hoy (${num(todayMort)}) supera el límite de control ${num(ucl)} — investiga ahora.`));
+    houseRows.filter(([, v]) => hUcl > 0 && v > hUcl).forEach(([k, v]) => flags.push(L(`${k}: ${num(v)} dead yesterday — outlier vs the other houses.`, `${k}: ${num(v)} muertas ayer — fuera de lo normal vs los demás galpones.`)));
+    if (urgent.length) flags.push(L(`${urgent.length} URGENT work order${urgent.length > 1 ? 's' : ''} open.`, `${urgent.length} orden${urgent.length > 1 ? 'es' : ''} URGENTE${urgent.length > 1 ? 's' : ''} abierta${urgent.length > 1 ? 's' : ''}.`));
+    if (sla.length)    flags.push(L(`${sla.length} work order${sla.length > 1 ? 's' : ''} past SLA.`, `${sla.length} orden${sla.length > 1 ? 'es' : ''} vencida${sla.length > 1 ? 's' : ''} (SLA).`));
+    if (pmOverdue)     flags.push(L(`${pmOverdue} PM${pmOverdue > 1 ? 's' : ''} overdue.`, `${pmOverdue} PM vencido${pmOverdue > 1 ? 's' : ''}.`));
+    repeats.slice(0, 2).forEach(([k, c]) => flags.push(L(`Repeat failure: ${k} — ${c}× in 30 days. Root-cause it.`, `Falla repetida: ${k} — ${c}× en 30 días. Busca la causa raíz.`)));
 
     // ── sparkline (14-day mortality with control limit) ────────────────────
     const sparkMax = Math.max(ucl, ...last14.map(x => x.mort), 1);
@@ -161,15 +161,22 @@
     // ── build the page ─────────────────────────────────────────────────────
     let html = '';
 
+    // Sticky glance strip — the three key numbers stay visible while scrolling.
+    html += `<div style="position:sticky;top:0;z-index:5;display:flex;gap:8px;background:#0d1f0d;padding:10px 8px;margin:0 0 10px;border:1px solid #1e3a1e;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.4);">
+      <div style="flex:1;text-align:center;"><div style="font-family:${MONO};font-size:24px;font-weight:800;color:${compColor};line-height:1;">${compPct}%</div><div style="font-family:${MONO};font-size:8px;color:#7ab07a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">${L('Done Today', 'Listo Hoy')}</div></div>
+      <div style="flex:1;text-align:center;border-left:1px solid #1e3a1e;"><div style="font-family:${MONO};font-size:24px;font-weight:800;color:${pmColor};line-height:1;">${pmHealth}%</div><div style="font-family:${MONO};font-size:8px;color:#7ab07a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">${L('PM Health', 'Salud PM')}</div></div>
+      <div style="flex:1;text-align:center;border-left:1px solid #1e3a1e;"><div style="font-family:${MONO};font-size:24px;font-weight:800;color:${mortColor};line-height:1;">${num(ydayMort)}</div><div style="font-family:${MONO};font-size:8px;color:#7ab07a;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">${L('Dead Yday', 'Muertas Ayer')}</div></div>
+    </div>`;
+
     // Red-flag band
     html += card(
-      secTitle('🚦', "Today's Red Flags") +
+      secTitle('🚦', L("Today's Red Flags", 'Alertas de Hoy')) +
       (flags.length
         ? flags.map(f => `<div style="display:flex;gap:9px;align-items:flex-start;padding:8px 10px;background:#2a0f0f;border:1px solid #5a2a2a;border-radius:9px;margin-bottom:6px;">
               <span style="font-size:14px;line-height:1.2;">⚠️</span>
               <span style="font-family:${MONO};font-size:12px;color:#ffd5d0;line-height:1.4;">${f}</span>
             </div>`).join('')
-        : `<div style="padding:14px;background:#0a2a0a;border:1px solid #2a5a2a;border-radius:9px;font-family:${MONO};font-size:12px;color:#a8d5b5;text-align:center;">✅ No red flags — all CTQs in control.</div>`)
+        : `<div style="padding:14px;background:#0a2a0a;border:1px solid #2a5a2a;border-radius:9px;font-family:${MONO};font-size:12px;color:#a8d5b5;text-align:center;">${L('✅ No red flags — all CTQs in control.', '✅ Sin alertas — todo bajo control.')}</div>`)
     );
 
     // CTQ 1 — Daily Completion (the checks the crew actually logs each day)
@@ -188,20 +195,20 @@
 
     // CTQ 2 — Bird Livability
     html += card(
-      secTitle('🐔', 'Bird Livability') +
+      secTitle('🐔', L('Bird Livability', 'Viabilidad de Aves')) +
       `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
-        ${tile(num(ydayMort), 'Dead Yesterday', mortColor, ydayRate ? ydayRate.toFixed(3) + '% of flock' : '')}
-        ${tile(avg7.toFixed(1), '7-Day Avg / Day', '#7ab0f6', 'baseline ' + num(mu) + '/day')}
-        ${tile(num(ucl), 'Control Limit', '#d69e2e', 'mean + 2σ')}
+        ${tile(num(ydayMort), L('Dead Yesterday', 'Muertas Ayer'), mortColor, ydayRate ? ydayRate.toFixed(3) + L('% of flock', '% del lote') : '')}
+        ${tile(avg7.toFixed(1), L('7-Day Avg / Day', 'Prom 7 Días/Día'), '#7ab0f6', L('baseline ', 'base ') + num(mu) + L('/day', '/día'))}
+        ${tile(num(ucl), L('Control Limit', 'Límite de Control'), '#d69e2e', L('mean + 2σ', 'media + 2σ'))}
       </div>
-      <div style="font-family:${MONO};font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">14-Day Mortality Trend</div>
+      <div style="font-family:${MONO};font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">${L('14-Day Mortality Trend', 'Tendencia de Mortalidad 14 Días')}</div>
       <div style="position:relative;height:46px;display:flex;align-items:flex-end;gap:3px;border-bottom:1px solid #1e3a1e;">
         ${ucl > 0 ? `<div style="position:absolute;left:0;right:0;top:${uclY}px;border-top:1px dashed #d69e2e;"></div>` : ''}
         ${spark}
       </div>
-      <div style="font-family:${MONO};font-size:8px;color:#3a6a3a;margin-top:4px;text-align:right;">dashed line = control limit · faded bar = today (in progress)</div>` +
+      <div style="font-family:${MONO};font-size:8px;color:#3a6a3a;margin-top:4px;text-align:right;">${L('dashed line = control limit · faded bar = today (in progress)', 'línea punteada = límite · barra tenue = hoy (en progreso)')}</div>` +
       (houseRows.length
-        ? `<div style="font-family:${MONO};font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px;">Yesterday by House</div>` +
+        ? `<div style="font-family:${MONO};font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px;">${L('Yesterday by House', 'Ayer por Galpón')}</div>` +
           houseRows.slice(0, 10).map(([k, v]) => {
             const out = hUcl > 0 && v > hUcl;
             return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #14241410;">
@@ -209,18 +216,18 @@
               <span style="font-family:${MONO};font-size:12px;font-weight:700;color:${out ? '#f87171' : '#7ab07a'};">${num(v)}</span>
             </div>`;
           }).join('')
-        : `<div style="font-family:${MONO};font-size:11px;color:#5a8a5a;margin-top:10px;">No barn-walk mortality logged yesterday.</div>`)
+        : `<div style="font-family:${MONO};font-size:11px;color:#5a8a5a;margin-top:10px;">${L('No barn-walk mortality logged yesterday.', 'No se registró mortalidad en el recorrido de ayer.')}</div>`)
     );
 
     // CTQ 2 — Maintenance Reliability
     html += card(
-      secTitle('🔧', 'Maintenance Reliability') +
+      secTitle('🔧', L('Maintenance Reliability', 'Confiabilidad de Mantenimiento')) +
       `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
-        ${tile(pmHealth + '%', 'PM Compliance', pmColor, pmDoneToday + ' done today · target 95%')}
-        ${tile(openWO.length, 'Open WOs', woColor, urgent.length + ' urgent · ' + sla.length + ' past SLA')}
-        ${tile(pmOverdue, 'PMs Overdue', pmOverdue ? '#e53e3e' : '#4caf50', pmDueSoon + ' due soon')}
+        ${tile(pmHealth + '%', L('PM Compliance', 'Cumplimiento PM'), pmColor, pmDoneToday + L(' done today · target 95%', ' hechos hoy · meta 95%'))}
+        ${tile(openWO.length, L('Open WOs', 'Órdenes Abiertas'), woColor, urgent.length + L(' urgent · ', ' urgentes · ') + sla.length + L(' past SLA', ' vencidas'))}
+        ${tile(pmOverdue, L('PMs Overdue', 'PM Vencidos'), pmOverdue ? '#e53e3e' : '#4caf50', pmDueSoon + L(' due soon', ' por vencer'))}
       </div>` +
-      `<div style="font-family:${MONO};font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Pareto — What's Breaking (30 days)</div>` +
+      `<div style="font-family:${MONO};font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">${L("Pareto — What's Breaking (30 days)", 'Pareto — Qué Falla (30 días)')}</div>` +
       (pareto.length
         ? pareto.map(([k, c]) => {
             const pct = Math.round(c / paretoTot * 100);
@@ -233,9 +240,9 @@
               </div>
             </div>`;
           }).join('')
-        : `<div style="font-family:${MONO};font-size:11px;color:#5a8a5a;">No work orders in the last 30 days.</div>`) +
+        : `<div style="font-family:${MONO};font-size:11px;color:#5a8a5a;">${L('No work orders in the last 30 days.', 'Sin órdenes en los últimos 30 días.')}</div>`) +
       (repeats.length
-        ? `<div style="font-family:${MONO};font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px;">🔁 Repeat Failures (root-cause candidates)</div>` +
+        ? `<div style="font-family:${MONO};font-size:9px;color:#5a8a5a;text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px;">${L('🔁 Repeat Failures (root-cause candidates)', '🔁 Fallas Repetidas (candidatas a causa raíz)')}</div>` +
           repeats.map(([k, c]) => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #14241410;">
             <span style="font-family:${MONO};font-size:11px;color:#fca5a5;">${k}</span>
             <span style="font-family:${MONO};font-size:11px;font-weight:700;color:#f87171;">${c}×</span>
@@ -244,7 +251,7 @@
     );
 
     html += `<div style="font-family:${MONO};font-size:9px;color:#2a4a2a;text-align:center;padding:6px 0 24px;letter-spacing:1px;">
-      Define → Measure → Analyze → Improve → Control · live data, scoped to ${isMaster ? 'all locations' : pref}</div>`;
+      ${L('Define → Measure → Analyze → Improve → Control · live data, scoped to ', 'Definir → Medir → Analizar → Mejorar → Controlar · datos en vivo, ')}${isMaster ? L('all locations', 'todas las ubicaciones') : pref}</div>`;
 
     body.innerHTML = html;
   };

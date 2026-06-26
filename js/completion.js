@@ -80,7 +80,7 @@ function _compCell(key, farm, house) {
     return '<td style="text-align:center;padding:0;"><div style="margin:3px;padding:9px 4px;color:#3a5a66;font-family:\'IBM Plex Mono\',monospace;font-size:13px;">—</div></td>';
   }
   var done = compDone(key, farm, house);
-  return '<td style="text-align:center;padding:0;"><div style="margin:3px;border-radius:7px;background:' + (done ? '#14532d' : '#3a1414') + ';color:' + (done ? '#86efac' : '#f8a4a4') + ';font-family:\'IBM Plex Mono\',monospace;font-size:14px;font-weight:700;padding:9px 4px;">' + (done ? '✓' : '✗') + '</div></td>';
+  return '<td style="text-align:center;padding:0;"><div style="margin:3px;border-radius:7px;background:' + (done ? '#14532d' : '#3a1414') + ';color:' + (done ? '#86efac' : '#f8a4a4') + ';font-family:\'IBM Plex Mono\',monospace;font-size:18px;font-weight:800;padding:10px 4px;">' + (done ? '✓' : '✗') + '</div></td>';
 }
 
 function renderCompletion() {
@@ -111,7 +111,7 @@ function renderCompletion() {
         rowsHtml += '<tr>' +
           '<td style="padding:6px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:#dbeaf0;white-space:nowrap;">H' + house + '</td>' +
           cells +
-          '<td style="text-align:center;padding:6px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:700;color:' + hcol + ';">' + hPct + '%</td>' +
+          '<td style="text-align:center;padding:6px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:15px;font-weight:800;color:' + hcol + ';">' + hPct + '%</td>' +
         '</tr>';
       });
       var headCells = COMP_CHECKS.map(function (c) { return '<th style="padding:6px 4px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#7fb8cc;text-transform:uppercase;letter-spacing:0.5px;">' + compL(c.label, c.labelEs) + '</th>'; }).join('');
@@ -137,9 +137,10 @@ function renderCompletion() {
       '</div>';
     });
     var overall = totApp ? Math.round(totDone / totApp * 100) : 0;
-    body = '<div style="background:#0a2030;border:1.5px solid #2a7a9a;border-radius:12px;padding:13px 14px;margin-bottom:14px;">' +
-        '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:1px;color:#9ac9d6;text-transform:uppercase;margin-bottom:5px;">' + compL('Today · all checks · ', 'Hoy · todas las revisiones · ') + overall + '%' + (_compLoading ? ' · ' + compL('loading…', 'cargando…') : '') + '</div>' +
-        '<div style="height:9px;background:#06151e;border:1px solid #1e3a46;border-radius:5px;overflow:hidden;"><div style="height:100%;width:' + overall + '%;background:' + (overall === 100 ? '#2e7d32' : '#2a8ab0') + ';transition:width .3s;"></div></div>' +
+    body = '<div style="background:#0a2030;border:1.5px solid #2a7a9a;border-radius:12px;padding:14px;margin-bottom:14px;text-align:center;">' +
+        '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:44px;font-weight:800;color:' + (overall === 100 ? '#4ade80' : '#9ad6ea') + ';line-height:1;">' + overall + '%</div>' +
+        '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;letter-spacing:1px;color:#9ac9d6;text-transform:uppercase;margin:7px 0 10px;">' + compL('Done today · all checks', 'Listo hoy · todas las revisiones') + (_compLoading ? ' · ' + compL('loading…', 'cargando…') : '') + '</div>' +
+        '<div style="height:10px;background:#06151e;border:1px solid #1e3a46;border-radius:5px;overflow:hidden;"><div style="height:100%;width:' + overall + '%;background:' + (overall === 100 ? '#2e7d32' : '#2a8ab0') + ';transition:width .3s;"></div></div>' +
       '</div>' + body;
   }
 

@@ -5,79 +5,84 @@
 // Each task shows SIMPLE numbered steps + a "More detail" toggle for supervisors.
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ── Language helpers (resolve at RENDER TIME so the 🌐 toggle updates live) ───
+function _hlang(){ try { return (typeof _lang !== 'undefined' && _lang === 'es') ? 'es' : 'en'; } catch(e){ return 'en'; } }
+function hT(v){ return (v && typeof v === 'object' && !Array.isArray(v) && ('en' in v)) ? (v[_hlang()] != null ? v[_hlang()] : v.en) : v; }
+
 // ── Content model ───────────────────────────────────────────────────────────
 // Departments → tasks → { title, simple:[steps], detail:[notes] }
+// User-facing strings are {en, es} objects resolved through hT() at render time.
 const HELP_CONTENT = [
   {
     id: 'barns',
     icon: '🐓',
-    name: 'Barns / Daily Walks',
+    name: { en: 'Barns / Daily Walks', es: 'Galpones / Recorridos Diarios' },
     color: '#4ade80',
-    blurb: 'Morning Walk · Barn Walk · Daily Employee Check',
+    blurb: { en: 'Morning Walk · Barn Walk · Daily Employee Check', es: 'Recorrido de la Mañana · Recorrido del Galpón · Chequeo Diario del Empleado' },
     tasks: [
       {
-        title: '☀️ Morning Walk & Barn Walk (start of shift)',
+        title: { en: '☀️ Morning Walk & Barn Walk (start of shift)', es: '☀️ Recorrido de la Mañana y del Galpón (inicio del turno)' },
         simple: [
-          'From the home screen, tap your location (Hegins or Danville).',
-          'Tap the green PRODUCTION tile.',
-          'Step 1 — type your name. Step 2 — pick the farm. Step 3 — pick the house.',
-          'MORNING WALK: enter Water PSI (normal is 10–60), Temp, Headcount. Tap Feeders / Fans / Blowers OK or Issue.',
-          'BARN WALK: enter Dead Birds Found (type 0 if none), Loose Birds, Bin A and Bin B tons. Mark Water OK and Rodent activity. Add notes if needed.',
-          'Tap ✓ Submit Barn Walk. You will see "Done!"',
+          { en: 'From the home screen, tap your location (Hegins or Danville).', es: 'En la pantalla de inicio, toca tu ubicación (Hegins o Danville).' },
+          { en: 'Tap the green PRODUCTION tile.', es: 'Toca el cuadro verde de PRODUCCIÓN.' },
+          { en: 'Step 1 — type your name. Step 2 — pick the farm. Step 3 — pick the house.', es: 'Paso 1 — escribe tu nombre. Paso 2 — elige la granja. Paso 3 — elige el galpón.' },
+          { en: 'MORNING WALK: enter Water PSI (normal is 10–60), Temp, Headcount. Tap Feeders / Fans / Blowers OK or Issue.', es: 'RECORRIDO DE LA MAÑANA: ingresa la presión de agua PSI (lo normal es 10–60), Temperatura y Conteo de aves. Toca Comederos / Ventiladores / Sopladores: OK o Problema.' },
+          { en: 'BARN WALK: enter Dead Birds Found (type 0 if none), Loose Birds, Bin A and Bin B tons. Mark Water OK and Rodent activity. Add notes if needed.', es: 'RECORRIDO DEL GALPÓN: ingresa Aves Muertas Encontradas (escribe 0 si no hay), Aves Sueltas, toneladas del Silo A y Silo B. Marca Agua OK y actividad de Roedores. Agrega notas si hace falta.' },
+          { en: 'Tap ✓ Submit Barn Walk. You will see "Done!"', es: 'Toca ✓ Enviar Recorrido del Galpón. Verás "¡Listo!"' },
         ],
         detail: [
-          'Required fields are marked with *. Water PSI and Dead Birds must be filled before you can submit.',
-          'The PSI box turns red and warns you if the number is outside 10–60. The Dead Birds box turns red if more than 0 — that walk gets flagged on the Scorecard.',
-          'Your work auto-saves as a draft as you type, so if the iPad sleeps or closes you can pick up where you left off.',
-          'Do one house at a time. After you submit, start again at Pick House for the next barn.',
-          'No internet? It still saves and sends automatically once you are back online.',
+          { en: 'Required fields are marked with *. Water PSI and Dead Birds must be filled before you can submit.', es: 'Los campos obligatorios llevan *. La presión de agua PSI y las Aves Muertas deben llenarse antes de poder enviar.' },
+          { en: 'The PSI box turns red and warns you if the number is outside 10–60. The Dead Birds box turns red if more than 0 — that walk gets flagged on the Scorecard.', es: 'La casilla de PSI se pone roja y te avisa si el número está fuera de 10–60. La casilla de Aves Muertas se pone roja si es más de 0 — ese recorrido se marca en el Tablero.' },
+          { en: 'Your work auto-saves as a draft as you type, so if the iPad sleeps or closes you can pick up where you left off.', es: 'Tu trabajo se guarda solo como borrador mientras escribes, así que si el iPad se apaga o se cierra puedes seguir donde quedaste.' },
+          { en: 'Do one house at a time. After you submit, start again at Pick House for the next barn.', es: 'Haz un galpón a la vez. Después de enviar, vuelve a empezar en Elegir Galpón para el siguiente.' },
+          { en: 'No internet? It still saves and sends automatically once you are back online.', es: '¿Sin internet? Igual se guarda y se envía solo en cuanto vuelvas a tener conexión.' },
         ],
       },
       {
-        title: '✅ Daily Employee Check (block-by-block)',
+        title: { en: '✅ Daily Employee Check (block-by-block)', es: '✅ Chequeo Diario del Empleado (bloque por bloque)' },
         simple: [
-          'Location → PRODUCTION → Daily Employee Check.',
-          'Type the worker name at the top.',
-          'Work through each block. A block stays open until every question is answered.',
-          'Tap Done on a block — it collapses and the next one opens.',
-          'For any count you do not have, tap N/A.',
-          'When all blocks are done, tap Submit.',
+          { en: 'Location → PRODUCTION → Daily Employee Check.', es: 'Ubicación → PRODUCCIÓN → Chequeo Diario del Empleado.' },
+          { en: 'Type the worker name at the top.', es: 'Escribe el nombre del trabajador arriba.' },
+          { en: 'Work through each block. A block stays open until every question is answered.', es: 'Completa cada bloque. Un bloque queda abierto hasta que respondas todas las preguntas.' },
+          { en: 'Tap Done on a block — it collapses and the next one opens.', es: 'Toca Listo en un bloque — se cierra y se abre el siguiente.' },
+          { en: 'For any count you do not have, tap N/A.', es: 'Para cualquier conteo que no tengas, toca N/A.' },
+          { en: 'When all blocks are done, tap Submit.', es: 'Cuando todos los bloques estén listos, toca Enviar.' },
         ],
         detail: [
-          'Every answer is required before the Submit button works — this is by design so nothing gets skipped.',
-          'Completed blocks collapse to keep the screen short; tap a block header to reopen and change an answer.',
-          'Notes boxes are optional except where the checklist marks them required.',
+          { en: 'Every answer is required before the Submit button works — this is by design so nothing gets skipped.', es: 'Todas las respuestas son obligatorias antes de que funcione el botón Enviar — es así a propósito para que no se salte nada.' },
+          { en: 'Completed blocks collapse to keep the screen short; tap a block header to reopen and change an answer.', es: 'Los bloques terminados se cierran para acortar la pantalla; toca el título de un bloque para volver a abrirlo y cambiar una respuesta.' },
+          { en: 'Notes boxes are optional except where the checklist marks them required.', es: 'Las casillas de notas son opcionales, salvo donde la lista las marque como obligatorias.' },
         ],
       },
       {
-        title: '📋 End-of-Shift report (before you leave)',
+        title: { en: '📋 End-of-Shift report (before you leave)', es: '📋 Reporte de Fin de Turno (antes de irte)' },
         simple: [
-          'Location → PRODUCTION → End-of-Shift (under Morning Walk).',
-          'Review the auto-summary of the day at the top.',
-          'Check off the end-of-shift items.',
-          'Type your name to sign off, then tap Submit.',
+          { en: 'Location → PRODUCTION → End-of-Shift (under Morning Walk).', es: 'Ubicación → PRODUCCIÓN → Fin de Turno (debajo del Recorrido de la Mañana).' },
+          { en: 'Review the auto-summary of the day at the top.', es: 'Revisa el resumen automático del día que aparece arriba.' },
+          { en: 'Check off the end-of-shift items.', es: 'Marca los puntos de fin de turno.' },
+          { en: 'Type your name to sign off, then tap Submit.', es: 'Escribe tu nombre para firmar y luego toca Enviar.' },
         ],
         detail: [
-          'The summary is built for you from the day\'s walks and work — you just confirm and sign.',
-          'It is per-facility, so do it for the site you worked.',
+          { en: 'The summary is built for you from the day\'s walks and work — you just confirm and sign.', es: 'El resumen se arma solo con los recorridos y el trabajo del día — tú solo confirmas y firmas.' },
+          { en: 'It is per-facility, so do it for the site you worked.', es: 'Es por instalación, así que hazlo para el sitio donde trabajaste.' },
         ],
       },
       {
-        title: '💩 Manure — belt %, daily PM, weekly PM & Submit',
+        title: { en: '💩 Manure — belt %, daily PM, weekly PM & Submit', es: '💩 Estiércol — % de banda, PM diario, PM semanal y Enviar' },
         simple: [
-          'Location (Hegins or Danville) → tap the 💩 Manure card.',
-          'For each house, for every collector (C1–C6), tap how much of the belt ran: 0, 50, or 100.',
-          'Tap ☐ PM on a collector once its daily PM is done — it turns ✓ PM.',
-          'Per-house shortcuts: All 100% sets every collector to 100; ✓ All PM checks all six PMs.',
-          'When a house is finished, tap ✓ Submit House — daily.',
-          'Manure tech: tap ☐ Mark weekly PM on each house once its weekly manure PM is done.',
+          { en: 'Location (Hegins or Danville) → tap the 💩 Manure card.', es: 'Ubicación (Hegins o Danville) → toca la tarjeta 💩 Estiércol.' },
+          { en: 'For each house, for every collector (C1–C6), tap how much of the belt ran: 0, 50, or 100.', es: 'Para cada galpón, en cada colector (C1–C6), toca cuánto corrió la banda: 0, 50 o 100.' },
+          { en: 'Tap ☐ PM on a collector once its daily PM is done — it turns ✓ PM.', es: 'Toca ☐ PM en un colector cuando termines su PM diario — cambia a ✓ PM.' },
+          { en: 'Per-house shortcuts: All 100% sets every collector to 100; ✓ All PM checks all six PMs.', es: 'Atajos por galpón: Todo 100% pone cada colector en 100; ✓ Todos los PM marca los seis PM.' },
+          { en: 'When a house is finished, tap ✓ Submit House — daily.', es: 'Cuando termines un galpón, toca ✓ Enviar Galpón — diario.' },
+          { en: 'Manure tech: tap ☐ Mark weekly PM on each house once its weekly manure PM is done.', es: 'Técnico de estiércol: toca ☐ Marcar PM semanal en cada galpón cuando termines su PM semanal de estiércol.' },
         ],
         detail: [
-          'Houses shown: Hegins 4–8, Danville 1–5, six collectors each. It saves as you tap — no separate Save.',
-          'Once EVERY house for the site is submitted for the day, the daily manure PMs (run belts, check belts, drying fans, trip switch) check themselves off in the Maintenance PM tracker automatically — no double entry.',
-          'Once EVERY house has its weekly box ticked, the weekly manure PMs (clean pit, auger rollers, belt tracking…) check off in the tracker too.',
-          'Submit a house with fewer than 6 collectors logged and it asks "submit anyway?" — a reminder, not a block.',
-          'Master shows both Hegins and Danville; the Processing Plant has no manure houses.',
+          { en: 'Houses shown: Hegins 4–8, Danville 1–5, six collectors each. It saves as you tap — no separate Save.', es: 'Galpones mostrados: Hegins 4–8, Danville 1–5, seis colectores cada uno. Se guarda al tocar — no hay un Guardar aparte.' },
+          { en: 'Once EVERY house for the site is submitted for the day, the daily manure PMs (run belts, check belts, drying fans, trip switch) check themselves off in the Maintenance PM tracker automatically — no double entry.', es: 'Una vez que TODOS los galpones del sitio se envían en el día, los PM diarios de estiércol (correr bandas, revisar bandas, ventiladores de secado, interruptor de seguridad) se marcan solos en el rastreador de PM de Mantenimiento — sin doble captura.' },
+          { en: 'Once EVERY house has its weekly box ticked, the weekly manure PMs (clean pit, auger rollers, belt tracking…) check off in the tracker too.', es: 'Una vez que TODOS los galpones tienen su casilla semanal marcada, los PM semanales de estiércol (limpiar foso, rodillos del sinfín, alineación de banda…) también se marcan en el rastreador.' },
+          { en: 'Submit a house with fewer than 6 collectors logged and it asks "submit anyway?" — a reminder, not a block.', es: 'Si envías un galpón con menos de 6 colectores registrados, pregunta "¿enviar de todos modos?" — es un recordatorio, no un bloqueo.' },
+          { en: 'Master shows both Hegins and Danville; the Processing Plant has no manure houses.', es: 'Master muestra Hegins y Danville juntos; la Planta de Procesamiento no tiene galpones de estiércol.' },
         ],
       },
     ],
@@ -85,107 +90,107 @@ const HELP_CONTENT = [
   {
     id: 'maint',
     icon: '🔧',
-    name: 'Maintenance / Work Orders',
+    name: { en: 'Maintenance / Work Orders', es: 'Mantenimiento / Órdenes de Trabajo' },
     color: '#3b82f6',
-    blurb: 'New work order · PMs · Mark done',
+    blurb: { en: 'New work order · PMs · Mark done', es: 'Nueva orden de trabajo · PM · Marcar terminado' },
     tasks: [
       {
-        title: '🔧 Enter a Work Order',
+        title: { en: '🔧 Enter a Work Order', es: '🔧 Crear una Orden de Trabajo' },
         simple: [
-          'On the home screen tap "🔧 New Work Order" (or open Maintenance → New Work Order).',
-          'Pick the Farm, then pick the House.',
-          'Write a short Problem (e.g. "H3 fan belt squealing").',
-          'Add a Description — what you saw, heard, or measured.',
-          'Set Priority: 🔴 Urgent, 🟡 High, or 🟢 Routine.',
-          'Put your name in "Submitted by" and tap Submit.',
+          { en: 'On the home screen tap "🔧 New Work Order" (or open Maintenance → New Work Order).', es: 'En la pantalla de inicio toca "🔧 Nueva Orden de Trabajo" (o abre Mantenimiento → Nueva Orden de Trabajo).' },
+          { en: 'Pick the Farm, then pick the House.', es: 'Elige la Granja y luego el Galpón.' },
+          { en: 'Write a short Problem (e.g. "H3 fan belt squealing").', es: 'Escribe un Problema corto (ej. "Banda del ventilador del G3 rechina").' },
+          { en: 'Add a Description — what you saw, heard, or measured.', es: 'Agrega una Descripción — lo que viste, escuchaste o mediste.' },
+          { en: 'Set Priority: 🔴 Urgent, 🟡 High, or 🟢 Routine.', es: 'Define la Prioridad: 🔴 Urgente, 🟡 Alta o 🟢 Rutina.' },
+          { en: 'Put your name in "Submitted by" and tap Submit.', es: 'Pon tu nombre en "Enviado por" y toca Enviar.' },
         ],
         detail: [
-          'If a similar open work order already exists, the app warns you so you do not create a duplicate.',
-          'No internet? It saves and shows "Saved — Will Send When Online," then sends automatically when you reconnect.',
-          'Urgent and High work orders send a notification to the maintenance team right away.',
-          'You can also start a work order straight from a barn walk issue — it carries the note over for you.',
+          { en: 'If a similar open work order already exists, the app warns you so you do not create a duplicate.', es: 'Si ya existe una orden de trabajo abierta parecida, la app te avisa para que no crees un duplicado.' },
+          { en: 'No internet? It saves and shows "Saved — Will Send When Online," then sends automatically when you reconnect.', es: '¿Sin internet? Se guarda y muestra "Guardado — Se enviará al conectar", y se envía solo cuando vuelvas a tener conexión.' },
+          { en: 'Urgent and High work orders send a notification to the maintenance team right away.', es: 'Las órdenes Urgentes y de prioridad Alta envían un aviso al equipo de mantenimiento de inmediato.' },
+          { en: 'You can also start a work order straight from a barn walk issue — it carries the note over for you.', es: 'También puedes crear una orden de trabajo directo desde un problema del recorrido del galpón — pasa la nota por ti.' },
         ],
       },
       {
-        title: '🛠 Do a PM and Mark It Done',
+        title: { en: '🛠 Do a PM and Mark It Done', es: '🛠 Hacer un PM y Marcarlo Terminado' },
         simple: [
-          'Open Maintenance → PM (preventive maintenance) list.',
-          'Tap the PM you are doing.',
-          'Work down the checklist — tap each step to check it off.',
-          'When every step is checked, tap Mark Done.',
-          'Enter your name on the sign-off and confirm.',
+          { en: 'Open Maintenance → PM (preventive maintenance) list.', es: 'Abre Mantenimiento → lista de PM (mantenimiento preventivo).' },
+          { en: 'Tap the PM you are doing.', es: 'Toca el PM que vas a hacer.' },
+          { en: 'Work down the checklist — tap each step to check it off.', es: 'Baja por la lista — toca cada paso para marcarlo.' },
+          { en: 'When every step is checked, tap Mark Done.', es: 'Cuando todos los pasos estén marcados, toca Marcar Terminado.' },
+          { en: 'Enter your name on the sign-off and confirm.', es: 'Escribe tu nombre en la firma y confirma.' },
         ],
         detail: [
-          'Mark Done stays locked until all checklist steps are ticked — this enforces the procedure.',
-          'To knock out several at once, use Bulk PM select and choose the daily / weekly / MWF group.',
-          'Procedures can be edited by a supervisor; changes are saved and show for everyone next time.',
-          'Bulk PM and sign-offs also work offline and sync later.',
+          { en: 'Mark Done stays locked until all checklist steps are ticked — this enforces the procedure.', es: 'Marcar Terminado queda bloqueado hasta marcar todos los pasos de la lista — así se cumple el procedimiento.' },
+          { en: 'To knock out several at once, use Bulk PM select and choose the daily / weekly / MWF group.', es: 'Para hacer varios a la vez, usa Selección de PM en lote y elige el grupo diario / semanal / LMV (lunes-miércoles-viernes).' },
+          { en: 'Procedures can be edited by a supervisor; changes are saved and show for everyone next time.', es: 'Un supervisor puede editar los procedimientos; los cambios se guardan y aparecen para todos la próxima vez.' },
+          { en: 'Bulk PM and sign-offs also work offline and sync later.', es: 'El PM en lote y las firmas también funcionan sin conexión y se sincronizan después.' },
         ],
       },
       {
-        title: '✏️ Edit a work order after it is submitted',
+        title: { en: '✏️ Edit a work order after it is submitted', es: '✏️ Editar una orden de trabajo ya enviada' },
         simple: [
-          'Open Maintenance → Work Orders and find the order (it may be in the Action Rail).',
-          'Tap the ✏️ Edit button on the card.',
-          'Change the problem, description, priority, who it is assigned to, parts, or hours.',
-          'Tap Save Changes.',
+          { en: 'Open Maintenance → Work Orders and find the order (it may be in the Action Rail).', es: 'Abre Mantenimiento → Órdenes de Trabajo y busca la orden (puede estar en la Barra de Acción).' },
+          { en: 'Tap the ✏️ Edit button on the card.', es: 'Toca el botón ✏️ Editar en la tarjeta.' },
+          { en: 'Change the problem, description, priority, who it is assigned to, parts, or hours.', es: 'Cambia el problema, la descripción, la prioridad, a quién está asignada, las piezas o las horas.' },
+          { en: 'Tap Save Changes.', es: 'Toca Guardar Cambios.' },
         ],
         detail: [
-          'Use this to fix a typo, bump priority, or reassign — no need to delete and re-create.',
-          'It does not change the location or house; make a new one if those are wrong.',
+          { en: 'Use this to fix a typo, bump priority, or reassign — no need to delete and re-create.', es: 'Úsalo para corregir un error, subir la prioridad o reasignar — sin borrar y volver a crear.' },
+          { en: 'It does not change the location or house; make a new one if those are wrong.', es: 'No cambia la ubicación ni el galpón; crea una nueva si esos están mal.' },
         ],
       },
       {
-        title: '⚡ Action Rail — your live to-do list',
+        title: { en: '⚡ Action Rail — your live to-do list', es: '⚡ Barra de Acción — tu lista de pendientes en vivo' },
         simple: [
-          'On any work order card, tap the ⚡ button to move it up to the Action Rail.',
-          'From the rail: ✓ Done closes it out, 💬 Update adds a note, ↩ To List sends it back.',
-          'Use the rail for the few jobs you are actively working right now.',
+          { en: 'On any work order card, tap the ⚡ button to move it up to the Action Rail.', es: 'En cualquier tarjeta de orden de trabajo, toca el botón ⚡ para subirla a la Barra de Acción.' },
+          { en: 'From the rail: ✓ Done closes it out, 💬 Update adds a note, ↩ To List sends it back.', es: 'Desde la barra: ✓ Terminado la cierra, 💬 Actualizar agrega una nota, ↩ A la Lista la regresa.' },
+          { en: 'Use the rail for the few jobs you are actively working right now.', es: 'Usa la barra para los pocos trabajos en los que estás trabajando ahora mismo.' },
         ],
         detail: [
-          'Closing from the rail opens the normal close-out (who did it, parts, photos), then it drops off the rail.',
-          'The 📋 button flags a work order for the meeting agenda.',
+          { en: 'Closing from the rail opens the normal close-out (who did it, parts, photos), then it drops off the rail.', es: 'Cerrar desde la barra abre el cierre normal (quién lo hizo, piezas, fotos) y luego sale de la barra.' },
+          { en: 'The 📋 button flags a work order for the meeting agenda.', es: 'El botón 📋 marca una orden de trabajo para la agenda de la reunión.' },
         ],
       },
       {
-        title: '📖 Edit or add a Work Instruction (WI)',
+        title: { en: '📖 Edit or add a Work Instruction (WI)', es: '📖 Editar o agregar una Instrucción de Trabajo (WI)' },
         simple: [
-          'Open Maintenance → WI (Work Instructions).',
-          'Tap a WI to open it, then tap Edit — or use + New to add one.',
-          'Fill in the title, department, and step-by-step instructions; add photos if helpful.',
-          'Tap Save.',
+          { en: 'Open Maintenance → WI (Work Instructions).', es: 'Abre Mantenimiento → WI (Instrucciones de Trabajo).' },
+          { en: 'Tap a WI to open it, then tap Edit — or use + New to add one.', es: 'Toca una WI para abrirla y luego toca Editar — o usa + Nueva para agregar una.' },
+          { en: 'Fill in the title, department, and step-by-step instructions; add photos if helpful.', es: 'Llena el título, el departamento y las instrucciones paso a paso; agrega fotos si ayudan.' },
+          { en: 'Tap Save.', es: 'Toca Guardar.' },
         ],
         detail: [
-          'Edited or new WIs save for everyone and show next time that task is opened.',
-          'Photos store right in the instruction, so they work offline.',
+          { en: 'Edited or new WIs save for everyone and show next time that task is opened.', es: 'Las WI editadas o nuevas se guardan para todos y aparecen la próxima vez que se abra esa tarea.' },
+          { en: 'Photos store right in the instruction, so they work offline.', es: 'Las fotos se guardan dentro de la instrucción, así que funcionan sin conexión.' },
         ],
       },
       {
-        title: '🛠 Edit a PM procedure (its steps)',
+        title: { en: '🛠 Edit a PM procedure (its steps)', es: '🛠 Editar un procedimiento de PM (sus pasos)' },
         simple: [
-          'Open Maintenance → PM and tap the PM you want to change.',
-          'Tap Edit Procedure.',
-          'Add or change the Safety, Tools, Steps, and Corrective items.',
-          'Tap Save — the updated procedure then shows for everyone.',
+          { en: 'Open Maintenance → PM and tap the PM you want to change.', es: 'Abre Mantenimiento → PM y toca el PM que quieres cambiar.' },
+          { en: 'Tap Edit Procedure.', es: 'Toca Editar Procedimiento.' },
+          { en: 'Add or change the Safety, Tools, Steps, and Corrective items.', es: 'Agrega o cambia los puntos de Seguridad, Herramientas, Pasos y Correctivos.' },
+          { en: 'Tap Save — the updated procedure then shows for everyone.', es: 'Toca Guardar — el procedimiento actualizado aparece para todos.' },
         ],
         detail: [
-          'This keeps the checklist current as a machine or process changes.',
-          'The built-in steps stay as a fallback until you save an edit.',
+          { en: 'This keeps the checklist current as a machine or process changes.', es: 'Esto mantiene la lista al día cuando una máquina o un proceso cambia.' },
+          { en: 'The built-in steps stay as a fallback until you save an edit.', es: 'Los pasos originales quedan como respaldo hasta que guardes una edición.' },
         ],
       },
       {
-        title: '🗂 Add a maintenance project',
+        title: { en: '🗂 Add a maintenance project', es: '🗂 Agregar un proyecto de mantenimiento' },
         simple: [
-          'Open Maintenance → Projects.',
-          'Tap + New Project.',
-          'Type a title (that is all that is required) — optionally the machine, who is assigned, and a due date.',
-          'Add tasks one per line, then tap the chips: Requested by (Team / Management), What\'s it for (5S, Barns, Equipment…), and Priority.',
-          'Tap Create Project.',
+          { en: 'Open Maintenance → Projects.', es: 'Abre Mantenimiento → Proyectos.' },
+          { en: 'Tap + New Project.', es: 'Toca + Nuevo Proyecto.' },
+          { en: 'Type a title (that is all that is required) — optionally the machine, who is assigned, and a due date.', es: 'Escribe un título (es lo único obligatorio) — opcionalmente la máquina, a quién se asigna y una fecha límite.' },
+          { en: 'Add tasks one per line, then tap the chips: Requested by (Team / Management), What\'s it for (5S, Barns, Equipment…), and Priority.', es: 'Agrega tareas, una por línea, y luego toca las etiquetas: Solicitado por (Equipo / Gerencia), Para qué es (5S, Galpones, Equipo…) y Prioridad.' },
+          { en: 'Tap Create Project.', es: 'Toca Crear Proyecto.' },
         ],
         detail: [
-          'Use projects for bigger efforts that are more than one work order — a rebuild, a 5S push, etc.',
-          'Tap a task to check it off; the progress bar fills as you go, and urgent projects float to the top.',
-          'Projects are per-location, just like work orders.',
+          { en: 'Use projects for bigger efforts that are more than one work order — a rebuild, a 5S push, etc.', es: 'Usa los proyectos para trabajos grandes que son más de una orden — una reconstrucción, un esfuerzo de 5S, etc.' },
+          { en: 'Tap a task to check it off; the progress bar fills as you go, and urgent projects float to the top.', es: 'Toca una tarea para marcarla; la barra de progreso se llena conforme avanzas y los proyectos urgentes suben al inicio.' },
+          { en: 'Projects are per-location, just like work orders.', es: 'Los proyectos son por ubicación, igual que las órdenes de trabajo.' },
         ],
       },
     ],
@@ -193,35 +198,35 @@ const HELP_CONTENT = [
   {
     id: 'processing',
     icon: '🏭',
-    name: 'Processing Plant',
+    name: { en: 'Processing Plant', es: 'Planta de Procesamiento' },
     color: '#d69e2e',
-    blurb: 'Cases · Downtime · Breakage · Maintenance',
+    blurb: { en: 'Cases · Downtime · Breakage · Maintenance', es: 'Cajas · Paros · Rotura · Mantenimiento' },
     tasks: [
       {
-        title: '🏭 Open the Processing Plant',
+        title: { en: '🏭 Open the Processing Plant', es: '🏭 Abrir la Planta de Procesamiento' },
         simple: [
-          'On the front screen (where you pick a location), tap the PROCESSING button.',
-          'You will see three cards: Maintenance, Packing Log, and Processing PMs.',
-          'Maintenance and Processing PMs show ONLY the plant now — no Hegins or Danville mixed in.',
-          'You can create new plant work orders right from there.',
+          { en: 'On the front screen (where you pick a location), tap the PROCESSING button.', es: 'En la pantalla inicial (donde eliges la ubicación), toca el botón PROCESAMIENTO.' },
+          { en: 'You will see three cards: Maintenance, Packing Log, and Processing PMs.', es: 'Verás tres tarjetas: Mantenimiento, Registro de Empaque y PM de Procesamiento.' },
+          { en: 'Maintenance and Processing PMs show ONLY the plant now — no Hegins or Danville mixed in.', es: 'Mantenimiento y los PM de Procesamiento muestran SOLO la planta ahora — sin mezclar Hegins ni Danville.' },
+          { en: 'You can create new plant work orders right from there.', es: 'Puedes crear nuevas órdenes de trabajo de la planta directo desde ahí.' },
         ],
         detail: [
-          'Processing is its own location button — Hegins and Danville do not show it.',
-          'Master still brings everything together, including the plant.',
+          { en: 'Processing is its own location button — Hegins and Danville do not show it.', es: 'Procesamiento es su propio botón de ubicación — Hegins y Danville no lo muestran.' },
+          { en: 'Master still brings everything together, including the plant.', es: 'Master sigue juntando todo, incluida la planta.' },
         ],
       },
       {
-        title: '📦 Log packing — cases, downtime, breakage',
+        title: { en: '📦 Log packing — cases, downtime, breakage', es: '📦 Registrar empaque — cajas, paros, rotura' },
         simple: [
-          'Processing → Packing Log.',
-          'Pick the line (Packer 1, 2, …).',
-          'Enter Cases packed, any Downtime (minutes + a reason), and Breakage / cracks.',
-          'Tap ✓ Log Packing.',
+          { en: 'Processing → Packing Log.', es: 'Procesamiento → Registro de Empaque.' },
+          { en: 'Pick the line (Packer 1, 2, …).', es: 'Elige la línea (Empacadora 1, 2, …).' },
+          { en: 'Enter Cases packed, any Downtime (minutes + a reason), and Breakage / cracks.', es: 'Ingresa Cajas empacadas, cualquier Paro (minutos + un motivo) y Rotura / huevos rotos.' },
+          { en: 'Tap ✓ Log Packing.', es: 'Toca ✓ Registrar Empaque.' },
         ],
         detail: [
-          'The top shows today\'s totals — cases packed, downtime minutes, and breakage.',
-          'Below that is a by-line breakdown so you can compare packers.',
-          'Everything saves and syncs like the rest of the app.',
+          { en: 'The top shows today\'s totals — cases packed, downtime minutes, and breakage.', es: 'Arriba se ven los totales del día — cajas empacadas, minutos de paro y rotura.' },
+          { en: 'Below that is a by-line breakdown so you can compare packers.', es: 'Debajo hay un desglose por línea para comparar las empacadoras.' },
+          { en: 'Everything saves and syncs like the rest of the app.', es: 'Todo se guarda y se sincroniza como el resto de la app.' },
         ],
       },
     ],
@@ -229,44 +234,44 @@ const HELP_CONTENT = [
   {
     id: 'basics',
     icon: '⚙️',
-    name: 'Getting Around',
+    name: { en: 'Getting Around', es: 'Cómo Moverte en la App' },
     color: '#9ca3af',
-    blurb: 'Locations · Language · Brightness',
+    blurb: { en: 'Locations · Language · Brightness', es: 'Ubicaciones · Idioma · Brillo' },
     tasks: [
       {
-        title: '📍 Switch location (Hegins / Danville / Processing / Master)',
+        title: { en: '📍 Switch location (Hegins / Danville / Processing / Master)', es: '📍 Cambiar de ubicación (Hegins / Danville / Procesamiento / Master)' },
         simple: [
-          'On the front screen, tap the location you want: Hegins, Danville, Processing Plant, or Master.',
-          'Work orders, PMs, and staff then show just that site.',
-          'Master shows every site combined.',
+          { en: 'On the front screen, tap the location you want: Hegins, Danville, Processing Plant, or Master.', es: 'En la pantalla inicial, toca la ubicación que quieres: Hegins, Danville, Planta de Procesamiento o Master.' },
+          { en: 'Work orders, PMs, and staff then show just that site.', es: 'Las órdenes de trabajo, los PM y el personal muestran solo ese sitio.' },
+          { en: 'Master shows every site combined.', es: 'Master muestra todos los sitios juntos.' },
         ],
         detail: [
-          'The app remembers your last location for next time.',
-          'To switch while inside, tap ← Locations to go back to the picker.',
+          { en: 'The app remembers your last location for next time.', es: 'La app recuerda tu última ubicación para la próxima vez.' },
+          { en: 'To switch while inside, tap ← Locations to go back to the picker.', es: 'Para cambiar estando adentro, toca ← Ubicaciones para volver al selector.' },
         ],
       },
       {
-        title: '🌐 Language & 🔆 brightness',
+        title: { en: '🌐 Language & 🔆 brightness', es: '🌐 Idioma y 🔆 brillo' },
         simple: [
-          'Tap the 🌐 button at the top of the front screen to switch English ⇄ Spanish.',
-          'Tap Dark, Light, or White at the top to change the background brightness.',
+          { en: 'Tap the 🌐 button at the top of the front screen to switch English ⇄ Spanish.', es: 'Toca el botón 🌐 arriba en la pantalla inicial para cambiar entre Inglés ⇄ Español.' },
+          { en: 'Tap Dark, Light, or White at the top to change the background brightness.', es: 'Toca Oscuro, Claro o Blanco arriba para cambiar el brillo del fondo.' },
         ],
         detail: [
-          'Both choices are remembered on that tablet.',
-          'Use White or Light when reading in bright daylight.',
+          { en: 'Both choices are remembered on that tablet.', es: 'Ambas opciones se recuerdan en esa tableta.' },
+          { en: 'Use White or Light when reading in bright daylight.', es: 'Usa Blanco o Claro cuando leas con mucha luz del día.' },
         ],
       },
       {
-        title: '👥 Add a team member & set their site',
+        title: { en: '👥 Add a team member & set their site', es: '👥 Agregar a alguien del equipo y asignar su sitio' },
         simple: [
-          'Open Staff from the home screen.',
-          'Add the person\'s name and role.',
-          'On their card, tap Hegins, Danville, or Both to set where they work.',
-          'That keeps each site\'s name lists correct when picking who did the work.',
+          { en: 'Open Staff from the home screen.', es: 'Abre Personal desde la pantalla de inicio.' },
+          { en: 'Add the person\'s name and role.', es: 'Agrega el nombre y el puesto de la persona.' },
+          { en: 'On their card, tap Hegins, Danville, or Both to set where they work.', es: 'En su tarjeta, toca Hegins, Danville o Ambos para definir dónde trabaja.' },
+          { en: 'That keeps each site\'s name lists correct when picking who did the work.', es: 'Eso mantiene correctas las listas de nombres de cada sitio al elegir quién hizo el trabajo.' },
         ],
         detail: [
-          'Only people tagged to a site (or Both, for maintenance techs) show in that site\'s pickers.',
-          'Anyone left untagged is flagged in amber so you can fix it.',
+          { en: 'Only people tagged to a site (or Both, for maintenance techs) show in that site\'s pickers.', es: 'Solo las personas asignadas a un sitio (o Ambos, para técnicos de mantenimiento) aparecen en los selectores de ese sitio.' },
+          { en: 'Anyone left untagged is flagged in amber so you can fix it.', es: 'Quien quede sin asignar se marca en ámbar para que lo arregles.' },
         ],
       },
     ],
@@ -276,7 +281,7 @@ const HELP_CONTENT = [
 // ── Render ────────────────────────────────────────────────────────────────
 function _helpStepList(steps, ordered) {
   const tag = ordered ? 'ol' : 'ul';
-  const items = steps.map(s => `<li style="margin-bottom:7px;line-height:1.5;">${s}</li>`).join('');
+  const items = steps.map(s => `<li style="margin-bottom:7px;line-height:1.5;">${hT(s)}</li>`).join('');
   return `<${tag} style="margin:6px 0 0;padding-left:20px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#d8e8d8;">${items}</${tag}>`;
 }
 
@@ -284,15 +289,15 @@ function _helpTaskCard(task, deptColor, key) {
   return `
     <div style="background:#0a1a0a;border:1px solid #1e3a1e;border-radius:12px;margin-bottom:10px;overflow:hidden;">
       <button onclick="helpToggle('task-${key}')" style="width:100%;padding:13px 14px;background:transparent;border:none;color:#f0ead8;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;">
-        <span style="flex:1;line-height:1.3;">${task.title}</span>
+        <span style="flex:1;line-height:1.3;">${hT(task.title)}</span>
         <span id="task-${key}-caret" style="color:${deptColor};font-size:16px;">+</span>
       </button>
       <div id="task-${key}" style="display:none;padding:0 14px 14px;">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:${deptColor};letter-spacing:2px;text-transform:uppercase;margin:4px 0 2px;">Quick Steps</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:${deptColor};letter-spacing:2px;text-transform:uppercase;margin:4px 0 2px;">${_hlang()==='es' ? 'Pasos Rápidos' : 'Quick Steps'}</div>
         ${_helpStepList(task.simple, true)}
-        <button onclick="helpToggle('detail-${key}',this)" style="margin-top:12px;padding:7px 12px;background:#0d1f0d;border:1px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;cursor:pointer;">ℹ️ More detail</button>
+        <button onclick="helpToggle('detail-${key}',this)" style="margin-top:12px;padding:7px 12px;background:#0d1f0d;border:1px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;cursor:pointer;">${_hlang()==='es' ? 'ℹ️ Más detalle' : 'ℹ️ More detail'}</button>
         <div id="detail-${key}" style="display:none;margin-top:10px;padding:11px 13px;background:#081208;border-left:3px solid ${deptColor};border-radius:6px;">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:${deptColor};letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Good to know</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:${deptColor};letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">${_hlang()==='es' ? 'Bueno saber' : 'Good to know'}</div>
           ${_helpStepList(task.detail, false)}
         </div>
       </div>
@@ -306,8 +311,8 @@ function _helpDeptCard(dept) {
       <button onclick="helpToggle('dept-${dept.id}',this)" style="width:100%;padding:16px 16px;background:linear-gradient(135deg,#10241a,#0b1a0b);border:2px solid ${dept.color};border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;">
         <span style="font-size:28px;line-height:1;">${dept.icon}</span>
         <div style="flex:1;">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">${dept.name}</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab07a;line-height:1.4;margin-top:3px;">${dept.blurb}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">${hT(dept.name)}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab07a;line-height:1.4;margin-top:3px;">${hT(dept.blurb)}</div>
         </div>
         <span id="dept-${dept.id}-caret" style="font-size:20px;color:${dept.color};">+</span>
       </button>
@@ -323,7 +328,9 @@ function renderHelp() {
   body.innerHTML = `
     <div style="background:#0d1f0d;border:1px solid #1e3a1e;border-radius:12px;padding:13px 15px;margin-bottom:16px;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#9cc79c;line-height:1.6;">
-        Tap a department below to see how to do each task. Each task has <b style="color:#f0ead8;">Quick Steps</b> to follow, and a <b style="color:#f0ead8;">More detail</b> button for tips and edge cases.
+        ${_hlang()==='es'
+          ? 'Toca un departamento abajo para ver cómo hacer cada tarea. Cada tarea tiene <b style="color:#f0ead8;">Pasos Rápidos</b> a seguir y un botón de <b style="color:#f0ead8;">Más detalle</b> con consejos y casos especiales.'
+          : 'Tap a department below to see how to do each task. Each task has <b style="color:#f0ead8;">Quick Steps</b> to follow, and a <b style="color:#f0ead8;">More detail</b> button for tips and edge cases.'}
       </div>
     </div>
     ${HELP_CONTENT.map(_helpDeptCard).join('')}`;

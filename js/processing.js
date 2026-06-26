@@ -100,7 +100,8 @@ function procOpenPacking() {
       '<span>📦 ' + procNum(c) + ' · ⏱ ' + procNum(d) + 'm · 💔 ' + procNum(b) + '</span></div>';
   }).join('') || '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#3a6a3a;padding:9px;">' + procL('No packing logged today yet.', 'Aún no hay empaque registrado hoy.') + '</div>';
 
-  var lineOpts = PROC_LINES.map(function (l) { return '<option>' + procEsc(l) + '</option>'; }).join('');
+  var lastLine = rows.length ? rows[0].line : ''; // most recent line today → pre-selected
+  var lineOpts = PROC_LINES.map(function (l) { return '<option' + (l === lastLine ? ' selected' : '') + '>' + procEsc(l) + '</option>'; }).join('');
   // option VALUE stays English (stored), display translated
   var reasonOpts = PROC_DT_REASONS.map(function (r) {
     var disp = r ? (_plang() === 'es' ? (PROC_DT_REASON_ES[r] || r) : r) : procL('— reason —', '— motivo —');
