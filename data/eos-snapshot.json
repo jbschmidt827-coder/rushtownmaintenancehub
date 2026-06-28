@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-27T12:11:42.920745Z",
-  "date": "2026-06-27",
+  "generatedAt": "2026-06-28T12:18:24.180727Z",
+  "date": "2026-06-28",
   "scope": {
     "farms": [
       "Danville",
@@ -12,7 +12,7 @@
     "openWOTotal": 11,
     "redTagsActive": 0,
     "overdue7d": 0,
-    "walksToday": 9,
+    "walksToday": 4,
     "totalHouses": 13
   },
   "byHouse": [
@@ -23,7 +23,7 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
+      "morningWalkToday": false,
       "topItem": null,
       "topItemDays": null
     },
@@ -36,7 +36,7 @@
       "walkedToday": false,
       "morningWalkToday": false,
       "topItem": "Fan issue",
-      "topItemDays": 1
+      "topItemDays": 2
     },
     {
       "farm": "Hegins",
@@ -45,7 +45,7 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
+      "morningWalkToday": false,
       "topItem": null,
       "topItemDays": null
     },
@@ -56,7 +56,7 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
+      "morningWalkToday": false,
       "topItem": null,
       "topItemDays": null
     },
@@ -67,7 +67,7 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
+      "morningWalkToday": false,
       "topItem": null,
       "topItemDays": null
     },
@@ -78,7 +78,7 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
+      "morningWalkToday": false,
       "topItem": null,
       "topItemDays": null
     },
@@ -89,7 +89,7 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
+      "morningWalkToday": false,
       "topItem": null,
       "topItemDays": null
     },
@@ -100,9 +100,9 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
+      "morningWalkToday": false,
       "topItem": "Feed System",
-      "topItemDays": 53
+      "topItemDays": 54
     },
     {
       "farm": "Danville",
@@ -113,7 +113,7 @@
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Feed System",
-      "topItemDays": 4
+      "topItemDays": 5
     },
     {
       "farm": "Danville",
@@ -144,7 +144,7 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": false,
+      "morningWalkToday": true,
       "topItem": null,
       "topItemDays": null
     },
@@ -155,7 +155,7 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": false,
+      "morningWalkToday": true,
       "topItem": null,
       "topItemDays": null
     }
@@ -181,17 +181,6 @@
       "priority": "high",
       "status": "open",
       "ts": 1782473700173,
-      "urgent": false
-    },
-    {
-      "id": "EwlsFl9jPMIxquQfboZT",
-      "farm": "Processing Plant",
-      "house": "",
-      "title": "Other",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1781548944982,
       "urgent": false
     },
     {
@@ -323,54 +312,24 @@
       "farm": "Danville",
       "house": "2",
       "employee": "Aracely",
-      "time": "7:09 AM"
-    },
-    {
-      "farm": "Hegins",
-      "house": "1",
-      "employee": "Natlalie",
-      "time": "7:03 AM"
-    },
-    {
-      "farm": "Hegins",
-      "house": "5",
-      "employee": "Natlalie",
-      "time": "7:06 AM"
-    },
-    {
-      "farm": "Hegins",
-      "house": "8",
-      "employee": "Natlalie",
-      "time": "7:07 AM"
-    },
-    {
-      "farm": "Hegins",
-      "house": "7",
-      "employee": "Natlalie",
-      "time": "7:06 AM"
-    },
-    {
-      "farm": "Hegins",
-      "house": "4",
-      "employee": "Natlalie",
-      "time": "7:05 AM"
-    },
-    {
-      "farm": "Hegins",
-      "house": "6",
-      "employee": "Natlalie",
       "time": "7:06 AM"
     },
     {
       "farm": "Danville",
       "house": "1",
       "employee": "Aracely",
-      "time": "6:53 AM"
+      "time": "7:06 AM"
     },
     {
-      "farm": "Hegins",
-      "house": "3",
-      "employee": "Natlalie",
+      "farm": "Danville",
+      "house": "4",
+      "employee": "Aracely",
+      "time": "7:05 AM"
+    },
+    {
+      "farm": "Danville",
+      "house": "5",
+      "employee": "Aracely",
       "time": "7:05 AM"
     }
   ]
