@@ -205,3 +205,31 @@ async function assignStaffLocationsIfNeeded() {
     console.warn('[roster] location backfill failed:', e);
   }
 }
+
+// ── One-time: ensure the Processing Plant PM crew exists (Johnathan, Alice,
+//    Jose). Idempotent — runs once (meta flag) and only adds a name that
+//    isn't already in the staff list. Tagged farm 'Processing Plant' so the
+//    Processing PM "Completed By" picker shows just them. ──────────────────
+async function ensureProcessingPMStaff() {
+  try {
+    if (typeof db === 'undefined' || !db) return;
+    const flagRef = db.collection('meta').doc('_procPMStaff_v1');
+    if ((await flagRef.get()).exists) return;
+    const names = ['Johnathan', 'Alice', 'Jose'];
+    const snap = await db.collection('staff').get();
+    const have = {};
+    snap.forEach(d => { const n = ((d.data() || {}).name || '').trim().toLowerCase(); if (n) have[n] = true; });
+    const batch = db.batch();
+    let added = 0;
+    names.forEach(nm => {
+      if (have[nm.toLowerCase()]) return;
+      const ref = db.collection('staff').doc();
+      batch.set(ref, { name: nm, firstName: nm, lastName: '', role: 'Technician', farm: 'Processing Plant', phone: '', active: true, ts: Date.now(), procPMStaff: true });
+      added++;
+    });
+    batch.set(flagRef, { ts: Date.now(), added });
+    await batch.commit();
+    console.log('[roster] ensured Processing Plant PM staff (+' + added + ') ✓');
+  } catch (e) { console.warn('[roster] ensureProcessingPMStaff failed:', e); }
+}
+if (typeof window !== 'undefined') window.ensureProcessingPMStaff = ensureProcessingPMStaff;

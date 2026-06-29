@@ -1386,7 +1386,10 @@ function openPMModal(id) {
   const staffSrc = (typeof staffList !== 'undefined' && Array.isArray(staffList)) ? staffList : [];
   const farmStaff = staffSrc
     .filter(s => s && s.active !== false)
-    .filter(s => !s.farm || s.farm === t.farm || s.farm === 'Both' || s.farm === 'All')
+    // Processing Plant PMs: only its own crew (Johnathan/Alice/Jose), not Both-tagged directors.
+    .filter(s => (t.farm === 'Processing Plant')
+      ? s.farm === 'Processing Plant'
+      : (!s.farm || s.farm === t.farm || s.farm === 'Both' || s.farm === 'All'))
     .map(s => s.name)
     .filter(Boolean)
     .sort((a,b) => a.localeCompare(b));
@@ -1524,13 +1527,16 @@ function _pmRefreshConfirmGate() {
   if (!btn) return;
   const total = (_pmProcedureCache && _pmProcedureCache.instructions || []).length;
   const done = Object.keys(_pmCheckedSteps).length;
-  if (total > 0 && done < total) {
+  // Processing Plant PMs are NOT hard-locked (catch-up friendly); layer PMs stay strict.
+  const _t = (typeof ALL_PM !== 'undefined') ? ALL_PM.find(x => x.id === modalPMId) : null;
+  const _plant = !!(_t && _t.farm === 'Processing Plant');
+  if (total > 0 && done < total && !_plant) {
     btn.disabled = true;
     btn.textContent = `✓ MARK DONE (${done}/${total})`;
     btn.title = 'Check every step above before signing off.';
   } else {
     btn.disabled = _pmConfirming;
-    btn.textContent = '✓ MARK DONE';
+    btn.textContent = (total > 0 && done < total) ? `✓ MARK DONE (${done}/${total})` : '✓ MARK DONE';
     btn.title = '';
   }
 }
@@ -1683,11 +1689,21 @@ async function confirmPM() {
   // Safety net — should already be enforced by the gate, but never let an
   // incomplete signoff slip through if a tech somehow bypasses the UI.
   if (totalSteps > 0 && checkedStepIdxs.length < totalSteps) {
-    _pmConfirming = false;
-    if (pmBtn) { pmBtn.disabled = false; pmBtn.textContent = pmBtnOriginal || '✓ MARK DONE'; }
-    alert(`Please check every step (${checkedStepIdxs.length}/${totalSteps} complete) before marking this PM done.`);
-    setSyncDot('live');
-    return;
+    const _plant = !!(t && t.farm === 'Processing Plant');
+    if (!_plant) {
+      _pmConfirming = false;
+      if (pmBtn) { pmBtn.disabled = false; pmBtn.textContent = pmBtnOriginal || '✓ MARK DONE'; }
+      alert(`Please check every step (${checkedStepIdxs.length}/${totalSteps} complete) before marking this PM done.`);
+      setSyncDot('live');
+      return;
+    }
+    // Processing Plant PMs: nudge, don't block (lets a single PM go through).
+    if (!confirm(`Only ${checkedStepIdxs.length}/${totalSteps} steps checked. Mark this PM done anyway?`)) {
+      _pmConfirming = false;
+      if (pmBtn) { pmBtn.disabled = false; pmBtn.textContent = pmBtnOriginal || '✓ MARK DONE'; }
+      setSyncDot('live');
+      return;
+    }
   }
   const procedureSnapshot = (totalSteps > 0) ? {
     totalSteps,

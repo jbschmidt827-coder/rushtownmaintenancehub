@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v150 · Jun 26 2026';
+var APP_VERSION = 'v152 · Jun 26 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -2194,6 +2194,7 @@ async function initApp() {
       setTimeout(() => {
         safeRun(() => typeof seedStaffRosterIfEmpty === 'function' && seedStaffRosterIfEmpty(), 'seedStaffRoster');
         safeRun(() => typeof assignStaffLocationsIfNeeded === 'function' && assignStaffLocationsIfNeeded(), 'assignStaffLocations');
+        safeRun(() => typeof ensureProcessingPMStaff === 'function' && ensureProcessingPMStaff(), 'ensureProcPMStaff');
         safeRun(() => typeof seedMortalityCompostingWI === 'function' && seedMortalityCompostingWI(), 'seedMort');
         safeRun(() => typeof seedWaterRegulatorWI === 'function' && seedWaterRegulatorWI(), 'seedWater');
         safeRun(() => typeof seedAugerRollerWI === 'function' && seedAugerRollerWI(), 'seedAuger');
