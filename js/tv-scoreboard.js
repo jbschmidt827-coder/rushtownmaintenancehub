@@ -728,7 +728,11 @@ function closeBulkPM() {
 function renderBulkPMList() {
   const farm = document.getElementById('bulk-farm-filter')?.value || 'all';
   // Scope the "Completed By" picker to the chosen farm (all = everyone).
-  if (typeof scopeNames === 'function') scopeNames('bulk-tech', farm==='all'?'':farm, '<option value="">— Select Tech —</option>');
+  if (farm === 'Processing Plant' && typeof scopeNamesDept === 'function') {
+    scopeNamesDept('bulk-tech', farm, 'Processing', '<option value="">— Select Tech —</option>'); // plant crew + leaders
+  } else if (typeof scopeNames === 'function') {
+    scopeNames('bulk-tech', farm==='all'?'':farm, '<option value="">— Select Tech —</option>');
+  }
   const tasks = farm==='all' ? ALL_PM : ALL_PM.filter(t=>t.farm===farm);
   const overdue = tasks.filter(t=>pmStatus(t.id)==='overdue');
 

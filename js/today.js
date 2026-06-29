@@ -18,6 +18,25 @@ function _tdLayerFarms() {
   return []; // Processing Plant — no daily-check houses
 }
 
+function _tdConfetti() {
+  try {
+    var colors = ['#4ade80', '#f0d68a', '#7ab0f6', '#f8a4a4', '#a7e08a', '#d6b34a'];
+    for (var i = 0; i < 46; i++) {
+      (function (i) {
+        var el = document.createElement('div');
+        var sz = 7 + Math.random() * 9;
+        el.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;top:-24px;left:' + (Math.random() * 100) + 'vw;width:' + sz + 'px;height:' + (sz * 0.55) + 'px;background:' + colors[i % colors.length] + ';border-radius:2px;opacity:0.95;transition:transform 2.3s cubic-bezier(.25,.7,.4,1),opacity 2.3s;';
+        document.body.appendChild(el);
+        requestAnimationFrame(function () { requestAnimationFrame(function () {
+          el.style.transform = 'translateY(' + (105 + Math.random() * 20) + 'vh) rotate(' + (Math.random() * 720 - 360) + 'deg)';
+          el.style.opacity = '0';
+        }); });
+        setTimeout(function () { el.remove(); }, 2500);
+      })(i);
+    }
+  } catch (e) {}
+}
+
 async function renderTodayPanel() {
   var el = document.getElementById('today-panel');
   if (!el) return;
@@ -58,6 +77,14 @@ async function renderTodayPanel() {
       });
     } catch (e) { console.warn('renderTodayPanel:', e); }
   }
+
+  // 🎉 Celebrate once per day when this site finishes ALL its daily checks.
+  try {
+    if (layerFarms.length && (missMorning + missCheck + missManure) === 0) {
+      var _doneKey = 'rushtown_alldone_' + (pref || 'master') + '_' + today;
+      if (!localStorage.getItem(_doneKey)) { localStorage.setItem(_doneKey, '1'); _tdConfetti(); }
+    }
+  } catch (e) {}
 
   function row(icon, txt, color, onclick) {
     return '<button onclick="' + onclick + '" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 12px;margin-bottom:7px;background:#10140a;border:1.5px solid ' + color + ';border-radius:11px;color:#f0ead8;font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;cursor:pointer;">' +

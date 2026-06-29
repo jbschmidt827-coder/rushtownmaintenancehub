@@ -696,7 +696,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v154 · Jun 26 2026';
+var APP_VERSION = 'v155 · Jun 26 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -1184,6 +1184,8 @@ const TRANSLATIONS = {
     'common.saving':'Saving...','common.save_failed':'Save failed: ',
     // Landing screen cards
     'landing.prod':'Production','landing.prod_sub':'Barn walk · Daily checks · Feed & water',
+    'landing.manure':'Manure','landing.manure_sub':'Belt % run · by house & collector',
+    'landing.completion':'Completion','landing.completion_sub':'Daily % by house & check',
     'landing.maint':'Maintenance','landing.maint_sub':'Work orders · PM · Parts · Assets',
     'landing.pkg':'Packaging','landing.pkg_sub':'Egg ops · Packing log',
     'landing.ship':'Shipping','landing.ship_sub':'Loads · Reconciliation · Exceptions',
@@ -1392,6 +1394,8 @@ const TRANSLATIONS = {
     'common.saving':'Guardando...','common.save_failed':'Error al guardar: ',
     // Landing screen cards
     'landing.prod':'Producción','landing.prod_sub':'Ronda · Revisiones diarias · Alimento y agua',
+    'landing.manure':'Estiércol','landing.manure_sub':'% de banda · por casa y colector',
+    'landing.completion':'Cumplimiento','landing.completion_sub':'% diario por casa y revisión',
     'landing.maint':'Mantenimiento','landing.maint_sub':'Órdenes · PM · Partes · Equipos',
     'landing.pkg':'Empaque','landing.pkg_sub':'Ops de huevos · Registro',
     'landing.ship':'Envíos','landing.ship_sub':'Cargas · Reconciliación · Excepciones',

@@ -132,6 +132,12 @@ function updateStaffDropdowns() {
   // Datalist for text inputs with list="staff-datalist"
   const datalistOpts = names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">`).join('');
   document.querySelectorAll('datalist#staff-datalist').forEach(dl => dl.innerHTML = datalistOpts);
+  // Barn-area autocomplete (Daily Check / Barn Walk name) → Barns dept + leaders only.
+  try {
+    const barnNames = (typeof getDeptStaff === 'function') ? getDeptStaff(loc, 'Barns') : names;
+    const barnOpts = barnNames.map(n => `<option value="${String(n).replace(/"/g,'&quot;')}">`).join('');
+    document.querySelectorAll('datalist#barn-staff-datalist').forEach(dl => dl.innerHTML = barnOpts);
+  } catch (e) { /* non-fatal */ }
 
   // Select dropdowns — all get the same active staff list
   const nameOpts = names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
