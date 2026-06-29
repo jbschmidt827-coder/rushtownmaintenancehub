@@ -149,13 +149,29 @@ const FARM_HOUSES = {
 // The app stops auto-creating work orders for them and drops them from
 // completion / daily tracking and the WO house dropdown. Add/remove a house
 // number here when it goes down or comes back online.
-const DOWN_HOUSES = { Hegins: ['2'], Danville: ['3'] };
+const DOWN_HOUSES = { Hegins: ['2'], Danville: ['3'] }; // code defaults; settings/downHouses overrides live
+let _downHousesLive = null; // populated by startDownHousesListener (self-serve House Status toggle)
 function isHouseDown(farm, house) {
-  var hs = (farm && DOWN_HOUSES[farm]) ? DOWN_HOUSES[farm] : [];
+  var src = (_downHousesLive && typeof _downHousesLive === 'object') ? _downHousesLive : DOWN_HOUSES;
+  var hs = (farm && Array.isArray(src[farm])) ? src[farm] : [];
   var h = String(house == null ? '' : house).replace(/^\s*house\s*/i, '').trim();
   return hs.indexOf(h) !== -1;
 }
-if (typeof window !== 'undefined') { window.isHouseDown = isHouseDown; }
+// Live down-house config so Management can flip houses down/up in-app (no code change).
+// Seeds from DOWN_HOUSES the first time, then settings/downHouses is the source of truth.
+function startDownHousesListener() {
+  if (typeof db === 'undefined' || !db) return;
+  try {
+    db.collection('settings').doc('downHouses').onSnapshot(function (doc) {
+      if (doc.exists) { _downHousesLive = doc.data() || {}; }
+      else { _downHousesLive = JSON.parse(JSON.stringify(DOWN_HOUSES)); db.collection('settings').doc('downHouses').set(_downHousesLive).catch(function () {}); }
+      try { if (typeof refreshCurrentPanel === 'function') refreshCurrentPanel(); } catch (e) {}
+      try { if (typeof renderTodayPanel === 'function') renderTodayPanel(); } catch (e) {}
+      try { var _ov = document.getElementById('housestatus-overlay'); if (_ov && _ov.style.display !== 'none' && typeof renderHouseStatus === 'function') renderHouseStatus(); } catch (e) {}
+    }, function (err) { console.warn('downHouses listener:', err); });
+  } catch (e) { console.warn('startDownHousesListener:', e); }
+}
+if (typeof window !== 'undefined') { window.isHouseDown = isHouseDown; window.startDownHousesListener = startDownHousesListener; }
 
 // One-time: close any OPEN work orders for down houses (e.g. House 3 rebuild) so
 // duplicate auto-generated WOs get cleared. Idempotent via a meta flag; uses the
@@ -736,7 +752,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v157 · Jun 26 2026';
+var APP_VERSION = 'v158 · Jun 26 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -1226,6 +1242,7 @@ const TRANSLATIONS = {
     'landing.prod':'Production','landing.prod_sub':'Barn walk · Daily checks · Feed & water',
     'landing.manure':'Manure','landing.manure_sub':'Belt % run · by house & collector',
     'landing.completion':'Completion','landing.completion_sub':'Daily % by house & check',
+    'landing.housestatus':'🏚 House Status',
     'landing.maint':'Maintenance','landing.maint_sub':'Work orders · PM · Parts · Assets',
     'landing.pkg':'Packaging','landing.pkg_sub':'Egg ops · Packing log',
     'landing.ship':'Shipping','landing.ship_sub':'Loads · Reconciliation · Exceptions',
@@ -1436,6 +1453,7 @@ const TRANSLATIONS = {
     'landing.prod':'Producción','landing.prod_sub':'Ronda · Revisiones diarias · Alimento y agua',
     'landing.manure':'Estiércol','landing.manure_sub':'% de banda · por casa y colector',
     'landing.completion':'Cumplimiento','landing.completion_sub':'% diario por casa y revisión',
+    'landing.housestatus':'🏚 Estado de Casas',
     'landing.maint':'Mantenimiento','landing.maint_sub':'Órdenes · PM · Partes · Equipos',
     'landing.pkg':'Empaque','landing.pkg_sub':'Ops de huevos · Registro',
     'landing.ship':'Envíos','landing.ship_sub':'Cargas · Reconciliación · Excepciones',
@@ -2210,6 +2228,7 @@ async function initApp() {
       safeRun(loadPkgExtras, 'loadPkgExtras');
       safeRun(loadBioLog, 'loadBioLog');
 
+      safeRun(() => typeof startDownHousesListener === 'function' && startDownHousesListener(), 'startDownHouses');
       safeRun(() => typeof startAssetListener === 'function' && startAssetListener(), 'startAssetListener');
       safeRun(() => typeof startWIListener === 'function' && startWIListener(), 'startWIListener');
       safeRun(() => typeof start5SListener === 'function' && start5SListener(), 'start5SListener');

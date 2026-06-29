@@ -158,3 +158,116 @@ exports.dailyPMCheck = onSchedule(
     return null;
   }
 );
+
+// ────────────────────────────────────────────────────
+// House / check helpers (mirror the app)
+// ────────────────────────────────────────────────────
+const LAYER_HOUSES  = { Hegins: [1, 2, 3, 4, 5, 6, 7, 8], Danville: [1, 2, 3, 4, 5] };
+const MANURE_LAYER  = { Hegins: [4, 5, 6, 7, 8], Danville: [1, 2, 3, 4, 5] };
+
+function etDateStr(daysAgo = 0) {
+  // YYYY-MM-DD in America/New_York
+  return new Date(Date.now() - daysAgo * 86400000).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
+function hnum(h) { const m = String(h == null ? '' : h).match(/\d+/); return m ? m[0] : String(h); }
+
+async function getDownHouses() {
+  try {
+    const doc = await db.collection('settings').doc('downHouses').get();
+    const d = doc.exists ? (doc.data() || {}) : {};
+    const out = {};
+    Object.keys(d).forEach(f => { out[f] = (Array.isArray(d[f]) ? d[f] : []).map(String); });
+    return out;
+  } catch (e) { return {}; }
+}
+async function presentSet(coll, dateStr) {
+  const s = new Set();
+  try {
+    const snap = await db.collection(coll).where('date', '==', dateStr).get();
+    snap.forEach(doc => { const x = doc.data(); if (x && x.farm && x.house != null) s.add(x.farm + '|' + hnum(x.house)); });
+  } catch (e) {}
+  return s;
+}
+
+// ────────────────────────────────────────────────────
+// SCHEDULED — Daily checks reminder (10:00 AM ET)
+// Pushes if Morning Walk / Daily Check / Manure are still missing for any house
+// (down houses excluded).
+// ────────────────────────────────────────────────────
+exports.dailyChecksReminder = onSchedule(
+  { schedule: '0 10 * * *', timeZone: 'America/New_York', region: 'us-central1' },
+  async () => {
+    const today = etDateStr(0);
+    const down  = await getDownHouses();
+    const isDown = (farm, h) => (down[farm] || []).indexOf(hnum(h)) !== -1;
+    const [mw, ck, ms] = await Promise.all([
+      presentSet('morningWalks', today), presentSet('barnWalks', today), presentSet('manureSubmit', today),
+    ]);
+    let missMorning = 0, missCheck = 0, missManure = 0;
+    Object.keys(LAYER_HOUSES).forEach(farm => {
+      LAYER_HOUSES[farm].forEach(h => {
+        if (isDown(farm, h)) return;
+        const key = farm + '|' + h;
+        if (!mw.has(key)) missMorning++;
+        if (!ck.has(key)) missCheck++;
+        if ((MANURE_LAYER[farm] || []).indexOf(h) !== -1 && !ms.has(key)) missManure++;
+      });
+    });
+    if (!(missMorning + missCheck + missManure)) return null;
+    const parts = [];
+    if (missMorning) parts.push(`${missMorning} Morning Walk`);
+    if (missCheck)   parts.push(`${missCheck} Daily Check`);
+    if (missManure)  parts.push(`${missManure} Manure`);
+    const title = '⏰ Daily checks not done';
+    const body  = `Still open: ${parts.join(' · ')} house(s). Tap to finish them up.`;
+    await Promise.all([ sendPushToAll(title, body, 'daily-missed'), writeNotification('daily_missed', title, body) ]);
+    return null;
+  }
+);
+
+// ────────────────────────────────────────────────────
+// SCHEDULED — Manager morning digest (5:45 AM ET)
+// Yesterday's completion %, open urgent WOs, overdue PMs, mortality.
+// ────────────────────────────────────────────────────
+exports.managerDigest = onSchedule(
+  { schedule: '45 5 * * *', timeZone: 'America/New_York', region: 'us-central1' },
+  async () => {
+    const yday   = etDateStr(1);
+    const down   = await getDownHouses();
+    const isDown = (farm, h) => (down[farm] || []).indexOf(hnum(h)) !== -1;
+    const [mw, ck, ms] = await Promise.all([
+      presentSet('morningWalks', yday), presentSet('barnWalks', yday), presentSet('manureSubmit', yday),
+    ]);
+    let done = 0, app = 0, mort = 0;
+    Object.keys(LAYER_HOUSES).forEach(farm => {
+      LAYER_HOUSES[farm].forEach(h => {
+        if (isDown(farm, h)) return;
+        const key = farm + '|' + h;
+        app += 2; if (mw.has(key)) done++; if (ck.has(key)) done++;
+        if ((MANURE_LAYER[farm] || []).indexOf(h) !== -1) { app++; if (ms.has(key)) done++; }
+      });
+    });
+    const pct = app ? Math.round(done / app * 100) : 0;
+    try { const bw = await db.collection('barnWalks').where('date', '==', yday).get(); bw.forEach(d => { mort += Number((d.data() || {}).mortCount) || 0; }); } catch (e) {}
+    let urgent = 0;
+    try { const wos = await db.collection('workOrders').where('status', '==', 'open').get(); wos.forEach(d => { if ((d.data() || {}).priority === 'urgent') urgent++; }); } catch (e) {}
+    let overdue = 0;
+    try {
+      const now = Date.now(), MS_DAY = 86400000;
+      const comps = await db.collection('pmCompletions').get();
+      const hist  = await db.collection('pmHistory').orderBy('ts', 'desc').get();
+      const freqMap = {};
+      hist.forEach(d => { const { pmId, freq } = d.data(); if (pmId && freq && !freqMap[pmId]) freqMap[pmId] = freq; });
+      comps.forEach(d => {
+        const { date, ts } = d.data(); const days = FREQ_DAYS[freqMap[d.id]];
+        if (!days) return;
+        const lastTs = ts || (date ? new Date(date + 'T12:00:00').getTime() : 0);
+        if ((now - lastTs) / MS_DAY >= days) overdue++;
+      });
+    } catch (e) {}
+    const title = '📋 Morning Briefing';
+    const body  = `Yesterday: ${pct}% checks done · ${urgent} urgent WO${urgent !== 1 ? 's' : ''} · ${overdue} PM${overdue !== 1 ? 's' : ''} overdue · ${mort} dead.`;
+    await Promise.all([ sendPushToAll(title, body, 'digest'), writeNotification('digest', title, body) ]);
+    return null;
+  }
+);

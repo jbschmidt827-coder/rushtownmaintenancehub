@@ -24,7 +24,8 @@
     ['completion-overlay', 'closeCompletion'],
     ['scorecard-overlay',  'closeScorecard'],
     ['help-overlay',       'closeHelp'],
-    ['staff-edit-modal',   'closeStaffEdit']
+    ['staff-edit-modal',   'closeStaffEdit'],
+    ['housestatus-overlay','closeHouseStatus']
   ];
 
   function _closeTopLayer() {

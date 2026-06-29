@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v157-h2down';
+const CACHE_NAME = 'rushtown-v158-housetoggle';
 
 const SHELL_FILES = [
   '/',
@@ -68,6 +68,7 @@ const SHELL_FILES = [
   '/js/completion.js',
   '/js/today.js',
   '/js/fortune.js',
+  '/js/housestatus.js',
   '/js/navback.js',
   '/js/shipping.js',
   '/js/danville-loadout.js',
