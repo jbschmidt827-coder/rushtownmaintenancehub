@@ -29,6 +29,42 @@ function _isMaintTech(s) {
   return !!s && MAINTENANCE_ROLES.indexOf(s.role) !== -1;
 }
 
+// ── Departments (Location + Department scoping) ──────────────────────────────
+// Each person has a Location (farm) AND a Department. Department comes from an
+// explicit `dept` field if set, else it's derived from their role/farm so older
+// records still sort correctly. Name dropdowns filter by department, and
+// LEADERS (Director/Lead) always show on every list ("a boss can sign anything").
+const STAFF_DEPTS = ['Barns', 'Maintenance', 'Processing', 'Feed Mill'];
+function _isLeader(s) { return !!s && (s.role === 'Director' || s.role === 'Lead'); }
+function staffDeptOf(s) {
+  if (!s) return '';
+  if (s.dept) return s.dept;                              // explicit wins
+  if (s.farm === 'Processing Plant') return 'Processing';
+  var r = s.role || '';
+  if (r === 'WNO' || r === 'Barn Worker') return 'Barns';
+  if (r === 'Feed Mill') return 'Feed Mill';
+  if (r === 'Technician' || r === 'Lead' || r === 'Director' || r === 'Driver') return 'Maintenance';
+  return 'Barns'; // Other / blank → production floor
+}
+// Names at a location, filtered to a department (+ leaders always included).
+function getDeptStaff(farm, dept) {
+  if (typeof staffList === 'undefined' || !Array.isArray(staffList)) return [];
+  return staffList
+    .filter(s => s && s.active !== false)
+    .filter(s => !farm || s.farm === farm || ((s.farm === 'Both' || s.farm === 'All' || s.farm === 'All Farms') && (_isMaintTech(s) || _isLeader(s))))
+    .filter(s => !dept || staffDeptOf(s) === dept || _isLeader(s))
+    .map(s => s.name).filter(Boolean).sort((a, b) => a.localeCompare(b));
+}
+function scopeNamesDept(selectId, farm, dept, headHtml) {
+  var sel = document.getElementById(selectId);
+  if (!sel) return;
+  var names = getDeptStaff(farm, dept) || [];
+  var cur = sel.value;
+  sel.innerHTML = headHtml + names.map(function (n) { var e = String(n).replace(/"/g, '&quot;'); return '<option value="' + e + '">' + e + '</option>'; }).join('');
+  if (cur) sel.value = cur;
+}
+if (typeof window !== 'undefined') { window.scopeNamesDept = scopeNamesDept; window.getDeptStaff = getDeptStaff; window.staffDeptOf = staffDeptOf; }
+
 // ── Canonical name source for the entire app ──
 // Returns ONLY active staff added via the Staff panel. No fallback names.
 function getActiveStaff(farm, role) {
@@ -80,8 +116,9 @@ function woFillNames(farm) {
     var a = document.getElementById('wo-assign'); if (a) a.innerHTML = '<option value="">— Unassigned —</option>';
     return;
   }
+  // "Your Name" (who's reporting) = anyone at the site. "Assign To" = Maintenance dept (+ leaders).
   scopeNames('wo-tech',   farm, '<option value="">— Select Name —</option>');
-  scopeNames('wo-assign', farm, '<option value="">— Unassigned —</option>');
+  scopeNamesDept('wo-assign', farm, 'Maintenance', '<option value="">— Unassigned —</option>');
 }
 if (typeof window !== 'undefined') { window.woFillNames = woFillNames; window.scopeNames = scopeNames; }
 
@@ -236,6 +273,7 @@ async function addStaff() {
   const name  = (fname + ' ' + lname).trim();
   const role  = document.getElementById('staff-new-role').value;
   const farm  = document.getElementById('staff-new-farm').value;
+  const dept  = (document.getElementById('staff-new-dept') || {}).value || '';
   const phone = document.getElementById('staff-new-phone').value.trim();
   if (!fname) { document.getElementById('staff-new-fname').focus(); return; }
   if (!lname) { document.getElementById('staff-new-lname').focus(); return; }
@@ -247,7 +285,7 @@ async function addStaff() {
   if (errEl) errEl.style.display = 'none';
 
   try {
-    const ref = await db.collection('staff').add({ name, role: role||'Technician', farm: farm||'', phone, active: true, ts: Date.now() });
+    const ref = await db.collection('staff').add({ name, role: role||'Technician', farm: farm||'', dept: dept||'', phone, active: true, ts: Date.now() });
     await createOnboarding(ref.id, name);
     try {
       await db.collection('activityLog').add({
@@ -298,6 +336,7 @@ function editStaffOpen(id) {
   document.getElementById('edit-staff-name').value  = s.name || '';
   document.getElementById('edit-staff-role').value  = s.role || 'Technician';
   document.getElementById('edit-staff-farm').value  = s.farm || '';
+  var _eds = document.getElementById('edit-staff-dept'); if (_eds) _eds.value = s.dept || '';
   document.getElementById('edit-staff-phone').value = s.phone || '';
   document.getElementById('staff-edit-modal').style.display = 'flex';
 }
@@ -311,12 +350,13 @@ async function saveStaffEdit() {
   const name  = document.getElementById('edit-staff-name').value.trim();
   const role  = document.getElementById('edit-staff-role').value;
   const farm  = document.getElementById('edit-staff-farm').value;
+  const dept  = (document.getElementById('edit-staff-dept') || {}).value || '';
   const phone = document.getElementById('edit-staff-phone').value.trim();
   if (!name) return;
   const btn = document.getElementById('staff-edit-save-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
-    await db.collection('staff').doc(id).update({ name, role, farm, phone });
+    await db.collection('staff').doc(id).update({ name, role, farm, dept, phone });
     closeStaffEdit();
     try {
       await db.collection('activityLog').add({

@@ -1384,15 +1384,15 @@ function openPMModal(id) {
   const techSel = document.getElementById('modal-tech');
   techSel.innerHTML = '<option value="">— Select Tech —</option>';
   const staffSrc = (typeof staffList !== 'undefined' && Array.isArray(staffList)) ? staffList : [];
-  const farmStaff = staffSrc
-    .filter(s => s && s.active !== false)
-    // Processing Plant PMs: only its own crew (Johnathan/Alice/Jose), not Both-tagged directors.
-    .filter(s => (t.farm === 'Processing Plant')
-      ? s.farm === 'Processing Plant'
-      : (!s.farm || s.farm === t.farm || s.farm === 'Both' || s.farm === 'All'))
-    .map(s => s.name)
-    .filter(Boolean)
-    .sort((a,b) => a.localeCompare(b));
+  // PM "Completed By" → that PM's department (Processing PMs → Processing crew,
+  // everything else → Maintenance), with leaders (Director/Lead) always included.
+  const _pmDept = (t.farm === 'Processing Plant') ? 'Processing' : 'Maintenance';
+  const farmStaff = (typeof getDeptStaff === 'function')
+    ? getDeptStaff(t.farm, _pmDept)
+    : staffSrc
+        .filter(s => s && s.active !== false)
+        .filter(s => !s.farm || s.farm === t.farm || s.farm === 'Both' || s.farm === 'All')
+        .map(s => s.name).filter(Boolean).sort((a,b) => a.localeCompare(b));
   // Pre-fill from Barn Entry context if present
   const ctxTech = (typeof window !== 'undefined' && window._barnEntryTech) ? String(window._barnEntryTech) : '';
   farmStaff.forEach(name => {
