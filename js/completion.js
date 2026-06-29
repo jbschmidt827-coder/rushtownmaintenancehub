@@ -30,9 +30,8 @@ function compFarms() {
   return [];
 }
 function compHouses(farm) {
-  if (farm === 'Hegins') return [1, 2, 3, 4, 5, 6, 7, 8];
-  if (farm === 'Danville') return [1, 2, 3, 4, 5];
-  return [];
+  var base = farm === 'Hegins' ? [1, 2, 3, 4, 5, 6, 7, 8] : (farm === 'Danville' ? [1, 2, 3, 4, 5] : []);
+  return base.filter(function (h) { return !(typeof isHouseDown === 'function' && isHouseDown(farm, h)); });
 }
 function compManureApplies(farm, house) {
   var hs = (typeof MANURE_HOUSES !== 'undefined' && MANURE_HOUSES[farm]) ? MANURE_HOUSES[farm] : [];

@@ -694,7 +694,7 @@ async function loadHouses() {
   const sel = document.getElementById('wo-house');
   sel.innerHTML = '<option value="">— Select House / Area —</option>';
   const hg = document.createElement('optgroup'); hg.label = 'Houses';
-  (FARM_HOUSES[farm]||[]).forEach(h=>{const o=document.createElement('option');o.value=h;o.textContent=h;hg.appendChild(o);});
+  (FARM_HOUSES[farm]||[]).filter(h=>!(typeof isHouseDown==='function'&&isHouseDown(farm,h))).forEach(h=>{const o=document.createElement('option');o.value=h;o.textContent=h;hg.appendChild(o);});
   const ag = document.createElement('optgroup'); ag.label = 'Common Areas';
   AREAS.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;ag.appendChild(o);});
   sel.appendChild(hg); sel.appendChild(ag);

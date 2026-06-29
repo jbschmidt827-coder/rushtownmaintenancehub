@@ -68,7 +68,7 @@ async function renderTodayPanel() {
       snaps[1].forEach(function (d) { var x = d.data(); if (x && x.farm && x.house != null) ck.add(x.farm + '|' + _tdHnum(x.house)); });
       snaps[2].forEach(function (d) { var x = d.data(); if (x && x.farm && x.house != null) ms.add(x.farm + '|' + _tdHnum(x.house)); });
       layerFarms.forEach(function (f) {
-        (TD_HOUSES[f] || []).forEach(function (h) {
+        (TD_HOUSES[f] || []).filter(function (h) { return !(typeof isHouseDown === 'function' && isHouseDown(f, h)); }).forEach(function (h) {
           var key = f + '|' + h;
           if (!mw.has(key)) missMorning++;
           if (!ck.has(key)) missCheck++;

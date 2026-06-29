@@ -144,6 +144,46 @@ const FARM_HOUSES = {
   // These are the egg-handling line locations a WO could pin to.
   'Processing Plant': ['Packing Floor','Washer Line','Candler / Detector Line','Cooler / Storage','Loader','Boiler Room','Air Compressor Room','Loading Dock','Office']
 };
+
+// ── Houses temporarily OUT OF SERVICE (rebuild, demo, etc.) ──────────────────
+// The app stops auto-creating work orders for them and drops them from
+// completion / daily tracking and the WO house dropdown. Add/remove a house
+// number here when it goes down or comes back online.
+const DOWN_HOUSES = { Hegins: [], Danville: ['3'] };
+function isHouseDown(farm, house) {
+  var hs = (farm && DOWN_HOUSES[farm]) ? DOWN_HOUSES[farm] : [];
+  var h = String(house == null ? '' : house).replace(/^\s*house\s*/i, '').trim();
+  return hs.indexOf(h) !== -1;
+}
+if (typeof window !== 'undefined') { window.isHouseDown = isHouseDown; }
+
+// One-time: close any OPEN work orders for down houses (e.g. House 3 rebuild) so
+// duplicate auto-generated WOs get cleared. Idempotent via a meta flag; uses the
+// in-memory workOrders list (no composite index needed).
+async function closeDownHouseWOsOnce() {
+  try {
+    if (typeof db === 'undefined' || !db) return;
+    if (typeof workOrders === 'undefined' || !Array.isArray(workOrders) || !workOrders.length) return; // not loaded yet → retry next boot
+    var flagRef = db.collection('meta').doc('_downHouseWOs_v1');
+    if ((await flagRef.get()).exists) return;
+    var date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    var batch = db.batch(); var n = 0;
+    workOrders.forEach(function (w) {
+      if (w && w._fbId && (w.status === 'open' || w.status === 'in-progress') && isHouseDown(w.farm, w.house)) {
+        batch.update(db.collection('workOrders').doc(w._fbId), {
+          status: 'completed', completedBy: 'System',
+          completedDate: date, completedNotes: 'Auto-closed — house down for rebuild',
+          actionRail: false, ts: Date.now()
+        });
+        n++;
+      }
+    });
+    batch.set(flagRef, { ts: Date.now(), closed: n });
+    await batch.commit();
+    if (n) console.log('[downhouse] closed ' + n + ' open WO(s) for down houses ✓');
+  } catch (e) { console.warn('closeDownHouseWOsOnce:', e); }
+}
+if (typeof window !== 'undefined') { window.closeDownHouseWOsOnce = closeDownHouseWOsOnce; }
 const AREAS = ['Feed System','Watering System','Ventilation / Fans','Heating / Brooders','Electrical Panel','Well House / Pump','Catch / Load Out','Generator','Vehicle / Equipment','Shop / Office','Other'];
 const FREQ = {
   daily:      {label:'Daily',        icon:'🟢', days:1},
@@ -696,7 +736,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v155 · Jun 26 2026';
+var APP_VERSION = 'v156 · Jun 26 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -2199,6 +2239,7 @@ async function initApp() {
         safeRun(() => typeof seedStaffRosterIfEmpty === 'function' && seedStaffRosterIfEmpty(), 'seedStaffRoster');
         safeRun(() => typeof assignStaffLocationsIfNeeded === 'function' && assignStaffLocationsIfNeeded(), 'assignStaffLocations');
         safeRun(() => typeof ensureProcessingPMStaff === 'function' && ensureProcessingPMStaff(), 'ensureProcPMStaff');
+        safeRun(() => typeof closeDownHouseWOsOnce === 'function' && closeDownHouseWOsOnce(), 'closeDownHouseWOs');
         safeRun(() => typeof seedMortalityCompostingWI === 'function' && seedMortalityCompostingWI(), 'seedMort');
         safeRun(() => typeof seedWaterRegulatorWI === 'function' && seedWaterRegulatorWI(), 'seedWater');
         safeRun(() => typeof seedAugerRollerWI === 'function' && seedAugerRollerWI(), 'seedAuger');

@@ -1326,7 +1326,7 @@ async function submitBarnWalk() {
   // duplicate work orders reported from morning barn walks.
   const submitted = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const woDate    = new Date().toISOString().slice(0,10);
-  if (isFirstSubmit) {
+  if (isFirstSubmit && !(typeof isHouseDown === 'function' && isHouseDown(_bwFarm, _bwHouse))) {
     for (const key of checklistFails) {
       if (!_BW_WO_ITEMS[key]) continue;
       try {
@@ -1361,7 +1361,7 @@ async function submitBarnWalk() {
     'Feeders empty':              {problem:'Feed System',         priority:'urgent'},
     'Egg belt not working':       {problem:'Egg Collection',      priority:'urgent'},
   };
-  if (isFirstSubmit) {
+  if (isFirstSubmit && !(typeof isHouseDown === 'function' && isHouseDown(_bwFarm, _bwHouse))) {
     for (const flag of flags) {
       // Checklist failures already handled above — skip to avoid duplicate WOs
       if (flag.startsWith('Checklist failures')) continue;
@@ -1783,7 +1783,8 @@ async function submitMorningWalk() {
 
   // One work order per problem, each routed to its correct system + priority.
   const createdWOs = [];
-  for (const item of woItems) {
+  const _woItems = (typeof isHouseDown === 'function' && isHouseDown(_mwFarm, _mwHouse)) ? [] : woItems;
+  for (const item of _woItems) {
     try {
       const woId = await mintWoId();
       await db.collection('workOrders').add({

@@ -188,7 +188,7 @@ function renderManure() {
     body = '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;color:#c9a86a;text-align:center;padding:40px 16px;">' + ML('Manure is tracked at the layer houses.<br>Go back and pick <b>Hegins</b> or <b>Danville</b>.', 'El estiércol se registra en las casas de gallinas.<br>Regresa y elige <b>Hegins</b> o <b>Danville</b>.') + '</div>';
   } else {
     farms.forEach(function (farm) {
-      var _hs = MANURE_HOUSES[farm] || [];
+      var _hs = (MANURE_HOUSES[farm] || []).filter(function (h) { return !(typeof isHouseDown === 'function' && isHouseDown(farm, h)); });
       var _subCount = _hs.filter(function (h) { return !!manSubRec(farm, h); }).length;
       var _pct = _hs.length ? Math.round(_subCount / _hs.length * 100) : 0;
       body += '<div style="margin:14px 0 10px;">' +
