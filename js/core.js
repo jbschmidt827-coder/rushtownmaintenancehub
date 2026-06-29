@@ -149,7 +149,7 @@ const FARM_HOUSES = {
 // The app stops auto-creating work orders for them and drops them from
 // completion / daily tracking and the WO house dropdown. Add/remove a house
 // number here when it goes down or comes back online.
-const DOWN_HOUSES = { Hegins: [], Danville: ['3'] };
+const DOWN_HOUSES = { Hegins: ['2'], Danville: ['3'] };
 function isHouseDown(farm, house) {
   var hs = (farm && DOWN_HOUSES[farm]) ? DOWN_HOUSES[farm] : [];
   var h = String(house == null ? '' : house).replace(/^\s*house\s*/i, '').trim();
@@ -164,7 +164,7 @@ async function closeDownHouseWOsOnce() {
   try {
     if (typeof db === 'undefined' || !db) return;
     if (typeof workOrders === 'undefined' || !Array.isArray(workOrders) || !workOrders.length) return; // not loaded yet → retry next boot
-    var flagRef = db.collection('meta').doc('_downHouseWOs_v1');
+    var flagRef = db.collection('meta').doc('_downHouseWOs_v2');
     if ((await flagRef.get()).exists) return;
     var date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     var batch = db.batch(); var n = 0;
@@ -736,7 +736,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v156 · Jun 26 2026';
+var APP_VERSION = 'v157 · Jun 26 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
