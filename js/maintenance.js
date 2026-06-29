@@ -6967,7 +6967,35 @@ function wiSearch() {
   try { renderWI(); } catch(e) { console.error('renderWI error:', e); }
 }
 
+// Build the Type / Dept / System filter chips from the tags ACTUALLY present in
+// the WI data, so they always reflect the current setup (no stale/missing chips).
+function renderWIFilterBars() {
+  if (typeof allWI === 'undefined' || !Array.isArray(allWI)) return;
+  const TYPE_ICON  = { repair:'🔧', startup:'▶️', emergency:'🚨', safety:'🦺', onboarding:'🎓', pm:'🛠', inspection:'🔍', cleaning:'🧹' };
+  const TYPE_LABEL = { repair:'Repair', startup:'Startup/Shutdown', emergency:'Emergency', safety:'Safety & PPE', onboarding:'Onboarding', pm:'PM', inspection:'Inspection', cleaning:'Cleaning' };
+  const DEPT_ICON  = { 'Maintenance':'🔧', 'Egg Ops':'🥚', 'Barn / Layer':'🐔', 'Barns':'🐔', 'Shipping':'🚚', 'Management':'📋', 'General':'⚙️', 'Processing':'📦', 'Processing Plant':'📦', 'Feed Mill':'🌾' };
+  const sysIcon    = (typeof SYS_ICON !== 'undefined') ? SYS_ICON : {};
+  const uniq = field => { const s = {}; allWI.forEach(w => { const v = w && w[field]; if (v) s[v] = true; }); return Object.keys(s).sort(); };
+  const build = (barId, values, allLabel, curVal, fnName, iconMap, labelMap) => {
+    const bar = document.getElementById(barId);
+    if (!bar) return;
+    let html = `<button class="pill${curVal==='all'?' active':''}" onclick="${fnName}('all',this)">${allLabel}</button>`;
+    values.forEach(v => {
+      const ic  = (iconMap && iconMap[v]) ? iconMap[v] + ' ' : '';
+      const lbl = (labelMap && labelMap[v]) ? labelMap[v] : v;
+      const esc = String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      const safe = String(v).replace(/"/g,'&quot;');
+      html += `<button class="pill${curVal===v?' active':''}" data-val="${safe}" onclick="${fnName}('${esc}',this)">${ic}${lbl}</button>`;
+    });
+    bar.innerHTML = html;
+  };
+  build('wi-type-bar',   uniq('type'),   'All Types',   (typeof wiTypeFilterVal!=='undefined'?wiTypeFilterVal:'all'),   'wiTypeFilter',   TYPE_ICON, TYPE_LABEL);
+  build('wi-dept-bar',   uniq('dept'),   'All Depts',   (typeof wiDeptFilterVal!=='undefined'?wiDeptFilterVal:'all'),   'wiDeptFilter',   DEPT_ICON, null);
+  build('wi-system-bar', uniq('system'), 'All Systems', (typeof wiSystemFilterVal!=='undefined'?wiSystemFilterVal:'all'), 'wiSystemFilter', sysIcon, null);
+}
+
 function renderWI() {
+  try { renderWIFilterBars(); } catch (e) { console.warn('renderWIFilterBars:', e); }
   // Stats
   const total     = allWI.length;
   const repairs   = allWI.filter(w => w.type === 'repair').length;
