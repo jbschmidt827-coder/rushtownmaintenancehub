@@ -1697,13 +1697,9 @@ async function confirmPM() {
       setSyncDot('live');
       return;
     }
-    // Processing Plant PMs: nudge, don't block (lets a single PM go through).
-    if (!confirm(`Only ${checkedStepIdxs.length}/${totalSteps} steps checked. Mark this PM done anyway?`)) {
-      _pmConfirming = false;
-      if (pmBtn) { pmBtn.disabled = false; pmBtn.textContent = pmBtnOriginal || '✓ MARK DONE'; }
-      setSyncDot('live');
-      return;
-    }
+    // Processing Plant PMs: proceed even if steps aren't all ticked (catch-up).
+    // NO confirm() here — the native dialog is unreliable in the mobile PWA and
+    // was returning false on the phone, leaving the modal open. Just save it.
   }
   const procedureSnapshot = (totalSteps > 0) ? {
     totalSteps,

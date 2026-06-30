@@ -364,14 +364,9 @@ async function manureWeeklySet(farm, house) {
 }
 
 async function manureSubmitHouse(farm, house) {
-  var already = !!manSubRec(farm, house);
-  if (!already) {
-    var logged = 0;
-    for (var c = 1; c <= MANURE_COLLECTORS; c++) { var r = manRec(farm, house, c); if (r && r.pctRun != null) logged++; }
-    if (logged < MANURE_COLLECTORS) {
-      if (!confirm(ML('House ', 'Casa ') + house + ML(': only ', ': solo ') + logged + '/' + MANURE_COLLECTORS + ML(' collectors logged.\nSubmit anyway?', ' colectores registrados.\n¿Enviar de todas formas?'))) return;
-    }
-  }
+  // No confirm() nudge — the native mobile dialog is unreliable (returns false
+  // on the phone and blocks the submit); the per-collector grid already shows
+  // what's logged. Tapping Submit is intentional, so just save it.
   var t = manToday();
   try {
     if (typeof setSyncDot === 'function') setSyncDot('saving');
