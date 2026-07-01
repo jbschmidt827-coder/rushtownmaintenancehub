@@ -1,0 +1,51 @@
+{
+  "notes": "This file is the source-to-destination map. Replace sample cells with verified source cells from the real reports.",
+  "workbooks": {
+    "Tier 1 Daily.xlsx": [
+      {
+        "name": "Example - House 1 Lay Percent",
+        "enabled": false,
+        "required": false,
+        "destination": {
+          "sheet": "Tier 1",
+          "cell": "H10"
+        },
+        "source": {
+          "file_patterns": ["*Hegins 1*DAILY FARM*RECORDS*.xlsx", "*Hegins House 1*DAILY FARM*RECORDS*.xlsx"],
+          "sheet": "Daily",
+          "cell": "B10"
+        }
+      },
+      {
+        "name": "Example - Barn Labor Hours",
+        "enabled": false,
+        "required": false,
+        "destination": {
+          "sheet": "Tier 1",
+          "cell": "H40"
+        },
+        "source": {
+          "file_patterns": ["Hours_by_department*.xlsx"],
+          "sheet": "Sheet1",
+          "cell": "G2"
+        }
+      }
+    ],
+    "Tier 2 Weekly.xlsx": [
+      {
+        "name": "Example - Weekly Mill Tons",
+        "enabled": false,
+        "required": false,
+        "destination": {
+          "sheet": "Tier 2",
+          "cell": "D12"
+        },
+        "source": {
+          "file_patterns": ["*Mill*tons*.xlsx"],
+          "sheet": "Sheet1",
+          "cell": "B2"
+        }
+      }
+    ]
+  }
+}
