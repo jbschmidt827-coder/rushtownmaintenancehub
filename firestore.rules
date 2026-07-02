@@ -1,18 +1,25 @@
-// Rushtown Poultry — Firestore Security Rules (open access)
+// Rushtown Poultry — Firestore Security Rules (locked to app users)
 //
-// Login was removed because too many farm staff don't have email
-// accounts. These rules match the pre-auth behavior: anyone with the
-// URL can read and write the database. Deploy with:
-//   firebase deploy --only firestore:rules
+// The app signs every device in ANONYMOUSLY at boot (js/core.js — no login
+// screen, staff never see it, works offline after first launch). These rules
+// only accept reads/writes from a signed-in app instance, which locks out
+// anyone poking at the database directly with the public config.
 //
-// When you're ready to add auth back, replace the rule body with:
-//   allow read, write: if request.auth != null;
+// ⚠ DEPLOY ORDER — IMPORTANT ⚠
+// 1. Enable the Anonymous provider: Firebase Console → Authentication →
+//    Sign-in method → Anonymous → Enable.
+// 2. Deploy the v163 app (DEPLOY.bat) and give iPads 1–2 days to auto-update
+//    so every device has silently signed in.
+// 3. ONLY THEN deploy these rules:  firebase deploy --only firestore:rules
+//    (Deploying rules before steps 1–2 would lock out un-updated devices.)
+//
+// Roll back in an emergency by redeploying with:  allow read, write: if true;
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
   }
 }

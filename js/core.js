@@ -30,6 +30,32 @@ try {
   console.warn('enablePersistence threw:', e);
 }
 
+// ── INVISIBLE ANONYMOUS AUTH ─────────────────────────────────────────────
+// Staff never see a login screen (no farm emails — that decision stands).
+// The app silently signs in anonymously so firestore.rules can require
+// request.auth != null, locking strangers out of the database.
+// Fail-open by design: if the Anonymous provider isn't enabled yet, or the
+// device is offline on very first launch, boot continues after 2.5s and the
+// app works exactly as before. Auth persists in IndexedDB, so returning
+// devices resolve instantly — even offline.
+var _authReady = Promise.resolve();
+try {
+  if (firebase.auth) {
+    _authReady = new Promise(function (done) {
+      var t = setTimeout(done, 2500);           // never block boot
+      firebase.auth().onAuthStateChanged(function (u) {
+        if (u) { clearTimeout(t); done(); }
+        else {
+          firebase.auth().signInAnonymously().catch(function (e) {
+            console.warn('Anonymous sign-in unavailable:', e && e.code);
+            clearTimeout(t); done();
+          });
+        }
+      });
+    });
+  }
+} catch (e) { console.warn('Auth init skipped:', e); }
+
 // Login was removed (too many farm staff don't have email accounts).
 // The ADMIN_PIN below still gates admin actions inside the app.
 
@@ -752,7 +778,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v162 · Jul 1 2026';
+var APP_VERSION = 'v163 · Jul 1 2026';
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -881,6 +907,7 @@ function openLocationHome(loc) {
   if (typeof renderLandingStatus === 'function') renderLandingStatus();
   if (typeof updateHomeFeedStatus === 'function') updateHomeFeedStatus();
   if (typeof renderTodayPanel === 'function') renderTodayPanel();
+  try { if (typeof applyRoleHome === 'function') applyRoleHome(); } catch(e) {}
   try { window.scrollTo(0, 0); } catch(e) {}
 }
 
@@ -1271,7 +1298,7 @@ const TRANSLATIONS = {
     'eos.your_name':'Your name','eos.type_name':'Type your name','eos.submit':'✓ Submit End of Shift','eos.submitting':'Submitting…',
     'eos.need_all':'Please confirm all four items before submitting.','eos.need_name':'Please enter your name.','eos.offline':'You appear to be offline — reconnect and submit again.','eos.thanks':'End of shift submitted — thanks',
     'landing.quick_actions':'⚡ QUICK ACTIONS',
-    'landing.new_wo':'🔧 New Work Order','landing.log_barn':'🐓 Log Barn Walk','landing.fortune':'🥠 Farm Fortune',
+    'landing.new_wo':'🔧 New Work Order','landing.log_barn':'🐓 Log Barn Walk','landing.fortune':'🥠 Farm Fortune','landing.rooster':'🐓 Ask Rooster',
     'landing.enter_egg':'🥚 Enter Egg Data',
     // Daily Check dashboard (renderProdCheck)
     'chk.loading':'Loading…',
@@ -1482,7 +1509,7 @@ const TRANSLATIONS = {
     'eos.your_name':'Tu nombre','eos.type_name':'Escribe tu nombre','eos.submit':'✓ Enviar Fin de Turno','eos.submitting':'Enviando…',
     'eos.need_all':'Por favor confirma los cuatro puntos antes de enviar.','eos.need_name':'Por favor escribe tu nombre.','eos.offline':'Parece que no tienes conexión — reconéctate y envía de nuevo.','eos.thanks':'Fin de turno enviado — gracias',
     'landing.quick_actions':'⚡ ACCIONES RÁPIDAS',
-    'landing.new_wo':'🔧 Nueva Orden de Trabajo','landing.log_barn':'🐓 Registrar Ronda','landing.fortune':'🥠 Fortuna del Día',
+    'landing.new_wo':'🔧 Nueva Orden de Trabajo','landing.log_barn':'🐓 Registrar Ronda','landing.fortune':'🥠 Fortuna del Día','landing.rooster':'🐓 Pregúntale a Rooster',
     'landing.enter_egg':'🥚 Registrar Huevos',
     // Daily Check dashboard (renderProdCheck)
     'chk.loading':'Cargando…',
@@ -2118,6 +2145,9 @@ function _hideLoadingScreen() {
 
 async function initApp() {
   setMsg('Loading…');
+  // Wait (max 2.5s) for the invisible sign-in so the first Firestore
+  // listeners already carry an auth token once rules are locked down.
+  try { await _authReady; } catch (e) { /* never blocks boot */ }
   // Safety net: never let the splash sit longer than 4 seconds, even if
   // Firestore is unreachable. App opens with whatever it has cached.
   const safetyTimer = setTimeout(_hideLoadingScreen, 4000);

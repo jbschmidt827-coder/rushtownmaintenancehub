@@ -1,5 +1,7 @@
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onSchedule }        = require('firebase-functions/v2/scheduler');
+const { onRequest }         = require('firebase-functions/v2/https');
+const { defineSecret }      = require('firebase-functions/params');
 const admin                 = require('firebase-admin');
 
 admin.initializeApp();
@@ -269,5 +271,119 @@ exports.managerDigest = onSchedule(
     const body  = `Yesterday: ${pct}% checks done · ${urgent} urgent WO${urgent !== 1 ? 's' : ''} · ${overdue} PM${overdue !== 1 ? 's' : ''} overdue · ${mort} dead.`;
     await Promise.all([ sendPushToAll(title, body, 'digest'), writeNotification('digest', title, body) ]);
     return null;
+  }
+);
+
+// ────────────────────────────────────────────────────
+// SCHEDULED — nightly full-database backup (2:30 AM ET)
+// Restorable export of EVERY collection to Cloud Storage; keeps 30 days.
+// One-time setup: Firebase Console → Build → Storage → Get started
+// (creates the gs://rushtown-poultry.firebasestorage.app bucket).
+// Restore a day (from a machine with gcloud):
+//   gcloud firestore import gs://rushtown-poultry.firebasestorage.app/firestore-backups/<YYYY-MM-DD>
+// ────────────────────────────────────────────────────
+const { v1: firestoreV1 } = require('@google-cloud/firestore');
+const BACKUP_BUCKET = 'rushtown-poultry.firebasestorage.app';
+
+exports.nightlyBackup = onSchedule(
+  { schedule: '30 2 * * *', timeZone: 'America/New_York', region: 'us-central1' },
+  async () => {
+    const client    = new firestoreV1.FirestoreAdminClient();
+    const projectId = process.env.GCLOUD_PROJECT || 'rushtown-poultry';
+    const stamp     = etDateStr(0);
+    await client.exportDocuments({
+      name: client.databasePath(projectId, '(default)'),
+      outputUriPrefix: `gs://${BACKUP_BUCKET}/firestore-backups/${stamp}`,
+      collectionIds: [],                      // empty = all collections
+    });
+    console.log('Firestore backup exported:', stamp);
+    // Prune backups older than 30 days so storage never balloons.
+    try {
+      const [files] = await admin.storage().bucket(BACKUP_BUCKET)
+        .getFiles({ prefix: 'firestore-backups/' });
+      const cutoff = Date.now() - 30 * 86400000;
+      await Promise.all(files
+        .filter(f => new Date(f.metadata.timeCreated).getTime() < cutoff)
+        .map(f => f.delete().catch(() => {})));
+    } catch (e) { console.warn('Backup prune skipped:', e.message); }
+    return null;
+  }
+);
+
+// ────────────────────────────────────────────────────
+// HTTPS — Rooster 🐓 AI help chat (Claude API proxy)
+// The API key lives HERE as a secret, never in the app. Only signed-in app
+// instances (invisible anonymous auth) may call it — strangers get a 401,
+// so nobody can burn API credits from outside.
+// One-time setup before deploy:
+//   firebase functions:secrets:set ANTHROPIC_API_KEY
+//   (paste a key from console.anthropic.com)
+// ────────────────────────────────────────────────────
+const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
+
+const ROOSTER_SYSTEM = `You are Rooster 🐓, the friendly in-app helper for the Rushtown Poultry Operations Hub — a PWA used on iPads/phones by farm crews at two layer sites (Hegins houses 4-8, Danville houses 1-5) plus a Processing Plant and Feed Mill.
+
+Answer questions about HOW TO USE THE APP, step by step, in the language the user writes (English or Spanish). Be brief, warm, and concrete — these are busy farm workers with dirty gloves. Use short numbered steps. If asked something unrelated to the app or farm work, politely steer back.
+
+APP MAP (how to get around):
+• Open the app → pick a location (Hegins / Danville / Master). The home screen shows big cards for your department; tap "More" to see the rest.
+• PRODUCTION card → Daily Employee Check (per-block barn walk wizard: mortality, equipment, air, feed/water, belts, pests — every answer required, N/A allowed for egg/rodent counts), Morning Walk (Lead/WNO: water PSI, temp, feed meter, bins, fans/blowers — drafts autosave), Today's Summary, Biosecurity Log, Pest Log, Barn/Morning Walk History.
+• MAINTENANCE card → Work Orders (tap a card to update status), PM Schedule (procedures + checklist sign-off; Bulk Catch-Up to clear overdue), Parts inventory (receive stock, low-stock alerts), Work Instructions, Projects (multi-task efforts with checklists), 5S audits.
+• MANURE card → per-house belt-run in a fixed 2-hour window (status shows upcoming/running/past), each collector C1-C6 gets % ran (0/50/100) + PM/Belt/Clean/Align checks. "All 100%" and "✓ All checks" do a house in one tap. 🕐 button sets belt-run times; ❓ opens instructions.
+• COMPLETION card → today's grid of every house × check (Morning Walk / Daily Check / Manure).
+• DAILY SCORECARD → mortality SPC, PM compliance, completion trends.
+• QUICK ACTIONS → 🔧 New Work Order (fast form: name, house, problem, priority, photos; 🎤 button lets you dictate the description), 📖 How To Use guide, 🥠 Farm Fortune, 🏚 House Status (mark a house down/up for rebuild — closes its open work orders).
+• Work orders: Quick WO = fastest. Urgent priority pushes a notification to the team. ⚡ Action Rail on a WO card can turn it into a Project.
+• 🌐 ES/EN button switches language app-wide. The version number is at the bottom of the home screen; the app updates itself when iPads wake.
+• End-of-Shift report lives under Production → EOS Report.
+• House down for rebuild? Quick Actions → 🏚 House Status — its checks disappear from tracking until marked back up.
+
+RULES: Never invent features that aren't listed. If unsure, say so and point to 📖 How To Use. Keep answers under 120 words unless steps demand more.`;
+
+exports.roosterChat = onRequest(
+  { region: 'us-central1', cors: true, secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 60 },
+  async (req, res) => {
+    if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return; }
+    // Only the app may call this (invisible anonymous sign-in from core.js).
+    try {
+      const idToken = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      await admin.auth().verifyIdToken(idToken);
+    } catch (e) { res.status(401).json({ error: 'unauthorized' }); return; }
+
+    const body = req.body || {};
+    const messages = Array.isArray(body.messages) ? body.messages.slice(-12) : [];
+    if (!messages.length) { res.status(400).json({ error: 'no messages' }); return; }
+    // Sanitize: only role+text through, capped length.
+    const clean = messages
+      .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+      .map(m => ({ role: m.role, content: String(m.content).slice(0, 2000) }));
+
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': ANTHROPIC_API_KEY.value(),
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',   // fast + cheap — right fit for app help
+          max_tokens: 600,
+          system: ROOSTER_SYSTEM,
+          messages: clean,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        console.error('Anthropic error:', JSON.stringify(data).slice(0, 500));
+        res.status(502).json({ error: 'upstream' });
+        return;
+      }
+      const text = (data.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+      res.json({ text });
+    } catch (e) {
+      console.error('roosterChat failed:', e.message);
+      res.status(500).json({ error: 'internal' });
+    }
   }
 );

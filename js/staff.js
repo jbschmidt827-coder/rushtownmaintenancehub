@@ -171,6 +171,9 @@ function updateStaffDropdowns() {
       : selectOpts;
     if (cur) el.value = cur;
   });
+
+  // Staff list (re)loaded → re-trim the role-based home if it's showing.
+  try { if (typeof applyRoleHome === 'function') applyRoleHome(); } catch (e) {}
 }
 
 // ── Render Staff Panel ──────────────────────
