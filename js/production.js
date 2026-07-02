@@ -585,6 +585,86 @@ function _bwReplayQueued() {
   } catch (e) { /* non-fatal */ }
 }
 setTimeout(_bwReplayQueued, 6000);
+
+// ── RECOVER LOST DAILY CHECKS (v171) ────────────────────────────────────────
+// The Jul 1–2 confirm() bug bounced submits, but every answered walk left its
+// FULL DRAFT in this device's localStorage (drafts are only deleted after a
+// successful submit). On boot, any PAST-day draft found here is rebuilt into
+// a real barnWalks record (marked recovered:true) and uploaded — unless that
+// farm/house/date already has a real submission. Idempotent: the draft is
+// removed only after a confirmed write, failures retry next boot. Today's
+// draft is never touched (might be mid-walk); it becomes recoverable tomorrow.
+async function _bwRecoverLostDrafts() {
+  try {
+    if (typeof db === 'undefined' || !db) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf('bwDraft-') === 0) keys.push(k);
+    }
+    for (const k of keys) {
+      const date = k.slice(-10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date >= today) continue;   // past days only
+      const mid = k.slice(8, -11);                    // "<farm>-<house>"
+      const cut = mid.lastIndexOf('-');
+      if (cut < 1) continue;
+      const farm = mid.slice(0, cut), house = mid.slice(cut + 1);
+      let draft = null;
+      try { draft = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) {}
+      if (!draft) { localStorage.removeItem(k); continue; }
+      const f = draft.fields || {}, bd = draft.bwData || {}, cl = draft.bwChecklist || {};
+      const emp = String(f['bw-employee'] || '').trim();
+      if (!emp && !(draft.pct > 0)) continue;         // empty shell — ignore
+      // Already submitted for real? Just clear the stale draft.
+      try {
+        const dup = await db.collection('barnWalks')
+          .where('farm', '==', farm).where('house', '==', String(house)).where('date', '==', date)
+          .limit(1).get();
+        if (!dup.empty) { localStorage.removeItem(k); continue; }
+      } catch (e) { continue; }                        // offline → retry next boot
+      const num = id => (f[id] !== undefined && f[id] !== null && f[id] !== '') ? Number(f[id]) : null;
+      const flags = [];
+      if (bd.dryers === 'off')   flags.push('Manure dryers off');
+      if (bd.feather === 'poor') flags.push('Poor feathering');
+      if (bd.air === 'poor')     flags.push('Air quality anomaly');
+      if (bd.feed === 'empty')   flags.push('Feeders empty');
+      if (bd.eggbelt === 'down') flags.push('Egg belt not working');
+      if (bd.doors === 'open')   flags.push('House doors open');
+      const fails = Object.entries(cl).filter(([, v]) => v === 'fail').map(([kk]) => kk);
+      if (fails.length) flags.push('Checklist failures: ' + fails.join(', '));
+      const rec = {
+        farm, house: String(house), employee: emp, notes: f['bw-notes'] || '',
+        flags, waterPSI: null, temp: null,
+        mortCount: num('bw-mort-count'), looseCount: num('bw-loose-count'),
+        rodentCount: num('bw-rodent-count'), flyCount: num('bw-fly-count'),
+        weeklyRodentCount: num('bw-weekly-rodent-count'), feedBinReading: num('bw-feed-bin-reading'),
+        naFields: bd._na || {}, weeklyAck: !!bd._weeklyAck,
+        mort: bd.mort || null, feather: bd.feather || null, air: bd.air || null,
+        feed: bd.feed || null, rodent: bd.rodent || null, loose: bd.loose || null,
+        dryers: bd.dryers || null, eggbelt: bd.eggbelt || null,
+        stand: bd.stand || null, fly: bd.fly || null, mortrem: bd.mortrem || null,
+        doors: bd.doors || null, waste: bd.waste || null,
+        checklist: cl, checklistNotes: draft.clNotes || {},
+        checklistFails: fails.length, checklistTotal: Object.keys(cl).length,
+        cageClean: bd.cageclean || null,
+        cageCleanEmployee: bd._cageCleanEmployee || null,
+        cageCleanTime: bd._cageCleanTime || null,
+        pct: (typeof draft.pct === 'number') ? draft.pct : null,
+        recovered: true,
+        date,
+        time: draft.ts ? new Date(draft.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '',
+        ts: draft.ts || new Date(date + 'T17:00:00').getTime()
+      };
+      try {
+        await db.collection('barnWalks').add(rec);
+        localStorage.removeItem(k);
+        console.log('↺ Recovered lost daily check:', farm, 'H' + house, date);
+      } catch (e) { /* retry next boot */ }
+    }
+  } catch (e) {}
+}
+setTimeout(_bwRecoverLostDrafts, 9000);
 function _bwComputePct() {
   try {
     const vis = _bwVisibleBlocks();
@@ -2307,7 +2387,7 @@ function renderBarnWalkHistory(walks) {
       const pctBadge = (typeof w.pct === 'number')
         ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:${w.pct>=100?'#4caf50':'#fbbf24'};margin-right:8px;">${w.pct}%</span>`
         : '';
-      const statusLabel = pctBadge + (hasFlagsArr ? `⚠ ${w.flags.length} Flag${w.flags.length!==1?'s':''}` : '✓ Clear');
+      const statusLabel = (w.recovered ? '<span style="color:#d69e2e;font-size:10px;">↺ </span>' : '') + pctBadge + (hasFlagsArr ? `⚠ ${w.flags.length} Flag${w.flags.length!==1?'s':''}` : '✓ Clear');
       const detId = 'bwh-det-' + (_detIdx++);
       const _esH = (typeof _lang !== 'undefined' && _lang === 'es');
       html += `<div onclick="bwHistToggle('${detId}')" style="background:#0f1a0f;border:1px solid ${hasFlagsArr?'#4a1a1a':'#1a3a1a'};border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;">
@@ -2539,7 +2619,7 @@ function openWalkDetail(id) {
     </div>
     <!-- Status banner -->
     <div style="background:${hasFlagsArr?'#1a0a0a':'#0a1a0a'};border:1px solid ${hasFlagsArr?'#e53e3e':'#4caf50'};border-radius:8px;padding:10px 14px;margin-bottom:14px;">
-      <div style="font-size:13px;font-weight:700;color:${hasFlagsArr?'#e53e3e':'#4caf50'};">${hasFlagsArr?'⚠ '+r.flags.length+' Flag'+(r.flags.length!==1?'s':''):'✓ All Clear'}${typeof r.pct==='number'?` <span style="color:${r.pct>=100?'#4caf50':'#d69e2e'};font-size:11px;">· ${r.pct}% complete</span>`:''}</div>
+      <div style="font-size:13px;font-weight:700;color:${hasFlagsArr?'#e53e3e':'#4caf50'};">${hasFlagsArr?'⚠ '+r.flags.length+' Flag'+(r.flags.length!==1?'s':''):'✓ All Clear'}${typeof r.pct==='number'?` <span style="color:${r.pct>=100?'#4caf50':'#d69e2e'};font-size:11px;">· ${r.pct}% complete</span>`:''}${r.recovered?' <span style="color:#d69e2e;font-size:10px;">· ↺ recovered from device</span>':''}</div>
       ${hasFlagsArr?`<div style="font-size:11px;color:#c07070;margin-top:6px;line-height:1.7;">${r.flags.map(f=>'• '+f).join('<br>')}</div>`:''}
     </div>
     <!-- Readings -->

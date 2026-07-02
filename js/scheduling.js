@@ -352,14 +352,28 @@ function _initSwUpdateListener() {
   });
 }
 
+// Track the last user interaction so an auto-update reload NEVER interrupts
+// someone mid-walk / mid-form. Drafts autosave, but yanking the screen is rude.
+document.addEventListener('pointerdown', function () { window._lastTouchTs = Date.now(); }, true);
+document.addEventListener('input',       function () { window._lastTouchTs = Date.now(); }, true);
+
 function _showUpdateBanner() {
   var banner = document.getElementById('sw-update-banner');
   if (!banner) return;
   banner.style.display = 'flex';
-  banner.innerHTML = '🆕 App updated — reloading in 3s… (tap to reload now)';
-  // Auto-reload after 3 seconds so users always get fresh code
-  var t = setTimeout(function() { _doReload(); }, 3000);
-  banner.onclick = function() { clearTimeout(t); _doReload(); };
+  banner.onclick = _doReload;   // tapping always updates immediately
+  (function attempt() {
+    var idleFor = Date.now() - (window._lastTouchTs || 0);
+    if (idleFor < 20000) {
+      // Someone's working — wait for 20s of quiet, check again shortly.
+      banner.innerHTML = '🆕 New version ready — updates when you pause (tap to update now)';
+      setTimeout(attempt, 15000);
+      return;
+    }
+    banner.innerHTML = '🆕 App updated — reloading in 3s… (tap to reload now)';
+    var t = setTimeout(function () { _doReload(); }, 3000);
+    banner.onclick = function () { clearTimeout(t); _doReload(); };
+  })();
 }
 function _doReload() {
   var banner = document.getElementById('sw-update-banner');

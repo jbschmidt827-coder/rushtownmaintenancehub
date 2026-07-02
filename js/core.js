@@ -778,7 +778,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v170 · Jul 2 2026';
+var APP_VERSION = 'v172 · Jul 2 2026';
 
 // ── Device heartbeat + fleet tracker (v166) ─────────────────────────────────
 // Every device reports {who, version, site, last seen} shortly after boot.
@@ -799,6 +799,56 @@ setTimeout(function () {
   } catch (e) {}
 }, 8000);
 
+// ── FORCE-UPDATE PIPELINE (v172) ─────────────────────────────────────────────
+// Wall iPads sitting open never checked for new versions — updates waited for
+// an app close/reopen. Now:
+//  1. The service worker checks for a new build every 10 min + on every wake.
+//  2. settings/appVersion broadcasts the newest version LIVE — the moment any
+//     device runs a newer build (or Joe taps 📣 in the device list), every
+//     other device pulls the update within seconds.
+// The reload itself is idle-guarded in scheduling.js so nobody loses typing.
+function _vNum(v) { var m = String(v || '').match(/v(\d+)/); return m ? +m[1] : 0; }
+function _swCheckNow() {
+  try {
+    if ('serviceWorker' in navigator) navigator.serviceWorker.ready
+      .then(function (reg) { reg.update().catch(function () {}); });
+  } catch (e) {}
+}
+setInterval(_swCheckNow, 10 * 60 * 1000);
+document.addEventListener('visibilitychange', function () { if (!document.hidden) _swCheckNow(); });
+
+setTimeout(function () {
+  try {
+    if (typeof db === 'undefined' || !db) return;
+    var mine = _vNum(APP_VERSION);
+    var bootTs = Date.now();
+    var ref = db.collection('settings').doc('appVersion');
+    // I'm the newest? Tell the fleet.
+    ref.get().then(function (snap) {
+      var cur = snap.exists ? _vNum((snap.data() || {}).v) : 0;
+      if (mine > cur) ref.set({ v: 'v' + mine, ts: Date.now() }, { merge: true }).catch(function () {});
+    }).catch(function () {});
+    // Someone else is newer (or 📣 was pressed)? Grab the update right now.
+    ref.onSnapshot(function (snap) {
+      var d = snap.data() || {};
+      if (_vNum(d.v) > mine) _swCheckNow();
+      else if (d.force && d.force > bootTs) _swCheckNow();
+    }, function () {});
+  } catch (e) {}
+}, 9000);
+
+function forceUpdateAllDevices() {
+  var es = (typeof _lang !== 'undefined' && _lang === 'es');
+  var st = document.getElementById('dev-push-status');
+  try {
+    db.collection('settings').doc('appVersion')
+      .set({ v: String(APP_VERSION).split(' ')[0], force: Date.now(), ts: Date.now() }, { merge: true })
+      .then(function () { if (st) st.textContent = es ? '📣 Enviado — los equipos se actualizarán en segundos.' : '📣 Push sent — devices will update within seconds.'; })
+      .catch(function (e) { if (st) st.textContent = 'Error: ' + e.message; });
+  } catch (e) { if (st) st.textContent = 'Error: ' + e.message; }
+}
+if (typeof window !== 'undefined') window.forceUpdateAllDevices = forceUpdateAllDevices;
+
 function openDeviceList() {
   try {
     var es = (typeof _lang !== 'undefined' && _lang === 'es');
@@ -814,7 +864,9 @@ function openDeviceList() {
     ov.innerHTML = '<div style="max-width:560px;margin:0 auto;">' +
       '<button onclick="document.getElementById(\'device-list-overlay\').style.display=\'none\'" style="padding:8px 14px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:14px;">← ' + (es ? 'Atrás' : 'Back') + '</button>' +
       '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:26px;color:#f0ead8;letter-spacing:2px;margin-bottom:2px;">📱 ' + (es ? 'DISPOSITIVOS' : 'DEVICES') + '</div>' +
-      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#5a8a5a;margin-bottom:14px;">' + (es ? 'App actual: ' : 'Current app: ') + APP_VERSION + '</div>' +
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#5a8a5a;margin-bottom:10px;">' + (es ? 'App actual: ' : 'Current app: ') + APP_VERSION + '</div>' +
+      '<button onclick="forceUpdateAllDevices()" style="width:100%;padding:12px;background:#1f1505;border:1.5px solid #d6b34a;border-radius:10px;color:#f0d68a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:6px;">📣 ' + (es ? 'Forzar actualización en todos los equipos' : 'Force-update all devices') + '</button>' +
+      '<div id="dev-push-status" style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#d6b34a;min-height:14px;margin-bottom:10px;"></div>' +
       '<div id="device-list-body" style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:#7ab07a;">Loading…</div></div>';
     db.collection('devices').orderBy('ts', 'desc').limit(60).get().then(function (snap) {
       var cur = String(APP_VERSION).split(' ')[0];
