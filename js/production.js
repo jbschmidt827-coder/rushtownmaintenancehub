@@ -269,10 +269,10 @@ function renderProdPanel() {
   // Daily Check + Morning Walk tiles sit SIDE BY SIDE per farm (v166) — the
   // "Eggs Today" tile moved out of the bar (the egg KPI section below still
   // shows whenever eggs are logged).
-  function _progressTile(icon, label, farm, d, total, iss, dueBadge) {
+  function _progressTile(icon, label, farm, d, total, iss, dueBadge, onclick) {
     const p   = total ? Math.round(d / total * 100) : 0;
     const col = p >= 80 ? '#4caf50' : p >= 40 ? '#d69e2e' : '#e53e3e';
-    return `<div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:12px 14px;">
+    return `<div ${onclick ? 'onclick="' + onclick + '"' : ''} style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:12px 14px;${onclick ? 'cursor:pointer;' : ''}">
       <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">${icon} ${farm} · ${label}</div>
       <div style="display:flex;align-items:baseline;gap:6px;">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:${col};line-height:1;">${d}/${total}</div>
@@ -285,8 +285,9 @@ function renderProdPanel() {
       ${dueBadge || ''}
     </div>`;
   }
-  function locationTile(farm) {   // Daily Employee Check progress
-    return _progressTile('🐓', t('prod.kpi.checks'), farm, farmDone(farm), FARM_BARNS[farm], farmIssues(farm), '');
+  function locationTile(farm) {   // Daily Employee Check progress → tap for the house grid + live detail
+    return _progressTile('🐓', t('prod.kpi.checks'), farm, farmDone(farm), FARM_BARNS[farm], farmIssues(farm), '',
+      "openECSection('" + farm + "')");
   }
   function morningTile(farm) {    // Morning Walk progress (+ late badge)
     const msMap = typeof MORNING_STATUS !== 'undefined' ? MORNING_STATUS : {};
@@ -297,13 +298,14 @@ function renderProdPanel() {
       if (v === 'done' || v === 'issue') d++;
       if (v === 'issue') iss++;
     }
-    return _progressTile('☀️', t('prod.kpi.mw'), farm, d, total, iss, farmWalkDueBadge(farm, total));
+    return _progressTile('☀️', t('prod.kpi.mw'), farm, d, total, iss, farmWalkDueBadge(farm, total),
+      "openMWSection('" + farm + "')");
   }
 
   const kpiBar = document.getElementById('prod-kpi-bar');
   if (kpiBar) kpiBar.innerHTML = `
     ${farmsToShow.map(f => locationTile(f) + morningTile(f)).join('')}
-    <div style="background:${issues>0?'#2a0f0f':'#0f2a0f'};border:1px solid ${issues>0?'#5a2a2a':'#2a5a2a'};border-radius:12px;padding:14px 12px;text-align:center;">
+    <div onclick="openProdSummary()" style="background:${issues>0?'#2a0f0f':'#0f2a0f'};border:1px solid ${issues>0?'#5a2a2a':'#2a5a2a'};border-radius:12px;padding:14px 12px;text-align:center;cursor:pointer;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:${issues>0?'#e53e3e':'#4caf50'};line-height:1;">${issues}</div>
       <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">${t('prod.kpi.flagged')}</div>
     </div>`;
@@ -379,9 +381,9 @@ function renderProdPanel() {
 // ── EC Section (Employee Daily Check) ──
 var _ecFarm = null;
 
-function openECSection() {
-  // Jump straight to this device's plant ("Back to farms" still switches)
-  _ecFarm = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+function openECSection(farm) {
+  // Jump straight to the given farm (KPI-tile taps), else this device's plant
+  _ecFarm = farm || ((typeof getPreferredFarm === 'function') ? getPreferredFarm() : null);
   document.getElementById('ec-section').style.display = 'block';
   document.getElementById('ec-section').scrollTop = 0;
   renderECContent();
@@ -481,9 +483,9 @@ function renderECContent() {
 // ── MW Section (Morning Walk) ──
 var _mwSectionFarm = null;
 
-function openMWSection() {
-  // Jump straight to this device's plant ("Back to farms" still switches)
-  _mwSectionFarm = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+function openMWSection(farm) {
+  // Jump straight to the given farm (KPI-tile taps), else this device's plant
+  _mwSectionFarm = farm || ((typeof getPreferredFarm === 'function') ? getPreferredFarm() : null);
   document.getElementById('mw-section').style.display = 'block';
   document.getElementById('mw-section').scrollTop = 0;
   renderMWContent();
