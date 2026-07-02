@@ -533,7 +533,7 @@ function renderChecklist() {
           <option value="">${barnPh}</option>
           ${_cl.farm ? Array.from({length:CL_FARMS[_cl.farm]},(_,i)=>`<option value="${i+1}"${_cl.barn==i+1?' selected':''}>${barnPrefix} ${i+1}</option>`).join('') : ''}
         </select>
-        <input list="staff-datalist" id="cl-worker" value="${_cl.worker}" placeholder="${namePh}" oninput="_cl.worker=this.value" autocomplete="off" style="background:#050f05;border:1px solid #2a5a2a;color:#f0ead8;padding:8px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;">
+        <input list="barn-staff-datalist" id="cl-worker" value="${_cl.worker}" placeholder="${namePh}" oninput="_cl.worker=this.value" autocomplete="off" style="background:#050f05;border:1px solid #2a5a2a;color:#f0ead8;padding:8px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;">
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3a6a3a;">${dateStr}</span>

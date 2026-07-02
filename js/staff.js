@@ -138,6 +138,14 @@ function updateStaffDropdowns() {
     const barnOpts = barnNames.map(n => `<option value="${String(n).replace(/"/g,'&quot;')}">`).join('');
     document.querySelectorAll('datalist#barn-staff-datalist').forEach(dl => dl.innerHTML = barnOpts);
   } catch (e) { /* non-fatal */ }
+  // Feed Mill autocomplete (Readings / Deliveries / Feed Made / Consumption / Meds)
+  // → Feed Mill dept + leaders, ALL sites (the mill serves every farm, and mill
+  // staff are often tagged farm='Feed Mill' rather than a layer site).
+  try {
+    const feedNames = (typeof getDeptStaff === 'function') ? getDeptStaff(null, 'Feed Mill') : names;
+    const feedOpts = feedNames.map(n => `<option value="${String(n).replace(/"/g,'&quot;')}">`).join('');
+    document.querySelectorAll('datalist#feed-staff-datalist').forEach(dl => dl.innerHTML = feedOpts);
+  } catch (e) { /* non-fatal */ }
 
   // Select dropdowns — all get the same active staff list
   const nameOpts = names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');

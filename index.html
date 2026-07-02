@@ -3100,7 +3100,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   <!-- Lead name + EE headcount -->
   <div style="background:#0d1f3a;border:1px solid #1e3a6a;border-radius:14px;padding:18px 16px;margin-bottom:14px;">
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6a90d9;margin-bottom:12px;">👤 Lead / WNO Name</div>
-    <input type="text" id="mw-employee" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter your name..." oninput="checkMWReady()" list="staff-datalist" autocomplete="off">
+    <input type="text" id="mw-employee" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter your name..." oninput="checkMWReady()" list="barn-staff-datalist" autocomplete="off">
     <div style="font-size:11px;color:#6a90d9;margin:14px 0 6px;">👥 Employees Present at This Barn (optional)</div>
     <input type="number" id="mw-ee-count" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Headcount" min="0" inputmode="numeric" oninput="checkMWReady()">
   </div>
@@ -3968,7 +3968,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
           </select>
         </div>
         <div class="fg"><label>Date *</label><input type="date" id="fr-date"></div>
-        <div class="fg"><label>Entered By</label><input type="text" id="fr-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
+        <div class="fg"><label>Entered By</label><input type="text" id="fr-by" placeholder="Name" list="feed-staff-datalist" autocomplete="off"></div>
       </div>
       <div id="fr-house-inputs" style="margin-top:10px;"></div>
       <div class="ops-form-actions" id="fr-save-row" style="display:none;">
@@ -4001,7 +4001,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
         <div class="fg"><label>Feed Type</label><input type="text" id="fd-type" placeholder="e.g. Layer Mash"></div>
         <div class="fg"><label>Destination Bin</label><select id="fd-bin"><option value="">— Select Bin —</option></select></div>
         <div class="fg"><label>Supplier / Truck</label><input type="text" id="fd-supplier" placeholder="Supplier name"></div>
-        <div class="fg"><label>Received By</label><input type="text" id="fd-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
+        <div class="fg"><label>Received By</label><input type="text" id="fd-by" placeholder="Name" list="feed-staff-datalist" autocomplete="off"></div>
         <div class="fg ops-form-full"><label>Notes</label><input type="text" id="fd-notes" placeholder="Optional"></div>
       </div>
       <div class="ops-form-actions">
@@ -4042,7 +4042,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
           </select>
         </div>
         <div class="fg"><label>Bin / Site</label><select id="fm-bin"><option value="">— Select —</option></select></div>
-        <div class="fg"><label>Made By</label><input type="text" id="fm-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
+        <div class="fg"><label>Made By</label><input type="text" id="fm-by" placeholder="Name" list="feed-staff-datalist" autocomplete="off"></div>
         <div class="fg ops-form-full"><label>Notes</label><input type="text" id="fm-notes" placeholder="Optional"></div>
       </div>
       <div class="ops-form-actions">
@@ -4066,7 +4066,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
           </select>
         </div>
         <div class="fg"><label>Feed Type</label><input type="text" id="fmb-type" placeholder="e.g. Layer Mash"></div>
-        <div class="fg"><label>Made By</label><input type="text" id="fmb-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
+        <div class="fg"><label>Made By</label><input type="text" id="fmb-by" placeholder="Name" list="feed-staff-datalist" autocomplete="off"></div>
       </div>
       <div id="fmb-house-inputs" style="margin-top:10px;"></div>
       <div class="ops-form-actions" id="fmb-save-row" style="display:none;">
@@ -4170,7 +4170,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
           </select>
         </div>
         <div class="fg"><label>Date *</label><input type="date" id="fc-date"></div>
-        <div class="fg"><label>Entered By *</label><input type="text" id="fc-by" placeholder="Your name" list="staff-datalist" autocomplete="off"></div>
+        <div class="fg"><label>Entered By *</label><input type="text" id="fc-by" placeholder="Your name" list="feed-staff-datalist" autocomplete="off"></div>
         <div class="fg"><label>Flock Age (days)</label><input type="number" id="fc-age" min="0" placeholder="e.g. 45"></div>
       </div>
       <div id="fc-house-inputs" style="margin-top:12px;"></div>
@@ -4251,7 +4251,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
         <div class="fg"><label>Duration (days)</label><input type="number" id="fmed-duration" min="1" placeholder="e.g. 5"></div>
         <div class="fg"><label>Withdrawal Period (days)</label><input type="number" id="fmed-withdrawal" min="0" placeholder="e.g. 14"></div>
         <div class="fg"><label>Flock Age at Treatment (days)</label><input type="number" id="fmed-flockage" min="0" placeholder="e.g. 28"></div>
-        <div class="fg"><label>Administered By *</label><input type="text" id="fmed-by" placeholder="Name" list="staff-datalist" autocomplete="off"></div>
+        <div class="fg"><label>Administered By *</label><input type="text" id="fmed-by" placeholder="Name" list="feed-staff-datalist" autocomplete="off"></div>
         <div class="fg"><label>Veterinarian / Auth By</label><input type="text" id="fmed-vet" placeholder="Vet name or prescribing authority"></div>
         <div class="fg ops-form-full"><label>Reason / Diagnosis</label><input type="text" id="fmed-reason" placeholder="e.g. Respiratory outbreak, preventive treatment"></div>
         <div class="fg ops-form-full"><label>Notes</label><textarea id="fmed-notes" placeholder="Any additional observations, response to treatment, etc." style="min-height:55px;resize:vertical;"></textarea></div>
@@ -5244,7 +5244,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260626-v159"></script>
+<script defer src="js/core.js?v=20260701-deptpickers"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
@@ -5269,7 +5269,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/biosecurity.js?v=20260424"></script>
 <script defer src="js/scheduling.js?v=20260612g-v71"></script>
 <script defer src="js/tv-scoreboard.js?v=20260626-bulkproc2"></script>
-<script defer src="js/staff.js?v=20260626-dept2"></script>
+<script defer src="js/staff.js?v=20260701-deptpickers"></script>
 <script defer src="js/staff-roster.js?v=20260626-procstaff"></script>
 <script defer src="js/enhancements.js?v=20260626-goodjob"></script>
 <script defer src="js/navback.js?v=20260626-hsoverlay"></script>
@@ -5282,7 +5282,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/barn-entry.js?v=20260424"></script>
 <script defer src="js/notifications.js?v=20260515-resilience"></script>
 <script defer src="js/oncall.js?v=20260424"></script>
-<script defer src="js/daily-checklist.js?v=20260619-clinline"></script>
+<script defer src="js/daily-checklist.js?v=20260701-deptpickers"></script>
 <script defer src="js/eos.js?v=20260430b"></script>
 <script defer src="js/eos-hours.js?v=20260430b"></script>
 <script defer src="js/daily-report.js?v=20260616-eoses"></script>
@@ -5317,6 +5317,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <!-- Global staff name datalist — populated by updateStaffDropdowns() -->
 <datalist id="staff-datalist"></datalist>
 <datalist id="barn-staff-datalist"></datalist>
+<datalist id="feed-staff-datalist"></datalist>
 
 <script>
 // Inject Staff card immediately — runs after all scripts load, before user interaction
