@@ -778,7 +778,65 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v165 · Jul 2 2026';
+var APP_VERSION = 'v166 · Jul 2 2026';
+
+// ── Device heartbeat + fleet tracker (v166) ─────────────────────────────────
+// Every device reports {who, version, site, last seen} shortly after boot.
+// Tap the version footer on the home screen to see the whole fleet — instantly
+// shows which iPads have updated and which are still on an old version.
+setTimeout(function () {
+  try {
+    if (typeof db === 'undefined' || !db) return;
+    var did = localStorage.getItem('rushtownDeviceId');
+    if (!did) { did = 'dev-' + Math.random().toString(36).slice(2, 10); localStorage.setItem('rushtownDeviceId', did); }
+    db.collection('devices').doc(did).set({
+      user: (typeof getDeviceUser === 'function' ? (getDeviceUser() || '') : ''),
+      version: APP_VERSION,
+      farm: (typeof getPreferredFarm === 'function' ? getPreferredFarm() : null) || 'Master',
+      ua: String(navigator.userAgent || '').slice(0, 90),
+      ts: Date.now()
+    }, { merge: true }).catch(function () {});
+  } catch (e) {}
+}, 8000);
+
+function openDeviceList() {
+  try {
+    var es = (typeof _lang !== 'undefined' && _lang === 'es');
+    var ov = document.getElementById('device-list-overlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'device-list-overlay';
+      ov.className = 'overlay';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(3,10,3,0.96);overflow-y:auto;padding:max(env(safe-area-inset-top,14px),14px) 14px 30px;';
+      document.body.appendChild(ov);
+    }
+    ov.style.display = 'block';
+    ov.innerHTML = '<div style="max-width:560px;margin:0 auto;">' +
+      '<button onclick="document.getElementById(\'device-list-overlay\').style.display=\'none\'" style="padding:8px 14px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:14px;">← ' + (es ? 'Atrás' : 'Back') + '</button>' +
+      '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:26px;color:#f0ead8;letter-spacing:2px;margin-bottom:2px;">📱 ' + (es ? 'DISPOSITIVOS' : 'DEVICES') + '</div>' +
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#5a8a5a;margin-bottom:14px;">' + (es ? 'App actual: ' : 'Current app: ') + APP_VERSION + '</div>' +
+      '<div id="device-list-body" style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:#7ab07a;">Loading…</div></div>';
+    db.collection('devices').orderBy('ts', 'desc').limit(60).get().then(function (snap) {
+      var cur = String(APP_VERSION).split(' ')[0];
+      var rows = snap.docs.map(function (d) {
+        var x = d.data() || {};
+        var v = String(x.version || '?').split(' ')[0];
+        var ok = v === cur;
+        var ago = x.ts ? Math.round((Date.now() - x.ts) / 60000) : null;
+        var agoTxt = ago == null ? '—' : ago < 60 ? ago + 'm' : Math.round(ago / 60) + 'h';
+        return '<div style="display:flex;justify-content:space-between;gap:8px;background:#0f1a0f;border:1px solid ' + (ok ? '#2a5a2a' : '#5a4a1a') + ';border-radius:9px;padding:9px 12px;margin-bottom:6px;">' +
+          '<span style="color:#f0ead8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (x.user || (es ? 'sin nombre' : 'no name')) + ' <span style="color:#4a7a4a;">· ' + (x.farm || '—') + '</span></span>' +
+          '<span style="white-space:nowrap;color:' + (ok ? '#4caf50' : '#d69e2e') + ';font-weight:700;">' + v + (ok ? ' ✓' : ' ⚠') + ' <span style="color:#4a7a4a;font-weight:400;">' + agoTxt + '</span></span></div>';
+      }).join('');
+      var el = document.getElementById('device-list-body');
+      if (el) el.innerHTML = rows || (es ? 'Aún no hay reportes — los equipos aparecen tras actualizar a v166.' : 'No reports yet — devices appear once they update to v166.');
+    }).catch(function (e) {
+      var el = document.getElementById('device-list-body');
+      if (el) el.textContent = 'Error: ' + e.message;
+    });
+  } catch (e) {}
+}
+if (typeof window !== 'undefined') window.openDeviceList = openDeviceList;
 
 // ── Screen brightness (Dark / Mid / Bright) ──────────────────────────────────
 // Applies app-wide via a single root filter, remembered per device. The early
@@ -1237,7 +1295,7 @@ const TRANSLATIONS = {
     'wo.photo.prev':'← Prev','wo.photo.next':'Next →','wo.photo.close':'✕ Close',
     'wo.hint':'Tap any card to update status — confirmation required',
     // Production KPI bar
-    'prod.kpi.checks':'Checks Done','prod.kpi.eggs':'Eggs Today','prod.kpi.flagged':'Flagged',
+    'prod.kpi.checks':'Daily Check','prod.kpi.mw':'Morning Walk','prod.kpi.eggs':'Eggs Today','prod.kpi.flagged':'Flagged',
     'prod.barn':'Barn',
     'prod.select_farm':'Select your farm to begin',
     'prod.barns_checked':'barns checked today',
@@ -1448,7 +1506,7 @@ const TRANSLATIONS = {
     'wo.photo.prev':'← Ant','wo.photo.next':'Sig →','wo.photo.close':'✕ Cerrar',
     'wo.hint':'Toca una tarjeta para actualizar estado — confirmación requerida',
     // Production KPI bar
-    'prod.kpi.checks':'Revisiones Hechas','prod.kpi.eggs':'Huevos Hoy','prod.kpi.flagged':'Con Alertas',
+    'prod.kpi.checks':'Chequeo Diario','prod.kpi.mw':'Recorrido Matutino','prod.kpi.eggs':'Huevos Hoy','prod.kpi.flagged':'Con Alertas',
     'prod.barn':'Galpón',
     'prod.select_farm':'Seleccione su granja para comenzar',
     'prod.barns_checked':'galpones revisados hoy',

@@ -35,23 +35,40 @@ function _tdArmLive() {
     _tdLiveUnsubs.forEach(function (u) { try { u(); } catch (e) {} });
     _tdLiveUnsubs = [];
     _tdLiveDate = today;
-    ['morningWalks', 'barnWalks', 'manureSubmit'].forEach(function (coll) {
+    ['morningWalks', 'barnWalks', 'manureSubmit', 'bwProgress'].forEach(function (coll) {
       try {
         var u = db.collection(coll).where('date', '==', today).onSnapshot(function (snap) {
-          if (coll === 'barnWalks') {
-            // Cross-device barn grid: mirror today's submits into BARN_STATUS.
-            try {
-              if (typeof BARN_STATUS !== 'undefined') {
+          // Cross-device status: mirror today's submits into the shared maps
+          // (BARN_STATUS / MORNING_STATUS / BARN_PROGRESS) that drive the
+          // grids and KPI tiles on every device.
+          try {
+            if (coll === 'bwProgress') {
+              // Live in-progress % + section detail — fills the barn grid
+              // and the "in progress right now" strip as the crew works.
+              window.BW_PROG_DETAIL = window.BW_PROG_DETAIL || {};
+              snap.forEach(function (d) {
+                var x = d.data() || {};
+                if (x.farm && x.house != null && typeof x.pct === 'number') {
+                  var k = x.farm + '-' + _tdHnum(x.house);
+                  if (typeof BARN_PROGRESS !== 'undefined') BARN_PROGRESS[k] = x.pct;
+                  window.BW_PROG_DETAIL[k] = { pct: x.pct, blocks: x.blocks || [], by: x.by || '', ts: x.ts || 0 };
+                }
+              });
+            } else {
+              var map = (coll === 'barnWalks' && typeof BARN_STATUS !== 'undefined') ? BARN_STATUS
+                      : (coll === 'morningWalks' && typeof MORNING_STATUS !== 'undefined') ? MORNING_STATUS
+                      : null;
+              if (map) {
                 snap.forEach(function (d) {
                   var x = d.data() || {};
                   if (x.farm && x.house != null) {
-                    BARN_STATUS[x.farm + '-' + _tdHnum(x.house)] =
+                    map[x.farm + '-' + _tdHnum(x.house)] =
                       (x.flags && x.flags.length > 0) ? 'issue' : 'done';
                   }
                 });
               }
-            } catch (e) {}
-          }
+            }
+          } catch (e) {}
           _tdLiveKick();
         }, function () { /* listener error → next arm retries */ _tdLiveDate = null; });
         _tdLiveUnsubs.push(u);

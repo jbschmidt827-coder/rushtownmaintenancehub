@@ -266,33 +266,43 @@ function renderProdPanel() {
     }
     return d;
   }
-  function locationTile(farm) {
-    const total = FARM_BARNS[farm];
-    const d     = farmDone(farm);
-    const iss   = farmIssues(farm);
-    const p     = Math.round(d / total * 100);
-    const col   = p >= 80 ? '#4caf50' : p >= 40 ? '#d69e2e' : '#e53e3e';
+  // Daily Check + Morning Walk tiles sit SIDE BY SIDE per farm (v166) — the
+  // "Eggs Today" tile moved out of the bar (the egg KPI section below still
+  // shows whenever eggs are logged).
+  function _progressTile(icon, label, farm, d, total, iss, dueBadge) {
+    const p   = total ? Math.round(d / total * 100) : 0;
+    const col = p >= 80 ? '#4caf50' : p >= 40 ? '#d69e2e' : '#e53e3e';
     return `<div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:12px 14px;">
-      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">📍 ${farm}</div>
+      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">${icon} ${farm} · ${label}</div>
       <div style="display:flex;align-items:baseline;gap:6px;">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:${col};line-height:1;">${d}/${total}</div>
-        <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;">barns</div>
+        <div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;">${t('prod.barn').toLowerCase()}s</div>
       </div>
       <div style="background:#163016;border-radius:3px;height:5px;overflow:hidden;margin-top:8px;">
         <div style="height:100%;background:${col};width:${p}%;border-radius:3px;transition:width 0.4s;"></div>
       </div>
-      ${iss > 0 ? `<div style="font-size:10px;color:#e53e3e;font-family:'IBM Plex Mono',monospace;margin-top:5px;">⚠ ${iss} flagged</div>` : `<div style="font-size:10px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;margin-top:5px;">${d===total?'✅ All checked':'—'}</div>`}
-      ${farmWalkDueBadge(farm, total)}
+      ${iss > 0 ? `<div style="font-size:10px;color:#e53e3e;font-family:'IBM Plex Mono',monospace;margin-top:5px;">⚠ ${iss} flagged</div>` : `<div style="font-size:10px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;margin-top:5px;">${d===total&&total?'✅ All checked':'—'}</div>`}
+      ${dueBadge || ''}
     </div>`;
+  }
+  function locationTile(farm) {   // Daily Employee Check progress
+    return _progressTile('🐓', t('prod.kpi.checks'), farm, farmDone(farm), FARM_BARNS[farm], farmIssues(farm), '');
+  }
+  function morningTile(farm) {    // Morning Walk progress (+ late badge)
+    const msMap = typeof MORNING_STATUS !== 'undefined' ? MORNING_STATUS : {};
+    const total = FARM_BARNS[farm];
+    let d = 0, iss = 0;
+    for (let i = 1; i <= total; i++) {
+      const v = msMap[farm + '-' + i];
+      if (v === 'done' || v === 'issue') d++;
+      if (v === 'issue') iss++;
+    }
+    return _progressTile('☀️', t('prod.kpi.mw'), farm, d, total, iss, farmWalkDueBadge(farm, total));
   }
 
   const kpiBar = document.getElementById('prod-kpi-bar');
   if (kpiBar) kpiBar.innerHTML = `
-    ${farmsToShow.map(f => locationTile(f)).join('')}
-    <div style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:14px 12px;text-align:center;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:#f0ead8;line-height:1;">${fmtNum(todayEggs)}</div>
-      <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">${t('prod.kpi.eggs')}</div>
-    </div>
+    ${farmsToShow.map(f => locationTile(f) + morningTile(f)).join('')}
     <div style="background:${issues>0?'#2a0f0f':'#0f2a0f'};border:1px solid ${issues>0?'#5a2a2a':'#2a5a2a'};border-radius:12px;padding:14px 12px;text-align:center;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:${issues>0?'#e53e3e':'#4caf50'};line-height:1;">${issues}</div>
       <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">${t('prod.kpi.flagged')}</div>
@@ -414,6 +424,39 @@ function renderECContent() {
       </div>`;
     }
     html += `</div>`;
+
+    // ── LIVE "what's done in each house" strip (v166) ──
+    // Fed by bwProgress docs over today.js's live listener — shows each
+    // in-progress house's completed sections + who's working it, in real time.
+    try {
+      const det = (typeof window !== 'undefined' && window.BW_PROG_DETAIL) || {};
+      const _esL = (typeof _lang !== 'undefined' && _lang === 'es');
+      const LBL_ES = { employee:'Nombre', mortality:'Mortalidad', equipment:'Equipo', air:'Aire',
+                       feedwater:'Alimento y agua', belts:'Bandas de huevo', pest:'Plagas',
+                       checklist:'Lista diaria', weekly:'Revisión semanal', cageclean:'Limpieza de jaulas', notes:'Notas' };
+      const lbl = k => _esL ? (LBL_ES[k] || k) : (_BW_BLOCK_LABELS[k] || k);
+      let detHtml = '';
+      for (let i = 1; i <= cnt; i++) {
+        const key = _ecFarm + '-' + i;
+        if (bs[key] === 'done' || bs[key] === 'issue') continue;   // submitted → tile shows ✓
+        const d0 = det[key];
+        if (!d0 || !(d0.pct > 0)) continue;
+        const doneList = (d0.blocks || []).filter(k => k !== 'notes').map(lbl).join(' · ');
+        detHtml += `<div style="background:#141a05;border:1px solid #4a4a1a;border-radius:10px;padding:10px 13px;margin-bottom:7px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#f0ead8;">${t('prod.barn')} ${i}</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#d69e2e;">${d0.pct}%${d0.by ? ' · 👤 ' + d0.by : ''}</span>
+          </div>
+          ${doneList ? `<div style="font-size:10px;color:#86efac;margin-top:5px;line-height:1.6;">✓ ${doneList}</div>` : ''}
+        </div>`;
+      }
+      if (detHtml) {
+        html += `<div style="margin-top:16px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8a8a3a;margin-bottom:8px;">⏳ ${_esL ? 'En progreso ahora mismo' : 'In progress right now'}</div>
+          ${detHtml}</div>`;
+      }
+    } catch (e) {}
+
     document.getElementById('ec-content').innerHTML = html;
   } else {
     if (hdr) hdr.textContent = '🐓 ' + t('prod.daily_check');
@@ -679,7 +722,32 @@ function bwSaveDraft() {
     BARN_PROGRESS[_bwFarm + '-' + _bwHouse] = pct;
     localStorage.setItem('bwDraft-' + _bwFarm + '-' + _bwHouse + '-' + today,
       JSON.stringify({ fields, bwData: _bwData, bwChecklist: _bwChecklist, clNotes, pct, ts: Date.now() }));
+    _bwPushProgress(pct);
   } catch(e) {}
+}
+
+// ── Cross-device LIVE in-progress % (v166) ──────────────────────────────────
+// Mirrors this house's walk % to Firestore so every other device's barn grid
+// fills in AS THE CREW WORKS — not just after submit. One tiny doc per house
+// per day, written only when the % actually changes. today.js's live listener
+// feeds it back into BARN_PROGRESS on all devices.
+var _bwLastPushedPct = {};
+function _bwPushProgress(pct) {
+  try {
+    if (!_bwFarm || typeof db === 'undefined' || !db) return;
+    if (typeof pct !== 'number') return;
+    const key = _bwFarm + '-' + _bwHouse;
+    if (_bwLastPushedPct[key] === pct) return;      // no change → no write
+    _bwLastPushedPct[key] = pct;
+    const today = new Date().toISOString().slice(0,10);
+    const by = (document.getElementById('bw-employee') || {}).value || '';
+    // Which sections are finished — so any device can show WHAT's done, live.
+    let doneBlocks = [];
+    try { doneBlocks = _bwVisibleBlocks().filter(n => bwBlockComplete(n)); } catch (e) {}
+    db.collection('bwProgress').doc(key + '-' + today)
+      .set({ farm: _bwFarm, house: String(_bwHouse), date: today, pct: pct, by: by, blocks: doneBlocks, ts: Date.now() }, { merge: true })
+      .catch(function () { _bwLastPushedPct[key] = null; });   // retry on next change
+  } catch (e) {}
 }
 
 function bwRestoreFromData(data) {
