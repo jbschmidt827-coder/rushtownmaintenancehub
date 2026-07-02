@@ -394,12 +394,19 @@ function renderECContent() {
     for (let i = 1; i <= cnt; i++) {
       const key = _ecFarm + '-' + i;
       const st  = bs[key] || 'pending';
-      const bc  = st==='done'?'#4caf50':st==='issue'?'#e53e3e':'#2a4a2a';
-      const bg  = st==='done'?'#1a3a1a':st==='issue'?'#2a1a1a':'#163016';
+      // Live progress for a house that's been started but not yet submitted —
+      // the % fills in as each section/block is closed.
+      const prog   = st === 'pending' ? _bwHouseProgress(_ecFarm, i) : (st === 'done' ? 100 : null);
+      const inProg = st === 'pending' && prog > 0;
+      const bc  = st==='done'?'#4caf50':st==='issue'?'#e53e3e':inProg?'#d69e2e':'#2a4a2a';
+      const bg  = st==='done'?'#1a3a1a':st==='issue'?'#2a1a1a':inProg?'#241d05':'#163016';
       const nc  = st==='done'?'#f0ead8':st==='issue'?'#f0ead8':'#5a8a5a';
-      const ic  = st==='done'?'<div style="font-size:14px;color:#4caf50;margin-top:4px;">✓</div>':
-                  st==='issue'?'<div style="font-size:14px;color:#e53e3e;margin-top:4px;">⚠</div>':
-                  '<div style="font-size:14px;color:#3a6a3a;margin-top:4px;">—</div>';
+      let ic;
+      if (st==='done')       ic = '<div style="font-size:14px;color:#4caf50;margin-top:4px;">✓</div>';
+      else if (st==='issue') ic = '<div style="font-size:14px;color:#e53e3e;margin-top:4px;">⚠</div>';
+      else if (inProg)       ic = '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:#d69e2e;margin-top:3px;">' + prog + '%</div>'
+                                + '<div style="background:#0a1a0a;border-radius:3px;height:4px;margin-top:4px;overflow:hidden;"><div style="height:100%;width:' + prog + '%;background:#d69e2e;border-radius:3px;transition:width .3s;"></div></div>';
+      else                   ic = '<div style="font-size:14px;color:#3a6a3a;margin-top:4px;">—</div>';
       html += `<div style="background:${bg};border:2px solid ${bc};border-radius:12px;padding:16px 4px;text-align:center;cursor:pointer;" onclick="openBarnWalk('${_ecFarm}',${i})">
         <div style="font-size:9px;color:#5a8a5a;letter-spacing:1px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">${t('prod.barn')}</div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:700;color:${nc};line-height:1.1;">${i}</div>
@@ -496,6 +503,36 @@ function renderMWContent() {
 
 // ── Employee Daily Barn Check ──
 var _bwFarm = '', _bwHouse = 0, _bwData = {}, _bwChecklist = {}, _bwDocId = null;
+
+// Live per-house daily-check progress (0-100), keyed 'farm-house'. Shown on the
+// barn grid so a house fills in as each section/block is closed — instead of
+// sitting at "—" until submit. Held in memory for the session AND mirrored into
+// each house's localStorage draft so it survives a reload or backing out
+// mid-check. BARN_STATUS (set on submit) always takes priority in the grid.
+var BARN_PROGRESS = {};
+function _bwComputePct() {
+  try {
+    const vis = _bwVisibleBlocks();
+    if (!vis.length) return 0;
+    const done = vis.filter(n => bwBlockComplete(n)).length;
+    return Math.round(done / vis.length * 100);
+  } catch (e) { return 0; }
+}
+function _bwDraftPct(farm, house) {
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    const raw = localStorage.getItem('bwDraft-' + farm + '-' + house + '-' + today);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    return (typeof d.pct === 'number') ? d.pct : null;
+  } catch (e) { return null; }
+}
+function _bwHouseProgress(farm, house) {
+  const key = farm + '-' + house;
+  if (typeof BARN_PROGRESS[key] === 'number') return BARN_PROGRESS[key];
+  const dp = _bwDraftPct(farm, house);
+  return (dp == null) ? 0 : dp;
+}
 
 const _BW_WEEKLY = {
   2: { // Tuesday
@@ -618,8 +655,10 @@ function bwSaveDraft() {
     clNotes[el.id.replace('bw-cl-note-', '')] = el.value;
   });
   try {
+    const pct = _bwComputePct();
+    BARN_PROGRESS[_bwFarm + '-' + _bwHouse] = pct;
     localStorage.setItem('bwDraft-' + _bwFarm + '-' + _bwHouse + '-' + today,
-      JSON.stringify({ fields, bwData: _bwData, bwChecklist: _bwChecklist, clNotes, ts: Date.now() }));
+      JSON.stringify({ fields, bwData: _bwData, bwChecklist: _bwChecklist, clNotes, pct, ts: Date.now() }));
   } catch(e) {}
 }
 
@@ -885,6 +924,8 @@ function bwFlowRefresh(fromTap) {
       }
     }
   }
+  // Record live completion % for this house so the barn grid can show it fill in
+  if (_bwFarm && _bwHouse) BARN_PROGRESS[_bwFarm + '-' + _bwHouse] = _bwComputePct();
   checkBWReady();
 }
 
@@ -1021,6 +1062,10 @@ function openBarnWalk(farm, house) {
 
 function closeBarnWalk() {
   document.getElementById('barn-walk-modal').style.display = 'none';
+  // Refresh the barn grid so this house's card shows the live progress % it
+  // reached, even when backing out before submitting.
+  try { if (typeof renderECContent === 'function') renderECContent(); } catch(e) {}
+  try { if (typeof renderProdPanel === 'function') renderProdPanel(); } catch(e) {}
 }
 
 async function clOpenTaskWI(taskId, taskLabel) {
@@ -1347,6 +1392,7 @@ async function submitBarnWalk() {
 
   const key = _bwFarm + '-' + _bwHouse;
   BARN_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
+  delete BARN_PROGRESS[key];   // submitted now — BARN_STATUS drives the grid
   if (mortCount) _todayMortTotal += mortCount;
 
   // Map each flag to a problem category and priority.

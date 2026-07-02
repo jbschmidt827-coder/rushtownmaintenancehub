@@ -68,20 +68,22 @@ const HELP_CONTENT = [
         ],
       },
       {
-        title: { en: '💩 Manure — belt %, daily PM, weekly PM & Submit', es: '💩 Estiércol — % de banda, PM diario, PM semanal y Enviar' },
+        title: { en: '💩 Manure — 2-hr belt run, per-collector checks & Submit', es: '💩 Estiércol — banda 2 h, revisiones por colector y Enviar' },
         simple: [
           { en: 'Location (Hegins or Danville) → tap the 💩 Manure card.', es: 'Ubicación (Hegins o Danville) → toca la tarjeta 💩 Estiércol.' },
-          { en: 'For each house, for every collector (C1–C6), tap how much of the belt ran: 0, 50, or 100.', es: 'Para cada galpón, en cada colector (C1–C6), toca cuánto corrió la banda: 0, 50 o 100.' },
-          { en: 'Tap ☐ PM on a collector once its daily PM is done — it turns ✓ PM.', es: 'Toca ☐ PM en un colector cuando termines su PM diario — cambia a ✓ PM.' },
-          { en: 'Per-house shortcuts: All 100% sets every collector to 100; ✓ All PM checks all six PMs.', es: 'Atajos por galpón: Todo 100% pone cada colector en 100; ✓ Todos los PM marca los seis PM.' },
+          { en: 'Each house is blocked out 2.0 hours to run its belts. Tap 🕐 Belt-run times to set each house\'s start time (they save for everyone).', es: 'Cada galpón tiene 2.0 horas para correr sus bandas. Toca 🕐 Horarios banda para fijar la hora de inicio de cada galpón (se guardan para todos).' },
+          { en: 'During its window a house shows "🟢 Running now"; after the window it shows "⚠ Past window" until you submit it.', es: 'Durante su ventana el galpón muestra "🟢 Corriendo ahora"; después muestra "⚠ Fuera de la ventana" hasta que lo envíes.' },
+          { en: 'For every collector (C1–C6): tap how much of the belt ran (0, 50, or 100), then tick PM, Belt (looked over), Clean, and Align.', es: 'Para cada colector (C1–C6): toca cuánto corrió la banda (0, 50 o 100) y luego marca PM, Banda (revisada), Limpio y Alin.' },
+          { en: 'Per-house shortcuts: All 100% sets every belt to 100; ✓ All checks marks PM, Belt, Clean and Align for all six collectors.', es: 'Atajos por galpón: Todo 100% pone cada banda en 100; ✓ Todo marca PM, Banda, Limpio y Alin. en los seis colectores.' },
+          { en: 'Manure tech: tap ☐ Mark weekly PM on each house once its weekly manure PM is done.', es: 'Técnico de estiércol: toca ☐ Marcar PM semanal en cada galpón cuando termines su PM semanal.' },
           { en: 'When a house is finished, tap ✓ Submit House — daily.', es: 'Cuando termines un galpón, toca ✓ Enviar Galpón — diario.' },
-          { en: 'Manure tech: tap ☐ Mark weekly PM on each house once its weekly manure PM is done.', es: 'Técnico de estiércol: toca ☐ Marcar PM semanal en cada galpón cuando termines su PM semanal de estiércol.' },
         ],
         detail: [
-          { en: 'Houses shown: Hegins 4–8, Danville 1–5, six collectors each. It saves as you tap — no separate Save.', es: 'Galpones mostrados: Hegins 4–8, Danville 1–5, seis colectores cada uno. Se guarda al tocar — no hay un Guardar aparte.' },
+          { en: 'Houses shown: Hegins 4–8, Danville 1–5, six collectors each. It saves as you tap — no separate Save. A house down for repair is skipped automatically.', es: 'Galpones mostrados: Hegins 4–8, Danville 1–5, seis colectores cada uno. Se guarda al tocar — no hay un Guardar aparte. Un galpón en reparación se omite automáticamente.' },
+          { en: 'The 2.0-hour windows stagger by default so no two houses run at once — change any of them with the 🕐 Belt-run times button; the times save to the whole team.', es: 'Las ventanas de 2.0 horas se escalonan por defecto para que no corran dos galpones a la vez — cambia cualquiera con el botón 🕐 Horarios banda; las horas se guardan para todo el equipo.' },
+          { en: 'The four checks per collector are: PM (daily PM done), Belt (belt looked over), Clean (collector cleaned up), Align (alignment OK).', es: 'Las cuatro revisiones por colector son: PM (PM diario hecho), Banda (banda revisada), Limpio (colector limpiado), Alin. (alineación correcta).' },
           { en: 'Once EVERY house for the site is submitted for the day, the daily manure PMs (run belts, check belts, drying fans, trip switch) check themselves off in the Maintenance PM tracker automatically — no double entry.', es: 'Una vez que TODOS los galpones del sitio se envían en el día, los PM diarios de estiércol (correr bandas, revisar bandas, ventiladores de secado, interruptor de seguridad) se marcan solos en el rastreador de PM de Mantenimiento — sin doble captura.' },
           { en: 'Once EVERY house has its weekly box ticked, the weekly manure PMs (clean pit, auger rollers, belt tracking…) check off in the tracker too.', es: 'Una vez que TODOS los galpones tienen su casilla semanal marcada, los PM semanales de estiércol (limpiar foso, rodillos del sinfín, alineación de banda…) también se marcan en el rastreador.' },
-          { en: 'Submit a house with fewer than 6 collectors logged and it asks "submit anyway?" — a reminder, not a block.', es: 'Si envías un galpón con menos de 6 colectores registrados, pregunta "¿enviar de todos modos?" — es un recordatorio, no un bloqueo.' },
           { en: 'Master shows both Hegins and Danville; the Processing Plant has no manure houses.', es: 'Master muestra Hegins y Danville juntos; la Planta de Procesamiento no tiene galpones de estiércol.' },
         ],
       },
@@ -361,11 +363,24 @@ function helpToggle(id, btn) {
 }
 
 // ── Open / close overlay ─────────────────────────────────────────────────────
-function openHelp() {
+// openHelp() opens the guide. Optional (deptId, taskId) expands that department
+// and task and scrolls to it — used by "How to use" buttons on feature screens.
+function openHelp(expandDept, expandTask) {
   renderHelp();
   const ov = document.getElementById('help-overlay');
   if (ov) ov.style.display = 'block';
   try { window.scrollTo(0, 0); } catch (e) {}
+  if (expandDept) {
+    setTimeout(function () {
+      const d = document.getElementById('dept-' + expandDept);
+      if (d && d.style.display !== 'block') helpToggle('dept-' + expandDept);
+      if (expandTask) {
+        const tk = document.getElementById(expandTask);
+        if (tk && tk.style.display !== 'block') helpToggle(expandTask);
+        if (tk && tk.scrollIntoView) { try { tk.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }
+      }
+    }, 70);
+  }
 }
 function closeHelp() {
   const ov = document.getElementById('help-overlay');
