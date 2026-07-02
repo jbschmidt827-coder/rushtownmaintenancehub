@@ -1108,14 +1108,23 @@ function openBarnWalk(farm, house) {
   const today = new Date().toISOString().slice(0,10);
   const draftKey = 'bwDraft-' + farm + '-' + house + '-' + today;
 
-  // 1. Check for an in-progress draft first
+  // 1. Check for an in-progress draft first — but ONLY if this house hasn't
+  // already been submitted today. BARN_STATUS is live-synced from every
+  // device, so if the crew turned this house in, the REAL submitted record
+  // must load (step 2, with the "editing today's submission" banner) — not a
+  // stale local draft that makes it look like a fresh re-submit.
   try {
-    const draftStr = localStorage.getItem(draftKey);
-    if (draftStr) {
-      const draft = JSON.parse(draftStr);
-      bwRestoreFromData(draft);
-      bwInitFlow();
-      return;
+    const bsKey = farm + '-' + house;
+    const submitted = (typeof BARN_STATUS !== 'undefined') &&
+      (BARN_STATUS[bsKey] === 'done' || BARN_STATUS[bsKey] === 'issue');
+    if (!submitted) {
+      const draftStr = localStorage.getItem(draftKey);
+      if (draftStr) {
+        const draft = JSON.parse(draftStr);
+        bwRestoreFromData(draft);
+        bwInitFlow();
+        return;
+      }
     }
   } catch(e) {}
 
