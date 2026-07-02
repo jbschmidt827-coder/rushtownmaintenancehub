@@ -18,6 +18,72 @@ function _tdLayerFarms() {
   return []; // Processing Plant — no daily-check houses
 }
 
+// ── LIVE SYNC (v165) ────────────────────────────────────────────────────────
+// One set of Firestore listeners on TODAY's three check collections. The
+// moment ANYONE submits on ANY device, every visible view refreshes:
+// Today panel, Completion grid, Daily Check barn grid, landing badges.
+// Also hydrates BARN_STATUS from Firestore so the barn grid is accurate
+// across devices (it used to be device-local — a house submitted on one
+// iPad stayed "pending" on all the others).
+var _tdLiveDate = null, _tdLiveUnsubs = [], _tdKickTimer = null;
+
+function _tdArmLive() {
+  try {
+    if (typeof db === 'undefined' || !db) return;
+    var today = new Date().toISOString().slice(0, 10);
+    if (_tdLiveDate === today) return;                    // already armed
+    _tdLiveUnsubs.forEach(function (u) { try { u(); } catch (e) {} });
+    _tdLiveUnsubs = [];
+    _tdLiveDate = today;
+    ['morningWalks', 'barnWalks', 'manureSubmit'].forEach(function (coll) {
+      try {
+        var u = db.collection(coll).where('date', '==', today).onSnapshot(function (snap) {
+          if (coll === 'barnWalks') {
+            // Cross-device barn grid: mirror today's submits into BARN_STATUS.
+            try {
+              if (typeof BARN_STATUS !== 'undefined') {
+                snap.forEach(function (d) {
+                  var x = d.data() || {};
+                  if (x.farm && x.house != null) {
+                    BARN_STATUS[x.farm + '-' + _tdHnum(x.house)] =
+                      (x.flags && x.flags.length > 0) ? 'issue' : 'done';
+                  }
+                });
+              }
+            } catch (e) {}
+          }
+          _tdLiveKick();
+        }, function () { /* listener error → next arm retries */ _tdLiveDate = null; });
+        _tdLiveUnsubs.push(u);
+      } catch (e) {}
+    });
+  } catch (e) {}
+}
+
+// Debounced re-render of whatever is on screen right now.
+function _tdLiveKick() {
+  clearTimeout(_tdKickTimer);
+  _tdKickTimer = setTimeout(function () {
+    try {
+      var lh = document.getElementById('loc-home');
+      if (lh && lh.style.display !== 'none' && typeof renderTodayPanel === 'function') renderTodayPanel();
+    } catch (e) {}
+    try {
+      var co = document.getElementById('completion-overlay');
+      if (co && co.style.display !== 'none' && typeof renderCompletion === 'function') renderCompletion();
+    } catch (e) {}
+    try {
+      if (document.getElementById('ec-content') && typeof renderECContent === 'function') renderECContent();
+    } catch (e) {}
+    try { if (typeof renderLandingStatus === 'function') renderLandingStatus(); } catch (e) {}
+  }, 400);
+}
+
+// Arm shortly after boot; re-arm on wake so the date rollover is handled
+// (iPads live on the wall — "today" changes under them at midnight).
+setTimeout(_tdArmLive, 5000);
+document.addEventListener('visibilitychange', function () { if (!document.hidden) _tdArmLive(); });
+
 function _tdConfetti() {
   try {
     var colors = ['#4ade80', '#f0d68a', '#7ab0f6', '#f8a4a4', '#a7e08a', '#d6b34a'];
