@@ -93,6 +93,14 @@ function _tdLiveKick() {
       if (document.getElementById('ec-content') && typeof renderECContent === 'function') renderECContent();
     } catch (e) {}
     try { if (typeof renderLandingStatus === 'function') renderLandingStatus(); } catch (e) {}
+    // History tables refresh live too — but never while a detail modal is open
+    // (a re-render underneath is fine; wiping the table mid-read is not).
+    try {
+      var sec = window._prodSection;
+      var vis = function (id) { var el = document.getElementById(id); return el && el.style.display !== 'none'; };
+      if (sec === 'bwhistory' && vis('prod-sec-bwhistory') && typeof renderProdBarnWalks === 'function') renderProdBarnWalks();
+      if (sec === 'mwhistory' && vis('prod-sec-mwhistory') && typeof renderProdMorningWalks === 'function') renderProdMorningWalks();
+    } catch (e) {}
   }, 400);
 }
 

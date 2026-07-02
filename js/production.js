@@ -249,11 +249,15 @@ function renderProdPanel() {
   // Per-location progress
   const FARM_BARNS = { Hegins: 8, Danville: 5 };
   function farmDone(farm) {
+    // DAILY CHECK submissions ONLY (bs = BARN_STATUS). Counting morning walks
+    // here (the old `|| ms[k]` behavior) made the Daily Check tile claim 4/5
+    // while the barnWalks collection was EMPTY — a lying dashboard is worse
+    // than no dashboard. Morning walks have their own tile now.
     let d = 0;
     const n = FARM_BARNS[farm] || 0;
     for (let i = 1; i <= n; i++) {
       const k = farm + '-' + i;
-      if (bs[k]==='done'||bs[k]==='issue'||ms[k]==='done'||ms[k]==='issue') d++;
+      if (bs[k]==='done'||bs[k]==='issue') d++;
     }
     return d;
   }
@@ -2477,13 +2481,16 @@ function _renderWalkHistory(opts) {
   db.collection(opts.collection).where('ts','>=',cutoff).orderBy('ts','desc').get().then(snap => {
     const titleBar = `<div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:${opts.accent};margin-bottom:10px;">${opts.title}</div>`;
     if (snap.empty) { el.innerHTML = titleBar + '<div style="color:#888;padding:20px;text-align:center;">No walks in the last 30 days.</div>'; return; }
-    _walkDetailData = {};
+    // Keyed by collection+id: the Morning Walk and Barn Walk tables SHARE this
+    // map, and the old flat reset meant whichever table loaded last stole the
+    // other's data — taps on the first table then silently did nothing.
     const rows = snap.docs.map(d => {
       const r = d.data();
-      _walkDetailData[d.id] = r;
+      const dk = opts.collection + '_' + d.id;
+      _walkDetailData[dk] = r;
       const date  = r.ts ? new Date(r.ts).toLocaleDateString() : '—';
       const flags = r.flags && r.flags.length ? `<span style="color:#e53e3e;">⚑ ${r.flags.length}</span>` : '<span style="color:#4caf50;">✓</span>';
-      return `<tr onclick="openWalkDetail('${d.id}')" style="border-bottom:1px solid #1a2a1a;cursor:pointer;" onmouseover="this.style.background='#1a2a1a'" onmouseout="this.style.background=''">
+      return `<tr onclick="openWalkDetail('${dk}')" style="border-bottom:1px solid #1a2a1a;cursor:pointer;" onmouseover="this.style.background='#1a2a1a'" onmouseout="this.style.background=''">
         <td style="padding:8px 6px;color:#f0ead8;">${date}</td>
         <td style="padding:8px 6px;color:#7ab07a;">${r.farm||'—'}</td>
         <td style="padding:8px 6px;color:#aaa;">H${r.house||'—'}</td>
@@ -2532,7 +2539,7 @@ function openWalkDetail(id) {
     </div>
     <!-- Status banner -->
     <div style="background:${hasFlagsArr?'#1a0a0a':'#0a1a0a'};border:1px solid ${hasFlagsArr?'#e53e3e':'#4caf50'};border-radius:8px;padding:10px 14px;margin-bottom:14px;">
-      <div style="font-size:13px;font-weight:700;color:${hasFlagsArr?'#e53e3e':'#4caf50'};">${hasFlagsArr?'⚠ '+r.flags.length+' Flag'+(r.flags.length!==1?'s':''):'✓ All Clear'}</div>
+      <div style="font-size:13px;font-weight:700;color:${hasFlagsArr?'#e53e3e':'#4caf50'};">${hasFlagsArr?'⚠ '+r.flags.length+' Flag'+(r.flags.length!==1?'s':''):'✓ All Clear'}${typeof r.pct==='number'?` <span style="color:${r.pct>=100?'#4caf50':'#d69e2e'};font-size:11px;">· ${r.pct}% complete</span>`:''}</div>
       ${hasFlagsArr?`<div style="font-size:11px;color:#c07070;margin-top:6px;line-height:1.7;">${r.flags.map(f=>'• '+f).join('<br>')}</div>`:''}
     </div>
     <!-- Readings -->
@@ -2564,10 +2571,12 @@ function openWalkDetail(id) {
       ${field('Rodents', yn(r.rodent))}
       ${field('Manure Dryers', r.dryers||null)}
       ${field('Egg Belt', r.eggbelt||null)}
-
+      ${field('Feed Wastage', yn(r.waste))}
       ${field('Standpipes', r.stand||null)}
       ${field('Fly Traps', r.fly||null)}
       ${field('House Doors', r.doors||null)}
+      ${field('Weekly Rodent Count', r.weeklyRodentCount != null ? r.weeklyRodentCount : null)}
+      ${field('Cage Cleaning', r.cageClean ? r.cageClean + (r.cageCleanEmployee ? ' · ' + r.cageCleanEmployee : '') : null)}
     </div>
     ${r.checklist && Object.keys(r.checklist).length ? `
     <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;color:#4a7a4a;text-transform:uppercase;margin-bottom:8px;">Checklist <span style="color:${r.checklistFails>0?'#e53e3e':'#4caf50'};">(${r.checklistFails||0} fail${r.checklistFails!==1?'s':''})</span></div>
@@ -2576,6 +2585,7 @@ function openWalkDetail(id) {
         <span style="color:#5a8a5a;max-width:70%;">${k}</span>
         <span style="color:${v==='pass'||v==='ok'?'#4caf50':v==='fail'?'#e53e3e':'#d69e2e'};font-weight:700;">${(v||'').toUpperCase()}</span>
       </div>`).join('')}
+      ${r.checklistNotes && Object.keys(r.checklistNotes).length ? Object.entries(r.checklistNotes).map(([k,n])=>`<div style="font-size:10px;color:#d69e2e;padding:4px 0;">↳ ${k}: ${n}</div>`).join('') : ''}
     </div>` : ''}
     ${r.notes ? `<div style="background:#0a1a0a;border-radius:8px;padding:10px 12px;font-size:12px;color:#7ab07a;font-style:italic;font-family:'IBM Plex Mono',monospace;">📝 ${r.notes}</div>` : ''}
   </div></div>`;
@@ -2584,6 +2594,7 @@ function openWalkDetail(id) {
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'walk-detail-overlay';
+    overlay.className = 'overlay';   // device BACK button closes it (navback.js sweep)
     document.body.appendChild(overlay);
   }
   overlay.innerHTML = html;
