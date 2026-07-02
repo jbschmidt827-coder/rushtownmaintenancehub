@@ -381,16 +381,19 @@ function renderProdPanel() {
 // ── EC Section (Employee Daily Check) ──
 var _ecFarm = null;
 
+var _ecEnteredDirect = false;
 function openECSection(farm) {
   // Jump straight to the given farm (KPI-tile taps), else this device's plant
   _ecFarm = farm || ((typeof getPreferredFarm === 'function') ? getPreferredFarm() : null);
+  _ecEnteredDirect = !!_ecFarm;   // jumped straight in → Back exits, no farm-picker stop
   document.getElementById('ec-section').style.display = 'block';
   document.getElementById('ec-section').scrollTop = 0;
   renderECContent();
 }
 
 function ecBack() {
-  if (_ecFarm) { _ecFarm = null; renderECContent(); }
+  // Only show the Hegins/Danville picker on Back if the user came THROUGH it.
+  if (_ecFarm && !_ecEnteredDirect) { _ecFarm = null; renderECContent(); }
   else { document.getElementById('ec-section').style.display = 'none'; }
 }
 
@@ -400,7 +403,7 @@ function renderECContent() {
   const btn = document.getElementById('ec-back-btn');
   if (_ecFarm) {
     if (hdr) hdr.textContent = '🐓 ' + _ecFarm;
-    if (btn) btn.textContent = t('btn.back_farms');
+    if (btn) btn.textContent = _ecEnteredDirect ? t('btn.close') : t('btn.back_farms');
     const cnt = _ecFarm === 'Hegins' ? 8 : 5;
     let html = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">`;
     for (let i = 1; i <= cnt; i++) {
@@ -482,17 +485,20 @@ function renderECContent() {
 
 // ── MW Section (Morning Walk) ──
 var _mwSectionFarm = null;
+var _mwEnteredDirect = false;
 
 function openMWSection(farm) {
   // Jump straight to the given farm (KPI-tile taps), else this device's plant
   _mwSectionFarm = farm || ((typeof getPreferredFarm === 'function') ? getPreferredFarm() : null);
+  _mwEnteredDirect = !!_mwSectionFarm;
   document.getElementById('mw-section').style.display = 'block';
   document.getElementById('mw-section').scrollTop = 0;
   renderMWContent();
 }
 
 function mwBack() {
-  if (_mwSectionFarm) { _mwSectionFarm = null; renderMWContent(); }
+  // Only show the farm picker on Back if the user came THROUGH it.
+  if (_mwSectionFarm && !_mwEnteredDirect) { _mwSectionFarm = null; renderMWContent(); }
   else { document.getElementById('mw-section').style.display = 'none'; }
 }
 
@@ -502,7 +508,7 @@ function renderMWContent() {
   const btn = document.getElementById('mw-back-btn');
   if (_mwSectionFarm) {
     if (hdr) hdr.textContent = '☀️ ' + _mwSectionFarm;
-    if (btn) btn.textContent = t('btn.back_farms');
+    if (btn) btn.textContent = _mwEnteredDirect ? t('btn.close') : t('btn.back_farms');
     const cnt = _mwSectionFarm === 'Hegins' ? 8 : 5;
     let html = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">`;
     for (let i = 1; i <= cnt; i++) {
@@ -2221,6 +2227,45 @@ async function loadBarnWalkHistory() {
   }
 }
 
+// Tap-to-expand full detail for a history entry — every answer the worker gave.
+function bwHistToggle(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function _bwHistDetailHtml(w) {
+  const es = (typeof _lang !== 'undefined' && _lang === 'es');
+  const V = v => (v == null || v === '') ? '—' : String(v);
+  const rows = [
+    [es?'Mortalidad':'Mortality',      (w.mort==='yes' ? (w.mortCount!=null?w.mortCount:'yes') : 'no') + (w.mort==='yes' ? (w.mortrem==='yes' ? (es?' · retiradas ✓':' · removed ✓') : (es?' · NO retiradas ⚠':' · NOT removed ⚠')) : '')],
+    [es?'Aves sueltas':'Loose birds',  w.loose==='yes' ? V(w.looseCount) : 'no'],
+    [es?'Secadores':'Manure dryers',   V(w.dryers)],
+    [es?'Plumaje':'Feathering',        V(w.feather)],
+    [es?'Calidad de aire':'Air quality', V(w.air)],
+    [es?'Puertas':'House doors',       V(w.doors)],
+    [es?'Comederos':'Feeders',         V(w.feed)],
+    [es?'Desperdicio de alimento':'Feed wastage', V(w.waste)],
+    [es?'Tubos de agua':'Standpipes',  V(w.stand)],
+    [es?'Banda de huevo':'Egg belt',   V(w.eggbelt)],
+    [es?'Roedores':'Rodents',          w.rodent==='yes' ? V(w.rodentCount) : 'no'],
+    [es?'Moscas':'Flies',              w.fly==='yes' ? V(w.flyCount) : 'no'],
+  ];
+  if (w.weeklyRodentCount != null) rows.push([es?'Conteo semanal roedores':'Weekly rodent count', V(w.weeklyRodentCount)]);
+  if (w.cageClean) rows.push([es?'Limpieza de jaulas':'Cage cleaning', V(w.cageClean) + (w.cageCleanEmployee ? ' · 👤 ' + w.cageCleanEmployee : '')]);
+  let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-top:8px;">' +
+    rows.map(([k, v]) => `<div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;">${k}: <span style="color:#c9d8c9;">${v}</span></div>`).join('') + '</div>';
+  const cl = w.checklist || {};
+  const clKeys = Object.keys(cl);
+  if (clKeys.length) {
+    const failK = clKeys.filter(k => cl[k] === 'fail');
+    html += `<div style="font-size:10px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;margin-top:7px;">📋 ${es?'Lista diaria':'Daily checklist'}: <span style="color:#4caf50;">${clKeys.length - failK.length} ✓</span>${failK.length ? ` · <span style="color:#e53e3e;">${failK.length} ✗ (${failK.join(', ')})</span>` : ''}</div>`;
+    const notes = w.checklistNotes || {};
+    Object.keys(notes).forEach(k => {
+      html += `<div style="font-size:10px;color:#d69e2e;font-family:'IBM Plex Mono',monospace;margin-top:2px;">↳ ${k}: ${notes[k]}</div>`;
+    });
+  }
+  return html;
+}
+
 function renderBarnWalkHistory(walks) {
   const el = document.getElementById('bw-history-list');
   if (!el) return;
@@ -2236,6 +2281,7 @@ function renderBarnWalkHistory(walks) {
   const byDate = {};
   page.forEach(w => { const d = w.date || '?'; (byDate[d] = byDate[d]||[]).push(w); });
   let html = '';
+  let _detIdx = 0;   // unique id per expandable detail block
   Object.entries(byDate).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([date, ws]) => {
     const d = new Date(date + 'T12:00:00');
     const label = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
@@ -2249,7 +2295,9 @@ function renderBarnWalkHistory(walks) {
         ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:${w.pct>=100?'#4caf50':'#fbbf24'};margin-right:8px;">${w.pct}%</span>`
         : '';
       const statusLabel = pctBadge + (hasFlagsArr ? `⚠ ${w.flags.length} Flag${w.flags.length!==1?'s':''}` : '✓ Clear');
-      html += `<div style="background:#0f1a0f;border:1px solid ${hasFlagsArr?'#4a1a1a':'#1a3a1a'};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+      const detId = 'bwh-det-' + (_detIdx++);
+      const _esH = (typeof _lang !== 'undefined' && _lang === 'es');
+      html += `<div onclick="bwHistToggle('${detId}')" style="background:#0f1a0f;border:1px solid ${hasFlagsArr?'#4a1a1a':'#1a3a1a'};border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#f0ead8;">${w.farm} — Barn ${w.house}</div>
           <div style="font-size:11px;color:${statusColor};font-weight:600;">${statusLabel}</div>
@@ -2260,6 +2308,8 @@ function renderBarnWalkHistory(walks) {
         ${hasFlagsArr?`<div style="font-size:10px;color:#e07070;margin-top:6px;line-height:1.6;">${w.flags.map(f=>'• '+f).join('<br>')}</div>`:''}
         ${clFails>0?`<div style="font-size:10px;color:#d69e2e;margin-top:3px;">📋 Checklist: ${clFails} fail${clFails!==1?'s':''}</div>`:''}
         ${w.notes?`<div style="font-size:10px;color:#4a7a4a;margin-top:4px;font-style:italic;">"${w.notes}"</div>`:''}
+        <div id="${detId}" style="display:none;border-top:1px solid #1a3a1a;margin-top:8px;padding-top:2px;">${_bwHistDetailHtml(w)}</div>
+        <div style="font-size:9px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;margin-top:6px;">👁 ${_esH?'Toca para ver todo el detalle':'Tap for full detail'}</div>
       </div>`;
     });
   });
