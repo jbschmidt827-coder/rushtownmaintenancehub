@@ -510,6 +510,26 @@ var _bwFarm = '', _bwHouse = 0, _bwData = {}, _bwChecklist = {}, _bwDocId = null
 // each house's localStorage draft so it survives a reload or backing out
 // mid-check. BARN_STATUS (set on submit) always takes priority in the grid.
 var BARN_PROGRESS = {};
+
+// ── Replay daily checks that couldn't reach Firestore (parked on device by
+// submitBarnWalk's catch). Runs shortly after boot; keeps whatever still fails.
+function _bwReplayQueued() {
+  try {
+    const q = JSON.parse(localStorage.getItem('bwQueuedSubmits') || '[]');
+    if (!q.length) return;
+    const still = [];
+    let chain = Promise.resolve();
+    q.forEach(rec => {
+      chain = chain.then(() =>
+        db.collection('barnWalks').add(rec).catch(() => { still.push(rec); }));
+    });
+    chain.then(() => {
+      localStorage.setItem('bwQueuedSubmits', JSON.stringify(still));
+      if (q.length - still.length > 0) console.log('Replayed', q.length - still.length, 'queued daily check(s)');
+    });
+  } catch (e) { /* non-fatal */ }
+}
+setTimeout(_bwReplayQueued, 6000);
 function _bwComputePct() {
   try {
     const vis = _bwVisibleBlocks();
@@ -1196,27 +1216,43 @@ function checkBWReady() {
 }
 
 async function submitBarnWalk() {
-  // Easy submit: if a section isn't marked finished, let the team either jump to
-  // it OR submit anyway (confirm). Never hard-block turning in the daily check.
+  // NON-BLOCKING incomplete-section nudge — NO window.confirm()!
+  // confirm() silently returns false in the installed PWA on phones (same
+  // bug fixed in v161 for Processing PM + Manure). Here it made this
+  // function bounce to the first unfinished block and NEVER save — daily
+  // checks stopped reaching Firestore entirely (July 1–2 outage).
+  // New flow: 1st tap with unfinished sections = highlight what's left and
+  // arm an 8-second window; 2nd tap = submit with whatever is filled in.
+  // Never hard-blocks turning in the daily check.
   const _left = _bwVisibleBlocks().filter(n => !bwBlockComplete(n));
-  if (_left.length) {
+  const _es   = (typeof _lang !== 'undefined' && _lang === 'es');
+  const _hint = document.getElementById('bw-submit-hint');
+  const _sbtn = document.getElementById('bw-submit-btn');
+  if (_sbtn && !_sbtn._origLabel) _sbtn._origLabel = _sbtn.textContent;
+  if (_left.length && Date.now() > (window._bwForceSubmitUntil || 0)) {
+    window._bwForceSubmitUntil = Date.now() + 8000;
     const _labels = _left.map(n => _BW_BLOCK_LABELS[n] || n).join(', ');
-    const _go = confirm('Not marked finished yet:\n\n' + _labels + '\n\nOK = submit anyway  ·  Cancel = go finish them');
-    if (!_go) {
-      const first = _left[0];
-      if (typeof bwExpandBlock === 'function') bwExpandBlock(first);
-      const card = (typeof _bwCard === 'function') ? _bwCard(first) : null;
-      if (card) {
-        card.classList.remove('bw-collapsed', 'bw-locked');
-        try { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
-        card.style.transition = 'box-shadow .2s';
-        card.style.boxShadow = '0 0 0 3px #fbbf24';
-        setTimeout(function () { card.style.boxShadow = ''; }, 1600);
-      }
-      return;
+    if (_hint) {
+      _hint.style.display = 'block';
+      _hint.textContent = (_es ? 'Sin terminar: ' : 'Not finished: ') + _labels;
     }
-    // OK pressed → fall through and submit with whatever is filled in.
+    if (_sbtn) _sbtn.textContent = _es ? '⚠ ¿Enviar igual? Toca otra vez' : '⚠ Submit anyway? Tap again';
+    const first = _left[0];
+    if (typeof bwExpandBlock === 'function') bwExpandBlock(first);
+    const card = (typeof _bwCard === 'function') ? _bwCard(first) : null;
+    if (card) {
+      card.classList.remove('bw-collapsed', 'bw-locked');
+      try { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+      card.style.transition = 'box-shadow .2s';
+      card.style.boxShadow = '0 0 0 3px #fbbf24';
+      setTimeout(function () { card.style.boxShadow = ''; }, 1600);
+    }
+    return;
   }
+  // 2nd tap (or everything finished) → submit.
+  window._bwForceSubmitUntil = 0;
+  if (_hint) _hint.style.display = 'none';
+  if (_sbtn && _sbtn._origLabel) _sbtn.textContent = _sbtn._origLabel;
   const employee   = document.getElementById('bw-employee').value.trim();
   const notes      = document.getElementById('bw-notes').value.trim();
   const waterPSI   = null; // field removed from Daily Employee Check
@@ -1269,6 +1305,9 @@ async function submitBarnWalk() {
     cageClean: _bwData.cageclean || null,
     cageCleanEmployee: _bwData._cageCleanEmployee || null,
     cageCleanTime: _bwData._cageCleanTime || null,
+    // % of the walk actually completed at submit time (per house, per entry) —
+    // shows in the daily log / history so partial "submit anyway" walks are visible.
+    pct: (function () { try { return (typeof _bwComputePct === 'function') ? _bwComputePct() : null; } catch (e) { return null; } })(),
     date: new Date().toISOString().slice(0,10),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
     ts: Date.now()
@@ -1286,7 +1325,15 @@ async function submitBarnWalk() {
       const docRef = await db.collection('barnWalks').add(record);
       _bwDocId = docRef.id;
     }
-  } catch(e) { console.error(e); }
+  } catch(e) {
+    // NEVER lose a walk: park it on the device and replay on next app load.
+    console.error('barnWalk save failed — queued locally:', e);
+    try {
+      const q = JSON.parse(localStorage.getItem('bwQueuedSubmits') || '[]');
+      q.push(record);
+      localStorage.setItem('bwQueuedSubmits', JSON.stringify(q));
+    } catch(e2) { console.error('local queue failed too:', e2); }
+  }
 
   // ── Activity Log ──
   try {
@@ -2127,7 +2174,11 @@ function renderBarnWalkHistory(walks) {
       const hasFlagsArr = w.flags && w.flags.length > 0;
       const clFails = w.checklistFails || 0;
       const statusColor = hasFlagsArr ? '#e53e3e' : '#4caf50';
-      const statusLabel = hasFlagsArr ? `⚠ ${w.flags.length} Flag${w.flags.length!==1?'s':''}` : '✓ Clear';
+      // % complete badge (saved with each entry since v164) — amber when partial
+      const pctBadge = (typeof w.pct === 'number')
+        ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:${w.pct>=100?'#4caf50':'#fbbf24'};margin-right:8px;">${w.pct}%</span>`
+        : '';
+      const statusLabel = pctBadge + (hasFlagsArr ? `⚠ ${w.flags.length} Flag${w.flags.length!==1?'s':''}` : '✓ Clear');
       html += `<div style="background:#0f1a0f;border:1px solid ${hasFlagsArr?'#4a1a1a':'#1a3a1a'};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#f0ead8;">${w.farm} — Barn ${w.house}</div>
