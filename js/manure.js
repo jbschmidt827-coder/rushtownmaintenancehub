@@ -41,6 +41,14 @@ const MAN_CHK_TIP = {
 };
 const MAN_CHK_BY = { pmDone: 'pmBy', beltOk: 'beltBy', cleanOk: 'cleanBy', alignOk: 'alignBy' };
 
+// ── Belt-run issues → Work Order ────────────────────────────────────────────
+// A collector can be flagged as "can't run / area failed" and/or a belt rip
+// rated 1–3 (3 = worst). Raising an issue auto-creates a Work Order (deduped
+// per collector/day, updated in place). Priority: can't-run or rip 3 = urgent,
+// rip 2 = high, rip 1 = routine.
+const MAN_RIP_COL   = { 1: '#d6b02e', 2: '#e07b39', 3: '#c0392b' };
+const MAN_RIP_LABEL = { 1: { en: 'minor', es: 'leve' }, 2: { en: 'medium', es: 'media' }, 3: { en: 'worst', es: 'peor' } };
+
 // ── i18n: pick ES when the app is in Spanish (global _lang from core.js) ──
 function _mlang() { try { return (typeof _lang !== 'undefined' && _lang === 'es') ? 'es' : 'en'; } catch (e) { return 'en'; } }
 function ML(en, es) { return _mlang() === 'es' ? es : en; }
@@ -51,6 +59,7 @@ let _manureSubmit = [];
 let _manureListening = false;
 let _manurePushed = {}; // dedupe PM-tracker pushes per farm+period this session
 let _manureExpanded = {}; // submitted houses the user re-opened for editing
+let _manIssueOpen = {}; // per-collector issue panel open state (farm__house__coll)
 
 function manToday() { return new Date().toISOString().slice(0, 10); }
 function manKey(farm, house, coll, date) { return farm + '__H' + house + '__C' + coll + '__' + date; }
@@ -248,14 +257,77 @@ function manBtn(farm, house, coll, cur) {
   }).join('');
 }
 
-// One check chip (PM / Belt / Clean / Align) for a collector.
-function manChkBtn(farm, house, coll, field, done) {
+// Tri-state check: unset ☐ → PASS ✓ → FAIL ✗ → unset. (Old records saved
+// `true` for done — treated as pass, so nothing already logged changes.)
+function manChkState(rec, field) {
+  var v = rec ? rec[field] : null;
+  if (v === 'fail') return 'fail';
+  if (v === true || v === 'pass') return 'pass';
+  return 'unset';
+}
+function manChkFailLabel(field) {
+  return {
+    pmDone:  { en: 'PM/inspection FAILED', es: 'PM/inspección FALLÓ' },
+    beltOk:  { en: 'belt RIPPED / failed', es: 'banda RASGADA / falló' },
+    cleanOk: { en: 'NOT cleaned',          es: 'NO limpiado' },
+    alignOk: { en: 'alignment OFF',        es: 'alineación MAL' }
+  }[field] || { en: field + ' failed', es: field + ' falló' };
+}
+
+// One check chip (PM / Belt / Clean / Align) for a collector — pass/fail.
+function manChkBtn(farm, house, coll, field, state) {
   var lbl = MAN_CHK_LABEL[field] || { en: field, es: field };
   var tip = MAN_CHK_TIP[field] || { en: '', es: '' };
-  var st = done
-    ? 'background:#14532d;border:1.5px solid #2a7a3a;color:#86efac;'
+  var st, mark;
+  if (state === 'pass')      { st = 'background:#14532d;border:1.5px solid #2a7a3a;color:#86efac;'; mark = '✓ '; }
+  else if (state === 'fail') { st = 'background:#7a1414;border:1.5px solid #c0392b;color:#ffd7d7;'; mark = '✗ '; }
+  else                       { st = 'background:#13110a;border:1.5px solid #4a4030;color:#9f8a63;'; mark = '☐ '; }
+  return '<button onclick="manureCheckSet(\'' + farm + '\',' + house + ',' + coll + ',\'' + field + '\')" title="' + ML(tip.en, tip.es) + ' — ' + ML('tap: pass ✓ · again: FAIL ✗ (makes a work order) · again: clear', 'toca: pasa ✓ · otra vez: FALLA ✗ (crea orden) · otra vez: borrar') + '" style="flex:0 0 auto;min-width:56px;padding:11px 7px;border-radius:7px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;' + st + '">' + mark + ML(lbl.en, lbl.es) + '</button>';
+}
+
+function _manCollKey(farm, house, coll) { return farm + '__' + house + '__' + coll; }
+function manChkFails(rec) {
+  return MAN_CHK_FIELDS.filter(function (f) { return manChkState(rec, f) === 'fail'; });
+}
+function manIssueActive(rec) {
+  return !!(rec && (rec.cantRun || Number(rec.ripLevel || 0) > 0 || manChkFails(rec).length));
+}
+
+// The small ⚠ toggle on a collector row. Red once an issue is logged.
+function _manIssueBtn(farm, house, coll, active) {
+  var st = active
+    ? 'background:#3a0f0f;border:1.5px solid #c0392b;color:#f2a0a0;'
     : 'background:#13110a;border:1.5px solid #4a4030;color:#9f8a63;';
-  return '<button onclick="manureCheckSet(\'' + farm + '\',' + house + ',' + coll + ',\'' + field + '\')" title="' + ML(tip.en, tip.es) + '" style="flex:0 0 auto;min-width:56px;padding:11px 7px;border-radius:7px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;' + st + '">' + (done ? '✓ ' : '☐ ') + ML(lbl.en, lbl.es) + '</button>';
+  return '<button onclick="manureIssueToggle(\'' + farm + '\',' + house + ',' + coll + ')" title="' + ML('Report a problem / make a work order', 'Reportar un problema / crear orden') + '" style="flex:0 0 auto;min-width:40px;padding:11px 8px;border-radius:7px;font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:700;cursor:pointer;' + st + '">⚠</button>';
+}
+
+// The expandable per-collector issue panel: can't-run + belt-rip 1/2/3 + note.
+function _manIssuePanel(farm, house, coll, rec) {
+  var cant = !!(rec && rec.cantRun);
+  var lvl  = rec ? Number(rec.ripLevel || 0) : 0;
+  var note = (rec && rec.issueNote) ? rec.issueNote : '';
+  var cantSt = cant
+    ? 'background:#7a1414;border:1.5px solid #c0392b;color:#fff;'
+    : 'background:#0f1f0f;border:1.5px solid #5a2a2a;color:#d88;';
+  var cantBtn = '<button onclick="manureCantRun(\'' + farm + '\',' + house + ',' + coll + ')" style="padding:9px 12px;border-radius:7px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;' + cantSt + '">' + (cant ? '✓ ' : '') + ML('🚫 Can’t run', '🚫 No corre') + '</button>';
+  var ripBtns = [1, 2, 3].map(function (n) {
+    var on = lvl === n;
+    var col = MAN_RIP_COL[n];
+    var st = on ? 'background:' + col + ';border:1.5px solid ' + col + ';color:#fff;' : 'background:#0f1f0f;border:1.5px solid #4a4030;color:#b09a6a;';
+    return '<button onclick="manureRipSet(\'' + farm + '\',' + house + ',' + coll + ',' + n + ')" title="' + ML('Belt rip severity ', 'Gravedad de rasgadura ') + n + ' — ' + ML(MAN_RIP_LABEL[n].en, MAN_RIP_LABEL[n].es) + '" style="min-width:40px;padding:9px 4px;border-radius:7px;font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;cursor:pointer;' + st + '">' + n + '</button>';
+  }).join('');
+  var woLine = (rec && rec.woId)
+    ? '<div style="margin-top:7px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#f0a35a;">🔧 ' + rec.woId + ' — ' + ML('work order created', 'orden de trabajo creada') + '</div>'
+    : '';
+  return '<div style="margin-top:8px;background:#160d0d;border:1px solid #4a2020;border-radius:9px;padding:9px 11px;">' +
+    '<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">' +
+      cantBtn +
+      '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#c9a86a;margin-left:4px;">' + ML('Belt rip:', 'Rasgadura:') + '</span>' + ripBtns +
+      '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#8a7a5a;">' + ML('(3 = worst)', '(3 = peor)') + '</span>' +
+    '</div>' +
+    '<input type="text" value="' + String(note).replace(/"/g, '&quot;') + '" onchange="manureIssueNote(\'' + farm + '\',' + house + ',' + coll + ',this.value)" placeholder="' + ML('What’s wrong? (optional)', '¿Qué pasa? (opcional)') + '" style="width:100%;box-sizing:border-box;margin-top:8px;background:#0a1408;border:1px solid #3a2a1a;border-radius:7px;color:#e8e0c8;font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:8px 9px;">' +
+    woLine +
+  '</div>';
 }
 
 // Belt-run time editor (collapsible). Native <input type="time"> = reliable on
@@ -314,25 +386,32 @@ function renderManure() {
           '</div>';
           return;
         }
-        var ran = 0, pmCount = 0, chkCount = 0, rows = '';
+        var ran = 0, pmCount = 0, chkCount = 0, issueCount = 0, rows = '';
         for (var c = 1; c <= MANURE_COLLECTORS; c++) {
           var rec = manRec(farm, house, c);
           var cur = (rec && rec.pctRun != null) ? Number(rec.pctRun) : null;
           if (rec && rec.pctRun != null) ran++;
-          if (rec && rec.pmDone) pmCount++;
-          var allFour = !!(rec && rec.pmDone && rec.beltOk && rec.cleanOk && rec.alignOk);
+          if (manChkState(rec, 'pmDone') === 'pass') pmCount++;
+          var allFour = MAN_CHK_FIELDS.every(function (f) { return manChkState(rec, f) === 'pass'; });
           if (allFour) chkCount++;
-          var chips = MAN_CHK_FIELDS.map(function (f) { return manChkBtn(farm, house, c, f, !!(rec && rec[f])); }).join('');
-          rows += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #163016;">' +
-            '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:700;color:#9ab09a;min-width:26px;">C' + c + '</span>' +
-            '<div style="display:flex;gap:4px;flex:1;min-width:150px;">' + manBtn(farm, house, c, cur) + '</div>' +
-            '<div style="display:flex;gap:4px;flex-wrap:wrap;">' + chips + '</div>' +
+          var issue = manIssueActive(rec);
+          if (issue) issueCount++;
+          var chips = MAN_CHK_FIELDS.map(function (f) { return manChkBtn(farm, house, c, f, manChkState(rec, f)); }).join('');
+          var showPanel = issue || !!_manIssueOpen[_manCollKey(farm, house, c)];
+          rows += '<div style="border-bottom:1px solid #163016;margin-bottom:8px;padding-bottom:8px;">' +
+            '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
+              '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:700;color:' + (issue ? '#f2a0a0' : '#9ab09a') + ';min-width:26px;">C' + c + '</span>' +
+              '<div style="display:flex;gap:4px;flex:1;min-width:140px;">' + manBtn(farm, house, c, cur) + '</div>' +
+              '<div style="display:flex;gap:4px;flex-wrap:wrap;">' + chips + '</div>' +
+              _manIssueBtn(farm, house, c, issue) +
+            '</div>' +
+            (showPanel ? _manIssuePanel(farm, house, c, rec) : '') +
           '</div>';
         }
         var allRan = ran === MANURE_COLLECTORS;
         var allPM  = pmCount === MANURE_COLLECTORS;
         var allChk = chkCount === MANURE_COLLECTORS;
-        rows += '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#5a8a5a;margin-top:2px;line-height:1.5;">' + ML('% = belt that ran &nbsp;·&nbsp; PM · Belt (looked over) · Clean · Align = checks per collector &nbsp;·&nbsp; taps save automatically', '% = banda que corrió &nbsp;·&nbsp; PM · Banda (revisada) · Limpio · Alin. = revisiones por colector &nbsp;·&nbsp; se guarda al tocar') + '</div>';
+        rows += '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#5a8a5a;margin-top:2px;line-height:1.5;">' + ML('% = belt that ran &nbsp;·&nbsp; each check: tap once = <b style="color:#86efac;">pass ✓</b>, again = <b style="color:#f2a0a0;">FAIL ✗ → work order</b>, again = clear &nbsp;·&nbsp; ⚠ = report rip / can’t run &nbsp;·&nbsp; saves as you tap', '% = banda que corrió &nbsp;·&nbsp; cada revisión: un toque = <b style="color:#86efac;">pasa ✓</b>, otro = <b style="color:#f2a0a0;">FALLA ✗ → orden de trabajo</b>, otro = borrar &nbsp;·&nbsp; ⚠ = reportar rasgadura / no corre &nbsp;·&nbsp; se guarda al tocar') + '</div>';
 
         // Weekly manure-tech PM sign-off for this house
         var wrec = manWeeklyRec(farm, house);
@@ -357,6 +436,7 @@ function renderManure() {
               ' <span style="font-size:11px;font-weight:400;color:' + (allRan ? '#4ade80' : '#7ab07a') + ';">· ' + ran + '/' + MANURE_COLLECTORS + ' ' + ML('ran', 'corrió') + (allRan ? ' ✓' : '') + '</span>' +
               ' <span style="font-size:11px;font-weight:400;color:' + (allPM ? '#4ade80' : '#b08f5a') + ';">· ' + pmCount + '/' + MANURE_COLLECTORS + ' PM' + (allPM ? ' ✓' : '') + '</span>' +
               ' <span style="font-size:11px;font-weight:400;color:' + (allChk ? '#4ade80' : '#8fae8f') + ';">· ' + chkCount + '/' + MANURE_COLLECTORS + ' ' + ML('checks', 'revis.') + (allChk ? ' ✓' : '') + '</span>' +
+              (issueCount > 0 ? ' <span style="font-size:11px;font-weight:700;color:#f2705a;">· ⚠ ' + issueCount + ' ' + ML('issue', 'problema') + (issueCount > 1 ? ML('s', 's') : '') + '</span>' : '') +
             '</div>' +
             '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
               '<button onclick="manureSetAll(\'' + farm + '\',' + house + ',100)" style="padding:7px 11px;background:#14532d;border:1px solid #2a7a3a;border-radius:8px;color:#86efac;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">' + ML('All 100%', 'Todo 100%') + '</button>' +
@@ -378,7 +458,7 @@ function renderManure() {
         '<div style="text-align:right;"><div style="font-family:\'Bebas Neue\',sans-serif;font-size:30px;color:#f0ead8;letter-spacing:2px;line-height:1;">💩 ' + ML('MANURE', 'ESTIÉRCOL') + '</div>' +
         '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#7ab07a;margin-top:3px;">' + dateStr + '</div></div>' +
       '</div>' +
-      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#9ab09a;line-height:1.5;background:#0d1f0d;border:1px solid #1e3a1e;border-radius:10px;padding:10px 12px;margin:8px 0 16px;">' + ML('Each house is blocked out <b style="color:#86efac;">2.0 hours</b> to run its belts (tap <b style="color:#9ad6a0;">🕐 Belt-run times</b> to set the window). For each collector, tap the <b style="color:#86efac;">% that ran</b> (0/50/100) and tick <b style="color:#86efac;">PM · Belt · Clean · Align</b>. Use <b style="color:#86efac;">All 100%</b> / <b style="color:#a7e08a;">All checks</b> to do a whole house at once, and the manure tech ticks the <b style="color:#d8b478;">weekly PM</b>. Hit <b style="color:#eafff0;">Submit</b> per house. It saves as you go.', 'Cada casa tiene <b style="color:#86efac;">2.0 horas</b> para correr sus bandas (toca <b style="color:#9ad6a0;">🕐 Horarios banda</b> para fijar la ventana). Para cada colector, toca el <b style="color:#86efac;">% que corrió</b> (0/50/100) y marca <b style="color:#86efac;">PM · Banda · Limpio · Alin.</b>. Usa <b style="color:#86efac;">Todo 100%</b> / <b style="color:#a7e08a;">Todo</b> para una casa entera, y el técnico marca el <b style="color:#d8b478;">PM semanal</b>. Toca <b style="color:#eafff0;">Enviar</b> por casa. Se guarda solo.') + '</div>' +
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#9ab09a;line-height:1.5;background:#0d1f0d;border:1px solid #1e3a1e;border-radius:10px;padding:10px 12px;margin:8px 0 16px;">' + ML('Each house is blocked out <b style="color:#86efac;">2.0 hours</b> to run its belts (tap <b style="color:#9ad6a0;">🕐 Belt-run times</b> to set the window). For each collector, tap the <b style="color:#86efac;">% that ran</b> (0/50/100) and tick <b style="color:#86efac;">PM · Belt · Clean · Align</b>. Use <b style="color:#86efac;">All 100%</b> / <b style="color:#a7e08a;">All checks</b> to do a whole house at once, and the manure tech ticks the <b style="color:#d8b478;">weekly PM</b>. Tap <b style="color:#f2a0a0;">⚠</b> on a collector to flag it can’t run or a belt rip (1–3, 3 = worst) — that makes a work order. Hit <b style="color:#eafff0;">Submit</b> per house. It saves as you go.', 'Cada casa tiene <b style="color:#86efac;">2.0 horas</b> para correr sus bandas (toca <b style="color:#9ad6a0;">🕐 Horarios banda</b> para fijar la ventana). Para cada colector, toca el <b style="color:#86efac;">% que corrió</b> (0/50/100) y marca <b style="color:#86efac;">PM · Banda · Limpio · Alin.</b>. Usa <b style="color:#86efac;">Todo 100%</b> / <b style="color:#a7e08a;">Todo</b> para una casa entera, y el técnico marca el <b style="color:#d8b478;">PM semanal</b>. Toca <b style="color:#f2a0a0;">⚠</b> en un colector para marcar que no corre o una rasgadura (1–3, 3 = peor) — crea una orden de trabajo. Toca <b style="color:#eafff0;">Enviar</b> por casa. Se guarda solo.') + '</div>' +
       body +
     '</div>';
 }
@@ -398,18 +478,28 @@ async function manureSet(farm, house, coll, pct) {
 }
 
 // Toggle any per-collector check (pmDone / beltOk / cleanOk / alignOk).
+// Pass/fail cycle: unset → PASS ✓ → FAIL ✗ → unset.
+// A FAIL goes STRAIGHT to a work order (deduped per collector/day). Failing
+// the Belt check also pops the rip-severity panel (1/2/3) so the WO gets the
+// right urgency the moment they rate it.
 async function manureCheckSet(farm, house, coll, field) {
   if (MAN_CHK_FIELDS.indexOf(field) === -1) return;
   var t = manToday();
   var rec = manRec(farm, house, coll);
-  var next = !(rec && rec[field]);
+  var cur = manChkState(rec, field);
+  var next = cur === 'unset' ? 'pass' : cur === 'pass' ? 'fail' : false;
   var upd = { farm: farm, house: house, collector: coll, date: t, ts: Date.now() };
   upd[field] = next;
   upd[MAN_CHK_BY[field]] = _manBy();
   try {
     if (typeof setSyncDot === 'function') setSyncDot('saving');
     await db.collection('manureLog').doc(manKey(farm, house, coll, t)).set(upd, { merge: true });
+    if (next === 'fail') {
+      if (field === 'beltOk') _manIssueOpen[_manCollKey(farm, house, coll)] = true;  // rate the rip 1/2/3
+      await _manureSyncIssueWO(farm, house, coll);                                    // straight to a WO
+    }
     if (typeof setSyncDot === 'function') setSyncDot('live');
+    renderManure();
   } catch (e) {
     console.error('manureCheckSet:', e);
     alert(ML('Could not save: ', 'No se pudo guardar: ') + (e && e.message ? e.message : e));
@@ -443,7 +533,7 @@ async function manureAllChecks(farm, house) {
   var t = manToday();
   var by = _manBy();
   var payload = { farm: farm, house: house, date: t, ts: Date.now() };
-  MAN_CHK_FIELDS.forEach(function (f) { payload[f] = true; payload[MAN_CHK_BY[f]] = by; });
+  MAN_CHK_FIELDS.forEach(function (f) { payload[f] = 'pass'; payload[MAN_CHK_BY[f]] = by; });
   try {
     if (typeof setSyncDot === 'function') setSyncDot('saving');
     if (db && typeof db.batch === 'function') {
@@ -463,6 +553,94 @@ async function manureAllChecks(farm, house) {
     alert(ML('Could not save: ', 'No se pudo guardar: ') + (e && e.message ? e.message : e));
     if (typeof setSyncDot === 'function') setSyncDot('live');
   }
+}
+
+// ── Belt-run issues → Work Order ────────────────────────────────────────────
+function manureIssueToggle(farm, house, coll) {
+  var k = _manCollKey(farm, house, coll);
+  _manIssueOpen[k] = !_manIssueOpen[k];
+  renderManure();
+}
+
+async function _manSaveIssue(farm, house, coll, patch) {
+  var t = manToday();
+  var base = { farm: farm, house: house, collector: coll, date: t, ts: Date.now() };
+  try {
+    if (typeof setSyncDot === 'function') setSyncDot('saving');
+    await db.collection('manureLog').doc(manKey(farm, house, coll, t)).set(Object.assign(base, patch), { merge: true });
+    await _manureSyncIssueWO(farm, house, coll);
+    if (typeof setSyncDot === 'function') setSyncDot('live');
+  } catch (e) {
+    console.error('_manSaveIssue:', e);
+    alert(ML('Could not save: ', 'No se pudo guardar: ') + (e && e.message ? e.message : e));
+    if (typeof setSyncDot === 'function') setSyncDot('live');
+  }
+}
+
+// Tap a rip level to set it; tap the same level again to clear the rip.
+function manureRipSet(farm, house, coll, level) {
+  var rec = manRec(farm, house, coll);
+  var cur = rec ? Number(rec.ripLevel || 0) : 0;
+  var next = (cur === level) ? 0 : level;
+  _manSaveIssue(farm, house, coll, { ripLevel: next, ripBy: _manBy() });
+}
+
+function manureCantRun(farm, house, coll) {
+  var rec = manRec(farm, house, coll);
+  var next = !(rec && rec.cantRun);
+  _manSaveIssue(farm, house, coll, { cantRun: next, cantRunBy: _manBy() });
+}
+
+function manureIssueNote(farm, house, coll, val) {
+  _manSaveIssue(farm, house, coll, { issueNote: (val || '').trim() });
+}
+
+// Create/update ONE Work Order per collector reflecting its current issues.
+// Deduped via the woDocId stored on the collector's manureLog doc. If the
+// employee clears both issues, the WO is left open for maintenance to close.
+async function _manureSyncIssueWO(farm, house, coll) {
+  var rec = manRec(farm, house, coll) || {};
+  var lvl   = Number(rec.ripLevel || 0);
+  var cant  = !!rec.cantRun;
+  var fails = manChkFails(rec);
+  if (!cant && !lvl && !fails.length) return; // nothing active — don't auto-create/close
+  if (typeof db === 'undefined' || !db) return;
+  // Urgency: can't-run or rip 3 = URGENT · rip 2 or a ripped-belt fail = HIGH ·
+  // rip 1 / other check fails = routine.
+  var priority = (cant || lvl >= 3) ? 'urgent'
+               : (lvl === 2 || (fails.indexOf('beltOk') !== -1 && !lvl)) ? 'high'
+               : 'normal';
+  var parts = [];
+  if (cant) parts.push(ML('belt won’t run / area failed', 'la banda no corre / área falló'));
+  if (lvl)  parts.push(ML('belt rip severity ' + lvl + ' (' + ML(MAN_RIP_LABEL[lvl].en, MAN_RIP_LABEL[lvl].es) + ')', 'rasgadura nivel ' + lvl + ' (' + ML(MAN_RIP_LABEL[lvl].en, MAN_RIP_LABEL[lvl].es) + ')'));
+  fails.forEach(function (f) {
+    if (f === 'beltOk' && lvl) return;   // rip severity already says it better
+    var fl = manChkFailLabel(f);
+    parts.push(ML(fl.en, fl.es));
+  });
+  var note = (rec.issueNote || '').trim();
+  var desc = ML('Manure belt', 'Banda de estiércol') + ' — ' + ML('House', 'Casa') + ' ' + house + ' C' + coll + ': ' + parts.join(' + ') + (note ? ' — ' + note : '');
+  var t = manToday();
+  var submittedStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  try {
+    if (rec.woDocId) {
+      await db.collection('workOrders').doc(rec.woDocId).set(
+        { problem: 'Manure System', priority: priority, desc: desc, tech: _manBy(), status: 'open', ts: Date.now() },
+        { merge: true }
+      );
+    } else {
+      var woId = await mintWoId();
+      var ref = await db.collection('workOrders').add({
+        id: woId, farm: farm, house: String(house),
+        problem: 'Manure System', priority: priority, status: 'open',
+        desc: desc, tech: _manBy(),
+        notes: 'Auto-created from Manure belt-run — ' + farm + ' House ' + house + ' Collector ' + coll,
+        submitted: submittedStr, date: t, ts: Date.now()
+      });
+      await db.collection('manureLog').doc(manKey(farm, house, coll, t)).set({ woId: woId, woDocId: ref.id }, { merge: true });
+      if (typeof toast === 'function') toast(ML('Work order ' + woId + ' created — House ' + house + ' C' + coll, 'Orden ' + woId + ' creada — Casa ' + house + ' C' + coll));
+    }
+  } catch (e) { console.error('_manureSyncIssueWO:', e); }
 }
 
 async function manureWeeklySet(farm, house) {
@@ -547,6 +725,10 @@ if (typeof window !== 'undefined') {
   window.manureCheckSet = manureCheckSet;
   window.manureAllChecks = manureAllChecks;
   window.manureWeeklySet = manureWeeklySet;
+  window.manureIssueToggle = manureIssueToggle;
+  window.manureRipSet = manureRipSet;
+  window.manureCantRun = manureCantRun;
+  window.manureIssueNote = manureIssueNote;
   window.manureBeltSchedSet = manureBeltSchedSet;
   window.manureToggleSchedule = manureToggleSchedule;
   window.manureSubmitHouse = manureSubmitHouse;
