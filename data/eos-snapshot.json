@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-02T13:01:12.865810Z",
-  "date": "2026-07-02",
+  "generatedAt": "2026-07-03T13:00:08.070321Z",
+  "date": "2026-07-03",
   "scope": {
     "farms": [
       "Danville",
@@ -9,23 +9,23 @@
     "houses": 13
   },
   "headline": {
-    "openWOTotal": 10,
+    "openWOTotal": 9,
     "redTagsActive": 0,
     "overdue7d": 0,
-    "walksToday": 11,
+    "walksToday": 7,
     "totalHouses": 13
   },
   "byHouse": [
     {
       "farm": "Hegins",
       "house": "1",
-      "openWO": 0,
+      "openWO": 1,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": null,
-      "topItemDays": null
+      "topItem": "Watering System",
+      "topItemDays": 0
     },
     {
       "farm": "Hegins",
@@ -52,13 +52,13 @@
     {
       "farm": "Hegins",
       "house": "4",
-      "openWO": 0,
+      "openWO": 1,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": null,
-      "topItemDays": null
+      "topItem": "Building / Structure",
+      "topItemDays": 0
     },
     {
       "farm": "Hegins",
@@ -74,13 +74,13 @@
     {
       "farm": "Hegins",
       "house": "6",
-      "openWO": 1,
+      "openWO": 0,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
       "morningWalkToday": true,
-      "topItem": "Manure System",
-      "topItemDays": 0
+      "topItem": null,
+      "topItemDays": null
     },
     {
       "farm": "Hegins",
@@ -102,29 +102,29 @@
       "walkedToday": false,
       "morningWalkToday": true,
       "topItem": "Feed System",
-      "topItemDays": 58
+      "topItemDays": 59
     },
     {
       "farm": "Danville",
       "house": "1",
-      "openWO": 4,
-      "redTags": 0,
-      "overdue7d": 0,
-      "walkedToday": false,
-      "morningWalkToday": true,
-      "topItem": "Feed System",
-      "topItemDays": 9
-    },
-    {
-      "farm": "Danville",
-      "house": "2",
       "openWO": 2,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
+      "morningWalkToday": false,
+      "topItem": "Feed System",
+      "topItemDays": 10
+    },
+    {
+      "farm": "Danville",
+      "house": "2",
+      "openWO": 3,
+      "redTags": 0,
+      "overdue7d": 0,
+      "walkedToday": false,
+      "morningWalkToday": false,
       "topItem": "Watering System",
-      "topItemDays": 0
+      "topItemDays": 1
     },
     {
       "farm": "Danville",
@@ -140,12 +140,12 @@
     {
       "farm": "Danville",
       "house": "4",
-      "openWO": 2,
+      "openWO": 1,
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
-      "topItem": "Feeders not running",
+      "morningWalkToday": false,
+      "topItem": "Building / Structure",
       "topItemDays": 0
     },
     {
@@ -155,45 +155,12 @@
       "redTags": 0,
       "overdue7d": 0,
       "walkedToday": false,
-      "morningWalkToday": true,
+      "morningWalkToday": false,
       "topItem": null,
       "topItemDays": null
     }
   ],
   "openWOs": [
-    {
-      "id": "0FmCGRYHtqE7qW8z69De",
-      "farm": "Danville",
-      "house": "1",
-      "title": "Water pressure out of range (0 PSI)",
-      "desc": "",
-      "priority": "urgent",
-      "status": "open",
-      "ts": 1782994898578,
-      "urgent": false
-    },
-    {
-      "id": "5JzPDRSQdftzpWLvULmz",
-      "farm": "Danville",
-      "house": "",
-      "title": "Building / Structure",
-      "desc": "",
-      "priority": "high",
-      "status": "open",
-      "ts": 1782905606454,
-      "urgent": false
-    },
-    {
-      "id": "A5MnDbBxZVQTnsiGtXJI",
-      "farm": "Hegins",
-      "house": "6",
-      "title": "Manure System",
-      "desc": "",
-      "priority": "normal",
-      "status": "in-progress",
-      "ts": 1782932608366,
-      "urgent": false
-    },
     {
       "id": "Csc30J6xoGXjbRQgDs4b",
       "farm": "Hegins",
@@ -206,14 +173,14 @@
       "urgent": false
     },
     {
-      "id": "Gp9fmhVETKGHz30bx4DT",
+      "id": "F4kLjuU9Hm4kVSD2OIir",
       "farm": "Danville",
-      "house": "1",
-      "title": "Feeders not running",
+      "house": "4",
+      "title": "Building / Structure",
       "desc": "",
-      "priority": "urgent",
+      "priority": "high",
       "status": "open",
-      "ts": 1782994898902,
+      "ts": 1783025724062,
       "urgent": false
     },
     {
@@ -272,14 +239,14 @@
       "urgent": false
     },
     {
-      "id": "WKVJGWiRkOHvK6MRmz79",
-      "farm": "Danville",
+      "id": "YKmBMT0yFNAatWc9FssM",
+      "farm": "Hegins",
       "house": "4",
-      "title": "Feeders not running",
+      "title": "Building / Structure",
       "desc": "",
-      "priority": "urgent",
-      "status": "open",
-      "ts": 1782994928640,
+      "priority": "normal",
+      "status": "in-progress",
+      "ts": 1783019239502,
       "urgent": false
     },
     {
@@ -305,17 +272,6 @@
       "urgent": false
     },
     {
-      "id": "g7rg3OhTt1hmWbrPx7ez",
-      "farm": "Danville",
-      "house": "4",
-      "title": "Water pressure out of range (0 PSI)",
-      "desc": "",
-      "priority": "urgent",
-      "status": "open",
-      "ts": 1782994928257,
-      "urgent": false
-    },
-    {
       "id": "p80VkeBc536aFXXyORS4",
       "farm": "Hegins",
       "house": "",
@@ -325,6 +281,28 @@
       "status": "open",
       "ts": 1779806316319,
       "urgent": false
+    },
+    {
+      "id": "uLIN1lLaYdDY0nwUSzjm",
+      "farm": "Danville",
+      "house": "2",
+      "title": "Manure System",
+      "desc": "",
+      "priority": "normal",
+      "status": "open",
+      "ts": 1783021788128,
+      "urgent": false
+    },
+    {
+      "id": "yLfV2OL9DkULaWJeDgPq",
+      "farm": "Hegins",
+      "house": "1",
+      "title": "Watering System",
+      "desc": "",
+      "priority": "normal",
+      "status": "in-progress",
+      "ts": 1783019160391,
+      "urgent": false
     }
   ],
   "redTags": [],
@@ -332,75 +310,45 @@
   "morningWalksToday": [
     {
       "farm": "Hegins",
-      "house": "1",
-      "employee": "Natlalie",
-      "time": "8:03 AM"
-    },
-    {
-      "farm": "Hegins",
-      "house": "4",
-      "employee": "Natlalie",
-      "time": "8:04 AM"
-    },
-    {
-      "farm": "Danville",
-      "house": "2",
-      "employee": "Celia",
-      "time": "8:06 AM"
-    },
-    {
-      "farm": "Hegins",
-      "house": "5",
-      "employee": "Natlalie",
-      "time": "8:05 AM"
-    },
-    {
-      "farm": "Hegins",
       "house": "7",
       "employee": "Natlalie",
-      "time": "8:08 AM"
-    },
-    {
-      "farm": "Hegins",
-      "house": "3",
-      "employee": "Natlalie",
-      "time": "8:04 AM"
-    },
-    {
-      "farm": "Danville",
-      "house": "5",
-      "employee": "Celia",
-      "time": "8:31 AM"
-    },
-    {
-      "farm": "Danville",
-      "house": "1",
-      "employee": "Celia",
-      "time": "7:55 AM"
-    },
-    {
-      "farm": "Danville",
-      "house": "4",
-      "employee": "Celia",
-      "time": "8:22 AM"
-    },
-    {
-      "farm": "Hegins",
-      "house": "6",
-      "employee": "Natlalie",
-      "time": "8:07 AM"
-    },
-    {
-      "farm": "Danville",
-      "house": "1",
-      "employee": "Celia",
-      "time": "8:21 AM"
+      "time": "6:56 AM"
     },
     {
       "farm": "Hegins",
       "house": "8",
       "employee": "Natlalie",
-      "time": "8:08 AM"
+      "time": "6:56 AM"
+    },
+    {
+      "farm": "Hegins",
+      "house": "1",
+      "employee": "Natlalie",
+      "time": "6:52 AM"
+    },
+    {
+      "farm": "Hegins",
+      "house": "5",
+      "employee": "Natlalie",
+      "time": "6:54 AM"
+    },
+    {
+      "farm": "Hegins",
+      "house": "4",
+      "employee": "Natlalie",
+      "time": "6:53 AM"
+    },
+    {
+      "farm": "Hegins",
+      "house": "3",
+      "employee": "Natlalie",
+      "time": "6:53 AM"
+    },
+    {
+      "farm": "Hegins",
+      "house": "6",
+      "employee": "Natlalie",
+      "time": "6:55 AM"
     }
   ]
 }
