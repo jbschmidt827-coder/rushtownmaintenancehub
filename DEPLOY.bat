@@ -23,6 +23,21 @@ if errorlevel 1 (
   git reset --mixed HEAD >nul 2>&1
 )
 
+REM === Auto-heal a stuck merge/rebase conflict (daily-snapshot bot vs local) ===
+REM If a previous sync was interrupted, git can be left with "unmerged files"
+REM that block every future pull/commit/push. Clear any half-finished rebase or
+REM merge, then resolve leftover conflicts to the committed version (the eos
+REM snapshot is bot-generated and re-syncs cleanly on the next pull). Your app
+REM files are never touched.
+if exist ".git\rebase-merge" ( echo Clearing interrupted rebase... & git rebase --abort >nul 2>&1 )
+if exist ".git\rebase-apply" ( echo Clearing interrupted rebase... & git rebase --abort >nul 2>&1 )
+if exist ".git\MERGE_HEAD"   ( echo Clearing interrupted merge...  & git merge --abort  >nul 2>&1 )
+for /f "delims=" %%F in ('git diff --name-only --diff-filter=U 2^>nul') do (
+  echo Resolving leftover conflict: %%F
+  git checkout HEAD -- "%%F" >nul 2>&1 || git rm -f -- "%%F" >nul 2>&1
+  git add -A -- "%%F" >nul 2>&1
+)
+
 echo.
 echo === Current changes ===
 git status --short

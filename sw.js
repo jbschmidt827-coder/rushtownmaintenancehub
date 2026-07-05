@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v173-manurewo';
+const CACHE_NAME = 'rushtown-v176-liveboard';
 
 const SHELL_FILES = [
   '/',
@@ -72,6 +72,7 @@ const SHELL_FILES = [
   '/js/voice.js',
   '/js/rooster.js',
   '/js/housestatus.js',
+  '/js/livemonitor.js',
   '/js/navback.js',
   '/js/shipping.js',
   '/js/danville-loadout.js',

@@ -882,6 +882,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
       <div style="border-top:1px solid #1e3a1e;padding-top:12px;">
         <div data-i18n="landing.quick_actions" style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#3a6a3a;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:8px;">⚡ QUICK ACTIONS</div>
         <div style="display:grid;grid-template-columns:1fr;gap:8px;">
+          <button data-i18n="landing.livemonitor" onclick="openLiveMonitor()" style="padding:13px 10px;background:#170d0d;border:1.5px solid #b03a3a;border-radius:10px;color:#f0a0a0;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🔴 Live Checks</button>
           <button data-i18n="landing.new_wo" onclick="enterApp('wo-submit')" style="padding:13px 10px;background:#0d1f3a;border:1.5px solid #3b82f6;border-radius:10px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🔧 New Work Order</button>
           <button onclick="openHelp()" style="padding:13px 10px;background:#0d1f0d;border:1.5px solid #f0c419;border-radius:10px;color:#e8d36a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">📖 How To Use</button>
           <!-- Hidden for now per Joe (2026-07-01) — remove style="display:none" to bring back -->
@@ -5267,11 +5268,12 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/rooster.js?v=20260701-rooster"></script>
 <script defer src="js/fortune.js?v=20260626-fortune"></script>
 <script defer src="js/housestatus.js?v=20260626-housestatus"></script>
+<script defer src="js/livemonitor.js?v=20260703-liveboard"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260524b"></script>
-<script defer src="js/production.js?v=20260702-recover"></script>
+<script defer src="js/production.js?v=20260703-livecheck"></script>
 <script defer src="js/scorecard.js?v=20260625-trend"></script>
-<script defer src="js/help.js?v=20260703-manurewo"></script>
+<script defer src="js/help.js?v=20260703-sharedcheck"></script>
 <script defer src="js/time-blocks.js?v=20260612f-heginstimes"></script>
 <script defer src="js/feed-mill.js?v=20260612g-v71"></script>
 <script defer src="js/egg-quality.js?v=20260424"></script>

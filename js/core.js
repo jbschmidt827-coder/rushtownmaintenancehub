@@ -778,7 +778,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v173 · Jul 3 2026';
+var APP_VERSION = 'v176 · Jul 3 2026';
 
 // ── Device heartbeat + fleet tracker (v166) ─────────────────────────────────
 // Every device reports {who, version, site, last seen} shortly after boot.
@@ -1380,6 +1380,7 @@ const TRANSLATIONS = {
     'landing.manure':'Manure','landing.manure_sub':'Belt % run · by house & collector',
     'landing.completion':'Completion','landing.completion_sub':'Daily % by house & check',
     'landing.housestatus':'🏚 House Status',
+    'landing.livemonitor':'🔴 Live Checks',
     'landing.maint':'Maintenance','landing.maint_sub':'Work orders · PM · Parts · Assets',
     'landing.pkg':'Packaging','landing.pkg_sub':'Egg ops · Packing log',
     'landing.ship':'Shipping','landing.ship_sub':'Loads · Reconciliation · Exceptions',
@@ -1591,6 +1592,7 @@ const TRANSLATIONS = {
     'landing.manure':'Estiércol','landing.manure_sub':'% de banda · por casa y colector',
     'landing.completion':'Cumplimiento','landing.completion_sub':'% diario por casa y revisión',
     'landing.housestatus':'🏚 Estado de Casas',
+    'landing.livemonitor':'🔴 En Vivo',
     'landing.maint':'Mantenimiento','landing.maint_sub':'Órdenes · PM · Partes · Equipos',
     'landing.pkg':'Empaque','landing.pkg_sub':'Ops de huevos · Registro',
     'landing.ship':'Envíos','landing.ship_sub':'Cargas · Reconciliación · Excepciones',

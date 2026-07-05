@@ -409,6 +409,7 @@ function renderECContent() {
     if (hdr) hdr.textContent = '🐓 ' + _ecFarm;
     if (btn) btn.textContent = _ecEnteredDirect ? t('btn.close') : t('btn.back_farms');
     const cnt = _ecFarm === 'Hegins' ? 8 : 5;
+    const _prog = (typeof window !== 'undefined' && window.BW_PROG_DETAIL) || {};
     let html = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">`;
     for (let i = 1; i <= cnt; i++) {
       const key = _ecFarm + '-' + i;
@@ -417,6 +418,10 @@ function renderECContent() {
       // the % fills in as each section/block is closed.
       const prog   = st === 'pending' ? _bwHouseProgress(_ecFarm, i) : (st === 'done' ? 100 : null);
       const inProg = st === 'pending' && prog > 0;
+      // Who's working it right now (live) — green dot if updated in the last 6 min.
+      const _pd   = inProg ? (_prog[key] || {}) : {};
+      const _who  = _pd.by ? String(_pd.by).split(' ')[0] : '';
+      const _live = !!(_pd.ts && (Date.now() - _pd.ts < 6 * 60000));
       const bc  = st==='done'?'#4caf50':st==='issue'?'#e53e3e':inProg?'#d69e2e':'#2a4a2a';
       const bg  = st==='done'?'#1a3a1a':st==='issue'?'#2a1a1a':inProg?'#241d05':'#163016';
       const nc  = st==='done'?'#f0ead8':st==='issue'?'#f0ead8':'#5a8a5a';
@@ -424,7 +429,8 @@ function renderECContent() {
       if (st==='done')       ic = '<div style="font-size:14px;color:#4caf50;margin-top:4px;">✓</div>';
       else if (st==='issue') ic = '<div style="font-size:14px;color:#e53e3e;margin-top:4px;">⚠</div>';
       else if (inProg)       ic = '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:#d69e2e;margin-top:3px;">' + prog + '%</div>'
-                                + '<div style="background:#0a1a0a;border-radius:3px;height:4px;margin-top:4px;overflow:hidden;"><div style="height:100%;width:' + prog + '%;background:#d69e2e;border-radius:3px;transition:width .3s;"></div></div>';
+                                + '<div style="background:#0a1a0a;border-radius:3px;height:4px;margin-top:4px;overflow:hidden;"><div style="height:100%;width:' + prog + '%;background:#d69e2e;border-radius:3px;transition:width .3s;"></div></div>'
+                                + (_who ? '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:8px;color:' + (_live ? '#4ade80' : '#7a8f5a') + ';margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (_live ? '● ' : '') + _who + '</div>' : '');
       else                   ic = '<div style="font-size:14px;color:#3a6a3a;margin-top:4px;">—</div>';
       html += `<div style="background:${bg};border:2px solid ${bc};border-radius:12px;padding:16px 4px;text-align:center;cursor:pointer;" onclick="openBarnWalk('${_ecFarm}',${i})">
         <div style="font-size:9px;color:#5a8a5a;letter-spacing:1px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;">${t('prod.barn')}</div>
@@ -451,10 +457,15 @@ function renderECContent() {
         const d0 = det[key];
         if (!d0 || !(d0.pct > 0)) continue;
         const doneList = (d0.blocks || []).filter(k => k !== 'notes').map(lbl).join(' · ');
-        detHtml += `<div style="background:#141a05;border:1px solid #4a4a1a;border-radius:10px;padding:10px 13px;margin-bottom:7px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#f0ead8;">${t('prod.barn')} ${i}</span>
-            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#d69e2e;">${d0.pct}%${d0.by ? ' · 👤 ' + d0.by : ''}</span>
+        const _liveNow = !!(d0.ts && (Date.now() - d0.ts < 6 * 60000));
+        const _agoTxt = d0.ts
+          ? (_liveNow ? (_esL ? '🟢 activo ahora' : '🟢 active now')
+                      : (Math.floor((Date.now() - d0.ts) / 60000) + (_esL ? ' min' : 'm') + (_esL ? '' : ' ago')))
+          : '';
+        detHtml += `<div style="background:#141a05;border:1px solid ${_liveNow ? '#5a7a2a' : '#4a4a1a'};border-radius:10px;padding:10px 13px;margin-bottom:7px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#f0ead8;">${t('prod.barn')} ${i}${d0.by ? ' · 👤 ' + d0.by : ''}</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#d69e2e;">${d0.pct}%${_agoTxt ? ' · ' + _agoTxt : ''}</span>
           </div>
           ${doneList ? `<div style="font-size:10px;color:#86efac;margin-top:5px;line-height:1.6;">✓ ${doneList}</div>` : ''}
         </div>`;
@@ -558,6 +569,15 @@ function renderMWContent() {
 
 // ── Employee Daily Barn Check ──
 var _bwFarm = '', _bwHouse = 0, _bwData = {}, _bwChecklist = {}, _bwDocId = null;
+// Who completed each section, so opening a house shows what's done + by whom.
+// Persisted in the draft and shared across devices via the bwProgress doc.
+var _bwBlockBy = {};
+function _bwCurrentUser() {
+  var e = document.getElementById('bw-employee');
+  var v = (e && e.value ? e.value : '').trim();
+  if (v) return v;
+  return (typeof getDeviceUser === 'function' ? (getDeviceUser() || '') : '');
+}
 
 // Live per-house daily-check progress (0-100), keyed 'farm-house'. Shown on the
 // barn grid so a house fills in as each section/block is closed — instead of
@@ -586,88 +606,46 @@ function _bwReplayQueued() {
 }
 setTimeout(_bwReplayQueued, 6000);
 
-// ── RECOVER LOST DAILY CHECKS (v171) ────────────────────────────────────────
-// The Jul 1–2 confirm() bug bounced submits, but every answered walk left its
-// FULL DRAFT in this device's localStorage (drafts are only deleted after a
-// successful submit). On boot, any PAST-day draft found here is rebuilt into
-// a real barnWalks record (marked recovered:true) and uploaded — unless that
-// farm/house/date already has a real submission. Idempotent: the draft is
-// removed only after a confirmed write, failures retry next boot. Today's
-// draft is never touched (might be mid-walk); it becomes recoverable tomorrow.
+// ── NIGHTLY ROLLOVER: unsubmitted = incomplete + discarded ──────────────────
+// A daily check NOT submitted by midnight counts as INCOMPLETE and is DISCARDED
+// — every day starts fresh and nothing partial is ever auto-turned-in. On boot
+// we clear this device's PAST-DAY local drafts and best-effort delete stale
+// shared bwProgress docs. (Submits that were tapped but failed to upload are
+// replayed separately by _bwReplayQueued — those still get sent.) Today's draft
+// is never touched. Renamed behavior from the old v171 auto-recover per Joe.
 async function _bwRecoverLostDrafts() {
   try {
-    if (typeof db === 'undefined' || !db) return;
     const today = new Date().toISOString().slice(0, 10);
+    // 1. Discard this device's past-day local drafts.
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (k && k.indexOf('bwDraft-') === 0) keys.push(k);
     }
-    for (const k of keys) {
+    keys.forEach(function (k) {
       const date = k.slice(-10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date >= today) continue;   // past days only
-      const mid = k.slice(8, -11);                    // "<farm>-<house>"
-      const cut = mid.lastIndexOf('-');
-      if (cut < 1) continue;
-      const farm = mid.slice(0, cut), house = mid.slice(cut + 1);
-      let draft = null;
-      try { draft = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) {}
-      if (!draft) { localStorage.removeItem(k); continue; }
-      const f = draft.fields || {}, bd = draft.bwData || {}, cl = draft.bwChecklist || {};
-      const emp = String(f['bw-employee'] || '').trim();
-      if (!emp && !(draft.pct > 0)) continue;         // empty shell — ignore
-      // Already submitted for real? Just clear the stale draft.
-      try {
-        const dup = await db.collection('barnWalks')
-          .where('farm', '==', farm).where('house', '==', String(house)).where('date', '==', date)
-          .limit(1).get();
-        if (!dup.empty) { localStorage.removeItem(k); continue; }
-      } catch (e) { continue; }                        // offline → retry next boot
-      const num = id => (f[id] !== undefined && f[id] !== null && f[id] !== '') ? Number(f[id]) : null;
-      const flags = [];
-      if (bd.dryers === 'off')   flags.push('Manure dryers off');
-      if (bd.feather === 'poor') flags.push('Poor feathering');
-      if (bd.air === 'poor')     flags.push('Air quality anomaly');
-      if (bd.feed === 'empty')   flags.push('Feeders empty');
-      if (bd.eggbelt === 'down') flags.push('Egg belt not working');
-      if (bd.doors === 'open')   flags.push('House doors open');
-      const fails = Object.entries(cl).filter(([, v]) => v === 'fail').map(([kk]) => kk);
-      if (fails.length) flags.push('Checklist failures: ' + fails.join(', '));
-      const rec = {
-        farm, house: String(house), employee: emp, notes: f['bw-notes'] || '',
-        flags, waterPSI: null, temp: null,
-        mortCount: num('bw-mort-count'), looseCount: num('bw-loose-count'),
-        rodentCount: num('bw-rodent-count'), flyCount: num('bw-fly-count'),
-        weeklyRodentCount: num('bw-weekly-rodent-count'), feedBinReading: num('bw-feed-bin-reading'),
-        naFields: bd._na || {}, weeklyAck: !!bd._weeklyAck,
-        mort: bd.mort || null, feather: bd.feather || null, air: bd.air || null,
-        feed: bd.feed || null, rodent: bd.rodent || null, loose: bd.loose || null,
-        dryers: bd.dryers || null, eggbelt: bd.eggbelt || null,
-        stand: bd.stand || null, fly: bd.fly || null, mortrem: bd.mortrem || null,
-        doors: bd.doors || null, waste: bd.waste || null,
-        checklist: cl, checklistNotes: draft.clNotes || {},
-        checklistFails: fails.length, checklistTotal: Object.keys(cl).length,
-        cageClean: bd.cageclean || null,
-        cageCleanEmployee: bd._cageCleanEmployee || null,
-        cageCleanTime: bd._cageCleanTime || null,
-        pct: (typeof draft.pct === 'number') ? draft.pct : null,
-        recovered: true,
-        date,
-        time: draft.ts ? new Date(draft.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '',
-        ts: draft.ts || new Date(date + 'T17:00:00').getTime()
-      };
-      try {
-        await db.collection('barnWalks').add(rec);
-        localStorage.removeItem(k);
-        console.log('↺ Recovered lost daily check:', farm, 'H' + house, date);
-      } catch (e) { /* retry next boot */ }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date) && date < today) {
+        try { localStorage.removeItem(k); } catch (e) {}
+      }
+    });
+    // 2. Best-effort delete stale shared progress docs from earlier days.
+    if (typeof db !== 'undefined' && db) {
+      db.collection('bwProgress').where('date', '<', today).limit(50).get()
+        .then(function (snap) { snap.forEach(function (d) { d.ref.delete().catch(function () {}); }); })
+        .catch(function () {});
     }
   } catch (e) {}
 }
 setTimeout(_bwRecoverLostDrafts, 9000);
 function _bwComputePct() {
   try {
-    const vis = _bwVisibleBlocks();
+    // Only REAL data-entry sections count toward progress — never the always-
+    // optional/auto-complete ones: 'employee' auto-fills, 'checklist' has its
+    // own review gate, and 'cageclean'/'notes' are optional. Counting those made
+    // a freshly-opened house read 33–40% before anyone entered anything. Now a
+    // fresh house reads 0% and the % only climbs as the crew answers sections.
+    const SKIP = ['employee', 'checklist', 'cageclean', 'notes'];
+    const vis = _bwVisibleBlocks().filter(n => SKIP.indexOf(n) === -1);
     if (!vis.length) return 0;
     const done = vis.filter(n => bwBlockComplete(n)).length;
     return Math.round(done / vis.length * 100);
@@ -812,9 +790,9 @@ function bwSaveDraft() {
   try {
     const pct = _bwComputePct();
     BARN_PROGRESS[_bwFarm + '-' + _bwHouse] = pct;
-    localStorage.setItem('bwDraft-' + _bwFarm + '-' + _bwHouse + '-' + today,
-      JSON.stringify({ fields, bwData: _bwData, bwChecklist: _bwChecklist, clNotes, pct, ts: Date.now() }));
-    _bwPushProgress(pct);
+    const payload = { fields, bwData: _bwData, bwChecklist: _bwChecklist, clNotes, blockBy: _bwBlockBy, pct, ts: Date.now() };
+    localStorage.setItem('bwDraft-' + _bwFarm + '-' + _bwHouse + '-' + today, JSON.stringify(payload));
+    _bwPushProgress(pct, payload);
   } catch(e) {}
 }
 
@@ -824,22 +802,37 @@ function bwSaveDraft() {
 // per day, written only when the % actually changes. today.js's live listener
 // feeds it back into BARN_PROGRESS on all devices.
 var _bwLastPushedPct = {};
-function _bwPushProgress(pct) {
+var _bwPushTimer = null;
+var _bwPushPending = null;
+// Debounced push of the FULL in-progress draft to Firestore so any device that
+// opens this house continues the SAME check — showing what's done, by whom, and
+// what's left — instead of a fresh start. today.js's live listener also feeds
+// pct/by/blocks back into the barn grid + "In progress right now" strip.
+function _bwPushProgress(pct, payload) {
   try {
     if (!_bwFarm || typeof db === 'undefined' || !db) return;
-    if (typeof pct !== 'number') return;
     const key = _bwFarm + '-' + _bwHouse;
-    if (_bwLastPushedPct[key] === pct) return;      // no change → no write
-    _bwLastPushedPct[key] = pct;
     const today = new Date().toISOString().slice(0,10);
-    const by = (document.getElementById('bw-employee') || {}).value || '';
-    // Which sections are finished — so any device can show WHAT's done, live.
+    const by = _bwCurrentUser();
     let doneBlocks = [];
     try { doneBlocks = _bwVisibleBlocks().filter(n => bwBlockComplete(n)); } catch (e) {}
-    db.collection('bwProgress').doc(key + '-' + today)
-      .set({ farm: _bwFarm, house: String(_bwHouse), date: today, pct: pct, by: by, blocks: doneBlocks, ts: Date.now() }, { merge: true })
-      .catch(function () { _bwLastPushedPct[key] = null; });   // retry on next change
+    _bwPushPending = {
+      docId: key + '-' + today,
+      data: {
+        farm: _bwFarm, house: String(_bwHouse), date: today,
+        pct: (typeof pct === 'number' ? pct : 0), by: by, blocks: doneBlocks,
+        draft: payload || null, ts: Date.now()
+      }
+    };
+    if (_bwPushTimer) clearTimeout(_bwPushTimer);
+    _bwPushTimer = setTimeout(_bwFlushProgress, 1200);   // throttle so typing doesn't spam writes
   } catch (e) {}
+}
+function _bwFlushProgress() {
+  if (_bwPushTimer) { clearTimeout(_bwPushTimer); _bwPushTimer = null; }
+  const p = _bwPushPending; _bwPushPending = null;
+  if (!p || typeof db === 'undefined' || !db) return;
+  db.collection('bwProgress').doc(p.docId).set(p.data, { merge: true }).catch(function () {});
 }
 
 function bwRestoreFromData(data) {
@@ -1016,7 +1009,8 @@ function bwInitFlow() {
     }
     bar.onclick = () => bwExpandBlock(name);
     const title = (card.querySelector('.bw-card-title')?.textContent || name).trim();
-    bar.innerHTML = '<span class="bw-done-title">✅ ' + title + '</span>'
+    const _who = _bwBlockBy[name] ? (' · ' + (isEs ? 'por ' : 'by ') + _bwBlockBy[name]) : '';
+    bar.innerHTML = '<span class="bw-done-title">✅ ' + title + _who + '</span>'
       + '<span class="bw-done-edit">' + (isEs ? 'Tocar para editar' : 'Tap to edit') + '</span>';
     // Per-block DONE button (notes block uses the main Submit instead)
     let btn = card.querySelector('.bw-block-done-btn');
@@ -1057,6 +1051,8 @@ function bwCompleteBlock(name) {
   if (name === 'weekly' && !_bwData._weeklyAck) { _bwData._weeklyAck = true; bwSaveDraft(); }
   if (!bwBlockComplete(name)) return;
   const card = _bwCard(name); if (!card) return;
+  // Stamp who finished this section (for the shared "who did what" view)
+  if (!_bwBlockBy[name]) { _bwBlockBy[name] = _bwCurrentUser(); bwSaveDraft(); }
   card.classList.add('bw-collapsed');
   const vis = _bwVisibleBlocks();
   const i = vis.indexOf(name);
@@ -1134,7 +1130,7 @@ function bwSetCheck(key, val, btn) {
 }
 
 function openBarnWalk(farm, house) {
-  _bwFarm = farm; _bwHouse = house; _bwData = {}; _bwDocId = null;
+  _bwFarm = farm; _bwHouse = house; _bwData = {}; _bwDocId = null; _bwBlockBy = {};
   const _t = (typeof t === 'function') ? t : (k => k);
   const _bLbl = _t('prod.barn');
   const _isEs = (typeof _lang !== 'undefined' && _lang === 'es');
@@ -1160,6 +1156,8 @@ function openBarnWalk(farm, house) {
   // Remove any stale submitted banner and reset submit button
   const oldBanner = document.getElementById('bw-submitted-banner');
   if (oldBanner) oldBanner.remove();
+  const oldShared = document.getElementById('bw-shared-banner');
+  if (oldShared) oldShared.remove();
   const submitBtn = document.getElementById('bw-submit-btn');
   submitBtn.disabled = true;
   // Reset to the canonical English label — applyFormTextTranslation() called
@@ -1191,28 +1189,35 @@ function openBarnWalk(farm, house) {
 
   const today = new Date().toISOString().slice(0,10);
   const draftKey = 'bwDraft-' + farm + '-' + house + '-' + today;
+  const bsKey = farm + '-' + house;
+  const submitted = (typeof BARN_STATUS !== 'undefined') &&
+    (BARN_STATUS[bsKey] === 'done' || BARN_STATUS[bsKey] === 'issue');
 
-  // 1. Check for an in-progress draft first — but ONLY if this house hasn't
-  // already been submitted today. BARN_STATUS is live-synced from every
-  // device, so if the crew turned this house in, the REAL submitted record
-  // must load (step 2, with the "editing today's submission" banner) — not a
-  // stale local draft that makes it look like a fresh re-submit.
-  try {
-    const bsKey = farm + '-' + house;
-    const submitted = (typeof BARN_STATUS !== 'undefined') &&
-      (BARN_STATUS[bsKey] === 'done' || BARN_STATUS[bsKey] === 'issue');
-    if (!submitted) {
-      const draftStr = localStorage.getItem(draftKey);
-      if (draftStr) {
-        const draft = JSON.parse(draftStr);
-        bwRestoreFromData(draft);
-        bwInitFlow();
-        return;
+  // ── NOT submitted yet → continue the SHARED in-progress check ─────────────
+  // Load the fresher of this device's local draft and the team's shared draft
+  // (bwProgress), so whoever opens the house sees what's done, by whom, and
+  // what's left — never a fresh start while a walk is underway.
+  if (!submitted) {
+    let localDraft = null;
+    try { const s = localStorage.getItem(draftKey); if (s) localDraft = JSON.parse(s); } catch(e) {}
+    if (localDraft) { bwRestoreFromData(localDraft); _bwBlockBy = localDraft.blockBy || {}; bwInitFlow(); }
+    db.collection('bwProgress').doc(bsKey + '-' + today).get().then(function(doc) {
+      if (doc.exists) {
+        const d = doc.data() || {};
+        if (d.draft && (!localDraft || (d.ts || 0) > (localDraft.ts || 0))) {
+          bwRestoreFromData(d.draft);
+          _bwBlockBy = d.draft.blockBy || {};
+          bwInitFlow();
+          if (d.by && d.by !== _bwCurrentUser()) _bwShowSharedBanner(d.by);
+        }
+      } else if (!localDraft) {
+        _bwPrefillEmployeeFromLast(farm, house);
       }
-    }
-  } catch(e) {}
+    }).catch(function(){ if (!localDraft) _bwPrefillEmployeeFromLast(farm, house); });
+    return;
+  }
 
-  // 2. Check Firestore for today's already-submitted walk
+  // ── Already submitted today → load the real record to edit ────────────────
   db.collection('barnWalks')
     .where('farm','==',farm).where('house','==',String(house)).where('date','==',today)
     .limit(1).get()
@@ -1220,7 +1225,6 @@ function openBarnWalk(farm, house) {
       if (!snap.empty) {
         _bwDocId = snap.docs[0].id;
         bwRestoreFromData(bwRecordToDraft(snap.docs[0].data()));
-        // Show "editing previous submission" banner
         let banner = document.getElementById('bw-submitted-banner');
         if (!banner) {
           banner = document.createElement('div');
@@ -1235,18 +1239,41 @@ function openBarnWalk(farm, house) {
         const sb = document.getElementById('bw-submit-btn');
         if (sb) { sb.textContent = _isEs ? 'Actualizar Entrega' : 'Update Submission'; sb.style.background = '#1a3a4a'; }
         bwInitFlow();
-        return;
       }
-      // 3. No draft, no submission — pre-fill employee from last barn walk
-      db.collection('barnWalks').where('farm','==',farm).where('house','==',String(house))
-        .limit(20).get()
-        .then(snap2 => {
-          if (snap2.empty) return;
-          const docs = snap2.docs.map(d => d.data()).sort((a,b) => (b.ts||0) - (a.ts||0));
-          const e = document.getElementById('bw-employee');
-          if (e && !e.value) { e.value = docs[0].employee || ''; bwFlowRefresh(false); }
-        }).catch(()=>{});
     }).catch(()=>{});
+}
+
+// Pre-fill the employee name from this house's most recent walk (fresh start).
+function _bwPrefillEmployeeFromLast(farm, house) {
+  try {
+    db.collection('barnWalks').where('farm','==',farm).where('house','==',String(house))
+      .limit(20).get()
+      .then(function(snap2) {
+        if (snap2.empty) return;
+        const docs = snap2.docs.map(d => d.data()).sort((a,b) => (b.ts||0) - (a.ts||0));
+        const e = document.getElementById('bw-employee');
+        if (e && !e.value) { e.value = docs[0].employee || ''; bwFlowRefresh(false); }
+      }).catch(function(){});
+  } catch (e) {}
+}
+
+// Banner shown when you open a house someone else already started today.
+function _bwShowSharedBanner(byName) {
+  try {
+    const _isEs = (typeof _lang !== 'undefined' && _lang === 'es');
+    let banner = document.getElementById('bw-shared-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'bw-shared-banner';
+      banner.style.cssText = 'background:#10261a;border:1px solid #2a7a3a;border-radius:8px;padding:10px 14px;margin:0 0 12px;color:#8fe0a8;font-size:12px;font-family:"IBM Plex Mono",monospace;text-align:center;';
+      const sb = document.getElementById('bw-submit-btn');
+      if (sb && sb.parentNode) sb.parentNode.insertBefore(banner, sb);
+    }
+    banner.textContent = _isEs
+      ? '👥 Continuando el chequeo de ' + byName + ' — lo terminado ya está marcado abajo'
+      : '👥 Continuing ' + byName + '’s in-progress check — what’s done is already filled in';
+    banner.style.display = 'block';
+  } catch (e) {}
 }
 
 function closeBarnWalk() {
@@ -1650,6 +1677,15 @@ async function submitBarnWalk() {
   // Clear localStorage draft — data is now in Firestore
   const draftKey = 'bwDraft-' + _bwFarm + '-' + _bwHouse + '-' + record.date;
   try { localStorage.removeItem(draftKey); } catch(e) {}
+  // Captured → clear the SHARED in-progress draft so the house resets for the day.
+  try {
+    const _pk = _bwFarm + '-' + _bwHouse;
+    _bwLastPushedPct[_pk] = null;
+    if (_bwPushTimer) { clearTimeout(_bwPushTimer); _bwPushTimer = null; }
+    _bwPushPending = null;
+    _bwBlockBy = {};
+    if (typeof db !== 'undefined' && db) db.collection('bwProgress').doc(_pk + '-' + record.date).delete().catch(function(){});
+  } catch(e) {}
 
   // Keep form open for editing; show success banner and update button label
   const sBtn = document.getElementById('bw-submit-btn');
