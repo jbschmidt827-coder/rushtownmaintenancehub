@@ -576,6 +576,26 @@ function _bwCurrentUser() {
   return (typeof getDeviceUser === 'function' ? (getDeviceUser() || '') : '');
 }
 
+// Auto-submit a daily check the moment it hits 100% (every visible section
+// complete), so a finished check is never left "in progress · not turned in"
+// (which made the Daily Check tile read 0 done while a house sat at 100%).
+// Fires once per house, skips houses already submitted today, and — because
+// submitBarnWalk keeps the form open for edits — the crew can still tweak +
+// Update afterward.
+var _bwAutoSubbed = {};
+function _bwMaybeAutoSubmit() {
+  try {
+    if (_bwRestoring || !_bwFarm || !_bwHouse) return;
+    var key = _bwFarm + '-' + _bwHouse;
+    if (_bwAutoSubbed[key]) return;
+    if (typeof BARN_STATUS !== 'undefined' && (BARN_STATUS[key] === 'done' || BARN_STATUS[key] === 'issue')) return;
+    var vis = _bwVisibleBlocks();
+    if (!vis.length || !vis.every(function (n) { return bwBlockComplete(n); })) return;
+    _bwAutoSubbed[key] = true;
+    setTimeout(function () { try { if (typeof submitBarnWalk === 'function') submitBarnWalk(); } catch (e) {} }, 400);
+  } catch (e) {}
+}
+
 // Live per-house daily-check progress (0-100), keyed 'farm-house'. Shown on the
 // barn grid so a house fills in as each section/block is closed — instead of
 // sitting at "—" until submit. Held in memory for the session AND mirrored into
@@ -1100,6 +1120,7 @@ function bwFlowRefresh(fromTap) {
   // Record live completion % for this house so the barn grid can show it fill in
   if (_bwFarm && _bwHouse) BARN_PROGRESS[_bwFarm + '-' + _bwHouse] = _bwComputePct();
   checkBWReady();
+  _bwMaybeAutoSubmit();   // hit 100% → turn it in automatically (no dangling in-progress)
 }
 
 // items that auto-generate a WO on fail
