@@ -397,7 +397,10 @@ function renderManure() {
           var issue = manIssueActive(rec);
           if (issue) issueCount++;
           var chips = MAN_CHK_FIELDS.map(function (f) { return manChkBtn(farm, house, c, f, manChkState(rec, f)); }).join('');
-          var showPanel = issue || !!_manIssueOpen[_manCollKey(farm, house, c)];
+          var _ik = _manCollKey(farm, house, c);
+          // Show the panel when it's been opened, OR when an issue is active and
+          // the user hasn't explicitly collapsed it (tap ⚠ to collapse/expand).
+          var showPanel = (_manIssueOpen[_ik] === true) || (_manIssueOpen[_ik] !== false && issue);
           rows += '<div style="border-bottom:1px solid #163016;margin-bottom:8px;padding-bottom:8px;">' +
             '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
               '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:700;color:' + (issue ? '#f2a0a0' : '#9ab09a') + ';min-width:26px;">C' + c + '</span>' +
@@ -558,7 +561,10 @@ async function manureAllChecks(farm, house) {
 // ── Belt-run issues → Work Order ────────────────────────────────────────────
 function manureIssueToggle(farm, house, coll) {
   var k = _manCollKey(farm, house, coll);
-  _manIssueOpen[k] = !_manIssueOpen[k];
+  var active = manIssueActive(manRec(farm, house, coll));
+  // What's showing now? (explicitly opened, OR auto-open because an issue is active)
+  var shown = (_manIssueOpen[k] === true) || (_manIssueOpen[k] !== false && active);
+  _manIssueOpen[k] = !shown;   // flip — lets you collapse the panel even after flagging an issue
   renderManure();
 }
 
