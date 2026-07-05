@@ -248,27 +248,23 @@ function renderProdPanel() {
 
   // Per-location progress
   const FARM_BARNS = { Hegins: 8, Danville: 5 };
+  // Active (in-service) houses only — a house marked DOWN for repair is excluded
+  // from BOTH the count and the total, so the tile reads e.g. 1/4, not 1/5.
+  function _activeBarns(farm) {
+    const n = FARM_BARNS[farm] || 0; const arr = [];
+    for (let i = 1; i <= n; i++) { if (!(typeof isHouseDown === 'function' && isHouseDown(farm, i))) arr.push(i); }
+    return arr;
+  }
+  function farmTotal(farm) { return _activeBarns(farm).length; }
   function farmDone(farm) {
     // DAILY CHECK submissions ONLY (bs = BARN_STATUS). Counting morning walks
     // here (the old `|| ms[k]` behavior) made the Daily Check tile claim 4/5
     // while the barnWalks collection was EMPTY — a lying dashboard is worse
     // than no dashboard. Morning walks have their own tile now.
-    let d = 0;
-    const n = FARM_BARNS[farm] || 0;
-    for (let i = 1; i <= n; i++) {
-      const k = farm + '-' + i;
-      if (bs[k]==='done'||bs[k]==='issue') d++;
-    }
-    return d;
+    return _activeBarns(farm).filter(function (i) { const v = bs[farm + '-' + i]; return v === 'done' || v === 'issue'; }).length;
   }
   function farmIssues(farm) {
-    let d = 0;
-    const n = FARM_BARNS[farm] || 0;
-    for (let i = 1; i <= n; i++) {
-      const k = farm + '-' + i;
-      if (bs[k]==='issue') d++;
-    }
-    return d;
+    return _activeBarns(farm).filter(function (i) { return bs[farm + '-' + i] === 'issue'; }).length;
   }
   // Daily Check + Morning Walk tiles sit SIDE BY SIDE per farm (v166) — the
   // "Eggs Today" tile moved out of the bar (the egg KPI section below still
@@ -290,18 +286,19 @@ function renderProdPanel() {
     </div>`;
   }
   function locationTile(farm) {   // Daily Employee Check progress → tap for the house grid + live detail
-    return _progressTile('🐓', t('prod.kpi.checks'), farm, farmDone(farm), FARM_BARNS[farm], farmIssues(farm), '',
+    return _progressTile('🐓', t('prod.kpi.checks'), farm, farmDone(farm), farmTotal(farm), farmIssues(farm), '',
       "openECSection('" + farm + "')");
   }
   function morningTile(farm) {    // Morning Walk progress (+ late badge)
     const msMap = typeof MORNING_STATUS !== 'undefined' ? MORNING_STATUS : {};
-    const total = FARM_BARNS[farm];
+    const active = _activeBarns(farm);
+    const total = active.length;
     let d = 0, iss = 0;
-    for (let i = 1; i <= total; i++) {
+    active.forEach(function (i) {
       const v = msMap[farm + '-' + i];
       if (v === 'done' || v === 'issue') d++;
       if (v === 'issue') iss++;
-    }
+    });
     return _progressTile('☀️', t('prod.kpi.mw'), farm, d, total, iss, farmWalkDueBadge(farm, total),
       "openMWSection('" + farm + "')");
   }

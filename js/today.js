@@ -92,6 +92,11 @@ function _tdLiveKick() {
     try {
       if (document.getElementById('ec-content') && typeof renderECContent === 'function') renderECContent();
     } catch (e) {}
+    try {
+      // Production KPI tiles (Daily Check / Morning Walk counts) — refresh live so
+      // they're never stale when a check is submitted from any device.
+      if (document.getElementById('prod-kpi-bar') && typeof renderProdPanel === 'function') renderProdPanel();
+    } catch (e) {}
     try { if (typeof renderLandingStatus === 'function') renderLandingStatus(); } catch (e) {}
     // History tables refresh live too — but never while a detail modal is open
     // (a re-render underneath is fine; wiping the table mid-read is not).
