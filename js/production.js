@@ -271,9 +271,32 @@ function renderProdPanel() {
   // Daily Check + Morning Walk tiles sit SIDE BY SIDE per farm (v166) — the
   // "Eggs Today" tile moved out of the bar (the egg KPI section below still
   // shows whenever eggs are logged).
-  function _progressTile(icon, label, farm, d, total, iss, dueBadge, onclick) {
+  // Breakdown for the Daily Check tile: completed (submitted) · started
+  // (in progress, not yet submitted) · not started. done+started+notStarted=total.
+  function farmBreakdown(farm) {
+    let done = 0, started = 0, notStarted = 0;
+    _activeBarns(farm).forEach(function (i) {
+      const v = bs[farm + '-' + i];
+      if (v === 'done' || v === 'issue') { done++; return; }
+      const p = (typeof _bwHouseProgress === 'function') ? _bwHouseProgress(farm, i) : 0;
+      if (p > 0) started++; else notStarted++;
+    });
+    return { done: done, started: started, notStarted: notStarted };
+  }
+  function _progressTile(icon, label, farm, d, total, iss, dueBadge, onclick, bd) {
     const p   = total ? Math.round(d / total * 100) : 0;
     const col = p >= 80 ? '#4caf50' : p >= 40 ? '#d69e2e' : '#e53e3e';
+    const es  = (typeof _lang !== 'undefined' && _lang === 'es');
+    const bdRow = bd
+      ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:7px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;">
+           <span style="color:#4caf50;">✓ ${bd.done} ${es ? 'listas' : 'done'}</span>
+           <span style="color:#d69e2e;">⏳ ${bd.started} ${es ? 'en curso' : 'started'}</span>
+           <span style="color:#7a8a7a;">○ ${bd.notStarted} ${es ? 'sin empezar' : 'not started'}</span>
+         </div>`
+      : '';
+    const footer = bd
+      ? (iss > 0 ? `<div style="font-size:10px;color:#e53e3e;font-family:'IBM Plex Mono',monospace;margin-top:5px;">⚠ ${iss} ${es ? 'marcada' + (iss !== 1 ? 's' : '') : 'flagged'}</div>` : '')
+      : (iss > 0 ? `<div style="font-size:10px;color:#e53e3e;font-family:'IBM Plex Mono',monospace;margin-top:5px;">⚠ ${iss} flagged</div>` : `<div style="font-size:10px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;margin-top:5px;">${d===total&&total?'✅ All checked':'—'}</div>`);
     return `<div ${onclick ? 'onclick="' + onclick + '"' : ''} style="background:#0f2a0f;border:1px solid #2a5a2a;border-radius:12px;padding:12px 14px;${onclick ? 'cursor:pointer;' : ''}">
       <div style="font-size:9px;color:#5a8a5a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">${icon} ${farm} · ${label}</div>
       <div style="display:flex;align-items:baseline;gap:6px;">
@@ -283,13 +306,14 @@ function renderProdPanel() {
       <div style="background:#163016;border-radius:3px;height:5px;overflow:hidden;margin-top:8px;">
         <div style="height:100%;background:${col};width:${p}%;border-radius:3px;transition:width 0.4s;"></div>
       </div>
-      ${iss > 0 ? `<div style="font-size:10px;color:#e53e3e;font-family:'IBM Plex Mono',monospace;margin-top:5px;">⚠ ${iss} flagged</div>` : `<div style="font-size:10px;color:#3a6a3a;font-family:'IBM Plex Mono',monospace;margin-top:5px;">${d===total&&total?'✅ All checked':'—'}</div>`}
+      ${bdRow}
+      ${footer}
       ${dueBadge || ''}
     </div>`;
   }
   function locationTile(farm) {   // Daily Employee Check progress → tap for the house grid + live detail
     return _progressTile('🐓', t('prod.kpi.checks'), farm, farmDone(farm), farmTotal(farm), farmIssues(farm), '',
-      "openECSection('" + farm + "')");
+      "openECSection('" + farm + "')", farmBreakdown(farm));
   }
   function morningTile(farm) {    // Morning Walk progress (+ late badge)
     const msMap = typeof MORNING_STATUS !== 'undefined' ? MORNING_STATUS : {};
@@ -302,7 +326,7 @@ function renderProdPanel() {
       if (v === 'issue') iss++;
     });
     return _progressTile('☀️', t('prod.kpi.mw'), farm, d, total, iss, farmWalkDueBadge(farm, total),
-      "openMWSection('" + farm + "')");
+      "openMWSection('" + farm + "')", { done: d, started: 0, notStarted: total - d });
   }
 
   const kpiBar = document.getElementById('prod-kpi-bar');
