@@ -257,11 +257,16 @@ function renderProdPanel() {
   }
   function farmTotal(farm) { return _activeBarns(farm).length; }
   function farmDone(farm) {
-    // DAILY CHECK submissions ONLY (bs = BARN_STATUS). Counting morning walks
-    // here (the old `|| ms[k]` behavior) made the Daily Check tile claim 4/5
-    // while the barnWalks collection was EMPTY — a lying dashboard is worse
-    // than no dashboard. Morning walks have their own tile now.
-    return _activeBarns(farm).filter(function (i) { const v = bs[farm + '-' + i]; return v === 'done' || v === 'issue'; }).length;
+    // Done = a SUBMITTED daily check (BARN_STATUS) OR one that's 100% complete
+    // (every section filled). The crew often finishes a house without tapping
+    // Submit, so a 100% house still counts as done here — auto-submit finalizes
+    // the record when that check is next opened. _bwHouseProgress reads the
+    // cross-device-synced BARN_PROGRESS, so this is correct on every device.
+    return _activeBarns(farm).filter(function (i) {
+      const v = bs[farm + '-' + i];
+      if (v === 'done' || v === 'issue') return true;
+      return (typeof _bwHouseProgress === 'function') && _bwHouseProgress(farm, i) >= 100;
+    }).length;
   }
   function farmIssues(farm) {
     return _activeBarns(farm).filter(function (i) { return bs[farm + '-' + i] === 'issue'; }).length;
@@ -410,10 +415,11 @@ function renderECContent() {
     let html = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">`;
     for (let i = 1; i <= cnt; i++) {
       const key = _ecFarm + '-' + i;
-      const st  = bs[key] || 'pending';
+      let st    = bs[key] || 'pending';
       // Live progress for a house that's been started but not yet submitted —
       // the % fills in as each section/block is closed.
       const prog   = st === 'pending' ? _bwHouseProgress(_ecFarm, i) : (st === 'done' ? 100 : null);
+      if (st === 'pending' && prog >= 100) st = 'done';   // 100% = done (auto-submits when opened)
       const inProg = st === 'pending' && prog > 0;
       // Who's working it right now (live) — green dot if updated in the last 6 min.
       const _pd   = inProg ? (_prog[key] || {}) : {};
@@ -453,6 +459,7 @@ function renderECContent() {
         if (bs[key] === 'done' || bs[key] === 'issue') continue;   // submitted → tile shows ✓
         const d0 = det[key];
         if (!d0 || !(d0.pct > 0)) continue;
+        if (d0.pct >= 100) continue;   // 100% now reads as done on the card, not "in progress"
         const doneList = (d0.blocks || []).filter(k => k !== 'notes').map(lbl).join(' · ');
         const _liveNow = !!(d0.ts && (Date.now() - d0.ts < 6 * 60000));
         const _agoTxt = d0.ts
