@@ -616,6 +616,10 @@ function _bwMaybeAutoSubmit() {
     var key = _bwFarm + '-' + _bwHouse;
     if (_bwAutoSubbed[key]) return;
     if (typeof BARN_STATUS !== 'undefined' && (BARN_STATUS[key] === 'done' || BARN_STATUS[key] === 'issue')) return;
+    // Auto-fill the name from this device's user so a finished check isn't stuck
+    // on an empty name field (the only block excluded from the % but required to submit).
+    var _emp = document.getElementById('bw-employee');
+    if (_emp && !_emp.value.trim() && typeof getDeviceUser === 'function') { var _du = getDeviceUser(); if (_du) _emp.value = _du; }
     var vis = _bwVisibleBlocks();
     if (!vis.length || !vis.every(function (n) { return bwBlockComplete(n); })) return;
     _bwAutoSubbed[key] = true;
@@ -1147,8 +1151,11 @@ function bwFlowRefresh(fromTap) {
   // Record live completion % for this house so the barn grid can show it fill in
   if (_bwFarm && _bwHouse) BARN_PROGRESS[_bwFarm + '-' + _bwHouse] = _bwComputePct();
   checkBWReady();
-  // NOTE: auto-submit disabled — it made checks look "done" without a saved
-  // record. A check now only counts/logs when the crew taps ✓ Submit Daily Check.
+  // At 100% (all sections done) auto-submit so a finished check COUNTS as done
+  // without a separate Submit tap. This writes a REAL barnWalks record (no display
+  // hack) — done still means submitted — and also fires when a stuck 100% check is
+  // re-opened, so it self-heals.
+  _bwMaybeAutoSubmit();
 }
 
 // items that auto-generate a WO on fail
@@ -1270,7 +1277,8 @@ function openBarnWalk(farm, house) {
     .then(snap => {
       if (!snap.empty) {
         _bwDocId = snap.docs[0].id;
-        bwRestoreFromData(bwRecordToDraft(snap.docs[0].data()));
+        const _rec = snap.docs[0].data();
+        bwRestoreFromData(bwRecordToDraft(_rec));
         let banner = document.getElementById('bw-submitted-banner');
         if (!banner) {
           banner = document.createElement('div');
@@ -1279,9 +1287,28 @@ function openBarnWalk(farm, house) {
           const sb = document.getElementById('bw-submit-btn');
           if (sb) sb.parentNode.insertBefore(banner, sb);
         }
-        banner.textContent = _isEs
+        var _head = _isEs
           ? '✏️ Editando la entrega de hoy — los cambios actualizarán el registro existente'
           : '✏️ Editing today\'s submission — changes will update the existing record';
+        var _flags = (_rec.flags && _rec.flags.length) ? _rec.flags : [];
+        if (_flags.length) {
+          var _esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+          banner.style.background = '#3a1f0f';
+          banner.style.border = '1px solid #d69e2e';
+          banner.style.color = '#f0c674';
+          banner.style.textAlign = 'left';
+          banner.innerHTML = '<div style="text-align:center;color:#7ab8d0;margin-bottom:8px;">' + _esc(_head) + '</div>'
+            + '<div style="font-weight:700;color:#f0c674;margin-bottom:4px;">' + (_isEs ? '⚠ Marcado:' : '⚠ Flagged:') + '</div>'
+            + '<ul style="margin:0;padding-left:18px;line-height:1.5;">'
+            + _flags.map(function (f) { return '<li>' + _esc(f) + '</li>'; }).join('')
+            + '</ul>';
+        } else {
+          banner.style.background = '#0f2a3a';
+          banner.style.border = '1px solid #3a8ac0';
+          banner.style.color = '#7ab8d0';
+          banner.style.textAlign = 'center';
+          banner.textContent = _head;
+        }
         const sb = document.getElementById('bw-submit-btn');
         if (sb) { sb.textContent = _isEs ? 'Actualizar Entrega' : 'Update Submission'; sb.style.background = '#1a3a4a'; }
         bwInitFlow();
@@ -1985,10 +2012,30 @@ function _mwShowSubmittedBanner(rec) {
       if (sb0 && sb0.parentNode) sb0.parentNode.insertBefore(banner, sb0);
     }
     var who = (rec.contributors && rec.contributors.length) ? rec.contributors.join(', ') : (rec.employee || '');
-    banner.textContent = (_isEs ? '✏️ Entrega de hoy' : '✏️ Today\'s entry')
+    var head = (_isEs ? '✏️ Entrega de hoy' : '✏️ Today\'s entry')
       + (who ? (_isEs ? ' — por ' : ' — by ') + who : '')
       + (rec.time ? ' · ' + rec.time : '')
       + (_isEs ? ' — edita y toca Actualizar' : ' — edit & tap Update');
+    var flags = (rec.flags && rec.flags.length) ? rec.flags : [];
+    if (flags.length) {
+      // This walk was flagged — show WHAT was flagged so a tap reveals the issues.
+      var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+      banner.style.background = '#3a1f0f';
+      banner.style.border = '1px solid #d69e2e';
+      banner.style.color = '#f0c674';
+      banner.style.textAlign = 'left';
+      banner.innerHTML = '<div style="text-align:center;color:#7ab8d0;margin-bottom:8px;">' + esc(head) + '</div>'
+        + '<div style="font-weight:700;color:#f0c674;margin-bottom:4px;">' + (_isEs ? '⚠ Marcado:' : '⚠ Flagged:') + '</div>'
+        + '<ul style="margin:0;padding-left:18px;line-height:1.5;">'
+        + flags.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('')
+        + '</ul>';
+    } else {
+      banner.style.background = '#0f2a3a';
+      banner.style.border = '1px solid #3a8ac0';
+      banner.style.color = '#7ab8d0';
+      banner.style.textAlign = 'center';
+      banner.textContent = head;
+    }
     banner.style.display = 'block';
     var sb = document.getElementById('mw-submit-btn');
     if (sb) { sb.textContent = _isEs ? 'Actualizar Entrega' : 'Update Submission'; sb.disabled = false; }
