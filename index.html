@@ -810,18 +810,9 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
         </div>
       </div>
 
-      <!-- Today — what's left / needs attention (rendered by today.js) -->
-      <div id="today-panel" style="margin-bottom:12px;"></div>
-
-      <!-- Daily Scorecard — Six Sigma CTQ view, scoped to this location -->
-      <button data-role-dept="mgmt" onclick="openScorecard()" class="hub-card" style="width:100%;padding:16px 16px;background:linear-gradient(135deg,#10241a,#0d1f3a);border:2px solid #4ade80;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;margin-bottom:10px;">
-        <span style="font-size:30px;line-height:1;">📈</span>
-        <div style="flex:1;">
-          <div data-i18n="landing.scorecard" style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:#f0ead8;letter-spacing:1.5px;text-transform:uppercase;">Daily Scorecard</div>
-          <div data-i18n="landing.scorecard_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7ab07a;line-height:1.4;margin-top:3px;">Livability &amp; maintenance CTQs · red flags · trends</div>
-        </div>
-        <span style="font-size:20px;color:#4ade80;">→</span>
-      </button>
+      <!-- Today panel + Daily Scorecard card removed per Joe (2026-07-06).
+           renderTodayPanel no-ops (its #today-panel target is gone); scorecard.js
+           + #scorecard-overlay stay in place, just no home entry point. -->
 
       <!-- 2-column card grid -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
@@ -5251,7 +5242,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260706-localday"></script>
+<script defer src="js/core.js?v=20260706-trimhome"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
