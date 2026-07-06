@@ -257,15 +257,12 @@ function renderProdPanel() {
   }
   function farmTotal(farm) { return _activeBarns(farm).length; }
   function farmDone(farm) {
-    // Done = a SUBMITTED daily check (BARN_STATUS) OR one that's 100% complete
-    // (every section filled). The crew often finishes a house without tapping
-    // Submit, so a 100% house still counts as done here — auto-submit finalizes
-    // the record when that check is next opened. _bwHouseProgress reads the
-    // cross-device-synced BARN_PROGRESS, so this is correct on every device.
+    // Done = a SUBMITTED daily check only (BARN_STATUS done/issue). We do NOT
+    // count in-progress 100% here — a house is only "done" once it's actually
+    // saved to barnWalks, so the tile never claims a check that isn't in the log.
     return _activeBarns(farm).filter(function (i) {
       const v = bs[farm + '-' + i];
-      if (v === 'done' || v === 'issue') return true;
-      return (typeof _bwHouseProgress === 'function') && _bwHouseProgress(farm, i) >= 100;
+      return v === 'done' || v === 'issue';
     }).length;
   }
   function farmIssues(farm) {
@@ -415,11 +412,11 @@ function renderECContent() {
     let html = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">`;
     for (let i = 1; i <= cnt; i++) {
       const key = _ecFarm + '-' + i;
-      let st    = bs[key] || 'pending';
+      const st  = bs[key] || 'pending';
       // Live progress for a house that's been started but not yet submitted —
-      // the % fills in as each section/block is closed.
+      // the % fills in as each section/block is closed. It stays "in progress"
+      // (amber) until the check is actually SUBMITTED — a 100% draft is not "done".
       const prog   = st === 'pending' ? _bwHouseProgress(_ecFarm, i) : (st === 'done' ? 100 : null);
-      if (st === 'pending' && prog >= 100) st = 'done';   // 100% = done (auto-submits when opened)
       const inProg = st === 'pending' && prog > 0;
       // Who's working it right now (live) — green dot if updated in the last 6 min.
       const _pd   = inProg ? (_prog[key] || {}) : {};
@@ -459,7 +456,6 @@ function renderECContent() {
         if (bs[key] === 'done' || bs[key] === 'issue') continue;   // submitted → tile shows ✓
         const d0 = det[key];
         if (!d0 || !(d0.pct > 0)) continue;
-        if (d0.pct >= 100) continue;   // 100% now reads as done on the card, not "in progress"
         const doneList = (d0.blocks || []).filter(k => k !== 'notes').map(lbl).join(' · ');
         const _liveNow = !!(d0.ts && (Date.now() - d0.ts < 6 * 60000));
         const _agoTxt = d0.ts
@@ -1127,7 +1123,8 @@ function bwFlowRefresh(fromTap) {
   // Record live completion % for this house so the barn grid can show it fill in
   if (_bwFarm && _bwHouse) BARN_PROGRESS[_bwFarm + '-' + _bwHouse] = _bwComputePct();
   checkBWReady();
-  _bwMaybeAutoSubmit();   // hit 100% → turn it in automatically (no dangling in-progress)
+  // NOTE: auto-submit disabled — it made checks look "done" without a saved
+  // record. A check now only counts/logs when the crew taps ✓ Submit Daily Check.
 }
 
 // items that auto-generate a WO on fail
