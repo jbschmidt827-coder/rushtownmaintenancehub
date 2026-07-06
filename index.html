@@ -803,7 +803,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 
       <!-- Location header: name of the site you're inside -->
       <div style="display:flex;align-items:center;gap:12px;padding:14px 2px 18px;">
-        <button data-i18n="landing.locations" onclick="showLocationPicker()" style="padding:9px 14px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">← Locations</button>
+        <button data-i18n="landing.back" onclick="appGoBack()" style="padding:9px 14px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#7ab07a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">← Back</button>
         <div style="flex:1;min-width:0;">
           <div id="loc-home-title" style="font-family:'Bebas Neue',sans-serif;font-size:34px;color:#f0ead8;letter-spacing:3px;line-height:1;">HEGINS</div>
           <div id="loc-home-sub" data-i18n="landing.this_loc" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#4ade80;letter-spacing:2px;text-transform:uppercase;margin-top:3px;">This location only</div>
@@ -5264,7 +5264,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/danville-loadout.js?v=20260524b"></script>
 <script defer src="js/production.js?v=20260706-flags2"></script>
 <script defer src="js/scorecard.js?v=20260706-localday"></script>
-<script defer src="js/help.js?v=20260703-sharedcheck"></script>
+<script defer src="js/help.js?v=20260706-backbtn"></script>
 <script defer src="js/time-blocks.js?v=20260612f-heginstimes"></script>
 <script defer src="js/feed-mill.js?v=20260612g-v71"></script>
 <script defer src="js/egg-quality.js?v=20260424"></script>

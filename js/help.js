@@ -268,7 +268,7 @@ const HELP_CONTENT = [
         ],
         detail: [
           { en: 'The app remembers your last location for next time.', es: 'La app recuerda tu última ubicación para la próxima vez.' },
-          { en: 'To switch while inside, tap ← Locations to go back to the picker.', es: 'Para cambiar estando adentro, toca ← Ubicaciones para volver al selector.' },
+          { en: 'Tap ← Back (top-left) to step back one screen; from a site home it returns to the location picker.', es: 'Toca ← Atrás (arriba a la izquierda) para retroceder una pantalla; desde el inicio de un sitio vuelve al selector de ubicación.' },
         ],
       },
       {
