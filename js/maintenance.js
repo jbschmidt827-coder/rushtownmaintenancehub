@@ -1645,7 +1645,7 @@ async function savePMProcedure() {
     await db.collection('activityLog').add({
       type:'pm', id: t.defId,
       desc: `PM procedure edited: ${t.sys} — ${t.task} (${cleaned.instructions.length} step${cleaned.instructions.length===1?'':'s'})`,
-      tech: author, date: new Date().toISOString().slice(0,10), ts: Date.now()
+      tech: author, date: LDATE(), ts: Date.now()
     });
     setSyncDot('live');
     closePMProcedureEditor();
@@ -1843,7 +1843,7 @@ function toggleCheckin(farm, name, todayKey) {
   db.collection('dailyCheckins').doc(todayKey).set({
     crew: dailyCheckins[todayKey],
     farm,
-    date: new Date().toISOString().slice(0,10),
+    date: LDATE(),
     ts: firebase.firestore.FieldValue.serverTimestamp()
   }).catch(e=>console.error(e));
 }
@@ -1865,7 +1865,7 @@ function openBriefing(farm) {
 
   // Crew check-in buttons
   const crew = SITE_TECHS[farm] || [];
-  const todayKey = `checkin-${farm}-${new Date().toISOString().slice(0,10)}`;
+  const todayKey = `checkin-${farm}-${LDATE()}`;
   // Load today's check-ins from memory (already loaded from Firebase)
   const checkedIn = dailyCheckins[todayKey] || [];
   document.getElementById('briefing-crew').innerHTML = crew.map(name => {
@@ -3439,7 +3439,7 @@ function prodOpenHouse(n) {
   PROD_HEADER = {
     house: String(n),
     tech: CL.w || '',
-    date: new Date().toISOString().slice(0,10),
+    date: LDATE(),
     shift: 'day',
     start: new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}),
     end: ''
@@ -4071,6 +4071,9 @@ function goHome() {
   document.querySelectorAll('.overlay').forEach(function(el) {
     el.style.display = 'none';
   });
+  // Release any scroll-lock a modal left on (barn-entry / TV set body overflow
+  // hidden) — without this the home page can't scroll = "home locks up".
+  try { document.body.style.overflow = ''; } catch (e) {}
 
   // ── Show landing, hide app chrome ───────────────────────────────
   document.getElementById('landing-screen').style.display = 'flex';
@@ -4114,7 +4117,7 @@ async function updateHomeFeedStatus() {
       snap.forEach(function(d){ bins.push(d.data()); });
     }
     if (!readings.length) {
-      var today = new Date().toISOString().slice(0,10);
+      var today = LDATE();
       // get last 7 days of readings for latest per-bin
       var rSnap = await db.collection('feedReadings').orderBy('date','desc').limit(200).get();
       rSnap.forEach(function(d){ readings.push(d.data()); });
@@ -4158,7 +4161,7 @@ var MORNING_STATUS = {};
 var _todayMortTotal = 0;
 
 async function loadTodayStatus() {
-  var today = new Date().toISOString().slice(0,10);
+  var today = LDATE();
   try {
     var bSnap = await db.collection('barnWalks').where('date','==',today).get();
     bSnap.forEach(function(d) {
@@ -4334,10 +4337,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // ═══════════════════════════════════════════
 // OPS DATA - shared by barn walk and operations dashboard
 var OPS_DATA = { mortality:{}, temp:{}, psi:{} };
-var OPS_TODAY = new Date().toISOString().slice(0,10);
+var OPS_TODAY = LDATE();
 
 async function opsLoadToday() {
-  OPS_TODAY = new Date().toISOString().slice(0,10);
+  OPS_TODAY = LDATE();
   try {
     var snap = await db.collection('opsLogs').where('date','==',OPS_TODAY).get();
     OPS_DATA = { mortality:{}, temp:{}, psi:{} };
@@ -4456,7 +4459,7 @@ function opsBwInitForHouse() { opsBwRenderMort(); opsBwRenderTemp(); opsBwRender
 
 // Operations dashboard
 function openOperations() {
-  OPS_TODAY = new Date().toISOString().slice(0,10);
+  OPS_TODAY = LDATE();
   document.getElementById('ops-overlay').style.display = 'block';
   document.getElementById('ops-hdr-date').textContent =
     new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
@@ -4633,7 +4636,7 @@ async function seedMortalityCompostingWI() {
     if (!check.empty) return; // already seeded — never run twice
   } catch(e) { return; }
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = LDATE();
   const author = 'Rushtown Poultry / NRCS';
 
   const instructions = [
@@ -4731,7 +4734,7 @@ async function seedWaterRegulatorWI() {
     if (!check.empty) return;
   } catch(e) { return; }
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = LDATE();
   await db.collection('workInstructions').add({
     wiId: SEED_ID,
     title: 'Water Regulator Replacement — Houses 5–8',
@@ -4766,7 +4769,7 @@ async function seedAugerRollerWI() {
     if (!check.empty) return;
   } catch(e) { return; }
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = LDATE();
   await db.collection('workInstructions').add({
     wiId: SEED_ID,
     title: 'Auger Roller — Cleaning, Replacement & Preventive Maintenance',
@@ -4808,7 +4811,7 @@ async function seedCounterCardWI() {
     if (!check.empty) return;
   } catch(e) { return; }
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = LDATE();
   await db.collection('workInstructions').add({
     wiId: SEED_ID,
     title: 'Counter Card Reset — Houses 5–8 (PMSI Controls)',
@@ -4879,7 +4882,7 @@ async function seedRushtownOpsWI() {
   // If every single seed ID already exists, nothing to do
   if (SEED_IDS.every(id => existingIds.has(id))) return;
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = LDATE();
   const author = 'Rushtown Poultry';
   const base = Date.now();
 
@@ -7454,7 +7457,7 @@ async function saveWI() {
   btn.textContent = 'Saving...'; btn.disabled = true;
 
   try {
-    const date = new Date().toISOString().slice(0,10);
+    const date = LDATE();
     if (editingWIId) {
       // Resolve the Firestore doc ID — match by wiId OR _fbId (legacy docs may have only one).
       // Asymmetry with openWIView/_openWIForm was the long-standing root cause of "edits don't save".

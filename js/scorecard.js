@@ -10,7 +10,7 @@
   const L = (en, es) => (typeof _lang !== 'undefined' && _lang === 'es') ? es : en;
 
   // ── small stats helpers ──────────────────────────────────────────────────
-  const iso        = d => d.toISOString().slice(0, 10);
+  const iso        = d => (typeof LDATE === 'function' ? LDATE(d) : d.toISOString().slice(0, 10));
   const daysAgoISO = n => { const d = new Date(); d.setDate(d.getDate() - n); return iso(d); };
   const num        = n => (typeof fmtNum === 'function' ? fmtNum(Math.round(n)) : String(Math.round(n)));
   const mean       = a => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
@@ -143,7 +143,8 @@
     const COMP_H = { Hegins: [1, 2, 3, 4, 5, 6, 7, 8], Danville: [1, 2, 3, 4, 5] };
     const MAN_H = (typeof MANURE_HOUSES !== 'undefined') ? MANURE_HOUSES : { Hegins: [4, 5, 6, 7, 8], Danville: [1, 2, 3, 4, 5] };
     let cDone = 0, cApp = 0, mwD = 0, mwA = 0, ckD = 0, ckA = 0, mnD = 0, mnA = 0;
-    farms.forEach(f => (COMP_H[f] || []).forEach(h => {
+    const _actH = f => (COMP_H[f] || []).filter(h => !(typeof isHouseDown === 'function' && isHouseDown(f, h)));
+    farms.forEach(f => _actH(f).forEach(h => {
       const key = f + '|' + h;
       mwA++; if (mwSet.has(key)) mwD++;
       ckA++; if (ckSet.has(key)) ckD++;
@@ -174,7 +175,7 @@
       const trend = [];
       for (let di = 6; di >= 0; di--) {
         const ds = daysAgoISO(di); let dn = 0, da = 0;
-        farms.forEach(f => (COMP_H[f] || []).forEach(h => {
+        farms.forEach(f => _actH(f).forEach(h => {
           const key = f + '|' + h;
           da += 2; if (mwBy[ds] && mwBy[ds].has(key)) dn++; if (ckBy[ds] && ckBy[ds].has(key)) dn++;
           if ((MAN_H[f] || []).indexOf(h) !== -1) { da++; if (msBy[ds] && msBy[ds].has(key)) dn++; }

@@ -48,6 +48,9 @@
   }
 
   function appGoBack() {
+    // Always release a scroll-lock a modal may have left on (barn-entry / TV
+    // set body overflow:hidden) so going Back never leaves the page frozen.
+    try { document.body.style.overflow = ''; } catch (e) {}
     // 1) Close whatever overlay/modal is on top.
     if (_closeTopLayer()) return true;
     // 2) Inside the app (panels showing) → back to the landing/home.

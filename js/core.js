@@ -778,7 +778,18 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v183 · Jul 6 2026';
+var APP_VERSION = 'v185 · Jul 6 2026';
+
+// LOCAL calendar day "YYYY-MM-DD". Everything that means "today" must use this,
+// NOT new Date().toISOString().slice(0,10) — toISOString is UTC, so on Eastern
+// time after ~8 PM the UTC date is already tomorrow and evening checks landed on
+// the wrong day. LDATE() rolls over at LOCAL midnight. Pass a Date to format it.
+function LDATE(d) {
+  d = d || new Date();
+  var y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), dd = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + dd;
+}
+if (typeof window !== 'undefined') window.LDATE = LDATE;
 
 // ── Device heartbeat + fleet tracker (v166) ─────────────────────────────────
 // Every device reports {who, version, site, last seen} shortly after boot.

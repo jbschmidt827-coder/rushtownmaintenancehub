@@ -30,7 +30,7 @@ var _tdLiveDate = null, _tdLiveUnsubs = [], _tdKickTimer = null;
 function _tdArmLive() {
   try {
     if (typeof db === 'undefined' || !db) return;
-    var today = new Date().toISOString().slice(0, 10);
+    var today = LDATE();
     if (_tdLiveDate === today) return;                    // already armed
     _tdLiveUnsubs.forEach(function (u) { try { u(); } catch (e) {} });
     _tdLiveUnsubs = [];
@@ -138,7 +138,7 @@ async function renderTodayPanel() {
   if (!el) return;
   var pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
   var layerFarms = _tdLayerFarms();
-  var today = new Date().toISOString().slice(0, 10);
+  var today = LDATE();
 
   // ── In-memory items (sync): urgent WOs + overdue PMs, scoped to the site ──
   var wos = (typeof workOrders !== 'undefined' && Array.isArray(workOrders)) ? workOrders : [];

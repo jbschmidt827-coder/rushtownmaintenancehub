@@ -7,7 +7,7 @@ const EGG_BIRDS_PER_BARN = 150000;
 // numbers; Master combines everything. `pref` is null at Master, which means
 // "all locations" — the same convention every farm filter in the app uses.
 async function renderLandingStatus() {
-  const today = new Date().toISOString().slice(0,10);
+  const today = LDATE();
   const badge = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
   const pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
   const here = (rowFarm) => !pref || rowFarm === pref;   // Master → keep all
@@ -164,7 +164,7 @@ async function saveScheduleSettings() {
 var _lateWalkFlagged = {};
 function checkLateWalks() {
   if (typeof db === 'undefined' || typeof MORNING_STATUS === 'undefined') return;
-  const today = new Date().toISOString().slice(0,10);
+  const today = LDATE();
   Object.keys(FARM_SCHEDULE).forEach(farm => {
     const cfg = FARM_SCHEDULE[farm];
     const total = farm === 'Hegins' ? 8 : 5;
@@ -231,7 +231,7 @@ function renderProdPanel() {
   const done   = [...allKeys].filter(k => inScope(k) && (bs[k]==='done'||bs[k]==='issue'||ms[k]==='done'||ms[k]==='issue')).length;
   const issues = Object.entries(bs).filter(([k,s]) => inScope(k) && s==='issue').length;
   const pct    = Math.round(done / totalBarns * 100);
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = LDATE();
 
   // Sum today's eggs per farm+house
   const eggMap = {};  // key: "Farm-House" → total eggs
@@ -659,7 +659,7 @@ setTimeout(_bwReplayQueued, 6000);
 // is never touched. Renamed behavior from the old v171 auto-recover per Joe.
 async function _bwRecoverLostDrafts() {
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = LDATE();
     // 1. Discard this device's past-day local drafts.
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) {
@@ -697,7 +697,7 @@ function _bwComputePct() {
 }
 function _bwDraftPct(farm, house) {
   try {
-    const today = new Date().toISOString().slice(0,10);
+    const today = LDATE();
     const raw = localStorage.getItem('bwDraft-' + farm + '-' + house + '-' + today);
     if (!raw) return null;
     const d = JSON.parse(raw);
@@ -820,7 +820,7 @@ function bwUpdateTimeBadge() {
 // ── Barn Walk Draft Persistence ──
 function bwSaveDraft() {
   if (!_bwFarm) return;
-  const today = new Date().toISOString().slice(0,10);
+  const today = LDATE();
   const fields = {};
   ['bw-employee','bw-notes','bw-mort-count','bw-loose-count','bw-rodent-count',
    'bw-fly-count','bw-weekly-rodent-count','bw-feed-bin-reading'].forEach(id => {
@@ -856,7 +856,7 @@ function _bwPushProgress(pct, payload) {
   try {
     if (!_bwFarm || typeof db === 'undefined' || !db) return;
     const key = _bwFarm + '-' + _bwHouse;
-    const today = new Date().toISOString().slice(0,10);
+    const today = LDATE();
     const by = _bwCurrentUser();
     let doneBlocks = [];
     try { doneBlocks = _bwVisibleBlocks().filter(n => bwBlockComplete(n)); } catch (e) {}
@@ -1233,7 +1233,7 @@ function openBarnWalk(farm, house) {
   };
   modal.addEventListener('input', modal._bwInputHandler);
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = LDATE();
   const draftKey = 'bwDraft-' + farm + '-' + house + '-' + today;
   const bsKey = farm + '-' + house;
   const submitted = (typeof BARN_STATUS !== 'undefined') &&
@@ -1550,7 +1550,7 @@ async function submitBarnWalk() {
     // % of the walk actually completed at submit time (per house, per entry) —
     // shows in the daily log / history so partial "submit anyway" walks are visible.
     pct: (function () { try { return (typeof _bwComputePct === 'function') ? _bwComputePct() : null; } catch (e) { return null; } })(),
-    date: new Date().toISOString().slice(0,10),
+    date: LDATE(),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
     ts: Date.now()
   };
@@ -1616,7 +1616,7 @@ async function submitBarnWalk() {
   if (isFirstSubmit && _bwData.mort === 'yes') {
     const mortEntry = {
       farm: _bwFarm, house: String(_bwHouse), employee,
-      date: new Date().toISOString().slice(0,10),
+      date: LDATE(),
       time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
       type: 'mortality',
       mortCount: mortCount || 0,
@@ -1631,7 +1631,7 @@ async function submitBarnWalk() {
   if (isFirstSubmit && _bwData.loose === 'yes') {
     const looseEntry = {
       farm: _bwFarm, house: String(_bwHouse), employee,
-      date: new Date().toISOString().slice(0,10),
+      date: LDATE(),
       time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
       type: 'loose',
       looseCount: looseCount || 0,
@@ -1647,7 +1647,7 @@ async function submitBarnWalk() {
   if (isFirstSubmit && hasPest) {
     const pestEntry = {
       farm: _bwFarm, house: String(_bwHouse), employee,
-      date: new Date().toISOString().slice(0,10),
+      date: LDATE(),
       time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
       rodent: _bwData.rodent || 'no', rodentCount: rodentCount || 0,
       fly: _bwData.fly || 'no', flyCount: flyCount || 0,
@@ -1664,7 +1664,7 @@ async function submitBarnWalk() {
   // produce a second copy of every WO — that bug was the source of the
   // duplicate work orders reported from morning barn walks.
   const submitted = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  const woDate    = new Date().toISOString().slice(0,10);
+  const woDate    = LDATE();
   if (isFirstSubmit && !(typeof isHouseDown === 'function' && isHouseDown(_bwFarm, _bwHouse))) {
     for (const key of checklistFails) {
       if (!_BW_WO_ITEMS[key]) continue;
@@ -1847,7 +1847,7 @@ function _mwInstructionsHTML(farm) {
 
 // ── Morning Walk Draft Persistence (mirrors barn walk drafts) ──
 function _mwDraftKey() {
-  return 'mwDraft-' + _mwFarm + '-' + _mwHouse + '-' + new Date().toISOString().slice(0,10);
+  return 'mwDraft-' + _mwFarm + '-' + _mwHouse + '-' + LDATE();
 }
 
 function mwSaveDraft() {
@@ -1860,7 +1860,7 @@ function mwSaveDraft() {
 }
 
 function _mwCleanOldDrafts() {
-  const today = new Date().toISOString().slice(0,10);
+  const today = LDATE();
   try {
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const k = localStorage.key(i);
@@ -1916,7 +1916,7 @@ function openMorningWalk(farm, house) {
   var _oldMwBanner = document.getElementById('mw-submitted-banner'); if (_oldMwBanner) _oldMwBanner.remove();
   // Already done today? Load today's SHARED record (history → edit) instead of a
   // blank form, so tapping a ✓ barn shows what was logged + who.
-  var _mwToday = new Date().toISOString().slice(0,10);
+  var _mwToday = LDATE();
   var _mwDone = (typeof MORNING_STATUS !== 'undefined') && (MORNING_STATUS[farm + '-' + house] === 'done' || MORNING_STATUS[farm + '-' + house] === 'issue');
   if (_mwDone) {
     db.collection('morningWalks').doc(farm + '-' + house + '-' + _mwToday).get().then(function (doc) {
@@ -2125,8 +2125,12 @@ async function submitMorningWalk() {
   if (_mwMissing().length > 0) { mwSubmitTap(); return; }
   const employee = document.getElementById('mw-employee').value.trim();
   const notes    = document.getElementById('mw-notes').value.trim();
-  const waterPSI = Number(document.getElementById('mw-water').value) || 0;
-  const temp     = Number(document.getElementById('mw-temp').value) || 0;
+  // Blank readings save as null (NOT 0) — a left-empty PSI must not read as "0"
+  // and trip a bogus out-of-range Water work order.
+  const _wpv = document.getElementById('mw-water').value;
+  const _tpv = document.getElementById('mw-temp').value;
+  const waterPSI = _wpv !== '' ? Number(_wpv) : null;
+  const temp     = _tpv !== '' ? Number(_tpv) : null;
   const eeCount  = document.getElementById('mw-ee-count').value !== '' ? Number(document.getElementById('mw-ee-count').value) : null;
 
   // Each problem carries the maintenance system + priority it should route to,
@@ -2134,7 +2138,7 @@ async function submitMorningWalk() {
   const flags = [];
   const woItems = [];
   const addFlag = (text, system, priority) => { flags.push(text); woItems.push({ text, system, priority }); };
-  if (waterPSI < 10 || waterPSI > 60) addFlag('Water pressure out of range (' + waterPSI + ' PSI)', 'Water', (waterPSI < 5 || waterPSI > 80) ? 'urgent' : 'high');
+  if (waterPSI !== null && (waterPSI < 10 || waterPSI > 60)) addFlag('Water pressure out of range (' + waterPSI + ' PSI)', 'Water', (waterPSI < 5 || waterPSI > 80) ? 'urgent' : 'high');
   if (_mwData.feed === 'no')           addFlag('Feeders not running', 'Feed', 'urgent');
   if (_mwData.fans === 'no')           addFlag('Fan issue', 'Ventilation', 'high');
   if (_mwData.blowers === 'no')        addFlag('Blower issue', 'Ventilation', 'high');
@@ -2144,7 +2148,7 @@ async function submitMorningWalk() {
   const binB = document.getElementById('mw-bin-b')?.value !== '' ? Number(document.getElementById('mw-bin-b').value) : null;
   if (binA !== null && binA < 1)   addFlag('Bin A critically low (' + binA + ' tons)', 'Feed', 'high');
   if (binB !== null && binB < 1)   addFlag('Bin B critically low (' + binB + ' tons)', 'Feed', 'high');
-  const _mwDate = new Date().toISOString().slice(0,10);
+  const _mwDate = LDATE();
   const record = {
     farm: _mwFarm, house: String(_mwHouse), employee, notes, flags,
     waterPSI, temp, eeCount, feedMeterReading, binA, binB,
@@ -2210,7 +2214,7 @@ async function submitMorningWalk() {
         desc: 'Morning Walk — ' + item.text, priority: item.priority, status: 'open',
         tech: employee, notes: 'Auto-created from morning walk by ' + employee,
         submitted: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-        ts: Date.now(), date: new Date().toISOString().slice(0,10)
+        ts: Date.now(), date: LDATE()
       });
       createdWOs.push(woId);
     } catch(e) { console.error('morning walk WO create failed:', e); }
@@ -2247,7 +2251,7 @@ async function openProdSummary() {
   document.getElementById('prod-summary-section').style.display = 'block';
   document.getElementById('prod-summary-section').scrollTop = 0;
   document.getElementById('prod-summary-content').innerHTML = '<div style="text-align:center;padding:40px;color:#5a5a3a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">Loading...</div>';
-  const today = new Date().toISOString().slice(0,10);
+  const today = LDATE();
   let walks = [], mWalks = [];
   try {
     const snap = await db.collection('barnWalks').where('date','==',today).get();
@@ -2359,7 +2363,7 @@ function opsFilterByDate(arr, mode) {
 }
 
 function shiftFromTime() { const h=new Date().getHours(); return h>=5&&h<13?'AM':h>=13&&h<21?'PM':'Night'; }
-function opsToday()      { return new Date().toISOString().slice(0,10); }
+function opsToday()      { return LDATE(); }
 function fmtNum(n)       { return Number(n||0).toLocaleString(); }
 
 function opsKpiColorLow(val,green,yellow)  { return val<=green?'green':val<=yellow?'yellow':'red'; }
@@ -2900,7 +2904,7 @@ async function renderProdCheck() {
   const _t = (typeof t === 'function') ? t : (k => k);
   const barnLbl = _t('prod.barn');
   el.innerHTML = '<div style="text-align:center;padding:40px;color:#5a8a5a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">'+_t('chk.loading')+'</div>';
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = LDATE();
   let walks = [];
   try {
     const snap = await db.collection('barnWalks').where('date','==',todayStr).get();
@@ -2962,7 +2966,7 @@ async function renderProdMW() {
   const _t = (typeof t === 'function') ? t : (k => k);
   const barnLbl = _t('prod.barn');
   el.innerHTML = '<div style="text-align:center;padding:40px;color:#3a5a8a;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">'+_t('chk.loading')+'</div>';
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = LDATE();
   let walks = [];
   try {
     const snap = await db.collection('morningWalks').where('date','==',todayStr).get();

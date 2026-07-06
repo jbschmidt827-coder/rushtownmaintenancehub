@@ -61,7 +61,7 @@ let _manurePushed = {}; // dedupe PM-tracker pushes per farm+period this session
 let _manureExpanded = {}; // submitted houses the user re-opened for editing
 let _manIssueOpen = {}; // per-collector issue panel open state (farm__house__coll)
 
-function manToday() { return new Date().toISOString().slice(0, 10); }
+function manToday() { return (typeof LDATE === 'function') ? LDATE() : new Date().toISOString().slice(0, 10); }
 function manKey(farm, house, coll, date) { return farm + '__H' + house + '__C' + coll + '__' + date; }
 
 // Monday-of-this-week as YYYY-MM-DD — the bucket the weekly PM is saved under.

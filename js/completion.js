@@ -20,7 +20,7 @@ const COMP_CHECKS = [
 var _compData = { morning: null, check: null, manure: null };
 var _compLoading = false;
 
-function compToday() { return new Date().toISOString().slice(0, 10); }
+function compToday() { return (typeof LDATE === 'function') ? LDATE() : new Date().toISOString().slice(0, 10); }
 function _compHnum(h) { var m = String(h).match(/\d+/); return m ? m[0] : String(h); }
 
 function compFarms() {
