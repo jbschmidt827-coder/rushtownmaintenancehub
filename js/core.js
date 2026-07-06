@@ -778,7 +778,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v181 · Jul 3 2026';
+var APP_VERSION = 'v182 · Jul 6 2026';
 
 // ── Device heartbeat + fleet tracker (v166) ─────────────────────────────────
 // Every device reports {who, version, site, last seen} shortly after boot.

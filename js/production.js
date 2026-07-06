@@ -1531,18 +1531,23 @@ async function submitBarnWalk() {
     ts: Date.now()
   };
 
-  // Track whether this is the first submission for this walk.
-  // Used below so auto-generated work orders only fire once — re-submitting via
-  // "Tap to Update" must not spawn duplicate WOs for the same flagged items.
-  const isFirstSubmit = !_bwDocId;
-
+  // ONE record per house per DAY — deterministic doc id (farm-house-date) so
+  // every employee updates the SAME daily entry instead of creating a new one
+  // per person. Read it first to know if this is the first submit today (so
+  // auto-WOs fire once) and to append everyone who worked it (contributors[]).
+  const _bwId = _bwFarm + '-' + _bwHouse + '-' + record.date;
+  let isFirstSubmit = true;
   try {
-    if (_bwDocId) {
-      await db.collection('barnWalks').doc(_bwDocId).set(record);
-    } else {
-      const docRef = await db.collection('barnWalks').add(record);
-      _bwDocId = docRef.id;
-    }
+    const _ref = db.collection('barnWalks').doc(_bwId);
+    let _prev = null;
+    try { const _ex = await _ref.get(); if (_ex.exists) { isFirstSubmit = false; _prev = _ex.data(); } } catch (e) {}
+    const _contrib = (_prev && Array.isArray(_prev.contributors)) ? _prev.contributors.slice() : [];
+    if (employee && _contrib.indexOf(employee) === -1) _contrib.push(employee);
+    record.contributors = _contrib;
+    record.firstBy = (_prev && _prev.firstBy) || employee;
+    record.firstTs = (_prev && _prev.firstTs) || record.ts;
+    await _ref.set(record, { merge: true });
+    _bwDocId = _bwId;
   } catch(e) {
     // NEVER lose a walk: park it on the device and replay on next app load.
     console.error('barnWalk save failed — queued locally:', e);
@@ -1884,6 +1889,18 @@ function openMorningWalk(farm, house) {
     modal.addEventListener('input', modal._mwInputHandler);
   }
   if (typeof applyFormTextTranslation === 'function') applyFormTextTranslation();
+  var _oldMwBanner = document.getElementById('mw-submitted-banner'); if (_oldMwBanner) _oldMwBanner.remove();
+  // Already done today? Load today's SHARED record (history → edit) instead of a
+  // blank form, so tapping a ✓ barn shows what was logged + who.
+  var _mwToday = new Date().toISOString().slice(0,10);
+  var _mwDone = (typeof MORNING_STATUS !== 'undefined') && (MORNING_STATUS[farm + '-' + house] === 'done' || MORNING_STATUS[farm + '-' + house] === 'issue');
+  if (_mwDone) {
+    db.collection('morningWalks').doc(farm + '-' + house + '-' + _mwToday).get().then(function (doc) {
+      if (doc.exists) { mwLoadRecord(doc.data()); _mwShowSubmittedBanner(doc.data()); }
+    }).catch(function () {});
+    checkMWReady();
+    return;
+  }
   _mwCleanOldDrafts();
   const restored = mwRestoreDraft();
   if (restored && typeof toast === 'function') {
@@ -1911,6 +1928,47 @@ function openMorningWalk(farm, house) {
 
 function closeMorningWalk() {
   document.getElementById('morning-walk-modal').style.display = 'none';
+}
+
+// Populate the Morning Walk form from a saved record (for tap-to-view history).
+function mwLoadRecord(rec) {
+  if (!rec) return;
+  var setV = function (id, v) { var el = document.getElementById(id); if (el && v != null && v !== '') el.value = v; };
+  setV('mw-employee', rec.employee);
+  setV('mw-ee-count', rec.eeCount);
+  setV('mw-water', rec.waterPSI);
+  setV('mw-temp', rec.temp);
+  setV('mw-feed-meter', rec.feedMeterReading);
+  setV('mw-bin-a', rec.binA);
+  setV('mw-bin-b', rec.binB);
+  setV('mw-notes', rec.notes);
+  if (rec.feed)    mwSet('feed', rec.feed);
+  if (rec.fans)    mwSet('fans', rec.fans);
+  if (rec.blowers) mwSet('blowers', rec.blowers);
+  try { checkMWReady(); } catch (e) {}
+}
+
+// Banner shown when you open a Morning Walk that's already done today.
+function _mwShowSubmittedBanner(rec) {
+  try {
+    var _isEs = (typeof _lang !== 'undefined' && _lang === 'es');
+    var banner = document.getElementById('mw-submitted-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'mw-submitted-banner';
+      banner.style.cssText = 'background:#0f2a3a;border:1px solid #3a8ac0;border-radius:8px;padding:10px 14px;margin:0 0 12px;color:#7ab8d0;font-size:12px;font-family:"IBM Plex Mono",monospace;text-align:center;';
+      var sb0 = document.getElementById('mw-submit-btn');
+      if (sb0 && sb0.parentNode) sb0.parentNode.insertBefore(banner, sb0);
+    }
+    var who = (rec.contributors && rec.contributors.length) ? rec.contributors.join(', ') : (rec.employee || '');
+    banner.textContent = (_isEs ? '✏️ Entrega de hoy' : '✏️ Today\'s entry')
+      + (who ? (_isEs ? ' — por ' : ' — by ') + who : '')
+      + (rec.time ? ' · ' + rec.time : '')
+      + (_isEs ? ' — edita y toca Actualizar' : ' — edit & tap Update');
+    banner.style.display = 'block';
+    var sb = document.getElementById('mw-submit-btn');
+    if (sb) { sb.textContent = _isEs ? 'Actualizar Entrega' : 'Update Submission'; sb.disabled = false; }
+  } catch (e) {}
 }
 
 function mwCheckBinLevel(inputId, statusId) {
@@ -2062,16 +2120,31 @@ async function submitMorningWalk() {
   const binB = document.getElementById('mw-bin-b')?.value !== '' ? Number(document.getElementById('mw-bin-b').value) : null;
   if (binA !== null && binA < 1)   addFlag('Bin A critically low (' + binA + ' tons)', 'Feed', 'high');
   if (binB !== null && binB < 1)   addFlag('Bin B critically low (' + binB + ' tons)', 'Feed', 'high');
+  const _mwDate = new Date().toISOString().slice(0,10);
   const record = {
     farm: _mwFarm, house: String(_mwHouse), employee, notes, flags,
     waterPSI, temp, eeCount, feedMeterReading, binA, binB,
     feed: _mwData.feed, fans: _mwData.fans, blowers: _mwData.blowers,
-    date: new Date().toISOString().slice(0,10),
+    date: _mwDate,
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
     ts: Date.now()
   };
 
-  try { await db.collection('morningWalks').add(record); } catch(e) { console.error(e); }
+  // ONE record per house per DAY (deterministic id) — any employee updates the
+  // SAME daily entry, not a new one each time. isFirstSubmit gates the auto-WOs
+  // (below) so re-edits don't spawn duplicates; contributors[] tracks who worked it.
+  let isFirstSubmit = true;
+  try {
+    const _ref = db.collection('morningWalks').doc(_mwFarm + '-' + _mwHouse + '-' + _mwDate);
+    let _prev = null;
+    try { const _ex = await _ref.get(); if (_ex.exists) { isFirstSubmit = false; _prev = _ex.data(); } } catch (e) {}
+    const _contrib = (_prev && Array.isArray(_prev.contributors)) ? _prev.contributors.slice() : [];
+    if (employee && _contrib.indexOf(employee) === -1) _contrib.push(employee);
+    record.contributors = _contrib;
+    record.firstBy = (_prev && _prev.firstBy) || employee;
+    record.firstTs = (_prev && _prev.firstTs) || record.ts;
+    await _ref.set(record, { merge: true });
+  } catch(e) { console.error('morningWalk save:', e); }
 
   // ── Activity Log ──
   try {
@@ -2103,7 +2176,7 @@ async function submitMorningWalk() {
 
   // One work order per problem, each routed to its correct system + priority.
   const createdWOs = [];
-  const _woItems = (typeof isHouseDown === 'function' && isHouseDown(_mwFarm, _mwHouse)) ? [] : woItems;
+  const _woItems = (!isFirstSubmit || (typeof isHouseDown === 'function' && isHouseDown(_mwFarm, _mwHouse))) ? [] : woItems;
   for (const item of _woItems) {
     try {
       const woId = await mintWoId();
