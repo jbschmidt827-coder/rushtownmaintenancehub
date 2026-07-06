@@ -880,7 +880,23 @@ function _bwFlushProgress() {
   if (_bwPushTimer) { clearTimeout(_bwPushTimer); _bwPushTimer = null; }
   const p = _bwPushPending; _bwPushPending = null;
   if (!p || typeof db === 'undefined' || !db) return;
-  db.collection('bwProgress').doc(p.docId).set(p.data, { merge: true }).catch(function () {});
+  // Guard: don't clobber a MORE-complete shared draft with a lower one. If another
+  // device already pushed a higher pct for this house today, keep it — a fresh/low
+  // re-open must never knock the shared check backward (that's how a 100% check got
+  // reset to 33%). We still write when we're equal-or-higher.
+  const myPct = (p.data && typeof p.data.pct === 'number') ? p.data.pct : 0;
+  db.collection('bwProgress').doc(p.docId).get().then(function (snap) {
+    try {
+      if (snap && snap.exists) {
+        const cur = snap.data() || {};
+        const curPct = (cur.draft && typeof cur.draft.pct === 'number') ? cur.draft.pct : (typeof cur.pct === 'number' ? cur.pct : 0);
+        if (curPct > myPct) return;   // shared is further along — leave it alone
+      }
+    } catch (e) {}
+    db.collection('bwProgress').doc(p.docId).set(p.data, { merge: true }).catch(function () {});
+  }).catch(function () {
+    db.collection('bwProgress').doc(p.docId).set(p.data, { merge: true }).catch(function () {});
+  });
 }
 
 function bwRestoreFromData(data) {
@@ -1257,7 +1273,17 @@ function openBarnWalk(farm, house) {
     db.collection('bwProgress').doc(bsKey + '-' + today).get().then(function(doc) {
       if (doc.exists) {
         const d = doc.data() || {};
-        if (d.draft && (!localDraft || (d.ts || 0) > (localDraft.ts || 0))) {
+        // NEVER LOSE PROGRESS: keep whichever draft is MORE complete. A device that
+        // re-opens the house fresh (or with a stale low draft) must not clobber a
+        // nearly-finished shared check just because its local edit is "newer".
+        // Compare by pct first; only fall back to timestamp when equally complete.
+        const sharedPct = (d.draft && typeof d.draft.pct === 'number') ? d.draft.pct : (typeof d.pct === 'number' ? d.pct : 0);
+        const localPct  = (localDraft && typeof localDraft.pct === 'number') ? localDraft.pct : 0;
+        const takeShared = d.draft && (
+          sharedPct > localPct ||
+          (sharedPct === localPct && (d.ts || 0) > (localDraft ? (localDraft.ts || 0) : -1))
+        );
+        if (takeShared) {
           bwRestoreFromData(d.draft);
           _bwBlockBy = d.draft.blockBy || {};
           bwInitFlow();

@@ -1020,6 +1020,23 @@ function renderLocationContext() {
 // that site's name; everything below it is already scoped via getPreferredFarm.
 function openLocationHome(loc) {
   if (typeof setActiveLocation === 'function') setActiveLocation(loc);
+  // Release any scroll-lock a modal/overlay left on the body (barn-entry, TV,
+  // and some check flows set body overflow hidden). goHome() already did this,
+  // but landing back on the SITE home — the common "go back" path after an
+  // action — did not, so the home page could stay frozen. Clear it here so
+  // every return-to-home path unlocks scrolling.
+  try { document.body.style.overflow = ''; } catch (e) {}
+  // Also close any full-screen overlay/modal still sitting on top — otherwise it
+  // covers the home screen and the page looks "locked" (can't scroll/tap). goHome
+  // did this; the site-home path did not, which is why home froze after an action.
+  try {
+    ['ec-section','mw-section','bio-section','flock-section','prod-summary-section',
+     'barn-walk-modal','morning-walk-modal','bw-history-overlay','egg-trends-overlay',
+     'ops-overlay','staff-edit-modal','admin-pin-modal','briefing-modal','scorecard-overlay',
+     'livemonitor-overlay','manure-overlay','completion-overlay','housestatus-overlay']
+      .forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    document.querySelectorAll('.overlay').forEach(function (el) { el.style.display = 'none'; });
+  } catch (e) {}
   const picker = document.getElementById('loc-picker');
   const home   = document.getElementById('loc-home');
   if (picker) picker.style.display = 'none';
