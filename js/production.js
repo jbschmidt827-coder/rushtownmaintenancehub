@@ -880,23 +880,11 @@ function _bwFlushProgress() {
   if (_bwPushTimer) { clearTimeout(_bwPushTimer); _bwPushTimer = null; }
   const p = _bwPushPending; _bwPushPending = null;
   if (!p || typeof db === 'undefined' || !db) return;
-  // Guard: don't clobber a MORE-complete shared draft with a lower one. If another
-  // device already pushed a higher pct for this house today, keep it — a fresh/low
-  // re-open must never knock the shared check backward (that's how a 100% check got
-  // reset to 33%). We still write when we're equal-or-higher.
-  const myPct = (p.data && typeof p.data.pct === 'number') ? p.data.pct : 0;
-  db.collection('bwProgress').doc(p.docId).get().then(function (snap) {
-    try {
-      if (snap && snap.exists) {
-        const cur = snap.data() || {};
-        const curPct = (cur.draft && typeof cur.draft.pct === 'number') ? cur.draft.pct : (typeof cur.pct === 'number' ? cur.pct : 0);
-        if (curPct > myPct) return;   // shared is further along — leave it alone
-      }
-    } catch (e) {}
-    db.collection('bwProgress').doc(p.docId).set(p.data, { merge: true }).catch(function () {});
-  }).catch(function () {
-    db.collection('bwProgress').doc(p.docId).set(p.data, { merge: true }).catch(function () {});
-  });
+  // Single lightweight write — no read-before-write (that added a network round-trip
+  // on every field change and made data entry feel laggy). Clobbering a more-complete
+  // shared draft is already prevented at OPEN time (openBarnWalk restores the draft
+  // with the higher pct), so a plain set is safe here and keeps entry snappy.
+  db.collection('bwProgress').doc(p.docId).set(p.data, { merge: true }).catch(function () {});
 }
 
 function bwRestoreFromData(data) {
@@ -1658,7 +1646,7 @@ async function submitBarnWalk() {
       flagCount: flags.length,
       date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}),
       ts: Date.now()
-    });
+    }).catch(function (e) { console.warn('activityLog write failed:', e); });   // fire-and-forget — don't block the crew's Submit on this
   } catch(e) { console.warn('activityLog write failed:', e); }
 
   // ── Mortality Log ──
@@ -1677,7 +1665,7 @@ async function submitBarnWalk() {
       notes: notes || '',
       ts: Date.now()
     };
-    try { await db.collection('mortalityLog').add(mortEntry); } catch(e) { console.error('mortalityLog write failed:', e); }
+    try { db.collection('mortalityLog').add(mortEntry).catch(function(e){ console.warn('mortalityLog write failed:', e); }); } catch(e) { console.error('mortalityLog write failed:', e); }
   }
 
   // Log loose birds — never creates a WO. Gated on isFirstSubmit (see mortality above).
@@ -1691,7 +1679,7 @@ async function submitBarnWalk() {
       notes: notes || '',
       ts: Date.now()
     };
-    try { await db.collection('mortalityLog').add(looseEntry); } catch(e) { console.error('looseLog write failed:', e); }
+    try { db.collection('mortalityLog').add(looseEntry).catch(function(e){ console.warn('looseLog write failed:', e); }); } catch(e) { console.error('looseLog write failed:', e); }
   }
 
   // ── Pest Log ──
@@ -1707,7 +1695,7 @@ async function submitBarnWalk() {
       notes: notes || '',
       ts: Date.now()
     };
-    try { await db.collection('pestLog').add(pestEntry); } catch(e) { console.error('pestLog write failed:', e); }
+    try { db.collection('pestLog').add(pestEntry).catch(function(e){ console.warn('pestLog write failed:', e); }); } catch(e) { console.error('pestLog write failed:', e); }
   }
 
   // Feed bin reading is saved live via liveUpdateFeedBin (onchange) — no duplicate save needed here.
@@ -1718,6 +1706,9 @@ async function submitBarnWalk() {
   // duplicate work orders reported from morning barn walks.
   const submitted = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const woDate    = LDATE();
+  // Auto-WOs run in the BACKGROUND (not awaited) so the crew's Submit confirms
+  // instantly instead of waiting on a WO write per checklist failure.
+  (async function () {
   if (isFirstSubmit && !(typeof isHouseDown === 'function' && isHouseDown(_bwFarm, _bwHouse))) {
     for (const key of checklistFails) {
       if (!_BW_WO_ITEMS[key]) continue;
@@ -1736,6 +1727,7 @@ async function submitBarnWalk() {
       } catch(e) { console.error(e); }
     }
   }
+  })();
 
   const key = _bwFarm + '-' + _bwHouse;
   BARN_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
@@ -1754,6 +1746,7 @@ async function submitBarnWalk() {
     'Feeders empty':              {problem:'Feed System',         priority:'urgent'},
     'Egg belt not working':       {problem:'Egg Collection',      priority:'urgent'},
   };
+  (async function () {
   if (isFirstSubmit && !(typeof isHouseDown === 'function' && isHouseDown(_bwFarm, _bwHouse))) {
     for (const flag of flags) {
       // Checklist failures already handled above — skip to avoid duplicate WOs
@@ -1777,6 +1770,7 @@ async function submitBarnWalk() {
       } catch(e) { console.error(e); }
     }
   }
+  })();
 
   // Clear localStorage draft — data is now in Firestore
   const draftKey = 'bwDraft-' + _bwFarm + '-' + _bwHouse + '-' + record.date;
