@@ -778,7 +778,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v189 · Jul 6 2026';
+var APP_VERSION = 'v190 · Jul 6 2026';
 
 // LOCAL calendar day "YYYY-MM-DD". Everything that means "today" must use this,
 // NOT new Date().toISOString().slice(0,10) — toISOString is UTC, so on Eastern
@@ -1035,7 +1035,11 @@ function openLocationHome(loc) {
      'ops-overlay','staff-edit-modal','admin-pin-modal','briefing-modal','scorecard-overlay',
      'livemonitor-overlay','manure-overlay','completion-overlay','housestatus-overlay']
       .forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
-    document.querySelectorAll('.overlay').forEach(function (el) { el.style.display = 'none'; });
+    // Class-based modals (.overlay) show via the 'open' CSS class — close them by
+    // REMOVING that class and clearing any inline display. Do NOT set inline
+    // display:none here: it would override .overlay.open{display:flex} so the
+    // modal could never reopen after visiting home (that broke Bulk PM, etc.).
+    document.querySelectorAll('.overlay').forEach(function (el) { el.classList.remove('open'); el.style.display = ''; });
   } catch (e) {}
   const picker = document.getElementById('loc-picker');
   const home   = document.getElementById('loc-home');

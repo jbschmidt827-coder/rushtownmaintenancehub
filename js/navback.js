@@ -34,15 +34,17 @@
       if (_vis(el)) {
         var fn = LAYERS[i][1];
         if (fn && typeof window[fn] === 'function') { try { window[fn](); return true; } catch (e) {} }
-        el.style.display = 'none';
+        // Clear inline display (don't set 'none') + drop 'open' so a class-based
+        // modal can reopen later — a stuck inline display:none broke Bulk PM.
         if (el.classList) el.classList.remove('open');
+        el.style.display = '';
         return true;
       }
     }
     // Generic sweep — any other visible .overlay modal
     var ovs = document.querySelectorAll('.overlay');
     for (var j = 0; j < ovs.length; j++) {
-      if (_vis(ovs[j])) { ovs[j].style.display = 'none'; if (ovs[j].classList) ovs[j].classList.remove('open'); return true; }
+      if (_vis(ovs[j])) { if (ovs[j].classList) ovs[j].classList.remove('open'); ovs[j].style.display = ''; return true; }
     }
     return false;
   }

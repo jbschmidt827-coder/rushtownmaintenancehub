@@ -4083,9 +4083,12 @@ function goHome() {
     var el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
-  // Also close any generic .overlay modals
+  // Also close any generic .overlay modals — remove the 'open' class and clear
+  // inline display. NOT display:none: that inline style would override
+  // .overlay.open{display:flex} and the modal could never reopen (broke Bulk PM).
   document.querySelectorAll('.overlay').forEach(function(el) {
-    el.style.display = 'none';
+    el.classList.remove('open');
+    el.style.display = '';
   });
   // Release any scroll-lock a modal left on (barn-entry / TV set body overflow
   // hidden) — without this the home page can't scroll = "home locks up".
