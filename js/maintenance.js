@@ -698,6 +698,22 @@ async function loadHouses() {
   const ag = document.createElement('optgroup'); ag.label = 'Common Areas';
   AREAS.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;ag.appendChild(o);});
   sel.appendChild(hg); sel.appendChild(ag);
+  // Relabel the group so the Processing Plant reads "Plant Areas" (it has no barn houses).
+  hg.label = (farm === 'Processing Plant') ? 'Plant Areas' : 'Houses';
+
+  // Problem / System list adapts to the location — the egg processing / packaging
+  // plant has different equipment than a layer barn, so a plant WO can pick a real
+  // system instead of barn-only options. Stored value stays English for reporting.
+  const probSel = document.getElementById('wo-problem');
+  if (probSel) {
+    const _cur = probSel.value;
+    const BARN_SYS  = ['Ventilation / Fans','Watering System','Feed System','Heating / Brooders','Manure System','Egg Collection','Electrical','Generator','Building / Structure','Other'];
+    const PLANT_SYS = ['Packers','Egg Washer','Candler / Crack Detector','Grader / Scale','Conveyor / Rod','Refrigeration / Cooler','Boiler / Hot Water','Air Compressor','Case / Carton Line','Electrical','Building / Structure','Other'];
+    const _list = (farm === 'Processing Plant') ? PLANT_SYS : BARN_SYS;
+    const _ph = (typeof _lang !== 'undefined' && _lang === 'es') ? '— Seleccionar problema —' : '— Select Problem —';
+    probSel.innerHTML = '<option value="">' + _ph + '</option>' + _list.map(s => '<option value="' + s + '">' + s + '</option>').join('');
+    if (_cur && _list.indexOf(_cur) !== -1) probSel.value = _cur;   // keep prior pick if still valid
+  }
 
   // Try to get today's scheduled staff first, fall back to all staff at location
   let techs = [];

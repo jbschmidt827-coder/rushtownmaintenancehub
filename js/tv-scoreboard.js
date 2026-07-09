@@ -799,33 +799,46 @@ function updateBulkCount() {
   if (el) el.textContent = bulkPMSelected.size + ' selected';
 }
 
+// Inline modal message — alert()/confirm() are suppressed in the installed iOS
+// PWA, so a validation alert() made the button look DEAD (tap = nothing). Show
+// the reason right in the modal instead so the crew always gets feedback.
+function _bulkMsg(text, bad) {
+  const prog = document.getElementById('bulk-pm-progress');
+  const stat = document.getElementById('bulk-pm-status');
+  const bar  = document.getElementById('bulk-pm-bar');
+  if (prog) prog.style.display = 'block';
+  if (bar)  { bar.style.width = '0%'; bar.style.background = bad ? '#e53e3e' : 'var(--green-mid)'; }
+  if (stat) { stat.textContent = text; stat.style.color = bad ? '#e53e3e' : 'var(--muted)'; }
+}
+
 async function submitBulkPM() {
   const techEl = document.getElementById('bulk-tech');
+  // Default the credit to this device's user if nothing is picked yet (matches
+  // the daily check) so the common case doesn't require choosing a name.
+  if (techEl && !techEl.value && typeof getDeviceUser === 'function') {
+    const _du = getDeviceUser();
+    if (_du) { const opt = Array.from(techEl.options).find(o => o.value === _du); if (opt) techEl.value = _du; }
+  }
   const tech = techEl ? techEl.value : '';
   const date = document.getElementById('bulk-date').value;
   const notes = document.getElementById('bulk-notes').value.trim() || 'Bulk catch-up completion';
 
   // If the "Completed By" dropdown has no real names, the only option is the
-  // blank placeholder — so no tech can ever be picked and the update silently
-  // can't proceed. Tell the user exactly why instead of a vague prompt.
+  // blank placeholder — so no tech can ever be picked and the update can't
+  // proceed. Show the reason inline (alert() is a no-op in the PWA).
   const techHasNames = techEl && Array.from(techEl.options).some(o => o.value);
-  if (!techHasNames) {
-    alert('No staff are set up yet, so there\'s no one to credit the work to.\n\nAdd at least one active person in the Staff panel, then try again.');
-    return;
-  }
-  if (!tech) { alert('Please select who completed these tasks.'); return; }
-  if (!date) { alert('Please select a completion date.'); return; }
-  if (!bulkPMSelected.size) { alert('No tasks selected.'); return; }
+  if (!techHasNames) { _bulkMsg('No staff set up for this filter — add an active person in Staff, or switch the farm filter.', true); return; }
+  if (!bulkPMSelected.size) { _bulkMsg('Select at least one task above first.', true); return; }
+  if (!tech) { _bulkMsg('Pick who completed these tasks (Completed By).', true); return; }
+  if (!date) { _bulkMsg('Pick a completion date.', true); return; }
 
   // Bulk PM writes go straight to Firestore (no offline queue). If the device
   // is offline the commit will hang or fail, so block early with a clear note.
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    alert('You appear to be offline. Bulk PM updates need a connection — reconnect and try again.');
-    return;
+    _bulkMsg('You appear to be offline — reconnect and try again.', true); return;
   }
   if (typeof db === 'undefined' || !db) {
-    alert('The database isn\'t ready yet. Please reload the page and try again.');
-    return;
+    _bulkMsg('Database not ready — reload the page and try again.', true); return;
   }
 
   const ids = Array.from(bulkPMSelected);

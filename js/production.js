@@ -1628,7 +1628,7 @@ async function submitBarnWalk() {
     const statusDesc = flags.length > 0
       ? flags.length + ' flag' + (flags.length !== 1 ? 's' : '')
       : 'All Clear';
-    await db.collection('activityLog').add({
+    db.collection('activityLog').add({
       type: 'barnwalk',
       id: 'BW-' + _bwFarm + '-H' + _bwHouse,
       desc: 'Daily barn check: ' + _bwFarm + ' Barn ' + _bwHouse + ' — ' + statusDesc

@@ -226,9 +226,28 @@ function manStartListener() {
     }, function (err) { console.error('manureBeltSchedule listener:', err); });
   } catch (e) { console.error('manStartListener:', e); _manureListening = false; }
 }
+var _manRerenderTimer = null;
 function _manureRerender() {
   var ov = document.getElementById('manure-overlay');
-  if (ov && ov.style.display !== 'none') renderManure();
+  if (!ov || ov.style.display === 'none') return;
+  // Live, but SMOOTH (like the daily check): debounce bursty snapshot events
+  // (a batch write fires several), keep the scroll position, and never repaint
+  // out from under someone who's mid-entry — otherwise a teammate's live update
+  // would wipe the value/note they're typing or jump their scroll.
+  if (_manRerenderTimer) clearTimeout(_manRerenderTimer);
+  _manRerenderTimer = setTimeout(function () {
+    _manRerenderTimer = null;
+    var ov2 = document.getElementById('manure-overlay');
+    if (!ov2 || ov2.style.display === 'none') return;
+    var ae = document.activeElement;
+    if (ae && ov2.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) {
+      _manRerenderTimer = setTimeout(_manureRerender, 1500);   // they're typing — retry shortly
+      return;
+    }
+    var sy = ov2.scrollTop;
+    try { renderManure(); } catch (e) { console.error('manure rerender:', e); }
+    try { ov2.scrollTop = sy; } catch (e) {}
+  }, 250);
 }
 
 function openManure() {

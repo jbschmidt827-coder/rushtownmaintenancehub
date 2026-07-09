@@ -28,13 +28,30 @@ function closeQuickWO() {
 function qwoLoadHouses() {
   const farm = document.getElementById('qwo-farm').value;
   const sel = document.getElementById('qwo-house');
-  sel.innerHTML = '<option value="">— House —</option>';
-  const counts = { Hegins: 8, Danville: 5 };
-  const count = counts[farm] || 0;
-  for (let i = 1; i <= count; i++) {
-    const o = document.createElement('option');
-    o.value = String(i); o.textContent = 'House ' + i;
-    sel.appendChild(o);
+  sel.innerHTML = '<option value="">— House / Area —</option>';
+  if (farm === 'Processing Plant') {
+    // The egg processing / packaging plant has areas, not numbered barn houses.
+    const areas = (typeof FARM_HOUSES !== 'undefined' && FARM_HOUSES['Processing Plant']) ? FARM_HOUSES['Processing Plant'] : [];
+    areas.forEach(a => { const o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o); });
+  } else {
+    const counts = { Hegins: 8, Danville: 5 };
+    const count = counts[farm] || 0;
+    for (let i = 1; i <= count; i++) {
+      if (typeof isHouseDown === 'function' && isHouseDown(farm, String(i))) continue;   // skip out-of-service houses
+      const o = document.createElement('option');
+      o.value = String(i); o.textContent = 'House ' + i;
+      sel.appendChild(o);
+    }
+  }
+  // Adapt the Problem/System list to the plant vs a barn (value stays English).
+  const probSel = document.getElementById('qwo-problem');
+  if (probSel) {
+    const cur = probSel.value;
+    const BARN_SYS  = ['Ventilation / Fans','Watering System','Feed System','Heating / Brooders','Manure System','Egg Collection','Electrical','Generator','Building / Structure','Other'];
+    const PLANT_SYS = ['Packers','Egg Washer','Candler / Crack Detector','Grader / Scale','Conveyor / Rod','Refrigeration / Cooler','Boiler / Hot Water','Air Compressor','Case / Carton Line','Electrical','Building / Structure','Other'];
+    const list = (farm === 'Processing Plant') ? PLANT_SYS : BARN_SYS;
+    probSel.innerHTML = '<option value="">— What system? —</option>' + list.map(s => '<option value="' + s + '">' + s + '</option>').join('');
+    if (cur && list.indexOf(cur) !== -1) probSel.value = cur;
   }
 }
 
@@ -44,6 +61,21 @@ function qwoSetPri(pri, btn) {
   if (btn) btn.style.opacity = '1';
 }
 
+// Inline message in the Quick WO modal — alert() is a no-op in the installed
+// iOS PWA, so a validation alert() made the SUBMIT button look dead. Show the
+// reason right above the button instead so the crew always gets feedback.
+function _qwoMsg(text) {
+  const btn = document.getElementById('qwo-submit-btn');
+  let el = document.getElementById('qwo-hint');
+  if (!el && btn && btn.parentNode) {
+    el = document.createElement('div');
+    el.id = 'qwo-hint';
+    el.style.cssText = 'font-family:\'IBM Plex Mono\',monospace;font-size:12px;margin:8px 0;text-align:center;color:#e53e3e;';
+    btn.parentNode.insertBefore(el, btn);
+  }
+  if (el) { el.textContent = text; el.style.display = 'block'; }
+}
+
 async function submitQuickWO() {
   if (_qwoSubmitting) return;
   const name    = (document.getElementById('qwo-name')?.value || '').trim();
@@ -51,11 +83,12 @@ async function submitQuickWO() {
   const house   = document.getElementById('qwo-house')?.value || '';
   const problem = document.getElementById('qwo-problem')?.value || '';
   const desc    = (document.getElementById('qwo-desc')?.value || '').trim();
-  if (!name)    return alert('Please enter your name.');
-  if (!farm)    return alert('Please select a farm.');
-  if (!problem) return alert('Please select a problem / system.');
-  if (!desc)    return alert('Please describe what\'s wrong.');
-  if (!_qwoPri) return alert('Please select a priority.');
+  if (!name)    { _qwoMsg('Enter your name.'); return; }
+  if (!farm)    { _qwoMsg('Select a location.'); return; }
+  if (!problem) { _qwoMsg('Select a problem / system.'); return; }
+  if (!desc)    { _qwoMsg('Describe what\'s wrong.'); return; }
+  if (!_qwoPri) { _qwoMsg('Select a priority.'); return; }
+  const _h = document.getElementById('qwo-hint'); if (_h) _h.style.display = 'none';
 
   _qwoSubmitting = true;
   const btn = document.getElementById('qwo-submit-btn');
@@ -84,13 +117,14 @@ async function submitQuickWO() {
     } catch(e) {}
     setSyncDot('live');
     closeQuickWO();
-    alert('✅ Work Order ' + woId + ' submitted!');
+    if (typeof toast === 'function') toast('✅ Work Order ' + woId + ' submitted!');
     if (typeof renderWO === 'function') renderWO();
   } catch(err) {
     _qwoSubmitting = false;
     setSyncDot('live');
     if (btn) { btn.disabled = false; btn.textContent = '⚡ SUBMIT WORK ORDER'; }
-    alert('Error submitting work order: ' + err.message);
+    console.error('submitQuickWO:', err);
+    _qwoMsg('Could not submit — check your connection and try again.');
   }
 }
 
