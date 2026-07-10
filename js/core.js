@@ -57,7 +57,8 @@ try {
 } catch (e) { console.warn('Auth init skipped:', e); }
 
 // Login was removed (too many farm staff don't have email accounts).
-// The ADMIN_PIN below still gates admin actions inside the app.
+// The ADMIN_PIN below still gates admin actions inside the app. (v195 adds a
+// separate per-staff login PIN via js/login.js, off until settings/loginConfig.)
 
 // ═══════════════════════════════════════════
 // ADMIN PIN SYSTEM
@@ -778,7 +779,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v194 · Jul 10 2026';
+var APP_VERSION = 'v195 · Jul 10 2026';
 
 // LOCAL calendar day "YYYY-MM-DD". Everything that means "today" must use this,
 // NOT new Date().toISOString().slice(0,10) — toISOString is UTC, so on Eastern
