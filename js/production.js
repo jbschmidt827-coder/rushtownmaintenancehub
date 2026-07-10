@@ -616,12 +616,14 @@ function _bwMaybeAutoSubmit() {
     var key = _bwFarm + '-' + _bwHouse;
     if (_bwAutoSubbed[key]) return;
     if (typeof BARN_STATUS !== 'undefined' && (BARN_STATUS[key] === 'done' || BARN_STATUS[key] === 'issue')) return;
-    // Auto-fill the name from this device's user so a finished check isn't stuck
-    // on an empty name field (the only block excluded from the % but required to submit).
-    var _emp = document.getElementById('bw-employee');
-    if (_emp && !_emp.value.trim() && typeof getDeviceUser === 'function') { var _du = getDeviceUser(); if (_du) _emp.value = _du; }
     var vis = _bwVisibleBlocks();
     if (!vis.length || !vis.every(function (n) { return bwBlockComplete(n); })) return;
+    // Only NOW — the check is complete and about to auto-submit — fill a blank
+    // name from the device user. Doing this earlier (on every keystroke) meant
+    // the field refilled the instant the crew tried to ERASE it, so they could
+    // never change/clear the name. Fill only at submit time.
+    var _emp = document.getElementById('bw-employee');
+    if (_emp && !_emp.value.trim() && typeof getDeviceUser === 'function') { var _du = getDeviceUser(); if (_du) _emp.value = _du; }
     _bwAutoSubbed[key] = true;
     setTimeout(function () { try { if (typeof submitBarnWalk === 'function') submitBarnWalk(); } catch (e) {} }, 400);
   } catch (e) {}
@@ -1512,27 +1514,12 @@ async function submitBarnWalk() {
   const _hint = document.getElementById('bw-submit-hint');
   const _sbtn = document.getElementById('bw-submit-btn');
   if (_sbtn && !_sbtn._origLabel) _sbtn._origLabel = _sbtn.textContent;
-  if (_left.length && Date.now() > (window._bwForceSubmitUntil || 0)) {
-    window._bwForceSubmitUntil = Date.now() + 8000;
-    const _labels = _left.map(n => _BW_BLOCK_LABELS[n] || n).join(', ');
-    if (_hint) {
-      _hint.style.display = 'block';
-      _hint.textContent = (_es ? 'Sin terminar: ' : 'Not finished: ') + _labels;
-    }
-    if (_sbtn) _sbtn.textContent = _es ? '⚠ ¿Enviar igual? Toca otra vez' : '⚠ Submit anyway? Tap again';
-    const first = _left[0];
-    if (typeof bwExpandBlock === 'function') bwExpandBlock(first);
-    const card = (typeof _bwCard === 'function') ? _bwCard(first) : null;
-    if (card) {
-      card.classList.remove('bw-collapsed', 'bw-locked');
-      try { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
-      card.style.transition = 'box-shadow .2s';
-      card.style.boxShadow = '0 0 0 3px #fbbf24';
-      setTimeout(function () { card.style.boxShadow = ''; }, 1600);
-    }
-    return;
-  }
-  // 2nd tap (or everything finished) → submit.
+  // ALWAYS save on the FIRST tap — never silently do nothing. The old flow armed
+  // an 8-second "tap again to submit" window and returned without saving; crews
+  // tapped once, thought they were done, and the check was lost. Now a tap always
+  // writes the record. If sections are still blank we STILL save (pct + whatever
+  // is filled are recorded; they can reopen to finish) — a partial save beats a
+  // lost check. `_left` is used below only to word the confirmation.
   window._bwForceSubmitUntil = 0;
   if (_hint) _hint.style.display = 'none';
   if (_sbtn && _sbtn._origLabel) _sbtn.textContent = _sbtn._origLabel;
@@ -1803,6 +1790,17 @@ async function submitBarnWalk() {
   banner.textContent = (typeof _lang !== 'undefined' && _lang === 'es')
     ? ('✅ Guardado a las ' + record.time + ' — edita cualquier campo arriba y toca Actualizar para volver a guardar')
     : ('✅ Saved at ' + record.time + ' — edit any field above and tap Update to re-save');
+
+  // Unmissable confirmation the check SAVED (a modal banner alone got missed —
+  // crews thought they'd submitted when they hadn't). Toast is global + visible.
+  try {
+    if (typeof toast === 'function') {
+      var _incLeft = (typeof _left !== 'undefined' && _left.length) ? _left.length : 0;
+      var _hn = _bwFarm + ' ' + ((_es) ? 'Casa ' : 'House ') + _bwHouse;
+      toast((_es ? '✅ Chequeo guardado — ' : '✅ Daily check saved — ') + _hn +
+        (_incLeft ? (_es ? ' · ' + _incLeft + ' sección(es) en blanco' : ' · ' + _incLeft + ' section(s) still blank') : ''));
+    }
+  } catch (e) {}
 
   // Collapse all completed blocks into summary bars (tap any to edit)
   bwInitFlow();

@@ -364,8 +364,25 @@ function editStaffOpen(id) {
   document.getElementById('edit-staff-farm').value  = s.farm || '';
   var _eds = document.getElementById('edit-staff-dept'); if (_eds) _eds.value = s.dept || '';
   document.getElementById('edit-staff-phone').value = s.phone || '';
+  // Login PIN — only managers/leads (or admin-unlocked) see/edit it.
+  var _pinRow = document.getElementById('edit-staff-pin-row');
+  if (_pinRow) {
+    var _me = (typeof getDeviceUser === 'function' && typeof staffList !== 'undefined')
+      ? staffList.find(function (x) { return x && x.name === getDeviceUser(); }) : null;
+    var _canPin = (typeof _isLeader === 'function' && _isLeader(_me)) || window._adminUnlocked === true;
+    _pinRow.style.display = _canPin ? 'block' : 'none';
+    var _st = document.getElementById('edit-staff-pin-status'); if (_st) _st.textContent = s.pin ? '· ✓ set' : '· — none yet';
+    var _pi = document.getElementById('edit-staff-pin'); if (_pi) { _pi.value = ''; _pi.dataset.reset = ''; }
+  }
   document.getElementById('staff-edit-modal').style.display = 'flex';
 }
+
+// Managers/leads: clear a person's PIN so they create a new one at next login.
+function editStaffClearPin() {
+  var pi = document.getElementById('edit-staff-pin'); if (pi) { pi.value = ''; pi.dataset.reset = '1'; }
+  var st = document.getElementById('edit-staff-pin-status'); if (st) st.textContent = '· will reset on save';
+}
+if (typeof window !== 'undefined') window.editStaffClearPin = editStaffClearPin;
 
 function closeStaffEdit() {
   document.getElementById('staff-edit-modal').style.display = 'none';
@@ -382,7 +399,15 @@ async function saveStaffEdit() {
   const btn = document.getElementById('staff-edit-save-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
-    await db.collection('staff').doc(id).update({ name, role, farm, dept, phone });
+    const upd = { name, role, farm, dept, phone };
+    // PIN: blank input = keep current; 4 digits = set; Reset button = clear (they
+    // create a new one at next login). Only present when the PIN row was shown.
+    const _pi = document.getElementById('edit-staff-pin');
+    if (_pi) {
+      if (_pi.dataset.reset === '1') upd.pin = '';
+      else { const pv = (_pi.value || '').trim(); if (/^\d{4}$/.test(pv)) upd.pin = pv; }
+    }
+    await db.collection('staff').doc(id).update(upd);
     closeStaffEdit();
     try {
       await db.collection('activityLog').add({

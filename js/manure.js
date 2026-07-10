@@ -369,6 +369,41 @@ function _manSchedEditor(farm) {
     rows + '</div>';
 }
 
+// Bottom-of-page roundup: every collector with a problem logged today, across
+// all houses — can't-run, belt rip (1–3), and any failed PM/Belt/Clean/Align
+// check, plus the note and the work-order id if one was raised.
+function _manFailuresHtml(farms) {
+  var items = [];
+  farms.forEach(function (farm) {
+    var hs = (MANURE_HOUSES[farm] || []).filter(function (h) { return !(typeof isHouseDown === 'function' && isHouseDown(farm, h)); });
+    hs.forEach(function (house) {
+      for (var c = 1; c <= MANURE_COLLECTORS; c++) {
+        var rec = manRec(farm, house, c);
+        if (!manIssueActive(rec)) continue;
+        var parts = [];
+        if (rec.cantRun) parts.push(ML('🚫 can’t run', '🚫 no corre'));
+        var lvl = Number(rec.ripLevel || 0);
+        if (lvl > 0) parts.push(ML('belt rip ', 'rasgadura ') + lvl + (MAN_RIP_LABEL[lvl] ? ' (' + ML(MAN_RIP_LABEL[lvl].en, MAN_RIP_LABEL[lvl].es) + ')' : ''));
+        manChkFails(rec).forEach(function (f) { var l = manChkFailLabel(f); parts.push(ML(l.en, l.es)); });
+        items.push({ farm: farm, house: house, coll: c, txt: parts.join(' · '),
+          note: (rec.issueNote || '').trim(), wo: rec.woId ? (' · ' + rec.woId) : '' });
+      }
+    });
+  });
+  if (!items.length) {
+    return '<div style="background:#0d1f0d;border:1px solid #1e3a1e;border-radius:12px;padding:14px;margin-top:14px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:#7ab07a;">✓ ' + ML('No manure issues logged today', 'Sin problemas de estiércol hoy') + '</div>';
+  }
+  var rows = items.map(function (i) {
+    return '<div style="padding:9px 0;border-bottom:1px solid #2a1414;font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:#f2b0a0;">' +
+      '<b style="color:#ffd7d7;">' + i.farm + ' ' + ML('House', 'Casa') + ' ' + i.house + ' · C' + i.coll + '</b> — ' + i.txt + i.wo +
+      (i.note ? '<div style="color:#cc9a9a;font-size:11px;font-style:italic;margin-top:2px;">“' + String(i.note).replace(/</g, '&lt;') + '”</div>' : '') +
+    '</div>';
+  }).join('');
+  return '<div style="background:#1a0a0a;border:1.5px solid #5a2a2a;border-radius:12px;padding:14px;margin-top:14px;">' +
+    '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#f2705a;margin-bottom:8px;">⚠ ' + ML('Issues logged today', 'Problemas registrados hoy') + ' (' + items.length + ')</div>' +
+    rows + '</div>';
+}
+
 function renderManure() {
   var ov = document.getElementById('manure-overlay');
   if (!ov) return;
@@ -482,6 +517,7 @@ function renderManure() {
       '</div>' +
       '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#9ab09a;line-height:1.5;background:#0d1f0d;border:1px solid #1e3a1e;border-radius:10px;padding:10px 12px;margin:8px 0 16px;">' + ML('Each house is blocked out <b style="color:#86efac;">2.0 hours</b> to run its belts (tap <b style="color:#9ad6a0;">🕐 Belt-run times</b> to set the window). For each collector, tap the <b style="color:#86efac;">% that ran</b> (0/50/100) and tick <b style="color:#86efac;">PM · Belt · Clean · Align</b>. Use <b style="color:#86efac;">All 100%</b> / <b style="color:#a7e08a;">All checks</b> to do a whole house at once, and the manure tech ticks the <b style="color:#d8b478;">weekly PM</b>. Tap <b style="color:#f2a0a0;">⚠</b> on a collector to flag it can’t run or a belt rip (1–3, 3 = worst) — that makes a work order. Hit <b style="color:#eafff0;">Submit</b> per house. It saves as you go.', 'Cada casa tiene <b style="color:#86efac;">2.0 horas</b> para correr sus bandas (toca <b style="color:#9ad6a0;">🕐 Horarios banda</b> para fijar la ventana). Para cada colector, toca el <b style="color:#86efac;">% que corrió</b> (0/50/100) y marca <b style="color:#86efac;">PM · Banda · Limpio · Alin.</b>. Usa <b style="color:#86efac;">Todo 100%</b> / <b style="color:#a7e08a;">Todo</b> para una casa entera, y el técnico marca el <b style="color:#d8b478;">PM semanal</b>. Toca <b style="color:#f2a0a0;">⚠</b> en un colector para marcar que no corre o una rasgadura (1–3, 3 = peor) — crea una orden de trabajo. Toca <b style="color:#eafff0;">Enviar</b> por casa. Se guarda solo.') + '</div>' +
       body +
+      (farms.length ? _manFailuresHtml(farms) : '') +
     '</div>';
 }
 
