@@ -779,7 +779,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v196 · Jul 10 2026';
+var APP_VERSION = 'v197 · Jul 10 2026';
 
 // LOCAL calendar day "YYYY-MM-DD". Everything that means "today" must use this,
 // NOT new Date().toISOString().slice(0,10) — toISOString is UTC, so on Eastern
@@ -1125,6 +1125,25 @@ function toast(msg, opts) {
 }
 // Make sure it's reachable from every module / inline handler.
 if (typeof window !== 'undefined') window.toast = toast;
+
+// ── alert() → visible toast (PWA-safe, systemic fix) ────────────────────────
+// ROOT CAUSE of most "dead button" reports: in the installed iOS PWA the native
+// alert() is unreliable / a no-op, so validation + success + error messages
+// vanished and the button looked broken. Routing EVERY alert() through the toast
+// pill makes every message actually visible — eliminating that whole class in one
+// place instead of patching call sites forever. Safe because nothing depends on
+// alert()'s blocking behavior (code after an alert already runs regardless; a
+// validation alert is followed by `return`). confirm()/prompt() are intentionally
+// NOT overridden — auto-answering a yes/no would be dangerous (e.g. deletes).
+try {
+  var _nativeAlert = (typeof window !== 'undefined' && window.alert) ? window.alert.bind(window) : null;
+  if (typeof window !== 'undefined') {
+    window.alert = function (msg) {
+      try { toast(String(msg == null ? '' : msg)); }
+      catch (e) { if (_nativeAlert) { try { _nativeAlert(msg); } catch (e2) {} } }
+    };
+  }
+} catch (e) {}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // OFFLINE WORK ORDER QUEUE
