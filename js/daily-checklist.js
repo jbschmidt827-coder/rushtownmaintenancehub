@@ -468,15 +468,21 @@ function clAllReviewed() {
 }
 if (typeof window !== 'undefined') window.clAllReviewed = clAllReviewed;
 
+// Visible feedback — alert() is a no-op in the installed iOS PWA, so an alert()
+// guard made this Submit look dead. Use the toast pill instead (alert fallback).
+function _clSay(msg) { if (typeof toast === 'function') toast(msg); else alert(msg); }
+
 async function clSubmitDay() {
   if (_cl.submitted) return;
-  if (!_cl.farm || !_cl.barn) { alert(_clT('cl.select_first','Select a farm and barn first.')); return; }
+  if (!_cl.farm || !_cl.barn) { _clSay(_clT('cl.select_first','Select a farm and barn first.')); return; }
 
   // Require P1 tasks checked or noted
   for (const t of CL_TASKS.filter(t => t.group === 'p1')) {
     const c = _cl.checks[t.id] || {};
     if (!c.done && !c.note) {
-      alert(`"${clTaskLabel(t)}" ${_clT('cl.must_check','must be checked or have a note before submitting.')}`);
+      _clSay(`"${clTaskLabel(t)}" ${_clT('cl.must_check','must be checked or have a note before submitting.')}`);
+      // Scroll the offending task into view so the crew sees what's missing.
+      try { var _row = document.getElementById('cl-task-' + t.id); if (_row) _row.scrollIntoView({behavior:'smooth', block:'center'}); } catch (e) {}
       return;
     }
   }
@@ -496,7 +502,7 @@ async function clSubmitDay() {
     _cl.submitted = true;
     _cl._fbId = docId;
     renderChecklist();
-  } catch(e) { alert(_clT('cl.save_error','Error saving:') + ' ' + e.message); }
+  } catch(e) { _clSay(_clT('cl.save_error','Error saving:') + ' ' + e.message); }
 }
 
 function renderChecklist() {
@@ -591,7 +597,7 @@ function renderChecklist() {
     const showNote = task.group === 'p1' || !chk.done;
     const wiExists = (typeof allWI !== 'undefined') && allWI.some(w => w.clTaskId === task.id);
     html += `
-      <div style="background:${chk.done?'#050f05':g.bg};border:1.5px solid ${chk.done?'#1a3a1a':g.border};border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+      <div id="cl-task-${task.id}" style="background:${chk.done?'#050f05':g.bg};border:1.5px solid ${chk.done?'#1a3a1a':g.border};border-radius:10px;padding:10px 12px;margin-bottom:8px;">
         <div style="display:flex;align-items:flex-start;gap:10px;">
           <div onclick="${_cl.submitted?'':'"clToggle(\''+task.id+'\')"'}" style="flex-shrink:0;margin-top:1px;width:26px;height:26px;border:2px solid ${chk.done?'#4caf50':g.color};border-radius:7px;background:${chk.done?'#4caf50':'transparent'};display:flex;align-items:center;justify-content:center;cursor:${_cl.submitted?'default':'pointer'};" onclick="clToggle('${task.id}')">
             ${chk.done?'<span style="color:#fff;font-size:15px;line-height:1;font-weight:700;">✓</span>':''}

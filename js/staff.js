@@ -29,6 +29,15 @@ function _isMaintTech(s) {
   return !!s && MAINTENANCE_ROLES.indexOf(s.role) !== -1;
 }
 
+// A staff member tagged 'Both'/'All'/'All Farms' works across every plant, so
+// they appear in EVERY location's name pickers (not just the Master/all view).
+// Per Joe: "floaters" (incl. barn workers who cover both Hegins & Danville) must
+// show at both plants — previously this was limited to maintenance/leaders,
+// which hid 12 Both-tagged barn workers from every plant tablet.
+function _coversAllPlants(s) {
+  return !!s && (s.farm === 'Both' || s.farm === 'All' || s.farm === 'All Farms');
+}
+
 // ── Departments (Location + Department scoping) ──────────────────────────────
 // Each person has a Location (farm) AND a Department. Department comes from an
 // explicit `dept` field if set, else it's derived from their role/farm so older
@@ -51,7 +60,7 @@ function getDeptStaff(farm, dept) {
   if (typeof staffList === 'undefined' || !Array.isArray(staffList)) return [];
   return staffList
     .filter(s => s && s.active !== false)
-    .filter(s => !farm || s.farm === farm || ((s.farm === 'Both' || s.farm === 'All' || s.farm === 'All Farms') && (_isMaintTech(s) || _isLeader(s))))
+    .filter(s => !farm || s.farm === farm || _coversAllPlants(s))
     .filter(s => !dept || staffDeptOf(s) === dept || _isLeader(s))
     .map(s => s.name).filter(Boolean).sort((a, b) => a.localeCompare(b));
 }
@@ -73,7 +82,7 @@ function getActiveStaff(farm, role) {
   if (farm) {
     // Only this facility's people — plus maintenance techs tagged 'Both'/'All'
     // (they cover every plant). Other 'Both' people don't show at each facility.
-    list = list.filter(s => s.farm === farm || ((s.farm === 'Both' || s.farm === 'All' || s.farm === 'All Farms') && _isMaintTech(s)));
+    list = list.filter(s => s.farm === farm || _coversAllPlants(s));
   }
   if (role) {
     list = list.filter(s => !s.role || s.role === role);
@@ -88,7 +97,7 @@ function staffAtLocation(loc) {
   let list = (typeof staffList !== 'undefined' && Array.isArray(staffList))
     ? staffList.filter(s => s && s.active !== false) : [];
   if (loc) {
-    list = list.filter(s => s.farm === loc || ((s.farm === 'Both' || s.farm === 'All' || s.farm === 'All Farms') && _isMaintTech(s)));
+    list = list.filter(s => s.farm === loc || _coversAllPlants(s));
   }
   return list;
 }
