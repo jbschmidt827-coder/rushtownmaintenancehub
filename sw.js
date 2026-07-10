@@ -80,7 +80,6 @@ const SHELL_FILES = [
   '/js/biosecurity.js',
   '/js/tv-scoreboard.js',
   '/js/staff.js',
-  '/js/login.js',
   '/js/oncall.js',
   '/js/enhancements.js',
   '/js/notifications.js',
