@@ -779,7 +779,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v198 · Jul 10 2026';
+var APP_VERSION = 'v199 · Jul 10 2026';
 
 // LOCAL calendar day "YYYY-MM-DD". Everything that means "today" must use this,
 // NOT new Date().toISOString().slice(0,10) — toISOString is UTC, so on Eastern
@@ -1051,6 +1051,7 @@ function openLocationHome(loc) {
   if (typeof updateHomeFeedStatus === 'function') updateHomeFeedStatus();
   if (typeof renderTodayPanel === 'function') renderTodayPanel();
   try { if (typeof applyRoleHome === 'function') applyRoleHome(); } catch(e) {}
+  try { if (typeof applyAccessHome === 'function') applyAccessHome(); } catch(e) {}
   try { window.scrollTo(0, 0); } catch(e) {}
 }
 

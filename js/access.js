@@ -1,0 +1,113 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// access.js — strict per-area access control (v199)
+// Once a person is signed in (js/login.js), they can only reach the pages for
+// THEIR area (= their Department: Barns / Maintenance / Processing / Feed Mill).
+// Directors + Leads see everything. Set a person's area in Staff → Edit (Dept).
+//
+// SAFETY: enforcement is active ONLY when someone is actually signed in via the
+// login gate (isLoggedIn()). Login ships OFF behind settings/loginConfig, so this
+// changes NOTHING until login is enabled. Every check is FAIL-OPEN — any error,
+// unknown user, or untracked page → allowed, so it can never lock a person out of
+// the whole app. It guards navigation by wrapping the existing openers (no edits
+// to their files) so a bug here degrades to "no restriction", never a broken app.
+// ═══════════════════════════════════════════════════════════════════════════
+(function () {
+  // Which tabs belong to which area. Anything not listed is management-only.
+  var TAB_AREA = {
+    prod: 'Barns', check: 'Barns', mw: 'Barns',
+    maint: 'Maintenance', oncall: 'Maintenance',
+    pkg: 'Processing',
+    feed: 'Feed Mill'
+  };
+  var MGMT_ONLY = ['dash', 'staff', 'sched', 'reports', 'kpi', 'ship', 'daily'];
+  // Home-card data-role-dept tag → area.
+  var TAG_AREA = { barns: 'Barns', maint: 'Maintenance', mgmt: 'Management' };
+
+  function _lang_es() { return (typeof _lang !== 'undefined' && _lang === 'es'); }
+
+  // The signed-in staff record, or undefined when NOT enforcing (not logged in).
+  function _curStaff() {
+    try {
+      if (!(window.isLoggedIn && window.isLoggedIn())) return undefined;   // not enforcing
+      var u = (typeof getDeviceUser === 'function') ? getDeviceUser() : '';
+      if (!u || typeof staffList === 'undefined' || !Array.isArray(staffList)) return null;
+      return staffList.find(function (s) { return s && s.name === u; }) || null;
+    } catch (e) { return undefined; }
+  }
+  function _leader(s) { try { return (typeof _isLeader === 'function') && _isLeader(s); } catch (e) { return false; } }
+  function _area(s) { try { return (typeof staffDeptOf === 'function') ? staffDeptOf(s) : 'Barns'; } catch (e) { return 'Barns'; } }
+
+  // Full access? (not enforcing, unknown user, or a leader). Fail-open.
+  function _fullAccess() {
+    var s = _curStaff();
+    return (s === undefined) || !s || _leader(s);
+  }
+
+  window.accessAllowedTab = function (tab) {
+    try {
+      if (_fullAccess()) return true;
+      if (MGMT_ONLY.indexOf(tab) !== -1) return false;
+      var area = TAB_AREA[tab];
+      if (!area) return true;                        // untracked → allow
+      return _area(_curStaff()) === area;
+    } catch (e) { return true; }
+  };
+  window.accessAllowedArea = function (area) {
+    try {
+      if (_fullAccess()) return true;
+      if (area === 'Management') return false;
+      return _area(_curStaff()) === area;
+    } catch (e) { return true; }
+  };
+
+  function _deny() {
+    try { if (typeof toast === 'function') toast(_lang_es() ? 'No disponible para tu acceso' : 'Not available for your login'); } catch (e) {}
+  }
+
+  // Wrap the existing navigation entry points (once) so disallowed pages are
+  // blocked with a toast instead of opening. Runs after all scripts define them.
+  function _wrap() {
+    try {
+      if (typeof window.go === 'function' && !window.go._acc) {
+        var g = window.go;
+        window.go = function (tab) { if (!window.accessAllowedTab(tab)) { _deny(); return; } return g.apply(this, arguments); };
+        window.go._acc = 1;
+      }
+      if (typeof window.enterApp === 'function' && !window.enterApp._acc) {
+        var e = window.enterApp;
+        window.enterApp = function (tab) { if (tab && !window.accessAllowedTab(tab)) { _deny(); return; } return e.apply(this, arguments); };
+        window.enterApp._acc = 1;
+      }
+      [['openProductionScreen', 'Barns'], ['openManure', 'Barns'], ['openCompletion', 'Barns'],
+       ['openPestLog', 'Barns'], ['openLiveMonitor', 'Management']].forEach(function (p) {
+        var fn = p[0], area = p[1];
+        if (typeof window[fn] === 'function' && !window[fn]._acc) {
+          var o = window[fn];
+          window[fn] = function () { if (!window.accessAllowedArea(area)) { _deny(); return; } return o.apply(this, arguments); };
+          window[fn]._acc = 1;
+        }
+      });
+    } catch (err) { console.warn('[access] wrap (non-fatal):', err); }
+  }
+
+  // Filter the site-home cards to the signed-in person's area (no More toggle).
+  // Called from openLocationHome (after applyRoleHome). No-op when not enforcing.
+  window.applyAccessHome = function () {
+    try {
+      var s = _curStaff();
+      if (s === undefined) return;                    // not enforcing → leave rolehome's behavior
+      var home = document.getElementById('loc-home'); if (!home) return;
+      var leader = _leader(s), area = _area(s);
+      home.querySelectorAll('[data-role-dept]').forEach(function (c) {
+        if (leader) { c.style.display = ''; return; }
+        var tags = (c.getAttribute('data-role-dept') || '').split(/\s+/);
+        var ok = tags.some(function (t) { return TAG_AREA[t] === area; });
+        c.style.display = ok ? '' : 'none';
+      });
+      if (!leader) { var more = document.getElementById('rh-more-btn'); if (more) more.style.display = 'none'; }
+    } catch (e) {}
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(_wrap, 1700); });
+  else setTimeout(_wrap, 1700);
+})();
