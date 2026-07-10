@@ -367,10 +367,7 @@ function editStaffOpen(id) {
   // Login PIN — only managers/leads (or admin-unlocked) see/edit it.
   var _pinRow = document.getElementById('edit-staff-pin-row');
   if (_pinRow) {
-    var _me = (typeof getDeviceUser === 'function' && typeof staffList !== 'undefined')
-      ? staffList.find(function (x) { return x && x.name === getDeviceUser(); }) : null;
-    var _canPin = (typeof _isLeader === 'function' && _isLeader(_me)) || window._adminUnlocked === true;
-    _pinRow.style.display = _canPin ? 'block' : 'none';
+    _pinRow.style.display = 'block';   // always visible (per Joe) — set/reset any staff PIN here
     var _st = document.getElementById('edit-staff-pin-status'); if (_st) _st.textContent = s.pin ? '· ✓ set' : '· — none yet';
     var _pi = document.getElementById('edit-staff-pin'); if (_pi) { _pi.value = ''; _pi.dataset.reset = ''; }
   }
