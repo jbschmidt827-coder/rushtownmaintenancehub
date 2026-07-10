@@ -78,6 +78,11 @@
         window.enterApp = function (tab) { if (tab && !window.accessAllowedTab(tab)) { _deny(); return; } return e.apply(this, arguments); };
         window.enterApp._acc = 1;
       }
+      if (typeof window.showLocationPicker === 'function' && !window.showLocationPicker._acc) {
+        var sp = window.showLocationPicker;
+        window.showLocationPicker = function () { var r = sp.apply(this, arguments); try { window.applyAccessPicker(); } catch (e) {} return r; };
+        window.showLocationPicker._acc = 1;
+      }
       [['openProductionScreen', 'Barns'], ['openManure', 'Barns'], ['openCompletion', 'Barns'],
        ['openPestLog', 'Barns'], ['openLiveMonitor', 'Management']].forEach(function (p) {
         var fn = p[0], area = p[1];
@@ -88,6 +93,7 @@
         }
       });
     } catch (err) { console.warn('[access] wrap (non-fatal):', err); }
+    try { window.applyAccessPicker(); } catch (e) {}   // filter picker if already signed in at boot
   }
 
   // Filter the site-home cards to the signed-in person's area (no More toggle).
@@ -105,6 +111,38 @@
         c.style.display = ok ? '' : 'none';
       });
       if (!leader) { var more = document.getElementById('rh-more-btn'); if (more) more.style.display = 'none'; }
+    } catch (e) {}
+  };
+
+  // Which LOCATIONS a person may pick. Leaders → all (null). Else by farm/area.
+  function _allowedLocs(s) {
+    try {
+      if (_leader(s)) return null;                       // all sites incl Master
+      var area = _area(s), farm = (s && s.farm) || '';
+      if (area === 'Processing' || farm === 'Processing Plant') return ['Processing Plant'];
+      if (farm === 'Hegins') return ['Hegins'];
+      if (farm === 'Danville') return ['Danville'];
+      if (farm === 'Both' || farm === 'All' || farm === 'All Farms') return ['Hegins', 'Danville'];
+      return ['Hegins', 'Danville'];                      // default: both plants, no Master
+    } catch (e) { return null; }
+  }
+  // Filter the location picker to the signed-in person's site(s); if exactly one,
+  // jump straight into it. No-op when not enforcing or for leaders.
+  window.applyAccessPicker = function () {
+    try {
+      var s = _curStaff();
+      if (s === undefined) return;                        // not enforcing
+      var allow = _allowedLocs(s);
+      var picker = document.getElementById('loc-picker'); if (!picker) return;
+      var btns = picker.querySelectorAll('[data-loc]');
+      if (allow === null) { btns.forEach(function (b) { b.style.display = ''; }); return; }
+      var visible = [];
+      btns.forEach(function (b) {
+        var ok = allow.indexOf(b.getAttribute('data-loc')) !== -1;
+        b.style.display = ok ? '' : 'none';
+        if (ok) visible.push(b.getAttribute('data-loc'));
+      });
+      if (visible.length === 1 && typeof openLocationHome === 'function') openLocationHome(visible[0]);
     } catch (e) {}
   };
 

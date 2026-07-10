@@ -44,6 +44,7 @@
     try { localStorage.setItem(LKEY, String(name || '').trim()); localStorage.setItem(VKEY, '1'); } catch (e) {}
     try { _stampNameFields(); } catch (e) {}
     try { if (typeof renderLoginChip === 'function') renderLoginChip(); } catch (e) {}
+    try { if (typeof applyAccessPicker === 'function') applyAccessPicker(); } catch (e) {}
   };
   window.signOutDevice = function () {
     try { localStorage.removeItem(VKEY); } catch (e) {}
@@ -53,14 +54,37 @@
   };
   window.isLoggedIn = function () { try { return localStorage.getItem(VKEY) === '1' && !!(localStorage.getItem(LKEY) || '').trim(); } catch (e) { return false; } };
 
-  // Push the logged-in name into any blank staff-name field so entries are stamped.
+  // Auto-stamp the logged-in person onto EVERY name field, app-wide, so their
+  // name is first on everything (daily walks, checks, manure, PM, etc.) without
+  // typing. Covers name text-inputs (any staff datalist) AND name dropdowns
+  // (wo-tech/bulk-tech/etc.) — for a dropdown, adds the person as an option if
+  // needed and selects it. Only fills BLANK fields, so a deliberate change on a
+  // shared entry is respected; runs on a light interval to catch fields that are
+  // populated dynamically (e.g. the WO name list after a location is picked).
+  // NOTE: work-order name fields (wo-*, qwo-*) are intentionally EXCLUDED — WOs are
+  // often filed on behalf of someone else, so those stay a manual pick (per Joe).
+  var NAME_SELECT_IDS = ['bulk-tech', 'cl-worker', 'mw-employee', 'pm-tech'];
   function _stampNameFields() {
     var u = (typeof getDeviceUser === 'function') ? getDeviceUser() : '';
     if (!u) return;
-    document.querySelectorAll('input[list="staff-datalist"], input[list="barn-staff-datalist"]').forEach(function (el) {
-      if (el && !el.value) { el.value = u; }
-    });
+    try {
+      document.querySelectorAll('input[list*="staff-datalist"]').forEach(function (el) {
+        if (!el || el.value) return;
+        if (/^q?wo-/.test(el.id || '')) return;   // skip Work Order name fields
+        el.value = u;
+      });
+      NAME_SELECT_IDS.forEach(function (id) {
+        var sel = document.getElementById(id);
+        if (!sel || sel.tagName !== 'SELECT' || sel.value) return;
+        var has = Array.prototype.some.call(sel.options, function (o) { return o.value === u; });
+        if (!has) { var o = document.createElement('option'); o.value = u; o.textContent = u; sel.appendChild(o); }
+        sel.value = u;
+      });
+    } catch (e) {}
   }
+  window.stampUser = _stampNameFields;
+  // Keep name fields stamped for logged-in users (catches dynamically-built pickers).
+  setInterval(function () { try { if (window.isLoggedIn && window.isLoggedIn()) _stampNameFields(); } catch (e) {} }, 1500);
 
   // ── The gate overlay ────────────────────────────────────────────────────────
   function _overlay() {
