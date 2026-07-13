@@ -833,11 +833,11 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
           <div id="ls-maint" style="font-family:'IBM Plex Mono',monospace;font-size:10px;min-height:14px;"></div>
         </button>
 
-        <!-- Staff -->
-        <button id="landing-staff-btn" data-role-dept="mgmt" onclick="enterApp('staff')" class="hub-card" style="padding:16px 14px;background:#1a2a3a;border:2px solid #4a90d9;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
-          <span style="font-size:28px;line-height:1;">👥</span>
-          <div data-i18n="landing.staff" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#7ab0f6;letter-spacing:1px;text-transform:uppercase;">Staff</div>
-          <div data-i18n="landing.staff_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5a90c9;line-height:1.4;">Directory · Schedule · Onboarding · Certs</div>
+        <!-- Processing (moved off the front screen 2026-07-13 — sits just under Production per Joe; opens Daily Run) -->
+        <button data-role-dept="pkg" onclick="openProcessing()" class="hub-card" style="padding:16px 14px;background:#2a230a;border:2px solid #d69e2e;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:28px;line-height:1;">🏭</span>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0d68a;letter-spacing:1px;text-transform:uppercase;" data-i18n="landing.pkg">Processing</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#d6b36a;line-height:1.4;" data-i18n="landing.pkg_sub">Daily egg run · machine time · packing</div>
         </button>
 
         <!-- On Call -->
@@ -862,11 +862,11 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
           <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#9ac9d6;line-height:1.4;" data-i18n="landing.completion_sub">Daily % by house &amp; check</div>
         </button>
 
-        <!-- Processing (moved off the front screen 2026-07-13 — opens Daily Run) -->
-        <button data-role-dept="pkg" onclick="openProcessing()" class="hub-card" style="padding:16px 14px;background:#2a230a;border:2px solid #d69e2e;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
-          <span style="font-size:28px;line-height:1;">🏭</span>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0d68a;letter-spacing:1px;text-transform:uppercase;" data-i18n="landing.pkg">Processing</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#d6b36a;line-height:1.4;" data-i18n="landing.pkg_sub">Daily egg run · machine time · packing</div>
+        <!-- Staff (moved down 2026-07-13 — Processing took its spot under Production per Joe) -->
+        <button id="landing-staff-btn" data-role-dept="mgmt" onclick="enterApp('staff')" class="hub-card" style="padding:16px 14px;background:#1a2a3a;border:2px solid #4a90d9;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:28px;line-height:1;">👥</span>
+          <div data-i18n="landing.staff" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#7ab0f6;letter-spacing:1px;text-transform:uppercase;">Staff</div>
+          <div data-i18n="landing.staff_sub" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5a90c9;line-height:1.4;">Directory · Schedule · Onboarding · Certs</div>
         </button>
 
         <!-- Daily End-of-Shift Report moved into Production → "EOS Report" (under Morning Walk) -->
