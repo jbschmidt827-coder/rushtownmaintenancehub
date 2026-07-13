@@ -855,12 +855,10 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
           <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#c9a86a;line-height:1.4;" data-i18n="landing.manure_sub">Belt % run · by house &amp; collector</div>
         </button>
 
-        <!-- Completion dashboard -->
-        <button data-role-dept="barns mgmt" onclick="openCompletion()" class="hub-card" style="padding:16px 14px;background:#0a1f2a;border:2px solid #3a8ab0;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
-          <span style="font-size:28px;line-height:1;">📊</span>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;" data-i18n="landing.completion">Completion</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#9ac9d6;line-height:1.4;" data-i18n="landing.completion_sub">Daily % by house &amp; check</div>
-        </button>
+        <!-- Completion card REMOVED from home 2026-07-13 per Joe.
+             completion.js + #completion-overlay + openCompletion() stay intact
+             (still reachable from Live Checks flows) — just no home entry point,
+             same treatment as the Daily Scorecard (v186). -->
 
         <!-- Staff (moved down 2026-07-13 — Processing took its spot under Production per Joe) -->
         <button id="landing-staff-btn" data-role-dept="mgmt" onclick="enterApp('staff')" class="hub-card" style="padding:16px 14px;background:#1a2a3a;border:2px solid #4a90d9;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
@@ -5265,7 +5263,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260713-v203"></script>
+<script defer src="js/core.js?v=20260713-v204"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
