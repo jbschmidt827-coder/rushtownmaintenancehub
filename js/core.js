@@ -779,7 +779,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v201 · Jul 13 2026';
+var APP_VERSION = 'v202 · Jul 13 2026';
 
 // LOCAL calendar day "YYYY-MM-DD". Everything that means "today" must use this,
 // NOT new Date().toISOString().slice(0,10) — toISOString is UTC, so on Eastern
@@ -1431,6 +1431,7 @@ const TRANSLATIONS = {
     // Landing screen cards
     'landing.prod':'Production','landing.prod_sub':'Barn walk · Daily checks · Feed & water',
     'landing.manure':'Manure','landing.manure_sub':'Belt % run · by house & collector',
+    'landing.pkg':'Processing','landing.pkg_sub':'Daily egg run · machine time · packing',
     'landing.completion':'Completion','landing.completion_sub':'Daily % by house & check',
     'landing.housestatus':'🏚 House Status',
     'landing.livemonitor':'🔴 Live Checks',
@@ -1643,6 +1644,7 @@ const TRANSLATIONS = {
     // Landing screen cards
     'landing.prod':'Producción','landing.prod_sub':'Ronda · Revisiones diarias · Alimento y agua',
     'landing.manure':'Estiércol','landing.manure_sub':'% de banda · por casa y colector',
+    'landing.pkg':'Procesamiento','landing.pkg_sub':'Corrida diaria · tiempo de máquina · empaque',
     'landing.completion':'Cumplimiento','landing.completion_sub':'% diario por casa y revisión',
     'landing.housestatus':'🏚 Estado de Casas',
     'landing.livemonitor':'🔴 En Vivo',

@@ -200,6 +200,7 @@ function goPkgSection(section) {
   document.querySelectorAll('#panel-pkg .sub-btn').forEach(b => {
     if (b.dataset.section === section) b.classList.add('active');
   });
+  if (section === 'dailyrun' && typeof renderEggRun === 'function') renderEggRun();
   if (section === 'packing') renderPacking();
   if (section === 'eggs') {
     const today = new Date().toISOString().slice(0,10);

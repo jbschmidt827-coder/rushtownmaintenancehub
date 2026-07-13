@@ -21,7 +21,7 @@
   };
   var MGMT_ONLY = ['dash', 'staff', 'sched', 'reports', 'kpi', 'ship', 'daily'];
   // Home-card data-role-dept tag → area.
-  var TAG_AREA = { barns: 'Barns', maint: 'Maintenance', mgmt: 'Management' };
+  var TAG_AREA = { barns: 'Barns', maint: 'Maintenance', pkg: 'Processing', mgmt: 'Management' };
 
   function _lang_es() { return (typeof _lang !== 'undefined' && _lang === 'es'); }
 
@@ -119,7 +119,12 @@
     try {
       if (_leader(s)) return null;                       // all sites incl Master
       var area = _area(s), farm = (s && s.farm) || '';
-      if (area === 'Processing' || farm === 'Processing Plant') return ['Processing Plant'];
+      // Processing moved off the front screen (v202): plant staff now enter via
+      // their farm's home card. Both plants unless their farm pins them to one.
+      if (area === 'Processing' || farm === 'Processing Plant') {
+        if (farm === 'Hegins' || farm === 'Danville') return [farm];
+        return ['Hegins', 'Danville'];
+      }
       if (farm === 'Hegins') return ['Hegins'];
       if (farm === 'Danville') return ['Danville'];
       if (farm === 'Both' || farm === 'All' || farm === 'All Farms') return ['Hegins', 'Danville'];

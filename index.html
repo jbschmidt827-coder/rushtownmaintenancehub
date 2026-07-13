@@ -764,9 +764,9 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
       <button class="loc-pill loc-choice" data-loc="Danville" onclick="openLocationHome('Danville')">
         <span class="lc-emoji">📍</span><span><span class="lc-name">DANVILLE</span><span class="lc-sub" data-i18n="landing.layer_only" style="display:block;">Layer houses · this site only</span></span><span class="lc-arrow">→</span>
       </button>
-      <button class="loc-pill loc-choice" data-loc="Processing Plant" onclick="setActiveLocation('Processing Plant');enterApp('pkg')" style="border-color:#d69e2e;">
-        <span class="lc-emoji">🏭</span><span><span class="lc-name" style="color:#f0d68a;">PROCESSING</span><span class="lc-sub" style="display:block;color:#d6b36a;">Plant · maintenance &amp; units</span></span><span class="lc-arrow" style="color:#d69e2e;">→</span>
-      </button>
+      <!-- PROCESSING pill removed from the front screen 2026-07-13 per Joe —
+           Processing now lives as a card on each farm's home (Hegins/Danville).
+           Processing Plant remains a valid location for WOs / PMs / maintenance. -->
       <button class="loc-pill loc-choice" data-loc="Master" onclick="openLocationHome('Master')" style="border-color:#3b82f6;">
         <span class="lc-emoji">🏢</span><span><span class="lc-name" style="color:#bcd3f6;">MASTER</span><span class="lc-sub" data-i18n="landing.all_combined" style="display:block;color:#7ab0f6;">All locations combined</span></span><span class="lc-arrow" style="color:#3b82f6;">→</span>
       </button>
@@ -860,6 +860,13 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
           <span style="font-size:28px;line-height:1;">📊</span>
           <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0ead8;letter-spacing:1px;text-transform:uppercase;" data-i18n="landing.completion">Completion</div>
           <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#9ac9d6;line-height:1.4;" data-i18n="landing.completion_sub">Daily % by house &amp; check</div>
+        </button>
+
+        <!-- Processing (moved off the front screen 2026-07-13 — opens Daily Run) -->
+        <button data-role-dept="pkg" onclick="openProcessing()" class="hub-card" style="padding:16px 14px;background:#2a230a;border:2px solid #d69e2e;border-radius:14px;color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:28px;line-height:1;">🏭</span>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#f0d68a;letter-spacing:1px;text-transform:uppercase;" data-i18n="landing.pkg">Processing</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#d6b36a;line-height:1.4;" data-i18n="landing.pkg_sub">Daily egg run · machine time · packing</div>
         </button>
 
         <!-- Daily End-of-Shift Report moved into Production → "EOS Report" (under Morning Walk) -->
@@ -3557,12 +3564,15 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   <div class="section-title" data-i18n="title.pkg">🏭 Processing</div>
   <div id="processing-body"></div>
   <div class="sub-nav">
+    <button class="sub-btn" data-section="dailyrun" onclick="goPkgSection('dailyrun')">🥚⏱ Daily Run</button>
     <button class="sub-btn active" data-section="packing" onclick="goPkgSection('packing')" data-i18n="sub.packing">📦 Packing</button>
     <button class="sub-btn" data-section="eggs" onclick="goPkgSection('eggs')" data-i18n="sub.eggs">🥚 Eggs by Barn</button>
     <button class="sub-btn" data-section="efficiency" onclick="goPkgSection('efficiency')">📈 Efficiency</button>
     <button class="sub-btn" data-section="hegins" onclick="goPkgSection('hegins')">📍 Hegins</button>
     <button class="sub-btn" data-section="danville" onclick="goPkgSection('danville')">📍 Danville</button>
   </div>
+  <!-- Daily Egg Run (machine start/stop + total eggs) — js/eggrun.js -->
+  <div class="pkg-section" id="pkg-dailyrun" style="display:none;"></div>
   <!-- Packing -->
   <div class="pkg-section" id="pkg-packing" style="display:block;">
     <div class="ops-quick-form">
@@ -5255,14 +5265,15 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260710-v200"></script>
+<script defer src="js/core.js?v=20260713-v202"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
 <script defer src="js/maintenance.js?v=20260706-v190"></script>
 <script defer src="js/maint-projects.js?v=20260617-projtags"></script>
 <script defer src="js/trending-wo.js?v=20260501"></script>
-<script defer src="js/packaging.js?v=20260706-v189"></script>
+<script defer src="js/packaging.js?v=20260713-v202"></script>
+<script defer src="js/eggrun.js?v=20260713-v202"></script>
 <script defer src="js/processing.js?v=20260625-es2"></script>
 <script defer src="js/manure.js?v=20260713-v201"></script>
 <script defer src="js/completion.js?v=20260706-localday"></script>
@@ -5286,7 +5297,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/tv-scoreboard.js?v=20260706-v189"></script>
 <script defer src="js/staff.js?v=20260710-v198"></script>
 <script defer src="js/login.js?v=20260710-v200"></script>
-<script defer src="js/access.js?v=20260710-v199"></script>
+<script defer src="js/access.js?v=20260713-v202"></script>
 <script defer src="js/staff-roster.js?v=20260626-procstaff"></script>
 <script defer src="js/enhancements.js?v=20260626-goodjob"></script>
 <script defer src="js/navback.js?v=20260706-v190"></script>

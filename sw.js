@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v201-manstart';
+const CACHE_NAME = 'rushtown-v202-eggrun';
 
 const SHELL_FILES = [
   '/',
@@ -63,6 +63,7 @@ const SHELL_FILES = [
   '/js/egg-quality.js',
   '/js/feed-mill.js',
   '/js/packaging.js',
+  '/js/eggrun.js',
   '/js/processing.js',
   '/js/manure.js',
   '/js/completion.js',
