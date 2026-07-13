@@ -1507,6 +1507,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
     <button class="prod-tab-btn active" id="prod-tab-overview" onclick="goProdSection('overview')">📋 Overview</button>
     <button class="prod-tab-btn" id="prod-tab-mwhistory" onclick="goProdSection('mwhistory')">☀️ Morning Walks</button>
     <button class="prod-tab-btn" id="prod-tab-bwhistory" onclick="goProdSection('bwhistory')">📂 Barn Walks</button>
+    <button class="prod-tab-btn" id="prod-tab-manure" onclick="goProdSection('manure')">💩 Manure Runs</button>
     <button class="prod-tab-btn" id="prod-tab-biosec" onclick="goProdSection('biosec')">🦠 Biosecurity</button>
     <button class="prod-tab-btn" id="prod-tab-pest" onclick="openPestLog()">🐀 Pest Log</button>
   </div>
@@ -1580,6 +1581,9 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 
   <!-- Barn Walk History Tab -->
   <div id="prod-sec-bwhistory" style="display:none;"></div>
+
+  <!-- Manure Runs Log Section -->
+  <div id="prod-sec-manure" style="display:none;"></div>
 
   <!-- Biosecurity Tab -->
   <div id="prod-sec-biosec" style="display:none;"></div>
@@ -5260,9 +5264,9 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/trending-wo.js?v=20260501"></script>
 <script defer src="js/packaging.js?v=20260706-v189"></script>
 <script defer src="js/processing.js?v=20260625-es2"></script>
-<script defer src="js/manure.js?v=20260706-v193"></script>
+<script defer src="js/manure.js?v=20260713-v201"></script>
 <script defer src="js/completion.js?v=20260706-localday"></script>
-<script defer src="js/today.js?v=20260706-localday"></script>
+<script defer src="js/today.js?v=20260713-v201"></script>
 <script defer src="js/rolehome.js?v=20260701-rolehome"></script>
 <script defer src="js/voice.js?v=20260701-voice"></script>
 <script defer src="js/rooster.js?v=20260701-rooster"></script>
@@ -5271,7 +5275,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/livemonitor.js?v=20260703-liveboard"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260524b"></script>
-<script defer src="js/production.js?v=20260710-v194"></script>
+<script defer src="js/production.js?v=20260713-v201"></script>
 <script defer src="js/scorecard.js?v=20260706-localday"></script>
 <script defer src="js/help.js?v=20260706-backbtn"></script>
 <script defer src="js/time-blocks.js?v=20260612f-heginstimes"></script>

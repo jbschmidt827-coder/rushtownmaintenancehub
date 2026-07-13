@@ -2751,7 +2751,7 @@ function renderEggTrends(data) {
 // ── Production Sub-Tab Switcher ─────────────
 
 function goProdSection(sec) {
-  const sections = ['overview','mwhistory','bwhistory','biosec'];
+  const sections = ['overview','mwhistory','bwhistory','manure','biosec'];
   sections.forEach(s => {
     const el  = document.getElementById('prod-sec-' + s);
     const btn = document.getElementById('prod-tab-' + s);
@@ -2762,6 +2762,7 @@ function goProdSection(sec) {
 
   if (sec === 'mwhistory') renderProdMorningWalks();
   if (sec === 'bwhistory') renderProdBarnWalks();
+  if (sec === 'manure' && typeof renderProdManureRuns === 'function') renderProdManureRuns();
   if (sec === 'biosec')    renderProdBiosec();
 }
 

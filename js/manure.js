@@ -56,6 +56,7 @@ function ML(en, es) { return _mlang() === 'es' ? es : en; }
 let _manureLog = [];
 let _manureWeekly = [];
 let _manureSubmit = [];
+let _manureStart = [];   // per-house "belts started" stamps (who + when), live
 let _manureListening = false;
 let _manurePushed = {}; // dedupe PM-tracker pushes per farm+period this session
 let _manureExpanded = {}; // submitted houses the user re-opened for editing
@@ -89,6 +90,12 @@ function manWeeklyRec(farm, house) {
 function manSubRec(farm, house) {
   var t = manToday();
   return _manureSubmit.find(function (r) {
+    return r.farm === farm && String(r.house) === String(house) && r.date === t;
+  });
+}
+function manStartRec(farm, house) {
+  var t = manToday();
+  return _manureStart.find(function (r) {
     return r.farm === farm && String(r.house) === String(house) && r.date === t;
   });
 }
@@ -218,6 +225,10 @@ function manStartListener() {
       _manureSubmit = snap.docs.map(function (d) { return Object.assign({}, d.data(), { _id: d.id }); });
       _manureRerender();
     }, function (err) { console.error('manureSubmit listener:', err); });
+    db.collection('manureStart').orderBy('ts', 'desc').limit(400).onSnapshot(function (snap) {
+      _manureStart = snap.docs.map(function (d) { return Object.assign({}, d.data(), { _id: d.id }); });
+      _manureRerender();
+    }, function (err) { console.error('manureStart listener:', err); });
     // Belt-run schedule (settings/manureBeltSchedule) — rarely changes, live so
     // an edit on one tablet shows on all of them.
     db.collection('settings').doc('manureBeltSchedule').onSnapshot(function (doc) {
@@ -432,10 +443,12 @@ function renderManure() {
         var sub = manSubRec(farm, house);
         var subDone = !!sub;
         var subBy = (subDone && sub.by) ? ' · ' + sub.by : '';
+        var srec = manStartRec(farm, house);
+        var startLbl = manStartLabel(srec);
         // Submitted houses fold to a thin green bar so the crew only sees what's left.
         if (subDone && !_manureExpanded[hkey]) {
           body += '<div onclick="manureToggleHouse(\'' + farm + '\',' + house + ')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0d1f0d;border:1.5px solid #2a7a3a;border-radius:12px;padding:13px 14px;margin-bottom:10px;cursor:pointer;">' +
-            '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:14px;font-weight:700;color:#86efac;">✓ ' + HOUSE + ' ' + house + ' — ' + ML('submitted', 'enviada') + subBy + '</span>' +
+            '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:14px;font-weight:700;color:#86efac;">✓ ' + HOUSE + ' ' + house + ' — ' + ML('submitted', 'enviada') + subBy + (startLbl ? ' <span style="font-weight:400;font-size:11px;color:#5a8a5a;">· ▶ ' + ML('started', 'inició') + ' ' + startLbl + '</span>' : '') + '</span>' +
             '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#5a8a5a;">' + ML('tap to reopen', 'toca para abrir') + ' ▸</span>' +
           '</div>';
           return;
@@ -496,10 +509,12 @@ function renderManure() {
               (issueCount > 0 ? ' <span style="font-size:11px;font-weight:700;color:#f2705a;">· ⚠ ' + issueCount + ' ' + ML('issue', 'problema') + (issueCount > 1 ? ML('s', 's') : '') + '</span>' : '') +
             '</div>' +
             '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+              (srec ? '' : '<button onclick="manureStartRun(\'' + farm + '\',' + house + ')" style="padding:7px 11px;background:#14361c;border:1.5px solid #4ade80;border-radius:8px;color:#4ade80;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">▶ ' + ML('Start belt run', 'Iniciar banda') + '</button>') +
               '<button onclick="manureSetAll(\'' + farm + '\',' + house + ',100)" style="padding:7px 11px;background:#14532d;border:1px solid #2a7a3a;border-radius:8px;color:#86efac;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">' + ML('All 100%', 'Todo 100%') + '</button>' +
               '<button onclick="manureAllChecks(\'' + farm + '\',' + house + ')" style="padding:7px 11px;background:#1c2e14;border:1px solid #3a6a2a;border-radius:8px;color:#a7e08a;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✓ ' + ML('All checks', 'Todo') + '</button>' +
             '</div>' +
           '</div>' +
+          (srec ? '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;color:#4ade80;background:#0d2a12;border:1px solid #2a7a3a;border-radius:8px;padding:6px 10px;margin-bottom:9px;">▶ ' + ML('Belts started', 'Banda iniciada') + ' ' + startLbl + '</div>' : '') +
           manBeltBadge(farm, house) + rows + '</div>';
       });
     });
@@ -515,13 +530,47 @@ function renderManure() {
         '<div style="text-align:right;"><div style="font-family:\'Bebas Neue\',sans-serif;font-size:30px;color:#f0ead8;letter-spacing:2px;line-height:1;">💩 ' + ML('MANURE', 'ESTIÉRCOL') + '</div>' +
         '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#7ab07a;margin-top:3px;">' + dateStr + '</div></div>' +
       '</div>' +
-      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#9ab09a;line-height:1.5;background:#0d1f0d;border:1px solid #1e3a1e;border-radius:10px;padding:10px 12px;margin:8px 0 16px;">' + ML('Each house is blocked out <b style="color:#86efac;">2.0 hours</b> to run its belts (tap <b style="color:#9ad6a0;">🕐 Belt-run times</b> to set the window). For each collector, tap the <b style="color:#86efac;">% that ran</b> (0/50/100) and tick <b style="color:#86efac;">PM · Belt · Clean · Align</b>. Use <b style="color:#86efac;">All 100%</b> / <b style="color:#a7e08a;">All checks</b> to do a whole house at once, and the manure tech ticks the <b style="color:#d8b478;">weekly PM</b>. Tap <b style="color:#f2a0a0;">⚠</b> on a collector to flag it can’t run or a belt rip (1–3, 3 = worst) — that makes a work order. Hit <b style="color:#eafff0;">Submit</b> per house. It saves as you go.', 'Cada casa tiene <b style="color:#86efac;">2.0 horas</b> para correr sus bandas (toca <b style="color:#9ad6a0;">🕐 Horarios banda</b> para fijar la ventana). Para cada colector, toca el <b style="color:#86efac;">% que corrió</b> (0/50/100) y marca <b style="color:#86efac;">PM · Banda · Limpio · Alin.</b>. Usa <b style="color:#86efac;">Todo 100%</b> / <b style="color:#a7e08a;">Todo</b> para una casa entera, y el técnico marca el <b style="color:#d8b478;">PM semanal</b>. Toca <b style="color:#f2a0a0;">⚠</b> en un colector para marcar que no corre o una rasgadura (1–3, 3 = peor) — crea una orden de trabajo. Toca <b style="color:#eafff0;">Enviar</b> por casa. Se guarda solo.') + '</div>' +
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#9ab09a;line-height:1.5;background:#0d1f0d;border:1px solid #1e3a1e;border-radius:10px;padding:10px 12px;margin:8px 0 16px;">' + ML('Tap <b style="color:#4ade80;">▶ Start belt run</b> when you begin — it stamps your name + start time for the house (logging the first % does it too). Each house is blocked out <b style="color:#86efac;">2.0 hours</b> to run its belts (tap <b style="color:#9ad6a0;">🕐 Belt-run times</b> to set the window). For each collector, tap the <b style="color:#86efac;">% that ran</b> (0/50/100) and tick <b style="color:#86efac;">PM · Belt · Clean · Align</b>. Use <b style="color:#86efac;">All 100%</b> / <b style="color:#a7e08a;">All checks</b> to do a whole house at once, and the manure tech ticks the <b style="color:#d8b478;">weekly PM</b>. Tap <b style="color:#f2a0a0;">⚠</b> on a collector to flag it can’t run or a belt rip (1–3, 3 = worst) — that makes a work order. Hit <b style="color:#eafff0;">Submit</b> per house. It saves as you go.', 'Toca <b style="color:#4ade80;">▶ Iniciar banda</b> al comenzar — registra tu nombre y hora de inicio de la casa (marcar el primer % también lo hace). Cada casa tiene <b style="color:#86efac;">2.0 horas</b> para correr sus bandas (toca <b style="color:#9ad6a0;">🕐 Horarios banda</b> para fijar la ventana). Para cada colector, toca el <b style="color:#86efac;">% que corrió</b> (0/50/100) y marca <b style="color:#86efac;">PM · Banda · Limpio · Alin.</b>. Usa <b style="color:#86efac;">Todo 100%</b> / <b style="color:#a7e08a;">Todo</b> para una casa entera, y el técnico marca el <b style="color:#d8b478;">PM semanal</b>. Toca <b style="color:#f2a0a0;">⚠</b> en un colector para marcar que no corre o una rasgadura (1–3, 3 = peor) — crea una orden de trabajo. Toca <b style="color:#eafff0;">Enviar</b> por casa. Se guarda solo.') + '</div>' +
       body +
       (farms.length ? _manFailuresHtml(farms) : '') +
     '</div>';
 }
 
+// ── Belt-run START stamp ────────────────────────────────────────────────────
+// Records WHO started running this house's belts and WHEN. One stamp per house
+// per day (first one wins — it's a start time). Stamped by tapping ▶ Start, or
+// auto-stamped the moment the first belt-% is logged. Live on every device so
+// a lead can see the run actually began.
+async function manureStartRun(farm, house, silent) {
+  if (manStartRec(farm, house)) return;              // already started today
+  if (typeof db === 'undefined' || !db) return;
+  var t = manToday();
+  try {
+    if (typeof setSyncDot === 'function') setSyncDot('saving');
+    await db.collection('manureStart').doc(manSubKey(farm, house, t)).set(
+      { farm: farm, house: house, date: t, by: _manBy(), startedAt: Date.now(), ts: Date.now() },
+      { merge: true }
+    );
+    if (typeof setSyncDot === 'function') setSyncDot('live');
+    if (!silent && typeof toast === 'function') toast(ML('▶ House ' + house + ' — belt run started', '▶ Casa ' + house + ' — banda iniciada'));
+  } catch (e) {
+    console.error('manureStartRun:', e);
+    if (!silent) alert(ML('Could not save: ', 'No se pudo guardar: ') + (e && e.message ? e.message : e));
+    if (typeof setSyncDot === 'function') setSyncDot('live');
+  }
+}
+// "6:12 AM · Maria" — start time + who, for the house card / collapsed bar.
+function manStartLabel(rec) {
+  if (!rec || !rec.startedAt) return '';
+  try {
+    var d = new Date(rec.startedAt);
+    var lbl = d.toLocaleTimeString(_mlang() === 'es' ? 'es-ES' : 'en-US', { hour: 'numeric', minute: '2-digit' });
+    return lbl + (rec.by ? ' · ' + rec.by : '');
+  } catch (e) { return rec.by || ''; }
+}
+
 async function manureSet(farm, house, coll, pct) {
+  try { manureStartRun(farm, house, true); } catch (e0) {}   // first % logged = belts started
   var t = manToday();
   var rec = { farm: farm, house: house, collector: coll, pctRun: pct, date: t, by: _manBy(), ts: Date.now() };
   try {
@@ -566,6 +615,7 @@ async function manureCheckSet(farm, house, coll, field) {
 }
 
 async function manureSetAll(farm, house, pct) {
+  try { manureStartRun(farm, house, true); } catch (e0) {}   // logging %s = belts started
   var t = manToday();
   try {
     if (typeof setSyncDot === 'function') setSyncDot('saving');
@@ -772,6 +822,86 @@ function manureToggleHouse(farm, house) {
   renderManure();
 }
 
+// ── Manure Runs tracking log (Production → 💩 Manure Runs) ─────────────────
+// Lives in the SAME place walks and employee checks are tracked (the
+// Production sub-tabs). Last 30 days, one row per farm+house+day: when the
+// run was STARTED and by whom, when it was SUBMITTED and by whom, how many
+// collectors ran (and avg %), and how many issues were flagged.
+function _manTimeLbl(ts) {
+  try { return ts ? new Date(ts).toLocaleTimeString(_mlang() === 'es' ? 'es-ES' : 'en-US', { hour: 'numeric', minute: '2-digit' }) : ''; } catch (e) { return ''; }
+}
+function renderProdManureRuns() {
+  var el = document.getElementById('prod-sec-manure');
+  if (!el || typeof db === 'undefined' || !db) return;
+  el.innerHTML = '<div style="color:#aaa;font-family:\'IBM Plex Mono\',monospace;font-size:12px;margin-bottom:12px;">' + ML('Loading manure run log…', 'Cargando registro de estiércol…') + '</div>';
+  var cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
+  Promise.all([
+    db.collection('manureStart').where('ts', '>=', cutoff).orderBy('ts', 'desc').get(),
+    db.collection('manureSubmit').where('ts', '>=', cutoff).orderBy('ts', 'desc').get(),
+    db.collection('manureLog').where('ts', '>=', cutoff).orderBy('ts', 'desc').get()
+  ]).then(function (snaps) {
+    var days = {}; // farm|house|date → row
+    function rowFor(x) {
+      var k = x.farm + '|' + x.house + '|' + x.date;
+      if (!days[k]) days[k] = { farm: x.farm, house: x.house, date: x.date, start: null, sub: null, ran: 0, pctSum: 0, issues: 0, ts: 0 };
+      days[k].ts = Math.max(days[k].ts, x.ts || 0);
+      return days[k];
+    }
+    snaps[0].forEach(function (d) { var x = d.data() || {}; if (!x.farm) return; var r = rowFor(x); r.start = x; });
+    snaps[1].forEach(function (d) { var x = d.data() || {}; if (!x.farm) return; var r = rowFor(x); r.sub = x; });
+    snaps[2].forEach(function (d) {
+      var x = d.data() || {}; if (!x.farm) return;
+      var r = rowFor(x);
+      if (x.pctRun != null) { r.ran++; r.pctSum += Number(x.pctRun) || 0; }
+      if (x.cantRun || Number(x.ripLevel || 0) > 0 || manChkFails(x).length) r.issues++;
+    });
+    var list = Object.keys(days).map(function (k) { return days[k]; });
+    // Site scope like the walk logs: preferred farm only (Master sees both).
+    var pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+    if (pref === 'Hegins' || pref === 'Danville') list = list.filter(function (r) { return r.farm === pref; });
+    list.sort(function (a, b) { return (b.date > a.date ? 1 : b.date < a.date ? -1 : 0) || (b.ts - a.ts); });
+    var titleBar = '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:#a87b3a;margin-bottom:10px;">💩 ' + ML('Manure Run Log — last 30 days', 'Registro de estiércol — últimos 30 días') + '</div>';
+    if (!list.length) { el.innerHTML = titleBar + '<div style="color:#888;padding:20px;text-align:center;">' + ML('No manure runs in the last 30 days.', 'Sin corridas de estiércol en los últimos 30 días.') + '</div>'; return; }
+    var rows = list.map(function (r) {
+      var avg = r.ran ? Math.round(r.pctSum / r.ran) : 0;
+      var started = r.start
+        ? '<span style="color:#4ade80;">▶ ' + _manTimeLbl(r.start.startedAt || r.start.ts) + '</span>' + (r.start.by ? ' <span style="color:#7ab07a;">' + r.start.by + '</span>' : '')
+        : '<span style="color:#555;">—</span>';
+      var submitted = r.sub
+        ? '<span style="color:#4caf50;">✓ ' + _manTimeLbl(r.sub.ts) + '</span>' + (r.sub.by ? ' <span style="color:#7ab07a;">' + r.sub.by + '</span>' : '')
+        : '<span style="color:#d69e2e;">' + ML('open', 'abierta') + '</span>';
+      var ranCell = r.ran
+        ? r.ran + '/' + MANURE_COLLECTORS + ' <span style="color:' + (avg >= 100 ? '#4caf50' : avg >= 50 ? '#d69e2e' : '#c0392b') + ';">' + avg + '%</span>'
+        : '<span style="color:#555;">—</span>';
+      var issueCell = r.issues ? '<span style="color:#e53e3e;">⚠ ' + r.issues + '</span>' : '<span style="color:#4caf50;">✓</span>';
+      var dateLbl = r.date ? (r.date.slice(5).replace('-', '/')) : '—';
+      return '<tr style="border-bottom:1px solid #1a2a1a;">' +
+        '<td style="padding:8px 6px;color:#f0ead8;">' + dateLbl + '</td>' +
+        '<td style="padding:8px 6px;color:#7ab07a;">' + (r.farm || '—') + '</td>' +
+        '<td style="padding:8px 6px;color:#aaa;">H' + (r.house != null ? r.house : '—') + '</td>' +
+        '<td style="padding:8px 6px;">' + started + '</td>' +
+        '<td style="padding:8px 6px;">' + submitted + '</td>' +
+        '<td style="padding:8px 6px;color:#aaa;">' + ranCell + '</td>' +
+        '<td style="padding:8px 6px;">' + issueCell + '</td>' +
+      '</tr>';
+    }).join('');
+    el.innerHTML = titleBar +
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#4a6a4a;margin-bottom:8px;">' + ML('▶ = when the belt run was started · ✓ = when the house was submitted', '▶ = cuándo se inició la banda · ✓ = cuándo se envió la casa') + '</div>' +
+      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:12px;min-width:560px;">' +
+      '<thead><tr style="border-bottom:1px solid #2a4a2a;">' +
+        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Date', 'Fecha') + '</th>' +
+        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Farm', 'Granja') + '</th>' +
+        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('House', 'Casa') + '</th>' +
+        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Started', 'Inició') + '</th>' +
+        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Submitted', 'Enviada') + '</th>' +
+        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Ran', 'Corrió') + '</th>' +
+        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Issues', 'Problemas') + '</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }).catch(function (e) {
+    el.innerHTML = '<div style="color:#e53e3e;padding:20px;">Error: ' + (e && e.message ? e.message : e) + '</div>';
+  });
+}
+
 // Open the in-app How-To guide straight to the Manure section.
 function openManureHelp() {
   if (typeof window.openHelp === 'function') window.openHelp('barns', 'task-barns-3');
@@ -792,7 +922,9 @@ if (typeof window !== 'undefined') {
   window.manureIssueNote = manureIssueNote;
   window.manureBeltSchedSet = manureBeltSchedSet;
   window.manureToggleSchedule = manureToggleSchedule;
+  window.manureStartRun = manureStartRun;
   window.manureSubmitHouse = manureSubmitHouse;
   window.manureToggleHouse = manureToggleHouse;
   window.openManureHelp = openManureHelp;
+  window.renderProdManureRuns = renderProdManureRuns;
 }

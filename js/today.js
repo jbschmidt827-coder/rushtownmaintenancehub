@@ -104,6 +104,7 @@ function _tdLiveKick() {
       var sec = window._prodSection;
       var vis = function (id) { var el = document.getElementById(id); return el && el.style.display !== 'none'; };
       if (sec === 'bwhistory' && vis('prod-sec-bwhistory') && typeof renderProdBarnWalks === 'function') renderProdBarnWalks();
+      if (sec === 'manure' && vis('prod-sec-manure') && typeof renderProdManureRuns === 'function') renderProdManureRuns();
       if (sec === 'mwhistory' && vis('prod-sec-mwhistory') && typeof renderProdMorningWalks === 'function') renderProdMorningWalks();
     } catch (e) {}
   }, 400);
