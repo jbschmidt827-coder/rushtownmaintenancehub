@@ -779,7 +779,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v206 · Jul 14 2026';
+var APP_VERSION = 'v207 · Jul 14 2026';
 
 // LOCAL calendar day "YYYY-MM-DD". Everything that means "today" must use this,
 // NOT new Date().toISOString().slice(0,10) — toISOString is UTC, so on Eastern
@@ -1442,7 +1442,7 @@ const TRANSLATIONS = {
     'landing.staff':'Staff','landing.staff_sub':'Team directory · Add employees',
     'landing.scorecard':'Daily Scorecard','landing.scorecard_sub':'Livability & maintenance CTQs · red flags · trends',
     'landing.oncall':'On Call','landing.oncall_sub':'Log · History · Calendar by site',
-    'landing.locations':'← Locations','landing.back':'← Back','landing.this_loc':'This location only','landing.processing':'Processing',
+    'landing.locations':'← Locations','landing.back':'← Back','landing.prodhistory':'📋 Production History','landing.this_loc':'This location only','landing.processing':'Processing',
     'landing.eos_report':'EOS Report','landing.eos_report_sub':'End-of-shift summary & sign-off — before you go home',
     'landing.tagline':'Hegins &amp; Danville Operations','landing.select_loc':'Select a location','landing.layer_only':'Layer houses · this site only','landing.all_combined':'All locations combined','landing.newwo_title':'New Work Order','landing.newwo_sub':'Report a problem fast — uses your last location','landing.howto_title':'How To Use','landing.howto_sub':'Step-by-step instructions by department',
     'mode.dark':'Dark','mode.mid':'Mid','mode.bright':'Bright','mode.light':'Light','mode.white':'White',
@@ -1654,7 +1654,7 @@ const TRANSLATIONS = {
     'landing.staff':'Personal','landing.staff_sub':'Directorio · Agregar empleados',
     'landing.scorecard':'Tarjeta Diaria','landing.scorecard_sub':'CTQs de habitabilidad y mantenimiento · alertas · tendencias',
     'landing.oncall':'De Guardia','landing.oncall_sub':'Registro · Historial · Calendario por sitio',
-    'landing.locations':'← Ubicaciones','landing.back':'← Atrás','landing.this_loc':'Solo esta ubicación','landing.processing':'Procesamiento',
+    'landing.locations':'← Ubicaciones','landing.back':'← Atrás','landing.prodhistory':'📋 Historial','landing.this_loc':'Solo esta ubicación','landing.processing':'Procesamiento',
     'landing.eos_report':'Reporte Fin de Turno','landing.eos_report_sub':'Resumen de fin de turno y firma — antes de salir',
     'landing.tagline':'Operaciones de Hegins y Danville','landing.select_loc':'Seleccione una ubicación','landing.layer_only':'Casas de ponedoras · solo este sitio','landing.all_combined':'Todas las ubicaciones combinadas','landing.newwo_title':'Nueva Orden de Trabajo','landing.newwo_sub':'Reporte un problema rápido — usa su última ubicación','landing.howto_title':'Cómo Usar','landing.howto_sub':'Instrucciones paso a paso por departamento',
     'mode.dark':'Oscuro','mode.mid':'Medio','mode.bright':'Brillante','mode.light':'Claro','mode.white':'Blanco',

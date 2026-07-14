@@ -885,6 +885,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
           <button data-i18n="landing.rooster" onclick="openRooster()" style="display:none;padding:13px 10px;background:#0d1f0d;border:1.5px solid #4caf50;border-radius:10px;color:#a5e8a5;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🐓 Ask Rooster</button>
           <button data-i18n="landing.fortune" onclick="openFortune()" style="display:none;padding:13px 10px;background:#1f1a0a;border:1.5px solid #d6b34a;border-radius:10px;color:#f0d68a;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🥠 Farm Fortune</button>
           <button data-i18n="landing.housestatus" onclick="openHouseStatus()" style="padding:13px 10px;background:#1a0f0f;border:1.5px solid #7f5a3a;border-radius:10px;color:#d8b478;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">🏚 House Status</button>
+          <button data-i18n="landing.prodhistory" onclick="openProdHistory()" style="padding:13px 10px;background:#0d1f0d;border:1.5px solid #3a7a3a;border-radius:10px;color:#9ad6a0;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;text-align:center;">📋 Production History</button>
         </div>
       </div>
 
@@ -2726,6 +2727,9 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
     </div>
     <button onclick="closeBarnWalk()" style="background:#3a1a1a;border:1px solid #5a2a2a;color:#f08080;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">✕ Exit</button>
   </div>
+
+  <!-- One-tap: mark every condition Normal, then just Submit (v205). Only change what's actually off. -->
+  <button type="button" onclick="bwEverythingNormal()" style="width:100%;margin-bottom:18px;padding:16px;border-radius:14px;background:#14532d;border:2px solid #4ade80;color:#86efac;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;letter-spacing:1px;cursor:pointer;">✅ EVERYTHING NORMAL — fill it all in</button>
 
   <!-- Employee -->
   <div class="bw-card" data-bw-block="employee">
@@ -5263,7 +5267,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260714-v206"></script>
+<script defer src="js/core.js?v=20260714-v207"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
@@ -5296,6 +5300,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/staff.js?v=20260710-v198"></script>
 <script defer src="js/login.js?v=20260710-v200"></script>
 <script defer src="js/access.js?v=20260714-v205"></script>
+<script defer src="js/prodhistory.js?v=20260714-v206"></script>
 <script defer src="js/staff-roster.js?v=20260626-procstaff"></script>
 <script defer src="js/enhancements.js?v=20260714-v206"></script>
 <script defer src="js/navback.js?v=20260706-v190"></script>
