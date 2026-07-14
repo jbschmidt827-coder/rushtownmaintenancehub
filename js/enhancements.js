@@ -201,9 +201,9 @@
     _showBanner(fill(phrase[0]), fill(phrase[1]));
     _cluck();
     effect(e);
-    // Every 3rd easter-egg fires a fake "ad" pre-roll — the Rushtown trailer.
+    // Fake "ad" pre-roll — the Rushtown trailer — fires on every easter-egg.
     _adCount++;
-    if (_adCount % 3 === 0) setTimeout(_rushtownAd, 1400);
+    setTimeout(_rushtownAd, 1200);
     setTimeout(function(){ _busy = false; }, 8000);
   }
 
@@ -226,8 +226,8 @@
           '<div style="position:relative;width:100%;padding-top:56.25%;border-radius:12px;overflow:hidden;border:2px solid #4ade80;background:#000;">' +
             '<iframe id="rushtown-ad-frame" src="https://www.youtube.com/embed/' + _RUSHTOWN_TRAILER + '?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1" title="Rushtown" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;"></iframe>' +
           '</div>' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px;">' +
-            '<span style="color:#7a9a7a;font-family:\'IBM Plex Mono\',monospace;font-size:11px;">🔊 ' + (es ? 'toca el video para sonido' : 'tap the video for sound') + '</span>' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px;flex-wrap:wrap;">' +
+            '<a href="https://www.youtube.com/watch?v=' + _RUSHTOWN_TRAILER + '" target="_blank" rel="noopener" style="color:#9ad6a0;font-family:\'IBM Plex Mono\',monospace;font-size:11px;text-decoration:underline;">▶ ' + (es ? 'Ver en YouTube' : 'Open on YouTube') + '</a>' +
             '<button id="rushtown-ad-skip" disabled style="padding:10px 18px;border-radius:8px;font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;cursor:not-allowed;background:#1a1a1a;border:1.5px solid #3a3a3a;color:#888;">' + (es ? 'Saltar en 6' : 'Skip in 6') + '</button>' +
           '</div>' +
         '</div>';
