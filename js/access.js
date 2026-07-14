@@ -43,20 +43,23 @@
     return (s === undefined) || !s || _leader(s);
   }
 
+  // SAFE MODEL (v205): NEVER hard-block an operational page. Only the
+  // management-only tabs (staff/schedule/reports/dashboard/kpi/etc.) are gated to
+  // leaders. Every daily-work page — daily check, morning walk, manure, work
+  // orders, PM, feed, processing — is ALWAYS allowed for any signed-in user, so a
+  // wrong or blank Department can never lock the crew out of their job again
+  // (that's exactly what blocked the daily check). Per-area scoping is now purely
+  // cosmetic on the home screen (applyAccessHome), not a navigation block.
   window.accessAllowedTab = function (tab) {
     try {
       if (_fullAccess()) return true;
-      if (MGMT_ONLY.indexOf(tab) !== -1) return false;
-      var area = TAB_AREA[tab];
-      if (!area) return true;                        // untracked → allow
-      return _area(_curStaff()) === area;
+      return MGMT_ONLY.indexOf(tab) === -1;          // block ONLY management-only tabs
     } catch (e) { return true; }
   };
   window.accessAllowedArea = function (area) {
     try {
       if (_fullAccess()) return true;
-      if (area === 'Management') return false;
-      return _area(_curStaff()) === area;
+      return area !== 'Management';                  // block ONLY the management area
     } catch (e) { return true; }
   };
 
@@ -106,11 +109,13 @@
       var leader = _leader(s), area = _area(s);
       home.querySelectorAll('[data-role-dept]').forEach(function (c) {
         if (leader) { c.style.display = ''; return; }
+        // Show EVERY operational card (barns/maint/pkg/feed) to any signed-in user
+        // so nobody is ever hidden from a page they might need; hide only cards that
+        // are management-ONLY (e.g. Staff). Never blocks daily work.
         var tags = (c.getAttribute('data-role-dept') || '').split(/\s+/);
-        var ok = tags.some(function (t) { return TAG_AREA[t] === area; });
-        c.style.display = ok ? '' : 'none';
+        var isOps = tags.some(function (t) { return t === 'barns' || t === 'maint' || t === 'pkg' || t === 'feed'; });
+        c.style.display = isOps ? '' : 'none';
       });
-      if (!leader) { var more = document.getElementById('rh-more-btn'); if (more) more.style.display = 'none'; }
     } catch (e) {}
   };
 

@@ -482,9 +482,15 @@ function renderECContent() {
         if (!d0 || !(d0.pct > 0)) continue;
         const doneList = (d0.blocks || []).filter(k => k !== 'notes').map(lbl).join(' · ');
         const _liveNow = !!(d0.ts && (Date.now() - d0.ts < 6 * 60000));
+        // Format elapsed time as Xm / Xh Ym (not raw "834m") so a draft started
+        // hours ago reads sensibly. >3h since last touch = clearly a stale/parked
+        // draft (started, never submitted), flagged amber so leads notice.
+        const _mAgo = d0.ts ? Math.floor((Date.now() - d0.ts) / 60000) : 0;
+        const _agoFmt = _mAgo < 60 ? (_mAgo + 'm') : (Math.floor(_mAgo / 60) + 'h ' + (_mAgo % 60) + 'm');
+        const _stale = _mAgo >= 180;
         const _agoTxt = d0.ts
           ? (_liveNow ? (_esL ? '🟢 activo ahora' : '🟢 active now')
-                      : (Math.floor((Date.now() - d0.ts) / 60000) + (_esL ? ' min' : 'm') + (_esL ? '' : ' ago')))
+                      : ((_stale ? '⚠ ' : '') + _agoFmt + (_esL ? ' — sin enviar' : ' ago · not submitted')))
           : '';
         detHtml += `<div style="background:#141a05;border:1px solid ${_liveNow ? '#5a7a2a' : '#4a4a1a'};border-radius:10px;padding:10px 13px;margin-bottom:7px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -1475,6 +1481,30 @@ function bwSet(key, val) {
   bwSaveDraft();
   bwFlowRefresh(true);
 }
+
+// ── One-tap "Everything Normal" (v205) ───────────────────────────────────────
+// The daily check is an 11-section wizard, so crews skip it. This fills every
+// CONDITION answer to its normal/OK value at once (no mortality, equipment OK,
+// air good, feed/water fine, egg belts working, no pests) so a clean barn is
+// ready to submit in seconds — they only stop to change anything that's actually
+// wrong, then tap Submit (v194 saves on the first tap). Does NOT auto-pass the
+// cleaning checklist — that's real work they still confirm — and does NOT
+// auto-submit, so a human still hits Submit for the barn they walked.
+function bwEverythingNormal() {
+  var NORMAL = {
+    mort: 'no', loose: 'no', dryers: 'on', feather: 'good', doors: 'closed',
+    air: 'good', feed: 'full', waste: 'no', stand: 'clean', eggbelt: 'working',
+    rodent: 'no', fly: 'no'
+  };
+  try {
+    Object.keys(NORMAL).forEach(function (k) { if (typeof bwSet === 'function') bwSet(k, NORMAL[k]); });
+    var _es = (typeof _lang !== 'undefined' && _lang === 'es');
+    if (typeof toast === 'function') toast(_es ? '✅ Todo normal — revisa lo que aplique y toca Enviar' : '✅ All normal — change anything that\'s off, then tap Submit');
+    // Jump to the submit button so it's one motion.
+    var b = document.getElementById('bw-submit-btn'); if (b) { try { b.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }
+  } catch (e) { console.warn('bwEverythingNormal:', e); }
+}
+if (typeof window !== 'undefined') window.bwEverythingNormal = bwEverythingNormal;
 
 // Friendly labels for the "still to finish" hint.
 const _BW_BLOCK_LABELS = {

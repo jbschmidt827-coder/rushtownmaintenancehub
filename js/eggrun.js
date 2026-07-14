@@ -39,6 +39,10 @@ function erRunning(rec) {
   return (rs.length && !rs[rs.length - 1].e) ? rs[rs.length - 1] : null;
 }
 function erTotalMs(rec) {
+  // Manual run-time override (minutes) — lets the crew type the time straight off
+  // a meter instead of timing with Start/Stop. When set (>0) it's the source of
+  // truth for total run time (and therefore eggs/hr).
+  if (rec && rec.manualMin != null && Number(rec.manualMin) > 0) return Number(rec.manualMin) * 60000;
   return erRuns(rec).reduce(function (t, r) {
     var e = r.e || Date.now();
     return t + Math.max(0, e - (r.s || e));
@@ -163,6 +167,19 @@ async function eggRunEggsSet(farm, m, val) {
   }
 }
 
+// Manual run-time entry (minutes) — meter reading instead of Start/Stop timing.
+async function eggRunSetManualMin(farm, m, val) {
+  try {
+    var n = (val === '' || val == null) ? null : Math.max(0, Math.round(Number(val) || 0));
+    await _erSave(farm, m, { manualMin: n, manualBy: erBy() });
+    if (typeof toast === 'function') toast(n ? ('⏱ ' + farm + ' M' + m + erL(' run time: ', ' — tiempo: ') + n + ' min') : erL('Manual time cleared', 'Tiempo manual borrado'));
+    renderEggRun();
+  } catch (e) {
+    console.error('eggRunSetManualMin:', e);
+    if (typeof toast === 'function') toast(erL('Could not save time: ', 'No se pudo guardar: ') + (e && e.message ? e.message : e));
+  }
+}
+
 // ── Render ──────────────────────────────────────────────────────────────────
 // Per-machine status line ("M1 🟢 running since 6:05 · Joe · 2h 10m").
 function _erStatusLine(farm, m, rec, multi) {
@@ -204,6 +221,12 @@ function _erMachineDetail(farm, m, rec, multi) {
         (eggs != null ? ('= ' + (Math.round(eggs / 12 * 10) / 10).toLocaleString() + ' dz') : '') +
         (eph ? ('<br><b style="color:#4ade80;">' + eph.toLocaleString() + ' ' + erL('eggs/hr', 'huevos/hr') + '</b>') : '') +
       '</div>' +
+    '</div>' +
+    // Manual run-time entry — type minutes off the meter instead of Start/Stop.
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;">' +
+      '<label style="' + MONO + 'font-size:12px;color:#9ad6a0;font-weight:700;">⏱ ' + (multi ? 'M' + m + ' — ' : '') + erL('Or enter run time (min)', 'O ingresa tiempo (min)') + '</label>' +
+      '<input type="number" min="0" inputmode="numeric" value="' + (rec && rec.manualMin != null ? rec.manualMin : '') + '" onchange="eggRunSetManualMin(\'' + farm + '\',' + m + ',this.value)" placeholder="min" style="flex:1;min-width:90px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:15px;font-weight:700;padding:9px 12px;">' +
+      (rec && Number(rec.manualMin) > 0 ? '<span style="' + MONO + 'font-size:10px;color:#d6b36a;">' + erL('manual · overrides timer', 'manual · anula cronómetro') + '</span>' : '') +
     '</div>';
 }
 
@@ -338,5 +361,6 @@ if (typeof window !== 'undefined') {
   window.eggRunStopSel = eggRunStopSel;
   window.eggRunSelToggle = eggRunSelToggle;
   window.eggRunEggsSet = eggRunEggsSet;
+  window.eggRunSetManualMin = eggRunSetManualMin;
   window.openProcessing = openProcessing;
 }
