@@ -1,6 +1,6 @@
 
 (function(){
-  var _cc = 0, _ct = null, _busy = false;
+  var _cc = 0, _ct = null, _busy = false, _adCount = 0;
 
   // Company-wide pack — classic chicken chaos + leadership roast (shows everywhere)
   var PHRASES_COMMON = [
@@ -201,8 +201,53 @@
     _showBanner(fill(phrase[0]), fill(phrase[1]));
     _cluck();
     effect(e);
+    // Every 3rd easter-egg fires a fake "ad" pre-roll — the Rushtown trailer.
+    _adCount++;
+    if (_adCount % 3 === 0) setTimeout(_rushtownAd, 1400);
     setTimeout(function(){ _busy = false; }, 8000);
   }
+
+  // ── Fake "AD" pre-roll: plays the Rushtown trailer (YouTube embed). Forced ~6s
+  // watch before the Skip button unlocks, just like a real pre-roll — then Skip/✕.
+  var _RUSHTOWN_TRAILER = 'tvQOgX56FiM';
+  function _rushtownAd() {
+    try {
+      if (document.getElementById('rushtown-ad')) return;
+      var es = (typeof _lang !== 'undefined' && _lang === 'es');
+      var ov = document.createElement('div');
+      ov.id = 'rushtown-ad';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:14000;background:rgba(0,0,0,0.94);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;';
+      ov.innerHTML =
+        '<div style="width:100%;max-width:640px;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+            '<span style="background:#f0c419;color:#111;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:800;padding:3px 8px;border-radius:4px;letter-spacing:1px;">' + (es ? 'ANUNCIO' : 'AD') + '</span>' +
+            '<span style="color:#c9d9c9;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">🐔 ' + (es ? 'RUSHTOWN POULTRY — el tráiler' : 'RUSHTOWN POULTRY — the trailer') + '</span>' +
+          '</div>' +
+          '<div style="position:relative;width:100%;padding-top:56.25%;border-radius:12px;overflow:hidden;border:2px solid #4ade80;background:#000;">' +
+            '<iframe id="rushtown-ad-frame" src="https://www.youtube.com/embed/' + _RUSHTOWN_TRAILER + '?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1" title="Rushtown" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;"></iframe>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px;">' +
+            '<span style="color:#7a9a7a;font-family:\'IBM Plex Mono\',monospace;font-size:11px;">🔊 ' + (es ? 'toca el video para sonido' : 'tap the video for sound') + '</span>' +
+            '<button id="rushtown-ad-skip" disabled style="padding:10px 18px;border-radius:8px;font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;cursor:not-allowed;background:#1a1a1a;border:1.5px solid #3a3a3a;color:#888;">' + (es ? 'Saltar en 6' : 'Skip in 6') + '</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(ov);
+      var skip = document.getElementById('rushtown-ad-skip');
+      var n = 6;
+      var iv = setInterval(function () {
+        n--;
+        if (n > 0) { if (skip) skip.textContent = (es ? 'Saltar en ' : 'Skip in ') + n; return; }
+        clearInterval(iv);
+        if (skip) {
+          skip.disabled = false;
+          skip.textContent = (es ? 'Saltar anuncio ⏭' : 'Skip Ad ⏭');
+          skip.style.cssText = 'padding:10px 18px;border-radius:8px;font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;cursor:pointer;background:#14361c;border:1.5px solid #4ade80;color:#4ade80;';
+          skip.onclick = function () { var o = document.getElementById('rushtown-ad'); if (o) o.remove(); };
+        }
+      }, 1000);
+    } catch (e) { console.warn('rushtownAd:', e); }
+  }
+  if (typeof window !== 'undefined') window._rushtownAd = _rushtownAd;
 
   // ── Banner ──────────────────────────────────────────────────
   function _showBanner(title, sub) {
