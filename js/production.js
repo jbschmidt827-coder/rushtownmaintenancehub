@@ -651,8 +651,13 @@ function _bwReplayQueued() {
     const still = [];
     let chain = Promise.resolve();
     q.forEach(rec => {
+      // Write to the SAME deterministic doc (farm-house-date) the live submit
+      // uses — NOT .add() — so a replayed check updates the day's record instead
+      // of creating a duplicate. (This was the source of duplicate barnWalks.)
+      const id = (rec && rec.farm && rec.house != null && rec.date) ? (rec.farm + '-' + rec.house + '-' + rec.date) : null;
       chain = chain.then(() =>
-        db.collection('barnWalks').add(rec).catch(() => { still.push(rec); }));
+        (id ? db.collection('barnWalks').doc(id).set(rec, { merge: true })
+            : db.collection('barnWalks').add(rec)).catch(() => { still.push(rec); }));
     });
     chain.then(() => {
       localStorage.setItem('bwQueuedSubmits', JSON.stringify(still));

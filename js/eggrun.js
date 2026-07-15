@@ -262,61 +262,118 @@ function _erDailySummary(farms, t) {
     rows + '</div>';
 }
 
-// ── Eggs Packed Out (opsPacking) — manual daily entry, Caged vs Not Caged ────
-// One doc per PLANT per DAY: total eggs packed split caged / cage-free. Grade
-// breakdown is intentionally a separate future report (per Joe). Total packed +
-// packed-vs-processed % (the gap = waste/undergrade) are computed automatically.
-function poKey(farm, date) { return farm + '__' + date; }
-function poRec(farm, date) { return _poDocs.find(function (r) { return r.farm === farm && r.date === date; }); }
-async function _poSave(farm, patch) {
-  var t = erToday();
-  var base = { farm: farm, date: t, ts: Date.now(), by: erBy() };
-  if (typeof setSyncDot === 'function') setSyncDot('saving');
-  await db.collection('opsPacking').doc(poKey(farm, t)).set(Object.assign(base, patch), { merge: true });
-  if (typeof setSyncDot === 'function') setSyncDot('live');
+// ── Eggs Packed Out → PALLET INVENTORY + SHIPPING (per Joe) ──────────────────
+// Each PALLET is one opsPacking doc: {farm,date,type:'caged'|'cagefree',eggs,
+// lot,status:'stock'|'shipped',shipmentId,by,ts}. Inventory = pallets not yet
+// shipped. Shipping picks selected pallets + customer + date → writes an
+// opsShipping doc and flips those pallets to 'shipped'. Manual entry, live.
+var _palSel = {};                 // palletId -> selected for shipping
+var _palType = {};                // farm -> 'caged' | 'cagefree' (add form)
+function palTypeGet(farm) { return _palType[farm] || 'caged'; }
+function palTypeSet(farm, ty) { _palType[farm] = ty; renderEggRun(); }
+function _palInStock(farm) {
+  return _poDocs.filter(function (p) { return p.farm === farm && p.eggs != null && p.status !== 'shipped'; })
+                .sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
 }
-async function eggPackSet(farm, field, val) {
+function palToggleSel(id) { _palSel[id] = !_palSel[id]; renderEggRun(); }
+async function palAdd(farm) {
   try {
-    var n = (val === '' || val == null) ? null : Math.max(0, Math.round(Number(val) || 0));
-    var patch = {}; patch[field] = n; patch[field + 'By'] = erBy();
-    await _poSave(farm, patch);
-    if (typeof toast === 'function') toast('📦 ' + farm + ' — ' + (n != null ? n.toLocaleString() : '—') + ' ' + erL('packed saved', 'empacado guardado'));
+    var eggsEl = document.getElementById('pal-eggs-' + farm);
+    var lotEl = document.getElementById('pal-lot-' + farm);
+    var eggs = eggsEl ? Math.max(0, Math.round(Number(eggsEl.value) || 0)) : 0;
+    if (!eggs) { if (typeof toast === 'function') toast(erL('Enter the pallet egg count first', 'Ingresa el conteo del pallet')); return; }
+    var lot = lotEl ? (lotEl.value || '').trim() : '';
+    var id = farm + '__pal__' + Date.now();
+    await db.collection('opsPacking').doc(id).set({
+      farm: farm, date: erToday(), type: palTypeGet(farm), eggs: eggs, lot: lot,
+      status: 'stock', by: erBy(), ts: Date.now()
+    });
+    if (eggsEl) eggsEl.value = ''; if (lotEl) lotEl.value = '';
+    if (typeof toast === 'function') toast('📦 ' + erL('Pallet added', 'Pallet agregado') + ' — ' + eggs.toLocaleString() + ' ' + erL('eggs', 'huevos'));
     renderEggRun();
-  } catch (e) {
-    console.error('eggPackSet:', e);
-    if (typeof toast === 'function') toast(erL('Could not save: ', 'No se pudo guardar: ') + (e && e.message ? e.message : e));
-    if (typeof setSyncDot === 'function') setSyncDot('live');
-  }
+  } catch (e) { console.error('palAdd:', e); if (typeof toast === 'function') toast(erL('Could not save: ', 'No se pudo guardar: ') + (e && e.message ? e.message : e)); }
 }
-function _poRow(farm, field, label, val) {
+async function palRemove(id) {
+  try {
+    await db.collection('opsPacking').doc(id).delete();
+    delete _palSel[id];
+    if (typeof toast === 'function') toast(erL('Pallet removed', 'Pallet eliminado'));
+    renderEggRun();
+  } catch (e) { console.error('palRemove:', e); }
+}
+async function palShip(farm) {
+  try {
+    var ids = _palInStock(farm).filter(function (p) { return _palSel[p._id]; }).map(function (p) { return p._id; });
+    if (!ids.length) { if (typeof toast === 'function') toast(erL('Tick the pallets to ship first', 'Marca los pallets a enviar')); return; }
+    var custEl = document.getElementById('pal-cust-' + farm);
+    var dateEl = document.getElementById('pal-date-' + farm);
+    var cust = custEl ? (custEl.value || '').trim() : '';
+    if (!cust) { if (typeof toast === 'function') toast(erL('Enter a customer / destination', 'Ingresa cliente / destino')); return; }
+    var shipDate = (dateEl && dateEl.value) ? dateEl.value : erToday();
+    var pals = _poDocs.filter(function (p) { return ids.indexOf(p._id) !== -1; });
+    var totalEggs = pals.reduce(function (s, p) { return s + (Number(p.eggs) || 0); }, 0);
+    var shipId = farm + '__ship__' + Date.now();
+    await db.collection('opsShipping').doc(shipId).set({
+      farm: farm, customer: cust, date: shipDate, palletCount: ids.length,
+      totalEggs: totalEggs, pallets: ids, by: erBy(), ts: Date.now()
+    });
+    for (var i = 0; i < ids.length; i++) {
+      await db.collection('opsPacking').doc(ids[i]).set({ status: 'shipped', shipmentId: shipId, shippedTs: Date.now() }, { merge: true });
+      delete _palSel[ids[i]];
+    }
+    if (custEl) custEl.value = '';
+    if (typeof toast === 'function') toast('🚚 ' + erL('Shipped', 'Enviado') + ' ' + ids.length + ' ' + erL('pallets to', 'pallets a') + ' ' + cust + ' — ' + totalEggs.toLocaleString() + ' ' + erL('eggs', 'huevos'));
+    renderEggRun();
+  } catch (e) { console.error('palShip:', e); if (typeof toast === 'function') toast(erL('Could not ship: ', 'No se pudo enviar: ') + (e && e.message ? e.message : e)); }
+}
+function _erInventoryHtml(farms, t) {
   var MONO = "font-family:'IBM Plex Mono',monospace;";
-  return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">' +
-    '<label style="' + MONO + 'font-size:12px;color:#9ad6a0;font-weight:700;min-width:160px;">' + label + '</label>' +
-    '<input type="number" min="0" inputmode="numeric" value="' + (val != null ? val : '') + '" onchange="eggPackSet(\'' + farm + '\',\'' + field + '\',this.value)" placeholder="0" style="flex:1;min-width:110px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:10px 12px;">' +
-    (val != null ? '<span style="' + MONO + 'font-size:11px;color:#7ab07a;">= ' + (Math.round(val / 12)).toLocaleString() + ' dz</span>' : '') +
+  var out = '<div style="' + MONO + 'font-size:11px;letter-spacing:1px;color:#7ab07a;text-transform:uppercase;margin:10px 0 8px;">' + erL('Packed pallets — inventory & shipping', 'Pallets — inventario y envío') + '</div>';
+  farms.forEach(function (farm) {
+    var stock = _palInStock(farm);
+    var caged = stock.filter(function (p) { return p.type === 'caged'; });
+    var cf = stock.filter(function (p) { return p.type !== 'caged'; });
+    var eggsCaged = caged.reduce(function (s, p) { return s + (Number(p.eggs) || 0); }, 0);
+    var eggsCf = cf.reduce(function (s, p) { return s + (Number(p.eggs) || 0); }, 0);
+    var selCount = stock.filter(function (p) { return _palSel[p._id]; }).length;
+    var ty = palTypeGet(farm);
+    var tyBtn = function (v, lbl) {
+      var on = ty === v;
+      return '<button onclick="palTypeSet(\'' + farm + '\',\'' + v + '\')" style="flex:1;padding:10px;border-radius:8px;' + MONO + 'font-size:12px;font-weight:700;cursor:pointer;' + (on ? 'background:#14532d;border:1.5px solid #2a7a3a;color:#86efac;' : 'background:#13110a;border:1.5px solid #4a4030;color:#9f8a63;') + '">' + (on ? '☑ ' : '☐ ') + lbl + '</button>';
+    };
+    var rows = stock.map(function (p) {
+      var sel = !!_palSel[p._id];
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #163016;">' +
+        '<button onclick="palToggleSel(\'' + p._id + '\')" style="width:28px;height:28px;border-radius:6px;flex:0 0 auto;cursor:pointer;font-weight:700;' + (sel ? 'background:#14532d;border:1.5px solid #4ade80;color:#86efac;' : 'background:#0a1408;border:1.5px solid #2a5a2a;color:#5a7a5a;') + '">' + (sel ? '✓' : '') + '</button>' +
+        '<span style="' + MONO + 'font-size:12px;color:#e8f5ec;flex:1;">' + (p.type === 'caged' ? '🥚 ' + erL('Caged', 'Jaula') : '🌿 ' + erL('Not caged', 'Sin jaula')) + (p.lot ? ' · #' + String(p.lot).replace(/</g, '') : '') + ' · <b style="color:#f0d68a;">' + (Number(p.eggs) || 0).toLocaleString() + '</b></span>' +
+        '<button onclick="palRemove(\'' + p._id + '\')" style="background:none;border:none;color:#7a4a4a;cursor:pointer;font-size:15px;padding:0 4px;">✕</button>' +
+      '</div>';
+    }).join('') || '<div style="' + MONO + 'font-size:12px;color:#5a7a5a;padding:8px 0;">' + erL('No pallets in stock', 'Sin pallets en inventario') + '</div>';
+
+    out += '<div style="background:#0f2410;border:1.5px solid #2a5a2a;border-radius:12px;padding:14px;margin-bottom:12px;">' +
+      '<div style="' + MONO + 'font-size:15px;font-weight:700;color:#e8f5ec;margin-bottom:4px;">📦 ' + farm + '</div>' +
+      '<div style="' + MONO + 'font-size:12px;color:#9ab09a;margin-bottom:12px;">' + erL('In stock', 'En inventario') + ': <b style="color:#f0d68a;">' + stock.length + '</b> ' + erL('pallets', 'pallets') + ' · 🥚 ' + caged.length + ' (' + eggsCaged.toLocaleString() + ') · 🌿 ' + cf.length + ' (' + eggsCf.toLocaleString() + ')</div>' +
+      '<div style="background:#0a1a0a;border:1px solid #1e3a1e;border-radius:10px;padding:10px;margin-bottom:10px;">' +
+        '<div style="' + MONO + 'font-size:11px;color:#9ad6a0;font-weight:700;margin-bottom:6px;">' + erL('Add a pallet', 'Agregar pallet') + '</div>' +
+        '<div style="display:flex;gap:6px;margin-bottom:6px;">' + tyBtn('caged', erL('Caged', 'Jaula')) + tyBtn('cagefree', erL('Not caged', 'Sin jaula')) + '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+          '<input id="pal-eggs-' + farm + '" type="number" min="0" inputmode="numeric" placeholder="' + erL('total eggs', 'total huevos') + '" style="flex:2;min-width:120px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:15px;font-weight:700;padding:9px 11px;">' +
+          '<input id="pal-lot-' + farm + '" type="text" placeholder="' + erL('lot #', 'lote #') + '" style="flex:1;min-width:80px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:14px;padding:9px 11px;">' +
+          '<button onclick="palAdd(\'' + farm + '\')" style="flex:0 0 auto;padding:9px 16px;border-radius:8px;background:#14361c;border:1.5px solid #4ade80;color:#4ade80;' + MONO + 'font-size:14px;font-weight:700;cursor:pointer;">+ ' + erL('Add', 'Agregar') + '</button>' +
+        '</div>' +
+      '</div>' +
+      rows +
+      '<div style="margin-top:12px;padding-top:10px;border-top:1px solid #163016;">' +
+        '<div style="' + MONO + 'font-size:11px;color:#9ad6a0;font-weight:700;margin-bottom:6px;">🚚 ' + erL('Ship selected', 'Enviar seleccionados') + ' (' + selCount + ')</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+          '<input id="pal-cust-' + farm + '" type="text" placeholder="' + erL('customer / destination', 'cliente / destino') + '" style="flex:2;min-width:140px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:14px;padding:9px 11px;">' +
+          '<input id="pal-date-' + farm + '" type="date" value="' + t + '" style="flex:1;min-width:120px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:13px;padding:9px 11px;">' +
+          '<button onclick="palShip(\'' + farm + '\')" style="flex:0 0 auto;padding:9px 16px;border-radius:8px;background:#0d1f3a;border:1.5px solid #2a5a8a;color:#7ab0f6;' + MONO + 'font-size:14px;font-weight:700;cursor:pointer;">🚚 ' + erL('Ship', 'Enviar') + '</button>' +
+        '</div>' +
+      '</div>' +
     '</div>';
-}
-function _erPackoutHtml(farms, t) {
-  var MONO = "font-family:'IBM Plex Mono',monospace;";
-  var cards = farms.map(function (farm) {
-    var r = poRec(farm, t) || {};
-    var caged = (r.caged != null) ? Number(r.caged) : null;
-    var cf = (r.cagefree != null) ? Number(r.cagefree) : null;
-    var total = (caged || 0) + (cf || 0);
-    var proc = 0;
-    erMachines(farm).forEach(function (m) { var er = erRec(farm, m, t); if (er && er.eggs != null) proc += Number(er.eggs) || 0; });
-    var pctOut = (proc > 0 && total > 0) ? Math.round(total / proc * 100) : null;
-    return '<div style="background:#0f2410;border:1.5px solid #2a5a2a;border-radius:12px;padding:14px;margin-bottom:12px;">' +
-      '<div style="' + MONO + 'font-size:15px;font-weight:700;color:#e8f5ec;margin-bottom:10px;">📦 ' + farm + ' — ' + erL('eggs packed out', 'huevos empacados') + '</div>' +
-      _poRow(farm, 'caged', erL('Caged', 'En jaula'), caged) +
-      _poRow(farm, 'cagefree', erL('Not caged (cage-free)', 'Sin jaula'), cf) +
-      '<div style="' + MONO + 'font-size:13px;color:#9ab09a;border-top:1px solid #163016;margin-top:10px;padding-top:10px;line-height:1.7;">' +
-        erL('Total packed', 'Total empacado') + ': <b style="color:#f0d68a;">' + (total ? total.toLocaleString() : '—') + '</b>' +
-        (total ? (' <span style="color:#7ab07a;">(' + (Math.round(total / 12)).toLocaleString() + ' dz · ' + (Math.round(total / 360 * 10) / 10) + ' ' + erL('cases', 'cajas') + ')</span>') : '') +
-        (pctOut != null ? ('<br>' + erL('Packed vs processed', 'Empacado vs procesado') + ': <b style="color:' + (pctOut >= 95 ? '#4ade80' : '#f2c14e') + ';">' + pctOut + '%</b>') : '') +
-      '</div></div>';
-  }).join('');
-  return '<div style="' + MONO + 'font-size:11px;letter-spacing:1px;color:#7ab07a;text-transform:uppercase;margin:8px 0 8px;">' + erL('Eggs packed out — today', 'Huevos empacados — hoy') + '</div>' + cards;
+  });
+  return out;
 }
 
 function renderEggRun() {
@@ -351,8 +408,8 @@ function renderEggRun() {
     '</div>';
   });
 
-  // ── Eggs packed out (Caged / Not caged) — manual daily entry ──
-  html += _erPackoutHtml(farms, t);
+  // ── Packed pallets — inventory & shipping ──
+  html += _erInventoryHtml(farms, t);
 
   // ── 14-day history (tracking log) ──
   var hist = _erDocs.slice()
@@ -411,6 +468,10 @@ if (typeof window !== 'undefined') {
   window.eggRunSelToggle = eggRunSelToggle;
   window.eggRunEggsSet = eggRunEggsSet;
   window.eggRunSetManualMin = eggRunSetManualMin;
-  window.eggPackSet = eggPackSet;
+  window.palTypeSet = palTypeSet;
+  window.palToggleSel = palToggleSel;
+  window.palAdd = palAdd;
+  window.palRemove = palRemove;
+  window.palShip = palShip;
   window.openProcessing = openProcessing;
 }
