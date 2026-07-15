@@ -702,9 +702,22 @@ function _bwComputePct() {
     // fresh house reads 0% and the % only climbs as the crew answers sections.
     const SKIP = ['employee', 'checklist', 'cageclean', 'notes'];
     const vis = _bwVisibleBlocks().filter(n => SKIP.indexOf(n) === -1);
-    if (!vis.length) return 0;
-    const done = vis.filter(n => bwBlockComplete(n)).length;
-    return Math.round(done / vis.length * 100);
+    let total = vis.length;
+    let done  = vis.filter(n => bwBlockComplete(n)).length;
+    // Count the daily checklist's VISIBLE task rows (Joe's 7-block work) so the %
+    // reflects the ACTUAL work — a check only reads 100% when the tasks are
+    // reviewed, not just the condition cards. Hidden rotation rows are excluded.
+    try {
+      const rows = Array.prototype.slice.call(document.querySelectorAll('#bw-checklist-items .bw-cl-row'))
+        .filter(r => r && r.style.display !== 'none');
+      rows.forEach(r => {
+        total++;
+        const v = _bwChecklist[r.id.replace('bw-cl-', '')];
+        if (v === 'pass' || v === 'fail') done++;
+      });
+    } catch (e) {}
+    if (!total) return 0;
+    return Math.round(done / total * 100);
   } catch (e) { return 0; }
 }
 function _bwDraftPct(farm, house) {
@@ -993,7 +1006,7 @@ function bwRecordToDraft(rec) {
 // Submit button only enables when EVERY block is complete.
 var _bwRestoring = false;
 var _bwFlowActive = 0;
-const _BW_BLOCK_ORDER = ['employee','mortality','equipment','air','feedwater','belts','pest','checklist','weekly','cageclean','notes'];
+const _BW_BLOCK_ORDER = ['employee','mortality','air','feedwater','belts','pest','equipment','checklist','weekly','cageclean','notes'];
 // Blocks that auto-collapse when a button tap completes them (no free-text the employee may still want to fill)
 const _BW_BLOCK_AUTO = ['mortality','equipment','air','feedwater','belts','pest','cageclean'];
 
@@ -1012,7 +1025,7 @@ function bwBlockComplete(name) {
       if (_bwData.mort === undefined || _bwData.mortrem === undefined) return false;
       return _bwData.mort !== 'yes' || _bwHasVal('bw-mort-count');
     case 'equipment':
-      if (['dryers','feather','doors','loose'].some(k => _bwData[k] === undefined)) return false;
+      if (['feather','doors','loose'].some(k => _bwData[k] === undefined)) return false;
       return _bwData.loose !== 'yes' || _bwHasVal('bw-loose-count');
     case 'air':
       return _bwData.air !== undefined;
@@ -1492,7 +1505,7 @@ function bwSet(key, val) {
 // auto-submit, so a human still hits Submit for the barn they walked.
 function bwEverythingNormal() {
   var NORMAL = {
-    mort: 'no', loose: 'no', dryers: 'on', feather: 'good', doors: 'closed',
+    mort: 'no', loose: 'no', feather: 'good', doors: 'closed',
     air: 'good', feed: 'full', waste: 'no', stand: 'clean', eggbelt: 'working',
     rodent: 'no', fly: 'no'
   };
@@ -1524,6 +1537,21 @@ function bwTagNote(key, tag, on) {
   } catch (e) { console.warn('bwTagNote:', e); }
 }
 if (typeof window !== 'undefined') window.bwTagNote = bwTagNote;
+
+// ── Move the Equipment card DOWN — just before the checklist (per Joe) ──────
+// Runtime relocation so DOM order matches _BW_BLOCK_ORDER without risky HTML
+// surgery. Runs once at load; the cards are static so this sticks all session.
+(function () {
+  function _bwArrangeCards() {
+    try {
+      var eq = document.querySelector('#barn-walk-modal .bw-card[data-bw-block="equipment"]');
+      var cl = document.querySelector('#barn-walk-modal .bw-card[data-bw-block="checklist"]');
+      if (eq && cl && eq !== cl.previousElementSibling) cl.parentNode.insertBefore(eq, cl);
+    } catch (e) { /* non-fatal */ }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _bwArrangeCards);
+  else _bwArrangeCards();
+})();
 
 // Friendly labels for the "still to finish" hint.
 const _BW_BLOCK_LABELS = {
