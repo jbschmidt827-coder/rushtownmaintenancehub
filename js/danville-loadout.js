@@ -173,11 +173,13 @@ async function saveDanvilleLoad() {
 }
 
 async function deleteDanvilleLoad(fbId) {
-  if (!confirm('Delete this load entry?')) return;
-  try {
-    await db.collection('danvilleLoads').doc(fbId).delete();
-    if (typeof toast === 'function') toast('Deleted');
-  } catch(e) { alert('Delete failed: ' + e.message); }
+  confirmInline('Delete this load entry?', async function () {
+    try {
+      await db.collection('danvilleLoads').doc(fbId).delete();
+      if (typeof toast === 'function') toast('Deleted');
+    } catch(e) { alert('Delete failed: ' + e.message); }
+  });
+  return;
 }
 
 function dvSetView(v, btn) {

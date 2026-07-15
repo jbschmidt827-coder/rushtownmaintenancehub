@@ -234,6 +234,8 @@ async function saveContractorEntry() {
   } catch(e) { alert('Error saving: ' + e.message); console.error(e); }
 }
 async function deleteContractorEntry(fbId) {
-  if (!confirm('Remove this contractor entry?')) return;
-  try { await db.collection('contractorLog').doc(fbId).delete(); } catch(e) { console.error(e); }
+  confirmInline('Remove this contractor entry?', async function () {
+    try { await db.collection('contractorLog').doc(fbId).delete(); } catch(e) { console.error(e); }
+  });
+  return;
 }

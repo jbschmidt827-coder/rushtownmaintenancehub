@@ -912,12 +912,10 @@ async function submitWO() {
     String(w.house) === String(house) &&
     w.problem === problem);
   if (dup) {
-    const keep = confirm(
-      '⚠ A similar work order is already OPEN:\n\n' +
-      (dup.id ? dup.id + ' — ' : '') + (dup.desc || dup.problem || '') +
-      (dup.tech ? '\nSubmitted by ' + dup.tech : '') + (dup.submitted ? ' on ' + dup.submitted : '') +
-      '\n\nCreate a second one anyway?\n(Cancel = don\'t duplicate — add a note to the existing WO instead.)');
-    if (!keep) return;
+    // NOTE: native confirm() no-ops in the installed PWA (it returned false →
+    // silently cancelled EVERY similar WO). Don't block the submit — just warn
+    // and let it through so a real WO is never lost.
+    if (typeof toast === 'function') toast('⚠ ' + (typeof _lang !== 'undefined' && _lang === 'es' ? 'OT similar ya abierta — creando otra' : 'Similar WO already open — creating another') + (dup.id ? ' (' + dup.id + ')' : ''));
   }
 
   _woSubmitting = true;
@@ -1355,37 +1353,35 @@ async function skipPM() {
     else alert('Select who is skipping this PM.');
     return;
   }
-  const reason = prompt('Why is this PM being skipped this cycle?\n(e.g. equipment offline, weather, replaced last week)', '');
-  if (reason === null) return; // cancelled
-  if (!reason.trim()) {
-    if (typeof toast === 'function') toast('A reason is required to skip a PM');
-    return;
-  }
-  const date = document.getElementById('modal-date').value || todayStr;
-
-  setSyncDot('saving');
-  try {
-    // Mark as completed so the clock resets, but flag as skipped in notes/parts
-    await db.collection('pmCompletions').doc(modalPMId).set({
-      tech, date, parts: '', notes: 'SKIPPED: ' + reason.trim(), skipped: true, ts: Date.now()
-    });
-    await db.collection('pmHistory').add({
-      pmId: modalPMId, farm: t.farm, sys: t.sys, task: t.task, freq: t.freq,
-      tech, date, parts: '', notes: 'SKIPPED: ' + reason.trim(), skipped: true, ts: Date.now()
-    });
-    await db.collection('activityLog').add({
-      type:'pm', id:modalPMId,
-      desc:`PM SKIPPED (${reason.trim()}): ${t.farm} · ${t.sys} · ${FREQ[t.freq].label} — ${t.task}`,
-      tech, date: fmtDate(date), ts: Date.now()
-    });
-  } catch(e) {
-    console.error('skipPM failed:', e);
-    if (typeof toast === 'function') toast('Could not record skip — check connection');
-    setSyncDot('live');
-    return;
-  }
-  setSyncDot('live');
-  closePMModal();
+  promptInline('Why is this PM being skipped this cycle? (e.g. equipment offline, weather, replaced last week)', function (reason) {
+    if (!reason || !reason.trim()) { if (typeof toast === 'function') toast('A reason is required to skip a PM'); return; }
+    (async function () {
+      const date = document.getElementById('modal-date').value || todayStr;
+      setSyncDot('saving');
+      try {
+        // Mark as completed so the clock resets, but flag as skipped in notes/parts
+        await db.collection('pmCompletions').doc(modalPMId).set({
+          tech, date, parts: '', notes: 'SKIPPED: ' + reason.trim(), skipped: true, ts: Date.now()
+        });
+        await db.collection('pmHistory').add({
+          pmId: modalPMId, farm: t.farm, sys: t.sys, task: t.task, freq: t.freq,
+          tech, date, parts: '', notes: 'SKIPPED: ' + reason.trim(), skipped: true, ts: Date.now()
+        });
+        await db.collection('activityLog').add({
+          type:'pm', id:modalPMId,
+          desc:`PM SKIPPED (${reason.trim()}): ${t.farm} · ${t.sys} · ${FREQ[t.freq].label} — ${t.task}`,
+          tech, date: fmtDate(date), ts: Date.now()
+        });
+      } catch(e) {
+        console.error('skipPM failed:', e);
+        if (typeof toast === 'function') toast('Could not record skip — check connection');
+        setSyncDot('live');
+        return;
+      }
+      setSyncDot('live');
+      closePMModal();
+    })();
+  });
 }
 
 function openPMModal(id) {
@@ -2319,23 +2315,24 @@ async function deletePart() {
   if (!editingPartDefId) return;
   const p = PARTS_DEFS.find(x => x._fbId === editingPartDefId);
   if (!p) return;
-  if (!confirm(`Delete "${p.name}"? This removes it from the parts list. Inventory history is kept.`)) return;
-  try {
-    setSyncDot('saving');
-    await db.collection('partsDefs').doc(editingPartDefId).delete();
-    await db.collection('activityLog').add({
-      type: 'parts', id: editingPartDefId,
-      desc: `Part deleted: ${p.name}`,
-      tech: 'Manual',
-      date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-      ts: Date.now()
-    });
-    setSyncDot('live');
-    closePartForm();
-  } catch(e) {
-    setSyncDot('live');
-    alert('Error deleting part: ' + e.message);
-  }
+  confirmInline(`Delete "${p.name}"? This removes it from the parts list. Inventory history is kept.`, async function () {
+    try {
+      setSyncDot('saving');
+      await db.collection('partsDefs').doc(editingPartDefId).delete();
+      await db.collection('activityLog').add({
+        type: 'parts', id: editingPartDefId,
+        desc: `Part deleted: ${p.name}`,
+        tech: 'Manual',
+        date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+        ts: Date.now()
+      });
+      setSyncDot('live');
+      closePartForm();
+    } catch(e) {
+      setSyncDot('live');
+      toast('Error deleting part: ' + e.message);
+    }
+  });
 }
 
 // ═══════════════════════════════════════════
@@ -3491,8 +3488,11 @@ function prodOpenHouse(n) {
       var answered = (draft && draft.state)
         ? Object.keys(draft.state).filter(function(k){ return draft.state[k] && draft.state[k].status; }).length
         : 0;
-      if (answered > 0 && confirm('You have an unfinished walk for House ' + PROD_HEADER.house + ' with ' + answered + ' item' + (answered!==1?'s':'') + ' already answered.\n\nPick up where you left off?')) {
+      if (answered > 0) {
+        // Default to RESUMING (native confirm() no-ops in the PWA and returned
+        // false → the draft was silently discarded, losing already-answered items).
         // Merge saved answers onto the fresh state so any newly-added items still appear.
+        if (typeof toast === 'function') toast('↩ ' + (typeof _lang !== 'undefined' && _lang === 'es' ? 'Retomando tu revisión sin terminar (' : 'Resuming your unfinished walk (') + answered + (typeof _lang !== 'undefined' && _lang === 'es' ? ' contestadas)' : ' answered)'));
         Object.keys(draft.state).forEach(function(id){ if (PROD_STATE[id]) PROD_STATE[id] = draft.state[id]; });
         if (draft.header) {
           PROD_HEADER.tech  = draft.header.tech  || PROD_HEADER.tech;
@@ -7797,9 +7797,10 @@ async function wiDeleteCurrent() {
     alert('Could not find work instruction to delete.');
     return;
   }
-  if (!confirm(`Delete "${wi.title || 'this work instruction'}"? This cannot be undone.`)) return;
-  await db.collection('workInstructions').doc(fbId).delete();
-  closeWIView();
+  confirmInline(`Delete "${wi.title || 'this work instruction'}"? This cannot be undone.`, async function () {
+    await db.collection('workInstructions').doc(fbId).delete();
+    closeWIView();
+  });
 }
 
 // Close on backdrop — defensive null-checks so missing elements don't kill the script

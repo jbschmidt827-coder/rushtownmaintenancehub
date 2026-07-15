@@ -290,9 +290,11 @@ async function mpDeleteTask(id, idx) {
 
 async function mpDeleteProject(id) {
   const p = _mpFind(id);
-  if (!confirm('Delete project "' + (p ? p.title : '') + '"? This cannot be undone.')) return;
-  try { await db.collection('maintProjects').doc(id).delete(); }
-  catch (e) { console.error('mpDeleteProject:', e); alert('Could not delete: ' + (e && e.message ? e.message : e)); }
+  confirmInline('Delete project "' + (p ? p.title : '') + '"? This cannot be undone.', async function () {
+    try { await db.collection('maintProjects').doc(id).delete(); }
+    catch (e) { console.error('mpDeleteProject:', e); alert('Could not delete: ' + (e && e.message ? e.message : e)); }
+  });
+  return;
 }
 
 async function mpStart(id) {

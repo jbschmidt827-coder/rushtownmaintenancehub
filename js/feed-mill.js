@@ -102,8 +102,7 @@ async function quickAddBins() {
   const defaultConsumption = parseInt(document.getElementById('fqs-consumption').value)||32000;
   const feedType    = document.getElementById('fqs-type').value.trim();
   if (!farm || !houses) return alert('Farm and # of Houses are required.');
-  if (!confirm(`Create ${houses * 2} bins for ${farm} (Houses 1–${houses}, Bin A + Bin B each)?`)) return;
-
+  confirmInline(`Create ${houses * 2} bins for ${farm} (Houses 1–${houses}, Bin A + Bin B each)?`, async function () {
   const existing = feedBins.filter(b => b.farm === farm).map(b => b.name);
   let created = 0;
   for (let h = 1; h <= houses; h++) {
@@ -123,6 +122,8 @@ async function quickAddBins() {
   alert(`✅ Created ${created} bins for ${farm}.`);
   renderFeedBinsList();
   renderFeedDashboard();
+  }, { danger: false });
+  return;
 }
 
 // All known farms: { farm, houses[], feedType }
@@ -173,17 +174,19 @@ async function saveFeedBin() {
 }
 
 async function deleteFeedBin(binId) {
-  if (!confirm('Delete this bin? All readings for it will remain in the log.')) return;
-  const b = feedBins.find(x => x.binId === binId);
-  try {
-    if (b?._fbId) await db.collection('feedBins').doc(b._fbId).delete();
-    await loadFeedBins();
-    renderFeedBinsList();
-    renderFeedDashboard();
-  } catch(err) {
-    console.error('deleteFeedBin error:', err);
-    alert('Error deleting bin: ' + err.message);
-  }
+  confirmInline('Delete this bin? All readings for it will remain in the log.', async function () {
+    const b = feedBins.find(x => x.binId === binId);
+    try {
+      if (b?._fbId) await db.collection('feedBins').doc(b._fbId).delete();
+      await loadFeedBins();
+      renderFeedBinsList();
+      renderFeedDashboard();
+    } catch(err) {
+      console.error('deleteFeedBin error:', err);
+      alert('Error deleting bin: ' + err.message);
+    }
+  });
+  return;
 }
 
 function renderFeedBinsList() {
@@ -530,10 +533,13 @@ function renderFeedReadings() {
 }
 
 async function deleteFeedReading(fbId) {
-  if (!fbId || !confirm('Delete this reading?')) return;
-  await db.collection('feedReadings').doc(fbId).delete();
-  feedReadings = feedReadings.filter(r => r._fbId !== fbId);
-  renderFeedReadings(); renderFeedDashboard();
+  if (!fbId) return;
+  confirmInline('Delete this reading?', async function () {
+    await db.collection('feedReadings').doc(fbId).delete();
+    feedReadings = feedReadings.filter(r => r._fbId !== fbId);
+    renderFeedReadings(); renderFeedDashboard();
+  });
+  return;
 }
 
 // ── Deliveries ──
@@ -588,15 +594,18 @@ function renderFeedDeliveries() {
 }
 
 async function deleteFeedDelivery(fbId) {
-  if (!fbId || !confirm('Delete this delivery record?')) return;
-  try {
-    await db.collection('feedDeliveries').doc(fbId).delete();
-    feedDeliveries = feedDeliveries.filter(r => r._fbId !== fbId);
-    renderFeedDeliveries();
-  } catch(err) {
-    console.error('deleteFeedDelivery error:', err);
-    alert('Error deleting record: ' + err.message);
-  }
+  if (!fbId) return;
+  confirmInline('Delete this delivery record?', async function () {
+    try {
+      await db.collection('feedDeliveries').doc(fbId).delete();
+      feedDeliveries = feedDeliveries.filter(r => r._fbId !== fbId);
+      renderFeedDeliveries();
+    } catch(err) {
+      console.error('deleteFeedDelivery error:', err);
+      alert('Error deleting record: ' + err.message);
+    }
+  });
+  return;
 }
 
 // ── Feed Made ──
@@ -817,10 +826,13 @@ function renderFeedGrid() {
 }
 
 async function deleteFeedMade(fbId) {
-  if (!fbId || !confirm('Delete this record?')) return;
-  await db.collection('feedMade').doc(fbId).delete();
-  feedMadeLog = feedMadeLog.filter(r => r._fbId !== fbId);
-  renderFeedMade();
+  if (!fbId) return;
+  confirmInline('Delete this record?', async function () {
+    await db.collection('feedMade').doc(fbId).delete();
+    feedMadeLog = feedMadeLog.filter(r => r._fbId !== fbId);
+    renderFeedMade();
+  });
+  return;
 }
 
 // ── Load from Firestore ──
@@ -1315,27 +1327,31 @@ async function seedInitialReadings() {
 
 // seedAllFarms can be called silently (no confirm/alert) for auto-init
 async function seedAllFarms(silent=false) {
-  if (!silent && !confirm(`Create all bins for ${SEED_FARMS.length} farms?\n\nExisting bins will be skipped.`)) return;
-  const cap=90000, order=25;
-  let created=0, skipped=0;
-  for (const {farm, houses, feedType} of SEED_FARMS) {
-    const existing=feedBins.filter(b=>b.farm===farm).map(b=>b.name);
-    const farmRates=FARM_HOUSE_CONSUMPTION[farm]||HOUSE_CONSUMPTION_LBS;
-    for (const h of houses) {
-      const consumption=farmRates[h]!==undefined?farmRates[h]:32000;
-      for (const side of ['A','B']) {
-        const name=`House ${h} — Bin ${side}`;
-        if (existing.includes(name)){skipped++;continue;}
-        const binId='BIN-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,5).toUpperCase();
-        const data={binId,name,farm,barn:`House ${h}`,feedType,capacityLbs:cap,orderPct:order,dailyConsumptionLbs:consumption,ts:Date.now()};
-        const ref=await db.collection('feedBins').add(data);
-        feedBins.push({...data,_fbId:ref.id});
-        created++;
-        await new Promise(r=>setTimeout(r,30));
+  async function _runSeed() {
+    const cap=90000, order=25;
+    let created=0, skipped=0;
+    for (const {farm, houses, feedType} of SEED_FARMS) {
+      const existing=feedBins.filter(b=>b.farm===farm).map(b=>b.name);
+      const farmRates=FARM_HOUSE_CONSUMPTION[farm]||HOUSE_CONSUMPTION_LBS;
+      for (const h of houses) {
+        const consumption=farmRates[h]!==undefined?farmRates[h]:32000;
+        for (const side of ['A','B']) {
+          const name=`House ${h} — Bin ${side}`;
+          if (existing.includes(name)){skipped++;continue;}
+          const binId='BIN-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,5).toUpperCase();
+          const data={binId,name,farm,barn:`House ${h}`,feedType,capacityLbs:cap,orderPct:order,dailyConsumptionLbs:consumption,ts:Date.now()};
+          const ref=await db.collection('feedBins').add(data);
+          feedBins.push({...data,_fbId:ref.id});
+          created++;
+          await new Promise(r=>setTimeout(r,30));
+        }
       }
     }
+    if (!silent) { alert(`✅ ${created} bins created, ${skipped} skipped.`); renderFeedBinsList(); renderFeedDashboard(); }
   }
-  if (!silent) { alert(`✅ ${created} bins created, ${skipped} skipped.`); renderFeedBinsList(); renderFeedDashboard(); }
+  if (silent) { await _runSeed(); return; }
+  confirmInline(`Create all bins for ${SEED_FARMS.length} farms?\n\nExisting bins will be skipped.`, _runSeed, { danger: false });
+  return;
 }
 
 // ── Packing ──
@@ -1455,10 +1471,12 @@ function clearPackForm() {
 }
 
 async function deletePacking(fbId) {
-  if (!confirm('Delete this packing entry?')) return;
-  if (!fbId.startsWith('demo-')) await db.collection('opsPacking').doc(fbId).delete();
-  opsPackData=opsPackData.filter(r=>r._fbId!==fbId);
-  renderPacking(); renderOpsScoreboard();
+  confirmInline('Delete this packing entry?', async function () {
+    if (!fbId.startsWith('demo-')) await db.collection('opsPacking').doc(fbId).delete();
+    opsPackData=opsPackData.filter(r=>r._fbId!==fbId);
+    renderPacking(); renderOpsScoreboard();
+  });
+  return;
 }
 
 // ── Shipping ──

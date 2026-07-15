@@ -485,13 +485,15 @@ async function saveFlock() {
 }
 
 async function depopulateFlock(fbId) {
-  if (!confirm('Mark this flock as depopulated?')) return;
-  try {
-    await db.collection('flocks').doc(fbId).update({ status: 'depopulated' });
-    const f = flocks.find(f => f._fbId === fbId);
-    if (f) f.status = 'depopulated';
-    renderFlockList();
-  } catch(e) { console.error('flock depop:', e); }
+  confirmInline('Mark this flock as depopulated?', async function () {
+    try {
+      await db.collection('flocks').doc(fbId).update({ status: 'depopulated' });
+      const f = flocks.find(f => f._fbId === fbId);
+      if (f) f.status = 'depopulated';
+      renderFlockList();
+    } catch(e) { console.error('flock depop:', e); }
+  });
+  return;
 }
 
 function renderFlockList() {

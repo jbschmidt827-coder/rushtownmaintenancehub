@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v210-inlineconfirm';
+const CACHE_NAME = 'rushtown-v211-popupfix';
 
 const SHELL_FILES = [
   '/',

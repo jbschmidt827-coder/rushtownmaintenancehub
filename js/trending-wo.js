@@ -280,8 +280,7 @@
     if (TW.busy) return;
     const repeats = getRepeats(paretoize(getCandidates()));
     if (!repeats.length){ toast('No repeats — nothing to draft', false); return; }
-    if (!confirm(`Flag ${repeats.reduce((s,g)=>s+g.items.length,0)} WO(s) as Action Rail + create ${repeats.length} parent project entr${repeats.length===1?'y':'ies'}?`)) return;
-
+    confirmInline(`Flag ${repeats.reduce((s,g)=>s+g.items.length,0)} WO(s) as Action Rail + create ${repeats.length} parent project entr${repeats.length===1?'y':'ies'}?`, async function () {
     TW.busy = true;
     try {
       for (const g of repeats){
@@ -317,6 +316,8 @@
       TW.busy = false;
       renderTrendingWO();
     }
+    }, { danger: false });
+    return;
   }
 
   // 2) Push to Daily Report: top 5 trending → dailyProjects (priority varies)
@@ -325,8 +326,7 @@
     const pareto = paretoize(getCandidates());
     const top5 = pareto.slice(0, 5);
     if (!top5.length){ toast('Nothing trending in window', false); return; }
-    if (!confirm(`Push top ${top5.length} trending pattern${top5.length===1?'':'s'} to today's Daily Report?`)) return;
-
+    confirmInline(`Push top ${top5.length} trending pattern${top5.length===1?'':'s'} to today's Daily Report?`, async function () {
     TW.busy = true;
     try {
       for (const g of top5){
@@ -351,6 +351,8 @@
     } finally {
       TW.busy = false;
     }
+    }, { danger: false });
+    return;
   }
 
   // 3) Push to EOS: each repeat → idsIssues (Identify-Discuss-Solve)
@@ -358,8 +360,7 @@
     if (TW.busy) return;
     const repeats = getRepeats(paretoize(getCandidates()));
     if (!repeats.length){ toast('No repeats to push', false); return; }
-    if (!confirm(`Add ${repeats.length} repeat pattern${repeats.length===1?'':'s'} to EOS L10 IDS list?`)) return;
-
+    confirmInline(`Add ${repeats.length} repeat pattern${repeats.length===1?'':'s'} to EOS L10 IDS list?`, async function () {
     TW.busy = true;
     try {
       for (const g of repeats){
@@ -380,6 +381,8 @@
     } finally {
       TW.busy = false;
     }
+    }, { danger: false });
+    return;
   }
 
   // 4) Flag in Tier 2 Agenda: set meetingFlag=true on every constituent WO
@@ -388,8 +391,7 @@
     const repeats = getRepeats(paretoize(getCandidates()));
     if (!repeats.length){ toast('No repeats to flag', false); return; }
     const totalWOs = repeats.reduce((s,g) => s + g.items.length, 0);
-    if (!confirm(`Flag ${totalWOs} WO(s) for the next Tier 2 meeting agenda?`)) return;
-
+    confirmInline(`Flag ${totalWOs} WO(s) for the next Tier 2 meeting agenda?`, async function () {
     TW.busy = true;
     try {
       for (const g of repeats){
@@ -406,6 +408,8 @@
       TW.busy = false;
       renderTrendingWO();
     }
+    }, { danger: false });
+    return;
   }
 
   // ── Public exposure ────────────────────────────────────────────────────────

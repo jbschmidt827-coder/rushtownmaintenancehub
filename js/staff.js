@@ -341,17 +341,19 @@ async function toggleStaff(id, active) {
 
 // ── Delete Employee ─────────────────────────
 async function deleteStaff(id, name) {
-  if (!confirm(`Remove ${name} from the staff list?`)) return;
-  try {
-    await db.collection('staff').doc(id).delete();
+  confirmInline(`Remove ${name} from the staff list?`, async function () {
     try {
-      await db.collection('activityLog').add({
-        type: 'wo', id: 'STAFF',
-        desc: 'Staff removed: ' + name,
-        tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
-      });
-    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
-  } catch(e) { alert('Error: ' + e.message); }
+      await db.collection('staff').doc(id).delete();
+      try {
+        await db.collection('activityLog').add({
+          type: 'wo', id: 'STAFF',
+          desc: 'Staff removed: ' + name,
+          tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+        });
+      } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
+    } catch(e) { alert('Error: ' + e.message); }
+  });
+  return;
 }
 
 // ── Edit Employee ───────────────────────────
@@ -989,6 +991,8 @@ async function addStaffCert() {
 }
 
 async function deleteStaffCert(id, certName, staffName) {
-  if (!confirm(`Remove "${certName}" from ${staffName}?`)) return;
-  try { await db.collection('staffCerts').doc(id).delete(); } catch(e) { alert('Error: ' + e.message); }
+  confirmInline(`Remove "${certName}" from ${staffName}?`, async function () {
+    try { await db.collection('staffCerts').doc(id).delete(); } catch(e) { alert('Error: ' + e.message); }
+  });
+  return;
 }

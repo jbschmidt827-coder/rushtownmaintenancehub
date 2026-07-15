@@ -180,8 +180,10 @@ async function eosBumpRock(id, delta) {
 }
 
 async function eosDeleteRock(id) {
-  if (!confirm('Delete this rock?')) return;
-  await db.collection('rocks').doc(id).delete();
+  confirmInline('Delete this rock?', async function () {
+    await db.collection('rocks').doc(id).delete();
+  });
+  return;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -266,8 +268,10 @@ async function eosCompleteTodo(id) {
 }
 
 async function eosDeleteTodo(id) {
-  if (!confirm('Delete this to-do?')) return;
-  await db.collection('l10Todos').doc(id).delete();
+  confirmInline('Delete this to-do?', async function () {
+    await db.collection('l10Todos').doc(id).delete();
+  });
+  return;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -376,8 +380,10 @@ async function eosCycleIssueStatus(id) {
 }
 
 async function eosDeleteIssue(id) {
-  if (!confirm('Delete this issue?')) return;
-  await db.collection('idsIssues').doc(id).delete();
+  confirmInline('Delete this issue?', async function () {
+    await db.collection('idsIssues').doc(id).delete();
+  });
+  return;
 }
 
 // Expose key functions to window so HTML onclick handlers can find them

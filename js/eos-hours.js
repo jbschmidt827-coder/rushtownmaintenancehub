@@ -94,49 +94,44 @@ function ehRenderHoursBlock(farm) {
 
 // Modal-driven add — collects what was worked on, who, hours, then creates a WO
 async function ehAddMissedHours(farm) {
-  const what = prompt(`What was worked on? (will become a new WO for ${farm})`);
-  if (!what || !what.trim()) return;
-  const who = prompt('Who worked on it? (name)');
-  if (who === null) return;
-  const hrsStr = prompt('How many hours?');
-  const hrs = Number(hrsStr);
-  if (!hrs || isNaN(hrs)) { alert('Hours must be a number'); return; }
-  const houseStr = prompt('Which house? (number, or leave blank)');
-  const house = houseStr && houseStr.trim() ? houseStr.trim() : '';
-
-  const today = new Date().toISOString().slice(0,10);
-  const ts = Date.now();
-  const woNum = 'MH-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + Math.floor(Math.random()*1000);
-
-  const wo = {
-    woNum,
-    farm,
-    house,
-    title: what.trim(),
-    problem: 'Missed Hours / Added Project',
-    description: `Auto-created from missed-hours entry on Daily Report. ${who?'Performed by '+who+'. ':''}Logged ${hrs}h.`,
-    priority: 'normal',
-    status: 'completed',
-    actualHours: hrs,
-    hours: hrs,
-    completedBy: who || '',
-    assignTo: who || '',
-    ts,
-    completedTs: ts,
-    date: today,
-    closedTs: ts,
-    source: 'missed-hours',
-    actionRail: false
-  };
-
-  try {
-    await db.collection('workOrders').add(wo);
-    alert(`✓ Created WO ${woNum} for ${hrs}h on ${what.trim()}`);
-    if (typeof drRender === 'function') drRender();
-  } catch (e) {
-    alert('Failed to create WO: ' + e.message);
-    console.error(e);
-  }
+  // Native prompt() no-ops in the installed PWA → this whole tool was dead.
+  // Collect the 4 fields with the in-app promptInline (nested callbacks).
+  promptInline(`What was worked on? (will become a new WO for ${farm})`, function (what) {
+    if (!what || !what.trim()) return;
+    promptInline('Who worked on it? (name)', function (who) {
+      promptInline('How many hours?', function (hrsStr) {
+        const hrs = Number(hrsStr);
+        if (!hrs || isNaN(hrs)) { if (typeof toast === 'function') toast('Hours must be a number'); return; }
+        promptInline('Which house? (number, or leave blank)', function (houseStr) {
+          const house = houseStr && houseStr.trim() ? houseStr.trim() : '';
+          const today = new Date().toISOString().slice(0, 10);
+          const ts = Date.now();
+          const woNum = 'MH-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.floor(Math.random() * 1000);
+          const wo = {
+            woNum, farm, house,
+            title: what.trim(),
+            problem: 'Missed Hours / Added Project',
+            description: `Auto-created from missed-hours entry on Daily Report. ${who ? 'Performed by ' + who + '. ' : ''}Logged ${hrs}h.`,
+            priority: 'normal', status: 'completed',
+            actualHours: hrs, hours: hrs,
+            completedBy: who || '', assignTo: who || '',
+            ts, completedTs: ts, date: today, closedTs: ts,
+            source: 'missed-hours', actionRail: false
+          };
+          (async function () {
+            try {
+              await db.collection('workOrders').add(wo);
+              if (typeof toast === 'function') toast(`✓ Created WO ${woNum} for ${hrs}h on ${what.trim()}`);
+              if (typeof drRender === 'function') drRender();
+            } catch (e) {
+              if (typeof toast === 'function') toast('Failed to create WO: ' + e.message);
+              console.error(e);
+            }
+          })();
+        });
+      });
+    });
+  });
 }
 
 window.ehGetTodayPMHours  = ehGetTodayPMHours;

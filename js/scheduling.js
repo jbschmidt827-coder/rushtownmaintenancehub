@@ -244,23 +244,25 @@ async function saveSchedEntry() {
 
 async function deleteSchedEntry() {
   if (!_schedEditId) return;
-  if (!confirm('Remove this assignment?')) return;
-  try {
-    await db.collection('teamSchedule').doc(_schedEditId).delete();
-    _schedData = _schedData.filter(r => r._id !== _schedEditId);
-    closeSchedModal();
-    renderSchedule();
+  confirmInline('Remove this assignment?', async function () {
     try {
-      await db.collection('activityLog').add({
-        type: 'wo', id: 'SCHED',
-        desc: 'Schedule entry removed — ' + _schedFacility + ' ' + _schedModalDept + ' (' + _schedModalDay + ', wk ' + _schedWeekOf + ')',
-        tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
-      });
-    } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
-  } catch(e) {
-    console.error('Schedule delete error:', e);
-    alert('Error deleting: ' + e.message);
-  }
+      await db.collection('teamSchedule').doc(_schedEditId).delete();
+      _schedData = _schedData.filter(r => r._id !== _schedEditId);
+      closeSchedModal();
+      renderSchedule();
+      try {
+        await db.collection('activityLog').add({
+          type: 'wo', id: 'SCHED',
+          desc: 'Schedule entry removed — ' + _schedFacility + ' ' + _schedModalDept + ' (' + _schedModalDay + ', wk ' + _schedWeekOf + ')',
+          tech: 'System', date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}), ts: Date.now()
+        });
+      } catch(logErr) { console.warn('activityLog write failed (non-fatal):', logErr); }
+    } catch(e) {
+      console.error('Schedule delete error:', e);
+      alert('Error deleting: ' + e.message);
+    }
+  });
+  return;
 }
 
 async function copyLastWeek() {

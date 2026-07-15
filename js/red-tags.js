@@ -189,10 +189,12 @@ async function rtUpdateStatus(fbId, status) {
 }
 
 async function rtDelete(fbId) {
-  if (!confirm('Remove this red tag permanently?')) return;
-  try {
-    await db.collection('redTags').doc(fbId).delete();
-  } catch(e) { alert('Delete failed: ' + e.message); }
+  confirmInline('Remove this red tag permanently?', async function () {
+    try {
+      await db.collection('redTags').doc(fbId).delete();
+    } catch(e) { alert('Delete failed: ' + e.message); }
+  });
+  return;
 }
 
 // ── Add form ──────────────────────────────────────────────────────────────────

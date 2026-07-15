@@ -448,13 +448,15 @@ async function save5SAuditEdit() {
 
 async function delete5SAudit() {
   if (!current5SAuditFbId) return;
-  if (!confirm('Delete this 5S audit? This cannot be undone.')) return;
-  setSyncDot('saving');
-  await db.collection('5sAudits').doc(current5SAuditFbId).delete();
-  s5Records = s5Records.filter(r=>r._fbId!==current5SAuditFbId);
-  setSyncDot('live');
-  close5SAuditModal();
-  render5S();
+  confirmInline('Delete this 5S audit? This cannot be undone.', async function () {
+    setSyncDot('saving');
+    await db.collection('5sAudits').doc(current5SAuditFbId).delete();
+    s5Records = s5Records.filter(r=>r._fbId!==current5SAuditFbId);
+    setSyncDot('live');
+    close5SAuditModal();
+    render5S();
+  });
+  return;
 }
 
 function close5SAuditModal() {

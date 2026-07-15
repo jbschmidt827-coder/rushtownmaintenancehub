@@ -1092,37 +1092,32 @@ async function drMarkComplete(fbId) {
   } catch(e) { console.error(e); }
 }
 
-async function drDeleteProject(fbId) {
-  if (!confirm('Remove this task?')) return;
-  try {
-    await db.collection('dailyProjects').doc(fbId).delete();
-  } catch(e) { console.error(e); }
+function drDeleteProject(fbId) {
+  confirmInline('Remove this task?', async function () {
+    try { await db.collection('dailyProjects').doc(fbId).delete(); } catch (e) { console.error(e); }
+  });
 }
 
-async function drResetSafeDays() {
-  if (!confirm('Record an incident today? This will reset the safe days counter to 0.')) return;
-  const today = new Date().toISOString().slice(0,10);
-  try {
-    await db.collection('safetySettings').doc('main').set({
-      lastIncidentDate: today,
-      updatedTs: Date.now()
-    }, { merge: true });
-    _drSafetySettings = { lastIncidentDate: today };
-    drRender();
-  } catch(e) { console.error(e); }
+function drResetSafeDays() {
+  confirmInline('Record an incident today? This will reset the safe days counter to 0.', async function () {
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      await db.collection('safetySettings').doc('main').set({ lastIncidentDate: today, updatedTs: Date.now() }, { merge: true });
+      _drSafetySettings = { lastIncidentDate: today };
+      drRender();
+    } catch (e) { console.error(e); }
+  });
 }
 
-async function drSetSafeDayStart() {
-  const date = prompt('Enter the date of the last safety incident (YYYY-MM-DD), or leave blank to start counting from today:');
-  const useDate = (date && date.match(/^\d{4}-\d{2}-\d{2}/)) ? date.trim() : new Date().toISOString().slice(0,10);
-  try {
-    await db.collection('safetySettings').doc('main').set({
-      lastIncidentDate: useDate,
-      updatedTs: Date.now()
-    }, { merge: true });
-    _drSafetySettings = { lastIncidentDate: useDate };
-    drRender();
-  } catch(e) { console.error(e); }
+function drSetSafeDayStart() {
+  promptInline('Enter the date of the last safety incident (YYYY-MM-DD), or leave blank to start counting from today:', async function (date) {
+    const useDate = (date && date.match(/^\d{4}-\d{2}-\d{2}/)) ? date.trim() : new Date().toISOString().slice(0, 10);
+    try {
+      await db.collection('safetySettings').doc('main').set({ lastIncidentDate: useDate, updatedTs: Date.now() }, { merge: true });
+      _drSafetySettings = { lastIncidentDate: useDate };
+      drRender();
+    } catch (e) { console.error(e); }
+  });
 }
 
 function drSwitchSection(s) {

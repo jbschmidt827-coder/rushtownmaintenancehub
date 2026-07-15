@@ -854,10 +854,12 @@ function renderLocationPack(loc) {
 }
 
 async function deleteLocationPack(loc, fbId) {
-  if (!confirm('Delete this entry?')) return;
-  const cfg = LOC_CFG[loc]; if (!cfg) return;
-  if (!fbId.startsWith('demo-')) await db.collection(cfg.collection).doc(fbId).delete();
-  locationPackData[loc] = locationPackData[loc].filter(r=>r._fbId!==fbId);
-  renderLocationPack(loc);
+  confirmInline('Delete this entry?', async function () {
+    const cfg = LOC_CFG[loc]; if (!cfg) return;
+    if (!fbId.startsWith('demo-')) await db.collection(cfg.collection).doc(fbId).delete();
+    locationPackData[loc] = locationPackData[loc].filter(r=>r._fbId!==fbId);
+    renderLocationPack(loc);
+  });
+  return;
 }
 
