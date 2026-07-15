@@ -1011,7 +1011,7 @@ function bwRecordToDraft(rec) {
 // Submit button only enables when EVERY block is complete.
 var _bwRestoring = false;
 var _bwFlowActive = 0;
-const _BW_BLOCK_ORDER = ['employee','mortality','air','feedwater','belts','pest','equipment','checklist','weekly','cageclean','notes'];
+const _BW_BLOCK_ORDER = ['employee','checklist','mortality','air','feedwater','belts','pest','equipment','weekly','cageclean','notes'];
 // Blocks that auto-collapse when a button tap completes them (no free-text the employee may still want to fill)
 const _BW_BLOCK_AUTO = ['mortality','equipment','air','feedwater','belts','pest','cageclean'];
 
@@ -1214,6 +1214,7 @@ function bwSetCheck(key, val, btn) {
 
 function openBarnWalk(farm, house) {
   _bwFarm = farm; _bwHouse = house; _bwData = {}; _bwDocId = null; _bwBlockBy = {};
+  try { if (typeof _bwArrangeCards === 'function') _bwArrangeCards(); } catch (e) {}
   const _t = (typeof t === 'function') ? t : (k => k);
   const _bLbl = _t('prod.barn');
   const _isEs = (typeof _lang !== 'undefined' && _lang === 'es');
@@ -1543,17 +1544,33 @@ function bwTagNote(key, tag, on) {
 }
 if (typeof window !== 'undefined') window.bwTagNote = bwTagNote;
 
-// ── Move the Equipment card DOWN — just before the checklist (per Joe) ──────
-// Runtime relocation so DOM order matches _BW_BLOCK_ORDER without risky HTML
-// surgery. Runs once at load; the cards are static so this sticks all session.
+// ── Daily check layout (per Joe): make the 7-block CHECKLIST the focus at the ─
+// top, the condition checks below it, and hide the standalone name card (the
+// logged-in user IS the name). Runtime DOM reorder + hide — no risky HTML
+// surgery. Re-applied on every barn-walk open so it always sticks.
+var _BW_CARD_ORDER = ['checklist','mortality','air','feedwater','belts','pest','equipment','weekly','cageclean','notes'];
+function _bwArrangeCards() {
+  try {
+    var modal = document.getElementById('barn-walk-modal');
+    if (!modal) return;
+    var first = modal.querySelector('.bw-card[data-bw-block]');
+    var container = first ? first.parentNode : null;
+    if (!container) return;
+    // Reorder: append each card in the target order → checklist ends up first.
+    _BW_CARD_ORDER.forEach(function (name) {
+      var c = container.querySelector('.bw-card[data-bw-block="' + name + '"]');
+      if (c) container.appendChild(c);
+    });
+    // Hide the name/"Employee Check-In" card when we already know who's logged in.
+    var emp = container.querySelector('.bw-card[data-bw-block="employee"]');
+    if (emp) {
+      var who = (typeof getDeviceUser === 'function') ? (getDeviceUser() || '') : '';
+      emp.style.display = who ? 'none' : '';
+    }
+  } catch (e) { /* non-fatal */ }
+}
+if (typeof window !== 'undefined') window._bwArrangeCards = _bwArrangeCards;
 (function () {
-  function _bwArrangeCards() {
-    try {
-      var eq = document.querySelector('#barn-walk-modal .bw-card[data-bw-block="equipment"]');
-      var cl = document.querySelector('#barn-walk-modal .bw-card[data-bw-block="checklist"]');
-      if (eq && cl && eq !== cl.previousElementSibling) cl.parentNode.insertBefore(eq, cl);
-    } catch (e) { /* non-fatal */ }
-  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _bwArrangeCards);
   else _bwArrangeCards();
 })();
