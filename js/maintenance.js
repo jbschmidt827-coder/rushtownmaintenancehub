@@ -2443,7 +2443,14 @@ async function confirmCloseout() {
       msg += `\n\n⚠️ WARNING: Some quantities exceed current stock:\n` +
         inv_warnings.map(p => `• ${p.name} (stock: ${(partsInventory[p.partId]||{qty:0}).qty}, using: ${p.qty})`).join('\n');
     }
-    if (!confirm(msg)) return;
+    var _ok = await new Promise(function (resolve) {
+      confirmInline(msg, function () { resolve(true); }, {
+        yesLabel: (typeof _lang !== 'undefined' && _lang === 'es') ? 'Descontar y cerrar' : 'Deduct & close',
+        danger: false,
+        onNo: function () { resolve(false); }
+      });
+    });
+    if (!_ok) return;
   }
 
   const savedFbId = wo._fbId;

@@ -93,11 +93,11 @@ function procOpenPacking() {
   // Per-line totals for today
   var perLine = PROC_LINES.map(function (ln) {
     var lr = rows.filter(function (r) { return r.line === ln; });
-    var c = procSum(lr, 'cases'), d = procSum(lr, 'downtimeMin'), b = procSum(lr, 'breakage');
+    var c = procSum(lr, 'cases'), d = procSum(lr, 'downtimeMin'), b = procSum(lr, 'breakage'), rm = procSum(lr, 'runMin');
     if (!lr.length) return '';
     return '<div style="display:flex;justify-content:space-between;gap:8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#cfe0a0;padding:7px 9px;border-bottom:1px solid #163016;">' +
       '<span style="font-weight:700;">' + procEsc(ln) + '</span>' +
-      '<span>📦 ' + procNum(c) + ' · ⏱ ' + procNum(d) + 'm · 💔 ' + procNum(b) + '</span></div>';
+      '<span>📦 ' + procNum(c) + (rm ? ' · ▶ ' + procNum(rm) + 'm' : '') + ' · ⏱ ' + procNum(d) + 'm · 💔 ' + procNum(b) + '</span></div>';
   }).join('') || '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#3a6a3a;padding:9px;">' + procL('No packing logged today yet.', 'Aún no hay empaque registrado hoy.') + '</div>';
 
   var lastLine = rows.length ? rows[0].line : ''; // most recent line today → pre-selected
@@ -120,6 +120,10 @@ function procOpenPacking() {
     '<div style="background:#0a1f0a;border:1.5px solid #2a5a2a;border-radius:12px;padding:14px;margin-bottom:14px;">' +
       '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:1px;color:#4ade80;text-transform:uppercase;margin-bottom:10px;">➕ ' + procL('Log Packing', 'Registrar Empaque') + '</div>' +
       '<label style="' + lbl + '">' + procL('Line', 'Línea') + '</label><select id="proc-line" style="' + inp + 'margin-bottom:10px;">' + lineOpts + '</select>' +
+      '<div style="display:flex;gap:9px;margin-bottom:10px;">' +
+        '<div style="flex:1;"><label style="' + lbl + '">' + procL('Start time', 'Hora inicio') + '</label><input id="proc-start" type="time" style="' + inp + '"></div>' +
+        '<div style="flex:1;"><label style="' + lbl + '">' + procL('Stop time', 'Hora fin') + '</label><input id="proc-stop" type="time" style="' + inp + '"></div>' +
+      '</div>' +
       '<label style="' + lbl + '">' + procL('Cases packed', 'Cajas empacadas') + '</label><input id="proc-cases" type="number" min="0" inputmode="numeric" placeholder="0" style="' + inp + 'margin-bottom:10px;">' +
       '<div style="display:flex;gap:9px;margin-bottom:10px;">' +
         '<div style="flex:1;"><label style="' + lbl + '">' + procL('Downtime (min)', 'Paro (min)') + '</label><input id="proc-dt" type="number" min="0" inputmode="numeric" placeholder="0" style="' + inp + '"></div>' +
@@ -144,8 +148,11 @@ async function procSavePacking() {
   var dt = Number((document.getElementById('proc-dt') || {}).value || 0) || 0;
   var reason = (document.getElementById('proc-dtreason') || {}).value || '';
   var brk = Number((document.getElementById('proc-break') || {}).value || 0) || 0;
+  var start = ((document.getElementById('proc-start') || {}).value) || '';
+  var stop = ((document.getElementById('proc-stop') || {}).value) || '';
+  var runMin = (function () { if (!start || !stop) return null; var a = start.split(':'), b = stop.split(':'); var m = (Number(b[0]) * 60 + Number(b[1])) - (Number(a[0]) * 60 + Number(a[1])); if (m < 0) m += 1440; return m; })();
   var by = (typeof getDeviceUser === 'function' ? (getDeviceUser() || '') : '');
-  var rec = { line: line, cases: cases, downtimeMin: dt, downtimeReason: reason, breakage: brk, by: by, date: procToday(), ts: Date.now() };
+  var rec = { line: line, cases: cases, start: start, stop: stop, runMin: runMin, downtimeMin: dt, downtimeReason: reason, breakage: brk, by: by, date: procToday(), ts: Date.now() };
   try {
     if (typeof setSyncDot === 'function') setSyncDot('saving');
     await db.collection('processingLog').add(rec);

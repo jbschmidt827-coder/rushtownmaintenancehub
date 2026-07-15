@@ -345,7 +345,7 @@ function _erInventoryHtml(farms, t) {
       var sel = !!_palSel[p._id];
       return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #163016;">' +
         '<button onclick="palToggleSel(\'' + p._id + '\')" style="width:28px;height:28px;border-radius:6px;flex:0 0 auto;cursor:pointer;font-weight:700;' + (sel ? 'background:#14532d;border:1.5px solid #4ade80;color:#86efac;' : 'background:#0a1408;border:1.5px solid #2a5a2a;color:#5a7a5a;') + '">' + (sel ? '✓' : '') + '</button>' +
-        '<span style="' + MONO + 'font-size:12px;color:#e8f5ec;flex:1;">' + (p.type === 'caged' ? '🥚 ' + erL('Caged', 'Jaula') : '🌿 ' + erL('Not caged', 'Sin jaula')) + (p.lot ? ' · #' + String(p.lot).replace(/</g, '') : '') + ' · <b style="color:#f0d68a;">' + (Number(p.eggs) || 0).toLocaleString() + '</b></span>' +
+        '<span style="' + MONO + 'font-size:12px;color:#e8f5ec;flex:1;">' + (p.type === 'caged' ? '🥚 ' + erL('Conventional', 'Convencional') : '🌿 ' + erL('Non-conventional', 'No convencional')) + (p.lot ? ' · #' + String(p.lot).replace(/</g, '') : '') + ' · <b style="color:#f0d68a;">' + (Number(p.eggs) || 0).toLocaleString() + '</b></span>' +
         '<button onclick="palRemove(\'' + p._id + '\')" style="background:none;border:none;color:#7a4a4a;cursor:pointer;font-size:15px;padding:0 4px;">✕</button>' +
       '</div>';
     }).join('') || '<div style="' + MONO + 'font-size:12px;color:#5a7a5a;padding:8px 0;">' + erL('No pallets in stock', 'Sin pallets en inventario') + '</div>';
@@ -355,7 +355,7 @@ function _erInventoryHtml(farms, t) {
       '<div style="' + MONO + 'font-size:12px;color:#9ab09a;margin-bottom:12px;">' + erL('In stock', 'En inventario') + ': <b style="color:#f0d68a;">' + stock.length + '</b> ' + erL('pallets', 'pallets') + ' · 🥚 ' + caged.length + ' (' + eggsCaged.toLocaleString() + ') · 🌿 ' + cf.length + ' (' + eggsCf.toLocaleString() + ')</div>' +
       '<div style="background:#0a1a0a;border:1px solid #1e3a1e;border-radius:10px;padding:10px;margin-bottom:10px;">' +
         '<div style="' + MONO + 'font-size:11px;color:#9ad6a0;font-weight:700;margin-bottom:6px;">' + erL('Add a pallet', 'Agregar pallet') + '</div>' +
-        '<div style="display:flex;gap:6px;margin-bottom:6px;">' + tyBtn('caged', erL('Caged', 'Jaula')) + tyBtn('cagefree', erL('Not caged', 'Sin jaula')) + '</div>' +
+        '<div style="display:flex;gap:6px;margin-bottom:6px;">' + tyBtn('caged', erL('Conventional', 'Convencional')) + tyBtn('cagefree', erL('Non-conventional', 'No convencional')) + '</div>' +
         '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
           '<input id="pal-eggs-' + farm + '" type="number" min="0" inputmode="numeric" placeholder="' + erL('total eggs', 'total huevos') + '" style="flex:2;min-width:120px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:15px;font-weight:700;padding:9px 11px;">' +
           '<input id="pal-lot-' + farm + '" type="text" placeholder="' + erL('lot #', 'lote #') + '" style="flex:1;min-width:80px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:14px;padding:9px 11px;">' +

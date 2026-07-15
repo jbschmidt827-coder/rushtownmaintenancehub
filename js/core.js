@@ -779,7 +779,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v209 · Jul 15 2026';
+var APP_VERSION = 'v210 · Jul 15 2026';
 
 // LOCAL calendar day "YYYY-MM-DD". Everything that means "today" must use this,
 // NOT new Date().toISOString().slice(0,10) — toISOString is UTC, so on Eastern
@@ -1145,6 +1145,60 @@ try {
     };
   }
 } catch (e) {}
+
+// ── In-app confirm / prompt ─────────────────────────────────────────────────
+// Native confirm()/prompt() are NO-OPS in the installed PWA — they silently
+// killed deletes, WO closeouts, PM skips, etc. Use these callback versions:
+//   confirmInline(msg, onYes, {yesLabel,noLabel,danger})
+//   promptInline(msg, onOk, {value})
+function confirmInline(msg, onYes, opts) {
+  opts = opts || {};
+  try {
+    var es = (typeof _lang !== 'undefined' && _lang === 'es');
+    var ov = document.getElementById('inline-confirm');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'inline-confirm';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px;';
+      document.body.appendChild(ov);
+    }
+    var yes = opts.yesLabel || (es ? 'Sí' : 'Yes');
+    var no = opts.noLabel || (es ? 'Cancelar' : 'Cancel');
+    var danger = opts.danger !== false;
+    ov.innerHTML = '<div style="max-width:400px;width:100%;background:#14201a;border:1.5px solid #2a5a2a;border-radius:16px;padding:20px;font-family:\'IBM Plex Sans\',sans-serif;color:#f0ead8;">' +
+      '<div style="font-size:15px;line-height:1.5;margin-bottom:16px;">' + String(msg == null ? '' : msg) + '</div>' +
+      '<div style="display:flex;gap:10px;">' +
+        '<button id="_ic-no" style="flex:1;padding:13px;border-radius:10px;background:#1a1a1a;border:1px solid #3a3a3a;color:#ccc;font-size:14px;font-weight:700;cursor:pointer;">' + no + '</button>' +
+        '<button id="_ic-yes" style="flex:1;padding:13px;border-radius:10px;background:' + (danger ? '#5a1414' : '#14361c') + ';border:1.5px solid ' + (danger ? '#c0392b' : '#4ade80') + ';color:' + (danger ? '#ffd7d7' : '#86efac') + ';font-size:14px;font-weight:700;cursor:pointer;">' + yes + '</button>' +
+      '</div></div>';
+    ov.style.display = 'flex';
+    var close = function () { ov.style.display = 'none'; };
+    document.getElementById('_ic-no').onclick = function () { close(); try { if (typeof opts.onNo === 'function') opts.onNo(); } catch (e) {} };
+    document.getElementById('_ic-yes').onclick = function () { close(); try { if (typeof onYes === 'function') onYes(); } catch (e) {} };
+  } catch (e) { if (typeof onYes === 'function') onYes(); }
+}
+function promptInline(msg, onOk, opts) {
+  opts = opts || {};
+  try {
+    var es = (typeof _lang !== 'undefined' && _lang === 'es');
+    var ov = document.getElementById('inline-confirm');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'inline-confirm'; ov.style.cssText = 'position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px;'; document.body.appendChild(ov); }
+    ov.innerHTML = '<div style="max-width:400px;width:100%;background:#14201a;border:1.5px solid #2a5a2a;border-radius:16px;padding:20px;font-family:\'IBM Plex Sans\',sans-serif;color:#f0ead8;">' +
+      '<div style="font-size:15px;line-height:1.5;margin-bottom:12px;">' + String(msg == null ? '' : msg) + '</div>' +
+      '<input id="_ip-val" type="text" value="' + String(opts.value || '').replace(/"/g, '&quot;') + '" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;background:#0a1408;border:1.5px solid #2a5a2a;color:#f0ead8;font-size:15px;margin-bottom:14px;">' +
+      '<div style="display:flex;gap:10px;">' +
+        '<button id="_ip-no" style="flex:1;padding:13px;border-radius:10px;background:#1a1a1a;border:1px solid #3a3a3a;color:#ccc;font-size:14px;font-weight:700;cursor:pointer;">' + (es ? 'Cancelar' : 'Cancel') + '</button>' +
+        '<button id="_ip-ok" style="flex:1;padding:13px;border-radius:10px;background:#14361c;border:1.5px solid #4ade80;color:#86efac;font-size:14px;font-weight:700;cursor:pointer;">' + (es ? 'Guardar' : 'OK') + '</button>' +
+      '</div></div>';
+    ov.style.display = 'flex';
+    var inp = document.getElementById('_ip-val');
+    try { inp.focus(); } catch (e) {}
+    var close = function () { ov.style.display = 'none'; };
+    document.getElementById('_ip-no').onclick = close;
+    document.getElementById('_ip-ok').onclick = function () { var v = inp ? inp.value : ''; close(); try { if (typeof onOk === 'function') onOk(v); } catch (e) {} };
+  } catch (e) {}
+}
+if (typeof window !== 'undefined') { window.confirmInline = confirmInline; window.promptInline = promptInline; }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // OFFLINE WORK ORDER QUEUE
