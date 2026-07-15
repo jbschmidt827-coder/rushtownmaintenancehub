@@ -16,6 +16,7 @@ const EGGRUN_MACHINES = { Hegins: [1, 2], Danville: [1] };
 function erL(en, es) { try { return (typeof _lang !== 'undefined' && _lang === 'es') ? es : en; } catch (e) { return en; } }
 
 let _erDocs = [];          // last ~14 days of eggDailyRun docs (live)
+let _poDocs = [];          // last ~14 days of opsPacking docs (eggs packed out, live)
 let _erListening = false;
 let _erTick = null;        // 30s ticker so "running" elapsed time counts up
 let _erSel = {};           // farm__machine → checkbox state (default checked)
@@ -75,6 +76,10 @@ function erStartListener() {
       _erDocs = snap.docs.map(function (d) { return Object.assign({}, d.data(), { _id: d.id }); });
       _erRerender();
     }, function (err) { console.error('eggDailyRun listener:', err); });
+    db.collection('opsPacking').where('ts', '>=', cutoff).onSnapshot(function (snap) {
+      _poDocs = snap.docs.map(function (d) { return Object.assign({}, d.data(), { _id: d.id }); });
+      _erRerender();
+    }, function (err) { console.error('opsPacking listener:', err); });
   } catch (e) { console.error('erStartListener:', e); _erListening = false; }
 }
 function _erVisible() {
@@ -257,6 +262,63 @@ function _erDailySummary(farms, t) {
     rows + '</div>';
 }
 
+// ── Eggs Packed Out (opsPacking) — manual daily entry, Caged vs Not Caged ────
+// One doc per PLANT per DAY: total eggs packed split caged / cage-free. Grade
+// breakdown is intentionally a separate future report (per Joe). Total packed +
+// packed-vs-processed % (the gap = waste/undergrade) are computed automatically.
+function poKey(farm, date) { return farm + '__' + date; }
+function poRec(farm, date) { return _poDocs.find(function (r) { return r.farm === farm && r.date === date; }); }
+async function _poSave(farm, patch) {
+  var t = erToday();
+  var base = { farm: farm, date: t, ts: Date.now(), by: erBy() };
+  if (typeof setSyncDot === 'function') setSyncDot('saving');
+  await db.collection('opsPacking').doc(poKey(farm, t)).set(Object.assign(base, patch), { merge: true });
+  if (typeof setSyncDot === 'function') setSyncDot('live');
+}
+async function eggPackSet(farm, field, val) {
+  try {
+    var n = (val === '' || val == null) ? null : Math.max(0, Math.round(Number(val) || 0));
+    var patch = {}; patch[field] = n; patch[field + 'By'] = erBy();
+    await _poSave(farm, patch);
+    if (typeof toast === 'function') toast('📦 ' + farm + ' — ' + (n != null ? n.toLocaleString() : '—') + ' ' + erL('packed saved', 'empacado guardado'));
+    renderEggRun();
+  } catch (e) {
+    console.error('eggPackSet:', e);
+    if (typeof toast === 'function') toast(erL('Could not save: ', 'No se pudo guardar: ') + (e && e.message ? e.message : e));
+    if (typeof setSyncDot === 'function') setSyncDot('live');
+  }
+}
+function _poRow(farm, field, label, val) {
+  var MONO = "font-family:'IBM Plex Mono',monospace;";
+  return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">' +
+    '<label style="' + MONO + 'font-size:12px;color:#9ad6a0;font-weight:700;min-width:160px;">' + label + '</label>' +
+    '<input type="number" min="0" inputmode="numeric" value="' + (val != null ? val : '') + '" onchange="eggPackSet(\'' + farm + '\',\'' + field + '\',this.value)" placeholder="0" style="flex:1;min-width:110px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:10px 12px;">' +
+    (val != null ? '<span style="' + MONO + 'font-size:11px;color:#7ab07a;">= ' + (Math.round(val / 12)).toLocaleString() + ' dz</span>' : '') +
+    '</div>';
+}
+function _erPackoutHtml(farms, t) {
+  var MONO = "font-family:'IBM Plex Mono',monospace;";
+  var cards = farms.map(function (farm) {
+    var r = poRec(farm, t) || {};
+    var caged = (r.caged != null) ? Number(r.caged) : null;
+    var cf = (r.cagefree != null) ? Number(r.cagefree) : null;
+    var total = (caged || 0) + (cf || 0);
+    var proc = 0;
+    erMachines(farm).forEach(function (m) { var er = erRec(farm, m, t); if (er && er.eggs != null) proc += Number(er.eggs) || 0; });
+    var pctOut = (proc > 0 && total > 0) ? Math.round(total / proc * 100) : null;
+    return '<div style="background:#0f2410;border:1.5px solid #2a5a2a;border-radius:12px;padding:14px;margin-bottom:12px;">' +
+      '<div style="' + MONO + 'font-size:15px;font-weight:700;color:#e8f5ec;margin-bottom:10px;">📦 ' + farm + ' — ' + erL('eggs packed out', 'huevos empacados') + '</div>' +
+      _poRow(farm, 'caged', erL('Caged', 'En jaula'), caged) +
+      _poRow(farm, 'cagefree', erL('Not caged (cage-free)', 'Sin jaula'), cf) +
+      '<div style="' + MONO + 'font-size:13px;color:#9ab09a;border-top:1px solid #163016;margin-top:10px;padding-top:10px;line-height:1.7;">' +
+        erL('Total packed', 'Total empacado') + ': <b style="color:#f0d68a;">' + (total ? total.toLocaleString() : '—') + '</b>' +
+        (total ? (' <span style="color:#7ab07a;">(' + (Math.round(total / 12)).toLocaleString() + ' dz · ' + (Math.round(total / 360 * 10) / 10) + ' ' + erL('cases', 'cajas') + ')</span>') : '') +
+        (pctOut != null ? ('<br>' + erL('Packed vs processed', 'Empacado vs procesado') + ': <b style="color:' + (pctOut >= 95 ? '#4ade80' : '#f2c14e') + ';">' + pctOut + '%</b>') : '') +
+      '</div></div>';
+  }).join('');
+  return '<div style="' + MONO + 'font-size:11px;letter-spacing:1px;color:#7ab07a;text-transform:uppercase;margin:8px 0 8px;">' + erL('Eggs packed out — today', 'Huevos empacados — hoy') + '</div>' + cards;
+}
+
 function renderEggRun() {
   var el = document.getElementById('pkg-dailyrun');
   if (!el) return;
@@ -288,6 +350,9 @@ function renderEggRun() {
       detailHtml +
     '</div>';
   });
+
+  // ── Eggs packed out (Caged / Not caged) — manual daily entry ──
+  html += _erPackoutHtml(farms, t);
 
   // ── 14-day history (tracking log) ──
   var hist = _erDocs.slice()
@@ -346,5 +411,6 @@ if (typeof window !== 'undefined') {
   window.eggRunSelToggle = eggRunSelToggle;
   window.eggRunEggsSet = eggRunEggsSet;
   window.eggRunSetManualMin = eggRunSetManualMin;
+  window.eggPackSet = eggPackSet;
   window.openProcessing = openProcessing;
 }
