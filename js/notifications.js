@@ -24,11 +24,16 @@ function initNotifications() {
     if (perm !== 'granted') return;
     messaging.getToken({ vapidKey: VAPID_KEY }).then(token => {
       if (!token) return;
+      // Stamp the signed-in user on the token so Cloud Functions can target
+      // just Directors/Leads (see functions/index.js sendPushToRoles).
+      var _user = '';
+      try { _user = (typeof getDeviceUser === 'function' ? (getDeviceUser() || '') : ''); } catch (e) {}
       db.collection('fcmTokens').doc(token).set({
         token,
+        user: _user,
         ts: Date.now(),
         ua: navigator.userAgent.slice(0, 120)
-      }).catch(() => {});
+      }, { merge: true }).catch(() => {});
     }).catch(err => console.warn('FCM token error:', err));
   });
 

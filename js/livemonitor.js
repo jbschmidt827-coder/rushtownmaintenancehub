@@ -1,11 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// livemonitor.js — LIVE Daily-Check monitoring board (EN/ES)
-// A real-time overlay: every house per site with Morning Walk / Daily Check /
-// Manure status, WHO is working each in-progress check right now (name + live
-// dot + %), and a top summary. Self-contained — arms its own onSnapshot
-// listeners on today's morningWalks / barnWalks / manureSubmit / bwProgress and
-// re-renders live; a 30s tick decays the "active now" indicator. Skips down
-// houses. Reached from a 🔴 Live button on the location home.
+// livemonitor.js — LIVE daily-work monitoring board (EN/ES)
+// A real-time overlay. TOP: an "all daily work today" summary strip (Morning
+// walks / Daily checks / Manure / PMs done / Egg run, with run time + eggs per
+// plant). BELOW: every house per site with Morning Walk / Daily Check / Manure
+// status + WHO is working each in-progress check right now (name + live dot + %).
+// Self-contained — arms its own onSnapshot listeners on today's morningWalks /
+// barnWalks / manureSubmit / bwProgress (by date) + pmCompletions / eggDailyRun
+// (by ts >= local midnight) and re-renders live; a 30s tick decays the "active
+// now" indicator. Skips down houses. Reached from the 🔴 Live button on home.
 // ═══════════════════════════════════════════════════════════════════════════
 (function () {
   'use strict';
@@ -17,6 +19,8 @@
   var _lmUnsub = [];
   var _lmTick = null;
   var _mw = {}, _bw = {}, _mn = {}, _prog = {};   // today's live state, keyed farm-house
+  var _pm = [], _erDocs = [];                      // today's PM completions + egg-run docs
+  var EGGRUN_M = { Hegins: [1, 2], Danville: [1] };
 
   function _lmLang() { try { return (typeof _lang !== 'undefined' && _lang === 'es') ? 'es' : 'en'; } catch (e) { return 'en'; } }
   function L(en, es) { return _lmLang() === 'es' ? es : en; }
@@ -48,6 +52,15 @@
       }, function () {}));
       _lmUnsub.push(db.collection('bwProgress').where('date', '==', today).onSnapshot(function (s) {
         _prog = {}; s.forEach(function (d) { var w = d.data(); _prog[w.farm + '-' + w.house] = { pct: w.pct || 0, by: w.by || '', ts: w.ts || 0, blocks: w.blocks || [] }; }); _lmKick();
+      }, function () {}));
+      // PMs + egg run are dated by timestamp (their date fields are display strings),
+      // so query on ts >= local midnight to catch everything done today.
+      var midnight = new Date(); midnight.setHours(0, 0, 0, 0); var todayMs = midnight.getTime();
+      _lmUnsub.push(db.collection('pmCompletions').where('ts', '>=', todayMs).onSnapshot(function (s) {
+        _pm = []; s.forEach(function (d) { _pm.push(d.data()); }); _lmKick();
+      }, function () {}));
+      _lmUnsub.push(db.collection('eggDailyRun').where('ts', '>=', todayMs).onSnapshot(function (s) {
+        _erDocs = []; s.forEach(function (d) { _erDocs.push(d.data()); }); _lmKick();
       }, function () {}));
     } catch (e) { console.error('livemonitor arm:', e); }
   }
@@ -82,6 +95,64 @@
     return _pill('✅', 'pending');
   }
 
+  // ── "All daily work" summary strip ──────────────────────────────────────────
+  function _fmtMin(min) { var m = Math.round(min), h = Math.floor(m / 60), mm = m % 60; return h + 'h ' + (mm < 10 ? '0' : '') + mm + 'm'; }
+  function _erAgg(farm) {
+    var min = 0, eggs = 0, has = false;
+    _erDocs.filter(function (d) { return d.farm === farm; }).forEach(function (d) {
+      if (d.manualMin != null && Number(d.manualMin) > 0) { min += Number(d.manualMin); has = true; }
+      else if (Array.isArray(d.runs)) { d.runs.forEach(function (r) { if (r.s && r.e) { min += (r.e - r.s) / 60000; has = true; } }); }
+      if (d.eggs != null) { eggs += Number(d.eggs) || 0; has = true; }
+    });
+    return { min: min, eggs: eggs, has: has };
+  }
+  function _tile(icon, label, val, color) {
+    return '<div style="flex:1;min-width:80px;background:#0f1f0f;border:1px solid #274a27;border-radius:10px;padding:9px 8px;text-align:center;">' +
+      '<div style="font-size:15px;line-height:1;">' + icon + '</div>' +
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:15px;font-weight:700;color:' + (color || '#e8f5ec') + ';margin-top:4px;">' + val + '</div>' +
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:8px;letter-spacing:.5px;color:#5a7a5a;text-transform:uppercase;margin-top:2px;">' + label + '</div>' +
+    '</div>';
+  }
+  function _lmSummary(farms) {
+    var barnFarms = farms.length ? farms.filter(function (f) { return f === 'Hegins' || f === 'Danville'; }) : ['Hegins', 'Danville'];
+    var mwDone = 0, dcDone = 0, mnDone = 0, mwTot = 0, dcTot = 0, mnTot = 0;
+    barnFarms.forEach(function (farm) {
+      var n = FARM_HOUSES[farm] || 0;
+      for (var h = 1; h <= n; h++) {
+        if (_down(farm, h)) continue;
+        var k = farm + '-' + h;
+        mwTot++; dcTot++;
+        if (_mw[k]) mwDone++;
+        if (_bw[k]) dcDone++;
+        if ((MANURE_HOUSES[farm] || []).indexOf(h) !== -1) { mnTot++; if (_mn[k]) mnDone++; }
+      }
+    });
+    var pmCount = _pm.length;
+    // Egg run: which plants have entered today
+    var erPlants = Object.keys(EGGRUN_M).map(function (f) { return { farm: f, agg: _erAgg(f) }; }).filter(function (x) { return x.agg.has; });
+    var erVal = erPlants.length ? (erPlants.length + '/' + Object.keys(EGGRUN_M).length) : '0/' + Object.keys(EGGRUN_M).length;
+    var pctC = function (d, t) { return t ? Math.round(d / t * 100) : 0; };
+    var col = function (d, t) { return (t && d >= t) ? '#4ade80' : '#f2c14e'; };
+
+    var tiles =
+      _tile('☀️', L('Morning', 'Mañana'), mwDone + '/' + mwTot, col(mwDone, mwTot)) +
+      _tile('✅', L('Daily Check', 'Chequeo'), dcDone + '/' + dcTot, col(dcDone, dcTot)) +
+      _tile('💩', L('Manure', 'Estiércol'), mnDone + '/' + mnTot, col(mnDone, mnTot)) +
+      _tile('🔧', L('PMs today', 'PM hoy'), String(pmCount), pmCount ? '#4ade80' : '#5a7a5a') +
+      _tile('🥚', L('Egg run', 'Huevos'), erVal, erPlants.length ? '#4ade80' : '#5a7a5a');
+
+    // Egg-run detail line (run time + eggs per plant that has data)
+    var erLine = erPlants.map(function (x) {
+      return x.farm + ': ⏱ ' + _fmtMin(x.agg.min) + ' · 🥚 ' + (x.agg.eggs ? x.agg.eggs.toLocaleString() : '—');
+    }).join('  ·  ');
+
+    return '<div style="margin:10px 0 6px;">' +
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;letter-spacing:1px;color:#7ab07a;text-transform:uppercase;margin-bottom:6px;">' + L('All daily work — today', 'Todo el trabajo de hoy') + '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + tiles + '</div>' +
+      (erLine ? '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#9ad6a0;margin-top:6px;">' + erLine + '</div>' : '') +
+    '</div>';
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   function renderLiveMonitor() {
     var ov = document.getElementById('livemonitor-overlay');
@@ -89,9 +160,10 @@
     var farms = _lmFarms();
     var dateStr = new Date().toLocaleDateString(_lmLang() === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-    var body = '';
+    // Always show the "all daily work" summary strip at the top.
+    var body = _lmSummary(farms);
     if (!farms.length) {
-      body = '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;color:#7a9a7a;text-align:center;padding:40px 16px;">' + L('Pick <b>Hegins</b>, <b>Danville</b>, or <b>Master</b> to monitor barn checks.', 'Elige <b>Hegins</b>, <b>Danville</b> o <b>Master</b> para monitorear los chequeos.') + '</div>';
+      body += '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:#7a9a7a;text-align:center;padding:26px 16px;">' + L('Pick <b>Hegins</b>, <b>Danville</b>, or <b>Master</b> to also see the per-house barn grid.', 'Elige <b>Hegins</b>, <b>Danville</b> o <b>Master</b> para ver también la cuadrícula por casa.') + '</div>';
     } else {
       farms.forEach(function (farm) {
         var n = FARM_HOUSES[farm] || 0;
@@ -145,7 +217,7 @@
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">' +
           '<button onclick="closeLiveMonitor()" style="padding:11px 16px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#9ad6a0;font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">← ' + L('Back', 'Atrás') + '</button>' +
           '<div style="text-align:right;">' +
-            '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:28px;letter-spacing:2px;line-height:1;color:#f0ead8;"><span style="color:#f87171;">●</span> ' + L('LIVE CHECKS', 'EN VIVO') + '</div>' +
+            '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:28px;letter-spacing:2px;line-height:1;color:#f0ead8;"><span style="color:#f87171;">●</span> ' + L('LIVE BOARD', 'EN VIVO') + '</div>' +
             '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#7ab07a;margin-top:3px;">' + dateStr + ' · ' + L('auto-refreshing', 'actualiza solo') + '</div>' +
           '</div>' +
         '</div>' +

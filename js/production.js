@@ -1506,6 +1506,25 @@ function bwEverythingNormal() {
 }
 if (typeof window !== 'undefined') window.bwEverythingNormal = bwEverythingNormal;
 
+// ── Quick-tap issue tags → existing saved note field ────────────────────────
+// Conditional question checkboxes in a task's fail-detail call this to add/
+// remove a short tag in that task's bw-cl-note-<key> input. The note field is
+// already persisted by submitBarnWalk/_bwFlushProgress, so this needs NO change
+// to the save path — the crew still gets structured quick answers + free text.
+function bwTagNote(key, tag, on) {
+  try {
+    var el = document.getElementById('bw-cl-note-' + key);
+    if (!el) return;
+    var items = String(el.value || '').split(' · ').map(function (s) { return s.trim(); }).filter(Boolean);
+    var i = items.indexOf(tag);
+    if (on && i < 0) items.push(tag);
+    if (!on && i >= 0) items.splice(i, 1);
+    el.value = items.join(' · ');
+    if (typeof bwSaveDraft === 'function') bwSaveDraft();
+  } catch (e) { console.warn('bwTagNote:', e); }
+}
+if (typeof window !== 'undefined') window.bwTagNote = bwTagNote;
+
 // Friendly labels for the "still to finish" hint.
 const _BW_BLOCK_LABELS = {
   employee:'Your name', mortality:'Mortality', equipment:'Equipment', air:'Air quality',

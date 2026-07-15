@@ -18,44 +18,58 @@
 (function () {
   'use strict';
 
+  // Joe's 7-block daily EE process (in priority order). Each block shows only
+  // the tasks that apply today (see VISIBILITY for the cleaning rotation).
   const BLOCKS = [
     { id:'b1',
-      label:'BLOCK 1 — START → 9:30 AM BREAK',
-      shortLabel:'Block 1',
-      window:'~7:00 – 9:30 AM',
+      label:'BLOCK 1 · 7:00–7:15 · FEED / WATER / VENT',
+      shortLabel:'Block 1 · Feed/Water/Vent',
+      window:'7:00 – 7:15 AM · 15 min',
       color:'#7ad07a', bg:'#0a2010', border:'#2a5a2a',
-      defaultTasks:['fwv','birdcheck','flycheck','rodentcheck'] },
+      defaultTasks:['fwv'] },
     { id:'b2',
-      label:'BLOCK 2 — 9:30 AM → LUNCH',
-      shortLabel:'Block 2',
-      window:'~9:30 AM – 12:00 PM',
-      color:'#e0b048', bg:'#1a1200', border:'#4a3500',
-      defaultTasks:['watertubes','frontofhouse','undercages'] },
+      label:'BLOCK 2 · 7:15–9:00 · MORTALITY & BIRD CHECK',
+      shortLabel:'Block 2 · Mortality',
+      window:'7:15 – 9:00 AM · 1h 45m',
+      color:'#e07070', bg:'#1a0808', border:'#5a2a2a',
+      defaultTasks:['birdcheck','flycheck','rodentcheck'] },
     { id:'b3',
-      label:'BLOCK 3 — LUNCH → PRODUCTION DONE',
-      shortLabel:'Block 3',
-      window:'~12:30 PM – until production is done',
+      label:'BLOCK 3 · 9:00–12:00 · DEEP CLEANING',
+      shortLabel:'Block 3 · Cleaning',
+      window:'9:00 AM – 12:00 PM · today only',
       color:'#5aa8f8', bg:'#0d1f3a', border:'#1e3a6a',
-      defaultTasks:['blowoff','wheelbarrow','hallways'] },
+      defaultTasks:['blowoff','undercages'] },
+    { id:'b4',
+      label:'BLOCK 4 · 12:30–1:00 · HALLWAYS',
+      shortLabel:'Block 4 · Hallways',
+      window:'12:30 – 1:00 PM · 30 min',
+      color:'#5aa8f8', bg:'#0d1f3a', border:'#1e3a6a',
+      defaultTasks:['hallways'] },
+    { id:'b5',
+      label:'BLOCK 5 · AFTER RUN · UNDER EGG COLLECTORS',
+      shortLabel:'Block 5 · After run',
+      window:'after the house ran · 45 min',
+      color:'#e0b048', bg:'#1a1200', border:'#4a3500',
+      defaultTasks:['frontofhouse','wheelbarrow'] },
+    { id:'b6',
+      label:'BLOCK 6 · EQUIPMENT CHECK',
+      shortLabel:'Block 6 · Equipment',
+      window:'before end of day',
+      color:'#e0b048', bg:'#1a1200', border:'#4a3500',
+      defaultTasks:['equipcheck'] },
+    { id:'b7',
+      label:'BLOCK 7 · END OF DAY',
+      shortLabel:'Block 7 · End of day',
+      window:'end of shift · 20 min',
+      color:'#9a9ad0', bg:'#0f0f1f', border:'#3a3a5a',
+      defaultTasks:['endofday'] },
   ];
 
   // Farm-aware labels/windows — Hegins starts 5:30 AM with an 8:30 break,
   // Danville starts 7:00 AM with a 9:30 break (see FARM_SCHEDULE in
   // production.js). Falls back to the generic BLOCKS text if unknown.
-  function blockMeta(b) {
-    const farm = (typeof window._bwFarm === 'string' && window._bwFarm) ? window._bwFarm : null;
-    const cfg  = (farm && typeof window.FARM_SCHEDULE !== 'undefined' && window.FARM_SCHEDULE[farm]) ? window.FARM_SCHEDULE[farm] : null;
-    if (!cfg) return { label: b.label, window: b.window };
-    if (b.id === 'b1') return {
-      label: 'BLOCK 1 — START → ' + cfg.breakLabel + ' BREAK',
-      window: '~' + cfg.shiftStart.replace(' AM','') + ' – ' + cfg.breakLabel
-    };
-    if (b.id === 'b2') return {
-      label: 'BLOCK 2 — ' + cfg.breakLabel + ' → LUNCH',
-      window: '~' + cfg.breakLabel + ' – ' + cfg.lunchLabel
-    };
-    return { label: b.label, window: b.window };
-  }
+  // Joe's blocks carry fixed clock windows, so no farm-schedule override.
+  function blockMeta(b) { return { label: b.label, window: b.window }; }
 
   // Headers are built once at boot (before a barn is picked), so re-stamp
   // the farm-specific times every time the barn-walk modal opens.
@@ -78,13 +92,17 @@
   // Visibility rules — when a row is hidden the block math skips it so
   // a Wednesday user isn't blocked from auto-closing Block 1 by a fly
   // check that doesn't apply today.
-  //   { type: 'never' }                  → always hidden (moved off list)
-  //   { type: 'dow', day: <0..6> }        → only shown on that day-of-week
+  //   { type: 'never' }                       → always hidden (moved off list)
+  //   { type: 'dow', day: <0..6> }             → only shown on that one day
+  //   { type: 'dow', days: [<0..6>, ...] }     → only shown on those days
   // Day numbers: Sun=0, Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6
   const VISIBILITY = {
-    watertubes:  { type:'never' },                 // moved to monthly barn PM
-    flycheck:    { type:'dow', day: 2 },           // Tuesdays only
-    rodentcheck: { type:'dow', day: 5 },           // Fridays only
+    watertubes:  { type:'never' },                     // moved to monthly barn PM
+    blowoff:     { type:'dow', days: [0, 2, 4] },      // blow out house — Sun/Tue/Thu
+    undercages:  { type:'dow', days: [1, 3, 5] },      // clean under cages — Mon/Wed/Fri
+    hallways:    { type:'dow', days: [0, 2, 4] },      // hallways — Sun/Tue/Thu (Sat: none)
+    flycheck:    { type:'dow', day: 2 },               // Tuesdays only
+    rodentcheck: { type:'dow', day: 5 },               // Fridays only
   };
 
   function isRowVisible(rowOrKey) {
@@ -102,7 +120,7 @@
       if (!row) return;
       let show = true;
       if (rule.type === 'never') show = false;
-      else if (rule.type === 'dow') show = (dow === rule.day);
+      else if (rule.type === 'dow') show = Array.isArray(rule.days) ? (rule.days.indexOf(dow) !== -1) : (dow === rule.day);
       row.style.display = show ? '' : 'none';
     });
     // Other barn-walk elements (e.g. Fly trap activity Yes/No card) that
@@ -130,7 +148,7 @@
     // Helper banner above the rows
     const helpBanner = document.createElement('div');
     helpBanner.style.cssText = 'background:#0a1a0a;border:1px dashed #2a4a2a;border-radius:8px;padding:8px 10px;margin:0 0 10px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#7a9a7a;line-height:1.45;';
-    helpBanner.innerHTML = '🕒 <strong style="color:#9ad0a0;">Tasks are split by shift breaks</strong> — work through Block&nbsp;1 before the 9:30 AM break, Block&nbsp;2 before lunch, and Block&nbsp;3 before end of shift. Use <strong>↕&nbsp;Move</strong> on a task to shift it into another block.';
+    helpBanner.innerHTML = '🕒 <strong style="color:#9ad0a0;">Your day, in order</strong> — work top to bottom through the 7 time blocks. Each block shows only the tasks that apply today (the cleaning rotates by day). Use <strong>↕&nbsp;Move</strong> on a task to shift it into another block.';
     root.parentNode.insertBefore(helpBanner, root);
 
     // Snapshot the existing rows in DOM order
@@ -178,14 +196,15 @@
     });
 
     // Any unassigned rows fall through to the last block
+    const LAST_BLOCK = BLOCKS[BLOCKS.length - 1].id;
     rows.forEach(r => {
       const k = rowKey(r);
       if (_taskBlock[k]) return;
-      const body = root.querySelector('[data-block-body="b3"]');
+      const body = root.querySelector('[data-block-body="' + LAST_BLOCK + '"]');
       if (!body) return;
       body.appendChild(r);
-      r.dataset.block = 'b3';
-      _taskBlock[k] = 'b3';
+      r.dataset.block = LAST_BLOCK;
+      _taskBlock[k] = LAST_BLOCK;
       decorateRow(r);
     });
 

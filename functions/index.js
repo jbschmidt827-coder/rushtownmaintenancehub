@@ -1,4 +1,4 @@
-const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { onSchedule }        = require('firebase-functions/v2/scheduler');
 const { onRequest }         = require('firebase-functions/v2/https');
 const { defineSecret }      = require('firebase-functions/params');
@@ -44,6 +44,45 @@ async function sendPushToAll(title, body, tag = 'rushtown') {
 }
 
 // ────────────────────────────────────────────────────
+// HELPER — send FCM push ONLY to staff whose role matches
+// (rolePattern, e.g. /director|lead/i). Tokens carry the signed-in
+// user's name (js/notifications.js), which we match against the roster.
+// ────────────────────────────────────────────────────
+async function sendPushToRoles(rolePattern, title, body, tag = 'rushtown') {
+  // Names of active staff in the target roles
+  const staffSnap = await db.collection('staff').get();
+  const names = new Set();
+  staffSnap.forEach(d => {
+    const s = d.data();
+    if (s && s.active !== false && s.role && rolePattern.test(String(s.role)) && s.name) {
+      names.add(s.name);
+    }
+  });
+  if (!names.size) return;
+
+  // Tokens whose stamped user is one of those names
+  const tokSnap = await db.collection('fcmTokens').get();
+  const tokens = tokSnap.docs
+    .map(d => d.data())
+    .filter(t => t && t.token && t.user && names.has(t.user))
+    .map(t => t.token);
+  if (!tokens.length) return;
+
+  const res = await admin.messaging().sendEachForMulticast({
+    notification: { title, body },
+    data: { tag },
+    tokens,
+  });
+  const batch = db.batch();
+  res.responses.forEach((r, i) => {
+    if (!r.success && r.error?.code === 'messaging/registration-token-not-registered') {
+      batch.delete(db.collection('fcmTokens').doc(tokens[i]));
+    }
+  });
+  await batch.commit().catch(() => {});
+}
+
+// ────────────────────────────────────────────────────
 // HELPER — write a notification doc to Firestore
 // ────────────────────────────────────────────────────
 async function writeNotification(type, title, body) {
@@ -53,6 +92,47 @@ async function writeNotification(type, title, body) {
     ts: Date.now(),
   });
 }
+
+// ────────────────────────────────────────────────────
+// TRIGGER — Daily EE Check written (barnWalks)
+//   (1) notify Directors/Leads each time a house check is completed
+//   (2) alert Directors/Leads when mortality in a house exceeds 30
+// ────────────────────────────────────────────────────
+const _LEADERS = /director|lead/i;
+exports.notifyBarnCheck = onDocumentWritten(
+  { document: 'barnWalks/{docId}', region: 'us-central1' },
+  async (event) => {
+    const before = event.data?.before?.data() || null;
+    const after  = event.data?.after?.data()  || null;
+    if (!after) return null;   // deleted — ignore
+
+    const house = `${after.farm || '?'} House ${after.house || '?'}`;
+    const who   = after.employee || after.by || 'crew';
+    const jobs  = [];
+
+    // (1) Completed check — fire once, when the record is first created.
+    if (!before) {
+      const flags = (after.flags && after.flags.length) ? ` ⚠ ${after.flags.length} flag(s)` : '';
+      const title = `✅ Daily check done — ${house}`;
+      const body  = `${who} completed the daily check.${flags}`;
+      jobs.push(sendPushToRoles(_LEADERS, title, body, 'daily-check'));
+      jobs.push(writeNotification('daily-check', title, body));
+    }
+
+    // (2) Mortality > 30 — fire when the count crosses the threshold.
+    const beforeMort = before ? Number(before.mortCount || 0) : 0;
+    const afterMort  = Number(after.mortCount || 0);
+    if (afterMort > 30 && beforeMort <= 30) {
+      const title = `⚠️ High mortality — ${house}`;
+      const body  = `${afterMort} birds recorded (over 30). Logged by ${who}.`;
+      jobs.push(sendPushToRoles(_LEADERS, title, body, 'mortality'));
+      jobs.push(writeNotification('mortality', title, body));
+    }
+
+    await Promise.all(jobs);
+    return null;
+  }
+);
 
 // ────────────────────────────────────────────────────
 // TRIGGER — On-Call event logged
