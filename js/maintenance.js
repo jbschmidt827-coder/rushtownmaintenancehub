@@ -753,12 +753,18 @@ async function loadHouses() {
     techSel.appendChild(o);
   });
 
-  // Update Assign To dropdown with same crew
+  // Update Assign To dropdown — scoped to MAINTENANCE crew at THIS site only
+  // (they're who fixes WOs). Directors/Leads always included via getDeptStaff.
+  // Falls back to the site crew if the roster helper isn't ready.
   const assignSel = document.getElementById('wo-assign');
   if (assignSel) {
     const currentAssign = assignSel.value;
+    let fixers = (typeof getDeptStaff === 'function' && farm)
+      ? getDeptStaff(farm, 'Maintenance')
+      : [];
+    if (!fixers.length) fixers = techs;   // fail-open: never show an empty Assign list
     assignSel.innerHTML = '<option value="">— Unassigned —</option>';
-    techs.forEach(name => {
+    fixers.forEach(name => {
       const o = document.createElement('option');
       o.value = name; o.textContent = name;
       if (name === currentAssign) o.selected = true;

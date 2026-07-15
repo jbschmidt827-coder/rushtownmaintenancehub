@@ -1,16 +1,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // eggrun.js — Daily Egg Run (Processing → 🥚⏱ Daily Run) EN/ES
-// ONE entry per MACHINE per plant per day: total eggs + total machine run time.
+// MANUAL DAILY ENTRY (per Joe): no stopwatch. Once a day, per machine, the crew
+// types the total RUN TIME (minutes off the meter) + TOTAL EGGS for the day.
+// Eggs/hr is computed. A report-style DAILY SUMMARY (run time · eggs · eggs/hr,
+// per plant) sits at the top of the Processing tab.
 // Hegins runs 2 machines, Danville 1 (EGGRUN_MACHINES).
-// Multi-machine plants get CHECKBOXES for which machine(s) you're starting /
-// stopping (per Joe) — tick M1/M2, then one big ▶ START / ⏹ STOP acts on the
-// ticked machines. Single-machine plants just get the big buttons.
-// Multiple start/stop cycles per day are fine (lunch, jams): each pair is a
-// "run" and the day's run time is the sum. Total eggs typed once per machine
-// (saves on change). Eggs/hr computed automatically.
-// Live via onSnapshot: every device sees machine state + times instantly.
+// Live via onSnapshot: every device sees the day's entries instantly.
 // Collection: eggDailyRun, doc "<Farm>__M<machine>__<YYYY-MM-DD>"
-//   { farm, machine, date, runs:[{s,e,by,eBy}], eggs, by, ts }
+//   { farm, machine, date, manualMin, eggs, by, ts }  (legacy runs:[] still read)
+// NOTE: eggRunStart/Stop/*Sel are kept defined (legacy/back-compat) but no longer
+// wired to any button — the UI is manual-entry only.
 // ═══════════════════════════════════════════════════════════════════════════
 const EGGRUN_MACHINES = { Hegins: [1, 2], Danville: [1] };
 
@@ -200,34 +199,62 @@ function _erStatusLine(farm, m, rec, multi) {
     ? '<div style="' + MONO + 'font-size:12px;color:#7a8f7a;background:#0f1a0f;border:1px solid #2a4a2a;border-radius:8px;padding:7px 10px;margin:5px 0;">' + tag + '— ' + erL('not started yet today', 'aún no ha iniciado hoy') + '</div>'
     : '';
 }
-// Per-machine runs detail + eggs input row.
+// Per-machine MANUAL entry: run time (min) + total eggs, computed eggs/hr.
 function _erMachineDetail(farm, m, rec, multi) {
   var MONO = "font-family:'IBM Plex Mono',monospace;";
   var eggs = (rec && rec.eggs != null) ? Number(rec.eggs) : null;
-  var totalMs = erTotalMs(rec);
-  var hrs = totalMs / 3600000;
+  var mins = (rec && rec.manualMin != null) ? Number(rec.manualMin)
+           : (rec && erRuns(rec).length ? Math.round(erTotalMs(rec) / 60000) : null);  // legacy runs fallback
+  var hrs = (mins || 0) / 60;
   var eph = (eggs && hrs > 0.05) ? Math.round(eggs / hrs) : null;
-  var runRows = erRuns(rec).map(function (r, i) {
-    return '<div style="' + MONO + 'font-size:11px;color:#7a9a7a;padding:2px 0;">' +
-      (i + 1) + '. ▶ ' + erFmtTime(r.s) + (r.by ? ' <span style="color:#5a8a5a;">' + r.by + '</span>' : '') +
-      (r.e ? ' &nbsp;→&nbsp; ⏹ ' + erFmtTime(r.e) + ' <span style="color:#9ab09a;">(' + erFmtDur(r.e - r.s) + ')</span>' : ' &nbsp;→&nbsp; <span style="color:#4ade80;">' + erL('running…', 'corriendo…') + '</span>') +
-    '</div>';
-  }).join('');
-  return (runRows ? '<div style="margin-top:7px;border-top:1px dashed #2a5a2a;padding-top:5px;">' + (multi ? '<div style="' + MONO + 'font-size:10px;color:#d6b36a;font-weight:700;">M' + m + '</div>' : '') + runRows + '</div>' : '') +
-    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:9px;border-top:1px solid #163016;">' +
-      '<label style="' + MONO + 'font-size:12px;color:#f0d68a;font-weight:700;">🥚 ' + (multi ? 'M' + m + ' — ' : '') + erL('Total eggs today', 'Total de huevos hoy') + '</label>' +
-      '<input type="number" min="0" inputmode="numeric" value="' + (eggs != null ? eggs : '') + '" onchange="eggRunEggsSet(\'' + farm + '\',' + m + ',this.value)" placeholder="0" style="flex:1;min-width:110px;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:10px 12px;">' +
+  var by = (rec && (rec.manualBy || rec.eggsBy || rec.by)) ? (rec.manualBy || rec.eggsBy || rec.by) : '';
+  return '<div style="' + (multi ? 'border-top:1px dashed #2a5a2a;padding-top:12px;margin-top:12px;' : '') + '">' +
+    (multi ? '<div style="' + MONO + 'font-size:12px;color:#d6b36a;font-weight:700;margin-bottom:8px;">' + erL('Machine', 'Máquina') + ' ' + m + '</div>' : '') +
+    // Run time (minutes)
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+      '<label style="' + MONO + 'font-size:12px;color:#9ad6a0;font-weight:700;min-width:135px;">⏱ ' + erL('Run time (minutes)', 'Tiempo (minutos)') + '</label>' +
+      '<input type="number" min="0" inputmode="numeric" value="' + (mins != null ? mins : '') + '" onchange="eggRunSetManualMin(\'' + farm + '\',' + m + ',this.value)" placeholder="min" style="flex:1;min-width:100px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:10px 12px;">' +
+      (mins != null ? '<span style="' + MONO + 'font-size:11px;color:#9ab09a;">= ' + erFmtDur(mins * 60000) + '</span>' : '') +
+    '</div>' +
+    // Total eggs
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;">' +
+      '<label style="' + MONO + 'font-size:12px;color:#f0d68a;font-weight:700;min-width:135px;">🥚 ' + erL('Total eggs today', 'Total de huevos hoy') + '</label>' +
+      '<input type="number" min="0" inputmode="numeric" value="' + (eggs != null ? eggs : '') + '" onchange="eggRunEggsSet(\'' + farm + '\',' + m + ',this.value)" placeholder="0" style="flex:1;min-width:100px;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:10px 12px;">' +
       '<div style="' + MONO + 'font-size:11px;color:#9ab09a;line-height:1.6;">' +
         (eggs != null ? ('= ' + (Math.round(eggs / 12 * 10) / 10).toLocaleString() + ' dz') : '') +
         (eph ? ('<br><b style="color:#4ade80;">' + eph.toLocaleString() + ' ' + erL('eggs/hr', 'huevos/hr') + '</b>') : '') +
       '</div>' +
     '</div>' +
-    // Manual run-time entry — type minutes off the meter instead of Start/Stop.
-    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;">' +
-      '<label style="' + MONO + 'font-size:12px;color:#9ad6a0;font-weight:700;">⏱ ' + (multi ? 'M' + m + ' — ' : '') + erL('Or enter run time (min)', 'O ingresa tiempo (min)') + '</label>' +
-      '<input type="number" min="0" inputmode="numeric" value="' + (rec && rec.manualMin != null ? rec.manualMin : '') + '" onchange="eggRunSetManualMin(\'' + farm + '\',' + m + ',this.value)" placeholder="min" style="flex:1;min-width:90px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:15px;font-weight:700;padding:9px 12px;">' +
-      (rec && Number(rec.manualMin) > 0 ? '<span style="' + MONO + 'font-size:10px;color:#d6b36a;">' + erL('manual · overrides timer', 'manual · anula cronómetro') + '</span>' : '') +
+    (by ? '<div style="' + MONO + 'font-size:10px;color:#5a8a5a;margin-top:7px;">' + erL('Last entry by ', 'Última entrada por ') + by + '</div>' : '') +
+  '</div>';
+}
+
+// Report-style DAILY SUMMARY: per plant in scope, today's run time · eggs · eggs/hr.
+function _erDailySummary(farms, t) {
+  var MONO = "font-family:'IBM Plex Mono',monospace;";
+  var rows = farms.map(function (farm) {
+    var totMin = 0, totEggs = 0, hasData = false;
+    erMachines(farm).forEach(function (m) {
+      var rec = erRec(farm, m, t);
+      if (!rec) return;
+      if (rec.manualMin != null) { totMin += Number(rec.manualMin) || 0; hasData = true; }
+      else { var ms = erTotalMs(rec); if (ms) { totMin += ms / 60000; hasData = true; } }
+      if (rec.eggs != null) { totEggs += Number(rec.eggs) || 0; hasData = true; }
+    });
+    var hrs = totMin / 60;
+    var eph = (totEggs && hrs > 0.05) ? Math.round(totEggs / hrs) : null;
+    return '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid #163016;">' +
+      '<span style="' + MONO + 'font-size:13px;font-weight:700;color:#e8f5ec;">🥚 ' + farm + '</span>' +
+      '<span style="' + MONO + 'font-size:12px;color:#9ab09a;">' +
+        '⏱ <b style="color:#9ad6a0;">' + (hasData ? erFmtDur(totMin * 60000) : '—') + '</b>' +
+        ' · 🥚 <b style="color:#f0d68a;">' + (totEggs ? totEggs.toLocaleString() : '—') + '</b>' +
+        ' · <b style="color:' + (eph ? '#4ade80' : '#555') + ';">' + (eph ? (eph.toLocaleString() + ' ' + erL('eggs/hr', 'huevos/hr')) : '—') + '</b>' +
+      '</span>' +
     '</div>';
+  }).join('');
+  return '<div style="background:#0d2a12;border:1.5px solid #2a7a3a;border-radius:12px;padding:12px 14px;margin-bottom:14px;">' +
+    '<div style="' + MONO + 'font-size:12px;font-weight:700;color:#7ab07a;margin-bottom:2px;">📊 ' + erL('TODAY — Processing report', 'HOY — Reporte de procesamiento') + ' · ' + t + '</div>' +
+    rows + '</div>';
 }
 
 function renderEggRun() {
@@ -239,62 +266,26 @@ function renderEggRun() {
   var MONO = "font-family:'IBM Plex Mono',monospace;";
 
   var html = '<div style="' + MONO + 'font-size:11px;color:#9ab09a;line-height:1.5;background:#0d1f0d;border:1px solid #1e3a1e;border-radius:10px;padding:10px 12px;margin-bottom:14px;">' +
-    erL('Tick <b style="color:#d6b36a;">which machine(s)</b> you mean, then tap <b style="color:#4ade80;">▶ START</b> when they start and <b style="color:#f2a0a0;">⏹ STOP</b> when they stop — start/stop as many times as the day needs (lunch, jams); the total run time adds up per machine. Type the <b style="color:#f0d68a;">total eggs</b> once per machine for the day. Eggs/hr is automatic. Everything stamps who + when and shows live on every device.',
-        'Marca <b style="color:#d6b36a;">qué máquina(s)</b>, luego toca <b style="color:#4ade80;">▶ INICIAR</b> cuando arranquen y <b style="color:#f2a0a0;">⏹ PARAR</b> cuando paren — puedes iniciar/parar las veces necesarias (almuerzo, atascos); el tiempo total se suma por máquina. Escribe el <b style="color:#f0d68a;">total de huevos</b> una vez por máquina al día. Huevos/hr es automático. Todo registra quién y cuándo, en vivo en cada equipo.') +
+    erL('Once a day, type the machine\'s <b style="color:#9ad6a0;">total run time in minutes</b> (off the meter) and the <b style="color:#f0d68a;">total eggs</b> for the day. Eggs/hr is figured automatically. Everything stamps who + when and shows live on every device.',
+        'Una vez al día, escribe el <b style="color:#9ad6a0;">tiempo total en minutos</b> de la máquina (del medidor) y el <b style="color:#f0d68a;">total de huevos</b> del día. Huevos/hr se calcula solo. Todo registra quién y cuándo, en vivo en cada equipo.') +
   '</div>';
+
+  // ── Report-style daily summary at the top ──
+  html += _erDailySummary(farms, t);
 
   farms.forEach(function (farm) {
     var machines = erMachines(farm);
     var multi = machines.length > 1;
-    var anyRun = machines.some(function (m) { return !!erRunning(erRec(farm, m, t)); });
 
-    // ── Machine checkboxes (multi-machine plants only, per Joe) ──
-    var chkRow = '';
-    if (multi) {
-      chkRow = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 4px;">' +
-        '<span style="' + MONO + 'font-size:11px;color:#9ab09a;">' + erL('Machines:', 'Máquinas:') + '</span>' +
-        machines.map(function (m) {
-          var on = erSelGet(farm, m);
-          var st = on
-            ? 'background:#14532d;border:1.5px solid #2a7a3a;color:#86efac;'
-            : 'background:#13110a;border:1.5px solid #4a4030;color:#9f8a63;';
-          return '<button onclick="eggRunSelToggle(\'' + farm + '\',' + m + ')" style="padding:10px 16px;border-radius:8px;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;' + st + '">' + (on ? '☑' : '☐') + ' ' + erL('Machine', 'Máquina') + ' ' + m + '</button>';
-        }).join('') +
-      '</div>';
-    }
-
-    // ── Status lines per machine ──
-    var statusHtml = machines.map(function (m) { return _erStatusLine(farm, m, erRec(farm, m, t), multi); }).join('');
-
-    // ── Start/Stop buttons ──
-    var btnHtml;
-    if (multi) {
-      btnHtml = '<div style="display:flex;gap:8px;margin-top:6px;">' +
-        '<button onclick="eggRunStartSel(\'' + farm + '\')" style="flex:1;padding:16px;border-radius:12px;' + MONO + 'font-size:15px;font-weight:700;cursor:pointer;background:#14361c;border:2px solid #4ade80;color:#4ade80;">▶ ' + erL('START', 'INICIAR') + '</button>' +
-        '<button onclick="eggRunStopSel(\'' + farm + '\')" style="flex:1;padding:16px;border-radius:12px;' + MONO + 'font-size:15px;font-weight:700;cursor:pointer;background:#7a1414;border:2px solid #c0392b;color:#ffd7d7;">⏹ ' + erL('STOP', 'PARAR') + '</button>' +
-      '</div>' +
-      '<div style="' + MONO + 'font-size:10px;color:#6f8f6f;margin-top:5px;">' + erL('Acts on the ticked machine(s) above', 'Aplica a la(s) máquina(s) marcada(s) arriba') + '</div>';
-    } else {
-      var m1 = machines[0];
-      var rec1 = erRec(farm, m1, t);
-      if (erRunning(rec1)) {
-        btnHtml = '<button onclick="eggRunStop(\'' + farm + '\',' + m1 + ')" style="width:100%;margin-top:6px;padding:16px;border-radius:12px;' + MONO + 'font-size:16px;font-weight:700;cursor:pointer;background:#7a1414;border:2px solid #c0392b;color:#ffd7d7;">⏹ ' + erL('STOP MACHINE', 'PARAR MÁQUINA') + '</button>';
-      } else if (erRuns(rec1).length) {
-        btnHtml = '<button onclick="eggRunStart(\'' + farm + '\',' + m1 + ')" style="width:100%;margin-top:6px;padding:16px;border-radius:12px;' + MONO + 'font-size:16px;font-weight:700;cursor:pointer;background:#14361c;border:2px solid #4ade80;color:#4ade80;">▶ ' + erL('RESUME — START AGAIN', 'REANUDAR — INICIAR') + '</button>';
-      } else {
-        btnHtml = '<button onclick="eggRunStart(\'' + farm + '\',' + m1 + ')" style="width:100%;margin-top:6px;padding:18px;border-radius:12px;' + MONO + 'font-size:17px;font-weight:700;cursor:pointer;background:#14361c;border:2px solid #4ade80;color:#4ade80;">▶ ' + erL('START MACHINE', 'INICIAR MÁQUINA') + '</button>';
-      }
-    }
-
-    // ── Runs detail + eggs per machine ──
+    // ── Manual entry per machine (run time + eggs) ──
     var detailHtml = machines.map(function (m) { return _erMachineDetail(farm, m, erRec(farm, m, t), multi); }).join('');
 
-    html += '<div style="background:#0f2410;border:1.5px solid ' + (anyRun ? '#2a7a3a' : '#2a5a2a') + ';border-radius:12px;padding:14px;margin-bottom:14px;">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">' +
+    html += '<div style="background:#0f2410;border:1.5px solid #2a5a2a;border-radius:12px;padding:14px;margin-bottom:14px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px;">' +
         '<div style="' + MONO + 'font-size:15px;font-weight:700;color:#e8f5ec;">🥚 ' + farm + (multi ? ' <span style="font-size:11px;font-weight:400;color:#d6b36a;">· ' + machines.length + ' ' + erL('machines', 'máquinas') + '</span>' : '') + '</div>' +
         '<div style="' + MONO + 'font-size:11px;color:#7ab07a;">' + t + '</div>' +
       '</div>' +
-      chkRow + statusHtml + btnHtml + detailHtml +
+      detailHtml +
     '</div>';
   });
 
@@ -311,25 +302,22 @@ function renderEggRun() {
       var ms = erTotalMs(r), h2 = ms / 3600000;
       var e2 = (r.eggs != null) ? Number(r.eggs) : null;
       var eph2 = (e2 && h2 > 0.05) ? Math.round(e2 / h2) : null;
-      var first = erRuns(r)[0];
       return '<tr style="border-bottom:1px solid #1a2a1a;">' +
         '<td style="padding:8px 6px;color:#f0ead8;">' + (r.date || '—').slice(5).replace('-', '/') + '</td>' +
         '<td style="padding:8px 6px;color:#7ab07a;">' + r.farm + '</td>' +
         '<td style="padding:8px 6px;color:#d6b36a;">M' + (r.machine || 1) + '</td>' +
-        '<td style="padding:8px 6px;color:#aaa;">' + (first ? erFmtTime(first.s) : '—') + '</td>' +
         '<td style="padding:8px 6px;color:#f0d68a;">' + (ms ? erFmtDur(ms) : '—') + '</td>' +
         '<td style="padding:8px 6px;color:#f0ead8;">' + (e2 != null ? e2.toLocaleString() : '—') + '</td>' +
         '<td style="padding:8px 6px;color:' + (eph2 ? '#4ade80' : '#555') + ';">' + (eph2 ? eph2.toLocaleString() : '—') + '</td>' +
-        '<td style="padding:8px 6px;color:#5a8a5a;font-size:11px;">' + ((erRuns(r)[0] || {}).by || r.by || '—') + '</td>' +
+        '<td style="padding:8px 6px;color:#5a8a5a;font-size:11px;">' + (r.manualBy || r.eggsBy || (erRuns(r)[0] || {}).by || r.by || '—') + '</td>' +
       '</tr>';
     }).join('');
     html += '<div style="' + MONO + 'font-size:12px;font-weight:700;color:#7ab07a;margin:16px 0 8px;">📋 ' + erL('Last 14 days', 'Últimos 14 días') + '</div>' +
-      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:12px;min-width:580px;">' +
+      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:12px;min-width:520px;">' +
       '<thead><tr style="border-bottom:1px solid #2a4a2a;">' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + erL('Date', 'Fecha') + '</th>' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + erL('Farm', 'Granja') + '</th>' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + erL('Mach.', 'Máq.') + '</th>' +
-        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + erL('Started', 'Inició') + '</th>' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + erL('Run time', 'Tiempo') + '</th>' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + erL('Eggs', 'Huevos') + '</th>' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + erL('Eggs/hr', 'Huevos/hr') + '</th>' +
@@ -339,12 +327,8 @@ function renderEggRun() {
 
   el.innerHTML = html;
 
-  // Tick the elapsed time while a machine is running and the tab is visible.
+  // Manual entry — no running stopwatch, so no elapsed-time ticker needed.
   if (_erTick) { clearInterval(_erTick); _erTick = null; }
-  var anyRunning = farms.some(function (f) {
-    return erMachines(f).some(function (m) { return !!erRunning(erRec(f, m, t)); });
-  });
-  if (anyRunning) _erTick = setInterval(function () { if (_erVisible()) _erRerender(); else { clearInterval(_erTick); _erTick = null; } }, 30000);
 }
 
 // Home-card entry: open Processing straight to the Daily Run tab.
