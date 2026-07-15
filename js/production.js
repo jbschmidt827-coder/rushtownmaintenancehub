@@ -1553,6 +1553,58 @@ if (typeof window !== 'undefined') window.bwTagNote = bwTagNote;
   else _bwArrangeCards();
 })();
 
+// ── Open a COMPLETED check as VIEW-first; edit only when chosen (per Joe) ─────
+// Opening a house that's already done today no longer drops you straight into an
+// editable form (which risked overwriting good data). Instead it shows a
+// read-only summary with an explicit "Edit this check" button. Houses that
+// aren't done yet still open straight into entry. Fail-open on any error/offline.
+(function () {
+  var _real = (typeof window !== 'undefined' && typeof window.openBarnWalk === 'function') ? window.openBarnWalk
+            : (typeof openBarnWalk === 'function' ? openBarnWalk : null);
+  if (!_real) return;
+  function _esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function _close() { var o = document.getElementById('bw-choice-overlay'); if (o) o.style.display = 'none'; }
+  function _view(farm, house, r) {
+    var o = document.getElementById('bw-choice-overlay');
+    if (!o) {
+      o = document.createElement('div');
+      o.id = 'bw-choice-overlay';
+      o.style.cssText = 'position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:18px;';
+      document.body.appendChild(o);
+    }
+    var pass = 0, total = 0;
+    try { var cl = r.checklist || {}; total = r.checklistTotal || Object.keys(cl).length; pass = Object.keys(cl).filter(function (k) { return cl[k] === 'pass' || cl[k] === 'fail'; }).length; } catch (e) {}
+    var flags = (r.flags && r.flags.length) ? r.flags.length : 0;
+    o.innerHTML = '<div style="max-width:440px;width:100%;background:#0f2410;border:1.5px solid #2a7a3a;border-radius:16px;padding:20px;font-family:\'IBM Plex Mono\',monospace;color:#e8f5ec;">' +
+      '<div style="font-size:16px;font-weight:700;color:#86efac;margin-bottom:4px;">✅ ' + _esc(farm) + ' House ' + _esc(house) + ' — checked today</div>' +
+      '<div style="font-size:12px;color:#9ab09a;margin-bottom:12px;">by ' + _esc(r.employee || r.by || '—') + (r.time ? (' · ' + _esc(r.time)) : '') + '</div>' +
+      '<div style="font-size:13px;line-height:1.9;color:#d8e8d8;border-top:1px solid #1e3a1e;border-bottom:1px solid #1e3a1e;padding:10px 0;margin-bottom:14px;">' +
+        '💀 Mortality: <b>' + _esc(r.mortCount != null ? r.mortCount : '—') + '</b><br>' +
+        '🐔 Loose birds: <b>' + _esc(r.looseCount != null ? r.looseCount : '—') + '</b><br>' +
+        '✅ Tasks reviewed: <b>' + pass + '/' + total + '</b>' + (flags ? ('<br>⚠ Flags: <b style="color:#f2705a;">' + flags + '</b>') : '') +
+        (r.notes ? ('<br>📝 ' + _esc(r.notes)) : '') +
+      '</div>' +
+      '<div style="display:flex;gap:10px;">' +
+        '<button onclick="_bwChoiceEdit(\'' + _esc(farm) + '\',\'' + _esc(house) + '\')" style="flex:1;padding:14px;border-radius:10px;background:#0d1f3a;border:1.5px solid #2a5a8a;color:#7ab0f6;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">✏️ Edit this check</button>' +
+        '<button onclick="_bwChoiceClose()" style="padding:14px 18px;border-radius:10px;background:#1a1a1a;border:1px solid #3a3a3a;color:#aaa;font-family:inherit;font-size:14px;cursor:pointer;">✕ Close</button>' +
+      '</div></div>';
+    o.style.display = 'flex';
+  }
+  window._bwChoiceClose = _close;
+  window._bwChoiceEdit = function (farm, house) { _close(); _real(farm, house); };
+  window.openBarnWalk = function (farm, house) {
+    try {
+      if (typeof db === 'undefined' || !db) return _real(farm, house);
+      var id = farm + '-' + house + '-' + (typeof LDATE === 'function' ? LDATE() : new Date().toISOString().slice(0, 10));
+      db.collection('barnWalks').doc(id).get().then(function (doc) {
+        var r = doc.exists ? doc.data() : null;
+        var done = r && (r.ts || r.employee) && (Number(r.pct) || 0) >= 100;
+        if (done) _view(farm, house, r); else _real(farm, house);
+      }).catch(function () { _real(farm, house); });
+    } catch (e) { _real(farm, house); }
+  };
+})();
+
 // Friendly labels for the "still to finish" hint.
 const _BW_BLOCK_LABELS = {
   employee:'Your name', mortality:'Mortality', equipment:'Equipment', air:'Air quality',
