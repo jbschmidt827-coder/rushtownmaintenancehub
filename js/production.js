@@ -992,7 +992,7 @@ function bwRecordToDraft(rec) {
       mort: rec.mort, feather: rec.feather, air: rec.air, feed: rec.feed,
       rodent: rec.rodent, loose: rec.loose, dryers: rec.dryers,
       eggbelt: rec.eggbelt, stand: rec.stand,
-      fly: rec.fly, mortrem: rec.mortrem, doors: rec.doors, cageclean: rec.cageClean,
+      fly: rec.fly, mortrem: rec.mortrem, doors: rec.doors, inletVents: rec.inletVents, cageclean: rec.cageClean,
       footpan: rec.footpan, waste: rec.waste,
       _cageCleanEmployee: rec.cageCleanEmployee || '',
       _cageCleanTime:     rec.cageCleanTime     || '',
@@ -1031,10 +1031,10 @@ function bwBlockComplete(name) {
       if (_bwData.mort === undefined || _bwData.mortrem === undefined) return false;
       return _bwData.mort !== 'yes' || _bwHasVal('bw-mort-count');
     case 'equipment':
-      if (['feather','doors','loose'].some(k => _bwData[k] === undefined)) return false;
+      if (['feather','loose'].some(k => _bwData[k] === undefined)) return false;
       return _bwData.loose !== 'yes' || _bwHasVal('bw-loose-count');
     case 'air':
-      return _bwData.air !== undefined;
+      return ['air','doors','inletVents'].every(k => _bwData[k] !== undefined);
     case 'feedwater':
       return ['feed','waste','stand'].every(k => _bwData[k] !== undefined);
     case 'belts':
@@ -1571,6 +1571,13 @@ function _bwArrangeCards() {
       var who = (typeof getDeviceUser === 'function') ? (getDeviceUser() || '') : '';
       emp.style.display = who ? 'none' : '';
     }
+    // Keep Submit at the very BOTTOM — the card reordering above appends cards
+    // to the end of the container, which would otherwise leave the Submit button
+    // floating ABOVE them. Re-append it (and its hint) so they land last.
+    ['bw-submit-hint', 'bw-submit-btn'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && el.parentNode === container) container.appendChild(el);
+    });
   } catch (e) { /* non-fatal */ }
 }
 if (typeof window !== 'undefined') window._bwArrangeCards = _bwArrangeCards;
@@ -1721,7 +1728,7 @@ async function submitBarnWalk() {
     feed: _bwData.feed, rodent: _bwData.rodent, loose: _bwData.loose,
     dryers: _bwData.dryers, eggbelt: _bwData.eggbelt,
     stand: _bwData.stand, fly: _bwData.fly, mortrem: _bwData.mortrem,
-    doors: _bwData.doors,
+    doors: _bwData.doors, inletVents: _bwData.inletVents,
     // Waste was previously collected via the YES/NO buttons but silently
     // dropped on save — fall through to the history viewer (which already
     // expects rec.waste) without ever being persisted.
