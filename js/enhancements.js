@@ -201,9 +201,6 @@
     _showBanner(fill(phrase[0]), fill(phrase[1]));
     _cluck();
     effect(e);
-    // Fake "ad" pre-roll — the Rushtown trailer — fires on every easter-egg.
-    _adCount++;
-    setTimeout(_rushtownAd, 1200);
     setTimeout(function(){ _busy = false; }, 8000);
   }
 
