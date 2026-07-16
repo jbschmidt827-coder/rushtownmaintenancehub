@@ -2687,6 +2687,13 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 .bw-submit:disabled{background:#2a5a2a;color:#5a8a5a;cursor:not-allowed;}
 .bw-submit:not(:disabled):hover{background:#43a047;}
 .bw-row-label{font-size:11px;color:#7ab07a;margin-bottom:6px;}
+/* Compact condition cards (below the 7-block checklist) so the checklist stays the focus */
+.bw-card.bw-compact{padding:11px 13px;margin-bottom:9px;}
+.bw-card.bw-compact .bw-card-title{margin-bottom:7px;}
+.bw-card.bw-compact .bw-yn-btn{padding:9px 6px;font-size:10px;border-width:1.5px;}
+.bw-card.bw-compact .bw-yn-row,.bw-card.bw-compact .bw-3-row{gap:7px;}
+.bw-card.bw-compact .bw-row-label{margin-bottom:4px;font-size:10px;}
+.bw-card.bw-compact .bw-input{padding:9px 11px;}
 .bw-cl-row{border:1.5px solid #2a5a2a;border-radius:10px;background:#163016;margin-bottom:10px;overflow:hidden;}
 .bw-cl-row.bw-pass{border-color:#4caf50;background:#1a4a1a;}
 .bw-cl-row.bw-fail{border-color:#e53e3e;background:#2d1a1a;}
@@ -2756,6 +2763,13 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
         <button class="bw-yn-btn" id="bw-mortrem-no"  onclick="bwSet('mortrem','no')">❌ NO</button>
       </div>
     </div>
+  </div>
+
+  <!-- Eggs Collected (production) -->
+  <div class="bw-card" data-bw-block="eggscollect">
+    <div class="bw-card-title">🥚 Eggs Collected</div>
+    <div class="bw-row-label">Eggs collected in this house today</div>
+    <input type="number" id="bw-eggs-collected" class="bw-input" placeholder="Total eggs (leave blank if not counted)" min="0" inputmode="numeric" oninput="bwSaveDraft()">
   </div>
 
   <!-- Equipment -->
@@ -5311,7 +5325,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260715-v214"></script>
+<script defer src="js/core.js?v=20260715-v215"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
@@ -5332,7 +5346,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/livemonitor.js?v=20260714-v207"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260715-v211"></script>
-<script defer src="js/production.js?v=20260715-v213"></script>
+<script defer src="js/production.js?v=20260715-v215"></script>
 <script defer src="js/scorecard.js?v=20260706-localday"></script>
 <script defer src="js/help.js?v=20260715-v213"></script>
 <script defer src="js/time-blocks.js?v=20260714-v207"></script>

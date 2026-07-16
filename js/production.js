@@ -705,7 +705,7 @@ function _bwComputePct() {
     // own review gate, and 'cageclean'/'notes' are optional. Counting those made
     // a freshly-opened house read 33–40% before anyone entered anything. Now a
     // fresh house reads 0% and the % only climbs as the crew answers sections.
-    const SKIP = ['employee', 'checklist', 'cageclean', 'notes'];
+    const SKIP = ['employee', 'checklist', 'cageclean', 'notes', 'eggscollect'];
     const vis = _bwVisibleBlocks().filter(n => SKIP.indexOf(n) === -1);
     let total = vis.length;
     let done  = vis.filter(n => bwBlockComplete(n)).length;
@@ -853,7 +853,7 @@ function bwSaveDraft() {
   const today = LDATE();
   const fields = {};
   ['bw-employee','bw-notes','bw-mort-count','bw-loose-count','bw-rodent-count',
-   'bw-fly-count','bw-weekly-rodent-count','bw-feed-bin-reading'].forEach(id => {
+   'bw-fly-count','bw-weekly-rodent-count','bw-feed-bin-reading','bw-eggs-collected'].forEach(id => {
     const el = document.getElementById(id);
     if (el) fields[id] = el.value;
   });
@@ -986,6 +986,7 @@ function bwRecordToDraft(rec) {
       'bw-fly-count':           rec.flyCount   != null ? String(rec.flyCount)   : '',
       'bw-weekly-rodent-count': rec.weeklyRodentCount != null ? String(rec.weeklyRodentCount) : '',
       'bw-feed-bin-reading':    rec.feedBinReading    != null ? String(rec.feedBinReading)    : '',
+      'bw-eggs-collected':      rec.eggsCollected     != null ? String(rec.eggsCollected)     : '',
     },
     bwData: {
       mort: rec.mort, feather: rec.feather, air: rec.air, feed: rec.feed,
@@ -1011,7 +1012,7 @@ function bwRecordToDraft(rec) {
 // Submit button only enables when EVERY block is complete.
 var _bwRestoring = false;
 var _bwFlowActive = 0;
-const _BW_BLOCK_ORDER = ['employee','checklist','mortality','air','feedwater','belts','pest','equipment','weekly','cageclean','notes'];
+const _BW_BLOCK_ORDER = ['employee','checklist','mortality','eggscollect','air','feedwater','belts','pest','equipment','weekly','cageclean','notes'];
 // Blocks that auto-collapse when a button tap completes them (no free-text the employee may still want to fill)
 const _BW_BLOCK_AUTO = ['mortality','equipment','air','feedwater','belts','pest','cageclean'];
 
@@ -1226,7 +1227,7 @@ function openBarnWalk(farm, house) {
     const e = document.getElementById('bw-employee');
     if (_du && e && !e.value) { e.value = _du; if (typeof bwFlowRefresh === 'function') bwFlowRefresh(false); else if (typeof checkBWReady === 'function') checkBWReady(); }
   }, 50);
-  ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count'].forEach(id => {
+  ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count','bw-eggs-collected'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('bw-mort-count-row').style.display    = 'none';
@@ -1548,7 +1549,7 @@ if (typeof window !== 'undefined') window.bwTagNote = bwTagNote;
 // top, the condition checks below it, and hide the standalone name card (the
 // logged-in user IS the name). Runtime DOM reorder + hide — no risky HTML
 // surgery. Re-applied on every barn-walk open so it always sticks.
-var _BW_CARD_ORDER = ['checklist','mortality','air','feedwater','belts','pest','equipment','weekly','cageclean','notes'];
+var _BW_CARD_ORDER = ['checklist','mortality','eggscollect','air','feedwater','belts','pest','equipment','weekly','cageclean','notes'];
 function _bwArrangeCards() {
   try {
     var modal = document.getElementById('barn-walk-modal');
@@ -1559,7 +1560,10 @@ function _bwArrangeCards() {
     // Reorder: append each card in the target order → checklist ends up first.
     _BW_CARD_ORDER.forEach(function (name) {
       var c = container.querySelector('.bw-card[data-bw-block="' + name + '"]');
-      if (c) container.appendChild(c);
+      if (!c) return;
+      container.appendChild(c);
+      // Compact every condition card so the 7-block checklist stays the focus.
+      if (name !== 'checklist') c.classList.add('bw-compact');
     });
     // Hide the name/"Employee Check-In" card when we already know who's logged in.
     var emp = container.querySelector('.bw-card[data-bw-block="employee"]');
@@ -1684,6 +1688,7 @@ async function submitBarnWalk() {
   const flyCount    = document.getElementById('bw-fly-count').value    ? Number(document.getElementById('bw-fly-count').value)    : null;
   const weeklyRodentCount = document.getElementById('bw-weekly-rodent-count')?.value ? Number(document.getElementById('bw-weekly-rodent-count').value) : null;
   const feedBinReading    = document.getElementById('bw-feed-bin-reading')?.value ? Number(document.getElementById('bw-feed-bin-reading').value) : null;
+  const eggsCollected     = document.getElementById('bw-eggs-collected')?.value ? Number(document.getElementById('bw-eggs-collected').value) : null;
 
   const flags = [];
   // NOTE: Mortality and Loose Birds are logged to mortalityLog only — never create a WO
@@ -1709,7 +1714,7 @@ async function submitBarnWalk() {
 
   const record = {
     farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
-    waterPSI, temp, mortCount, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading,
+    waterPSI, temp, mortCount, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading, eggsCollected,
     naFields: _bwData._na || {},
     weeklyAck: !!_bwData._weeklyAck,
     mort: _bwData.mort, feather: _bwData.feather, air: _bwData.air,
