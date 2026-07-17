@@ -102,10 +102,25 @@
     return ov;
   }
 
+  var _rosterWatch = null;
   function openLoginGate() {
     var ov = _overlay();
     ov.style.display = 'block';
     _render();
+    // If the gate opened before the staff list finished loading, the name list is
+    // empty/partial ("can't find myself"). Watch until the roster grows, then
+    // re-render; stops once the gate closes or the roster is populated.
+    if (_rosterWatch) clearInterval(_rosterWatch);
+    var lastN = _roster().length;
+    _rosterWatch = setInterval(function () {
+      try {
+        var o = document.getElementById('login-overlay');
+        if (!o || o.style.display === 'none') { clearInterval(_rosterWatch); _rosterWatch = null; return; }
+        var n = _roster().length;
+        if (n !== lastN) { lastN = n; if (_stage === 'name') _render(); }
+        if (n > 0 && _stage !== 'name') { clearInterval(_rosterWatch); _rosterWatch = null; }
+      } catch (e) {}
+    }, 900);
   }
   window.openLoginGate = openLoginGate;
 
@@ -169,6 +184,14 @@
   window._loginFilter = function (q) {
     q = String(q || '').trim().toLowerCase();
     var r = _roster().filter(function (s) { return !q || String(s.name).toLowerCase().indexOf(q) !== -1; });
+    // FALLBACK: if a typed search matches nobody in this device's site-scoped
+    // roster, search the FULL staff list — a person must always be able to find
+    // themselves even if the tablet's sticky site doesn't match theirs.
+    if (q && !r.length && typeof staffList !== 'undefined' && Array.isArray(staffList)) {
+      r = staffList.filter(function (s) {
+        return s && s.active !== false && s.name && String(s.name).toLowerCase().indexOf(q) !== -1;
+      }).sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
+    }
     var host = document.getElementById('login-roster'); if (!host) return;
     host.innerHTML = r.map(function (s) {
       var nm = String(s.name).replace(/"/g, '&quot;');
