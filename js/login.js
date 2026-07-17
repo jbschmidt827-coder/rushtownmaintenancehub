@@ -22,13 +22,17 @@
   function _es() { return (typeof _lang !== 'undefined' && _lang === 'es'); }
   function L(en, es) { return _es() ? es : en; }
 
-  // Roster scoped to this device's plant (barn crew + leaders + Both), active only.
+  // LOGIN roster = EVERY active employee, ALL sites. Login must never hide a
+  // person just because the tablet's remembered site differs from theirs — that
+  // was why people "couldn't find themselves". The search box filters the list;
+  // per-site/per-department scoping still applies to the WORK name pickers, not
+  // to who can sign in.
   function _roster() {
     try {
       if (typeof staffList === 'undefined' || !Array.isArray(staffList)) return [];
-      var loc = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
-      var list = (typeof staffAtLocation === 'function') ? staffAtLocation(loc) : staffList.filter(function (s) { return s && s.active !== false; });
-      return list.filter(function (s) { return s && s.name; }).sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
+      return staffList
+        .filter(function (s) { return s && s.active !== false && s.name; })
+        .sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
     } catch (e) { return []; }
   }
 

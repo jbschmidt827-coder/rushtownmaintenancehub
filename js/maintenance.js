@@ -732,8 +732,11 @@ async function loadHouses() {
           .get();
         const scheduled = [...new Set(snap.docs.map(d=>d.data().person).filter(Boolean))].sort();
         if (scheduled.length) {
-          techs = scheduled;
-          scheduleLabel = ' — on schedule today';
+          // Scheduled people FIRST, but never hide the rest of the site crew —
+          // an unscheduled worker must still find their own name (per Joe).
+          const rest = _crewForFarm(farm).filter(n => scheduled.indexOf(n) === -1);
+          techs = scheduled.concat(rest);
+          scheduleLabel = ' — on schedule first';
         }
       }
     } catch(e) { /* fall through */ }
