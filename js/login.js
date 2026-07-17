@@ -40,8 +40,9 @@
   }
 
   // ── Public identity helpers ────────────────────────────────────────────────
+  function _loginToday() { try { return (typeof LDATE === 'function') ? LDATE() : new Date().toISOString().slice(0, 10); } catch (e) { return new Date().toISOString().slice(0, 10); } }
   window.setDeviceUser = function (name) {
-    try { localStorage.setItem(LKEY, String(name || '').trim()); localStorage.setItem(VKEY, '1'); } catch (e) {}
+    try { localStorage.setItem(LKEY, String(name || '').trim()); localStorage.setItem(VKEY, '1'); localStorage.setItem('bwLoginDate', _loginToday()); } catch (e) {}
     try { _stampNameFields(); } catch (e) {}
     try { if (typeof renderLoginChip === 'function') renderLoginChip(); } catch (e) {}
     try { if (typeof applyAccessPicker === 'function') applyAccessPicker(); } catch (e) {}
@@ -52,7 +53,10 @@
     _stage = 'name'; _pin = ''; _who = null; _firstPin = '';
     openLoginGate();
   };
-  window.isLoggedIn = function () { try { return localStorage.getItem(VKEY) === '1' && !!(localStorage.getItem(LKEY) || '').trim(); } catch (e) { return false; } };
+  // Forced DAILY sign-out: a login is only valid for the day it was made. On a new
+  // day bwLoginDate !== today → not logged in → the boot gate re-prompts for the PIN
+  // (the name is kept as a hint). Existing sessions re-login once after this ships.
+  window.isLoggedIn = function () { try { return localStorage.getItem(VKEY) === '1' && !!(localStorage.getItem(LKEY) || '').trim() && localStorage.getItem('bwLoginDate') === _loginToday(); } catch (e) { return false; } };
 
   // Auto-stamp the logged-in person onto EVERY name field, app-wide, so their
   // name is first on everything (daily walks, checks, manure, PM, etc.) without

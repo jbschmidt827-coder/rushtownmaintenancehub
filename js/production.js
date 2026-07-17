@@ -698,6 +698,16 @@ async function _bwRecoverLostDrafts() {
   } catch (e) {}
 }
 setTimeout(_bwRecoverLostDrafts, 9000);
+// True only when every VISIBLE checklist task row has been reviewed (pass/fail).
+// Used to keep the Daily Checklist card EXPANDED until its work is actually done.
+function _bwChecklistDone() {
+  try {
+    var rows = Array.prototype.slice.call(document.querySelectorAll('#bw-checklist-items .bw-cl-row'))
+      .filter(function (r) { return r && r.style.display !== 'none'; });
+    if (!rows.length) return true;
+    return rows.every(function (r) { var v = _bwChecklist[r.id.replace('bw-cl-', '')]; return v === 'pass' || v === 'fail'; });
+  } catch (e) { return false; }
+}
 function _bwComputePct() {
   try {
     // Only REAL data-entry sections count toward progress — never the always-
@@ -878,6 +888,11 @@ function bwSaveDraft() {
 var _bwLastPushedPct = {};
 var _bwPushTimer = null;
 var _bwPushPending = null;
+// Set false when a house opens; set true only once the SHARED team draft has
+// loaded (or confirmed absent). No progress write happens while it's false, so a
+// second person opening the house can't overwrite a more-complete shared check
+// before it's restored — the root cause of "% resets when someone else goes on".
+var _bwProgressLoaded = false;
 // Debounced push of the FULL in-progress draft to Firestore so any device that
 // opens this house continues the SAME check — showing what's done, by whom, and
 // what's left — instead of a fresh start. today.js's live listener also feeds
@@ -885,6 +900,7 @@ var _bwPushPending = null;
 function _bwPushProgress(pct, payload) {
   try {
     if (!_bwFarm || typeof db === 'undefined' || !db) return;
+    if (_bwRestoring) return;   // don't push mid-restore (partial pct)
     const key = _bwFarm + '-' + _bwHouse;
     const today = LDATE();
     const by = _bwCurrentUser();
@@ -904,13 +920,30 @@ function _bwPushProgress(pct, payload) {
 }
 function _bwFlushProgress() {
   if (_bwPushTimer) { clearTimeout(_bwPushTimer); _bwPushTimer = null; }
+  if (typeof db === 'undefined' || !db) { _bwPushPending = null; return; }
+  // GATE: never write before the shared team draft has loaded — otherwise a fresh
+  // open would clobber a more-complete shared check before it's restored. Retry
+  // shortly (the pending push is kept) until the load completes.
+  if (!_bwProgressLoaded) { _bwPushTimer = setTimeout(_bwFlushProgress, 600); return; }
   const p = _bwPushPending; _bwPushPending = null;
-  if (!p || typeof db === 'undefined' || !db) return;
-  // Single lightweight write — no read-before-write (that added a network round-trip
-  // on every field change and made data entry feel laggy). Clobbering a more-complete
-  // shared draft is already prevented at OPEN time (openBarnWalk restores the draft
-  // with the higher pct), so a plain set is safe here and keeps entry snappy.
-  db.collection('bwProgress').doc(p.docId).set(p.data, { merge: true }).catch(function () {});
+  if (!p) return;
+  const ref = db.collection('bwProgress').doc(p.docId);
+  // MONOTONIC merge: never LOWER the shared pct. Whoever adds work only adds — a
+  // behind/fresh device can't drop the house's % or overwrite a fuller draft.
+  db.runTransaction(function (tx) {
+    return tx.get(ref).then(function (snap) {
+      const cur = (snap.exists ? snap.data() : null) || {};
+      const curPct = (typeof cur.pct === 'number') ? cur.pct : -1;
+      if (curPct > (p.data.pct || 0)) {
+        tx.set(ref, { ts: p.data.ts }, { merge: true });   // keep their fuller draft, just show activity
+      } else {
+        tx.set(ref, p.data, { merge: true });
+      }
+    });
+  }).catch(function () {
+    // Transaction unavailable/offline → fall back to a plain merge (best effort).
+    ref.set(p.data, { merge: true }).catch(function () {});
+  });
 }
 
 function bwRestoreFromData(data) {
@@ -1044,7 +1077,10 @@ function bwBlockComplete(name) {
       if (_bwData.rodent === 'yes' && !_bwHasVal('bw-rodent-count')) return false;
       if (new Date().getDay() === 2 && _bwData.fly === undefined) return false; // fly check required Tuesdays only
       if (_bwData.fly === 'yes' && !_bwHasVal('bw-fly-count')) return false;
-      return _bwHasVal('bw-weekly-rodent-count') || _bwIsNA('bw-weekly-rodent-count');
+      // Weekly rodent-trap count is only required on the rodent-check day (Fri) —
+      // otherwise it silently kept 'pest' incomplete every day, blocking 100%.
+      if (new Date().getDay() === 5) return _bwHasVal('bw-weekly-rodent-count') || _bwIsNA('bw-weekly-rodent-count');
+      return true;
     }
     case 'checklist':
       // The Daily Checklist has its OWN "All done (100%)" + Submit built into that
@@ -1123,6 +1159,13 @@ function bwInitFlow() {
       else if (i > first) _bwCard(n).classList.add('bw-locked');
     });
   }
+  // The Daily Checklist (the 7 blocks) is the main work — keep it OPEN and
+  // never locked; only collapse it once all its visible tasks are reviewed (per Joe).
+  var _clCard = _bwCard('checklist');
+  if (_clCard) {
+    _clCard.classList.remove('bw-locked', 'bw-collapsed');
+    if (_bwChecklistDone()) _clCard.classList.add('bw-collapsed');
+  }
   bwFlowRefresh(false);
 }
 
@@ -1179,6 +1222,9 @@ function bwFlowRefresh(fromTap) {
       }
     }
   }
+  // Keep the Daily Checklist card OPEN until all its tasks are reviewed, then collapse it (per Joe).
+  var _clc = _bwCard('checklist');
+  if (_clc) { if (_bwChecklistDone()) _clc.classList.add('bw-collapsed'); else _clc.classList.remove('bw-collapsed'); }
   // Record live completion % for this house so the barn grid can show it fill in
   if (_bwFarm && _bwHouse) BARN_PROGRESS[_bwFarm + '-' + _bwHouse] = _bwComputePct();
   checkBWReady();
@@ -1215,6 +1261,7 @@ function bwSetCheck(key, val, btn) {
 
 function openBarnWalk(farm, house) {
   _bwFarm = farm; _bwHouse = house; _bwData = {}; _bwDocId = null; _bwBlockBy = {};
+  _bwProgressLoaded = false;   // block progress writes until the shared draft loads
   try { if (typeof _bwArrangeCards === 'function') _bwArrangeCards(); } catch (e) {}
   const _t = (typeof t === 'function') ? t : (k => k);
   const _bLbl = _t('prod.barn');
@@ -1308,9 +1355,13 @@ function openBarnWalk(farm, house) {
       } else if (!localDraft) {
         _bwPrefillEmployeeFromLast(farm, house);
       }
-    }).catch(function(){ if (!localDraft) _bwPrefillEmployeeFromLast(farm, house); });
+      _bwProgressLoaded = true;   // shared draft loaded — safe to push progress now
+    }).catch(function(){ _bwProgressLoaded = true; if (!localDraft) _bwPrefillEmployeeFromLast(farm, house); });
     return;
   }
+
+  // Editing an already-submitted check — no shared-draft gate needed.
+  _bwProgressLoaded = true;
 
   // ── Already submitted today → load the real record to edit ────────────────
   db.collection('barnWalks')
