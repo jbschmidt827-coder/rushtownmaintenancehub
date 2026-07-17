@@ -74,9 +74,9 @@ function renderProcessing() {
 
   body.innerHTML =
     '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#5a8a5a;margin-bottom:14px;">🏭 ' + procL('Processing Plant', 'Planta de Procesamiento') + '</div>' +
-    tile("go('maint')", '#0d1f3a', '#3b82f6', '🔧', procL('Maintenance', 'Mantenimiento'), procL('Work orders · PM · Parts', 'Órdenes · PM · Piezas'), plantOpen + ' ' + procL('open work order' + (plantOpen !== 1 ? 's' : ''), 'orden' + (plantOpen !== 1 ? 'es' : '') + ' abierta' + (plantOpen !== 1 ? 's' : '')), '#9cc0f6') +
+    tile("procOpenMaint()", '#0d1f3a', '#3b82f6', '🔧', procL('Maintenance', 'Mantenimiento'), procL('Work orders · PM · Parts', 'Órdenes · PM · Piezas'), plantOpen + ' ' + procL('open work order' + (plantOpen !== 1 ? 's' : ''), 'orden' + (plantOpen !== 1 ? 'es' : '') + ' abierta' + (plantOpen !== 1 ? 's' : '')), '#9cc0f6') +
     tile("procOpenPacking()", '#2a1f0a', '#d69e2e', '📦', procL('Packing Log', 'Registro de Empaque'), procL('Cases · Downtime · Breakage, by line', 'Cajas · Paro · Rotura, por línea'), procNum(casesToday) + ' ' + procL('cases today', 'cajas hoy'), '#d6b36a') +
-    tile("go('pm')", '#10241a', '#4ade80', '🛠', procL('Processing PMs', 'PM de Procesamiento'), procL('PM schedule for the plant', 'Calendario de PM de la planta'), '', '');
+    tile("procOpenPMs()", '#10241a', '#4ade80', '🛠', procL('Processing PMs', 'PM de Procesamiento'), procL('PM schedule for the plant', 'Calendario de PM de la planta'), '', '');
 }
 
 // ── Packing Log (per line: cases, downtime, breakage) ──
@@ -165,6 +165,38 @@ async function procSavePacking() {
     if (typeof setSyncDot === 'function') setSyncDot('live');
   }
 }
+
+// Open the PM tab pre-scoped to the Processing Plant. go('pm') auto-syncs the
+// location filter to the picked FARM (syncMaintLocToActive), which showed BARN
+// PMs under Processing — so re-scope to the plant right after opening.
+// Open Maintenance (WO list) pre-scoped to the Processing Plant — same reason.
+function procOpenMaint() {
+  if (typeof go === 'function') go('maint');
+  setTimeout(function () {
+    try {
+      if (typeof woLocFilter !== 'undefined') woLocFilter = 'Processing Plant';
+      document.querySelectorAll('#wo-loc-bar .loc-pill').forEach(function (b) {
+        b.classList.toggle('active', (b.getAttribute('onclick') || '').indexOf("'Processing Plant'") !== -1);
+      });
+      if (typeof renderWO === 'function') renderWO();
+    } catch (e) { console.warn('procOpenMaint:', e); }
+  }, 150);
+}
+if (typeof window !== 'undefined') window.procOpenMaint = procOpenMaint;
+
+function procOpenPMs() {
+  if (typeof go === 'function') go('pm');
+  setTimeout(function () {
+    try {
+      if (typeof pmLocFilter !== 'undefined') pmLocFilter = 'Processing Plant';
+      document.querySelectorAll('#pm-loc-bar .loc-pill').forEach(function (b) {
+        b.classList.toggle('active', (b.getAttribute('onclick') || '').indexOf("'Processing Plant'") !== -1);
+      });
+      if (typeof renderPM === 'function') renderPM();
+    } catch (e) { console.warn('procOpenPMs:', e); }
+  }, 150);
+}
+if (typeof window !== 'undefined') window.procOpenPMs = procOpenPMs;
 
 // Open the Work Order form pre-scoped to Processing Plant + this line.
 function procNewWO(line) {
