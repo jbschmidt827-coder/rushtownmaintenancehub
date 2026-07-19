@@ -58,6 +58,7 @@ const SHELL_FILES = [
   '/js/help.js',
   '/js/maintenance.js',
   '/js/labor-punch.js',
+  '/js/tier1.js',
   '/js/maint-projects.js',
   '/js/scorecard.js',
   '/js/production.js',
