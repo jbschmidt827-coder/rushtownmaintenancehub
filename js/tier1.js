@@ -119,9 +119,16 @@
       _get('processingLog', ['date', '>=', weekStart]),
       _get('mortalityLog', ['date', '>=', weekStart]),
       _get('pmHistory', ['ts', '>=', weekStartMs]),
-      _get('maintProjects')
+      _get('maintProjects'),
+      _get('tierExternal')
     ]);
     var weekChecks = res[0], mwalks = res[1], weekEgg = res[2], weekPack = res[3], weekMort = res[4], weekPM = res[5], projects = res[6];
+    // Farm-record numbers pushed daily at ~6:05 AM by the Command Center
+    // (push_tier_firestore.py): lay %, live birds, days safe, hours, cases.
+    var ext = {}, extUpdated = '';
+    (res[7] || []).forEach(function (d) {
+      try { ext[d._id] = JSON.parse(d.json || '{}'); if (d.updated > extUpdated) extUpdated = d.updated; } catch (e) {}
+    });
     var safety = [];
     try { if (typeof db !== 'undefined' && db) { var sd = await db.collection('safetySettings').doc('main').get(); if (sd.exists) safety = [sd.data()]; } } catch (e) {}
 
@@ -165,10 +172,28 @@
     var mortWorst = checks.reduce(function (m, c) { return Math.max(m, Number(c.mortCount) || 0); }, 0);
     var mortS = !hasChecks ? '-' : (mortWorst >= TH.mortHouseR ? 'r' : mortWorst >= TH.mortHouseY ? 'y' : 'g');
 
-    // Safety: days since last incident
+    // Safety: days since last incident (falls back to the Command Center's DAYS SAFE)
     var safeDays = null;
     if (safety[0] && safety[0].lastIncidentDate) { try { safeDays = Math.floor((Date.now() - new Date(safety[0].lastIncidentDate).getTime()) / 86400000); } catch (e) {} }
+    if (safeDays == null) { Object.keys(ext).forEach(function (k) { var ds = ext[k] && ext[k].daysSafe; if (ds != null && (safeDays == null || ds < safeDays)) safeDays = ds; }); }
     var safeS = safeDays == null ? '-' : (safeDays >= TH.safeDaysG ? 'g' : safeDays >= TH.safeDaysY ? 'y' : 'r');
+
+    // Lay % + live birds (farm records via tierExternal; lay values are fractions)
+    var birdsTotal = 0, layNum = 0, layDen = 0;
+    Object.keys(ext).forEach(function (k) {
+      var fl = ext[k] && ext[k].flock;
+      if (fl && fl.birds) {
+        birdsTotal += fl.birds;
+        var lay = (fl.layLatest != null ? fl.layLatest : fl.lay7d);
+        if (lay != null) { layNum += lay * fl.birds; layDen += fl.birds; }
+      }
+    });
+    var layPct = null;
+    if (layDen) {
+      var raw = layNum / layDen;               // weighted avg; sheets store fractions (0.90 = 90%)
+      layPct = Math.round((raw <= 2 ? raw * 100 : raw) * 10) / 10;
+    }
+    var layS = layPct == null ? '-' : (layPct >= 85 ? 'g' : layPct >= 75 ? 'y' : 'r');
 
     // Egg flow today (processed)
     var eggsToday = eggRun.reduce(function (s, r) { return s + (Number(r.eggs) || 0); }, 0);
@@ -194,6 +219,8 @@
     var GM = "closeTier1();typeof go==='function'&&go('maint');";
     var tiles = [
       _tile('🦺', L('Safety', 'Seguridad'), safeS, safeDays == null ? '—' : (safeDays + ' ' + L('days safe', 'días')), '', ''),
+      _tile('🐣', L('Lay Rate', 'Postura'), layS, layPct == null ? '—' : (layPct + '%'), layPct == null ? L('no farm data', 'sin datos') : L('flock avg', 'prom parvada'), ''),
+      _tile('🐥', L('Live Birds', 'Aves Vivas'), birdsTotal > 0 ? 'g' : '-', birdsTotal > 0 ? _num(birdsTotal) : '—', L('all farms', 'todas granjas'), ''),
       _tile('🐔', L('Production', 'Producción'), prodS, prodDone + '/' + totalHouses, L('houses', 'casas') + ' · ' + prodPct + '%', "closeTier1();typeof openCompletion==='function'&&openCompletion()"),
       _tile('💀', L('Mortality', 'Mortalidad'), mortS, !hasChecks ? '—' : String(mortToday), !hasChecks ? L('no checks yet', 'sin revisiones') : (L('worst house', 'peor casa') + ' ' + mortWorst), "closeTier1();typeof openCompletion==='function'&&openCompletion()"),
       _tile('✅', L('Quality', 'Calidad'), qualS, !hasChecks ? '—' : (flagCount + ' ' + L('flags', 'alertas')), L('today', 'hoy'), ''),
@@ -241,10 +268,11 @@
       _dg('⏱', _num(dtWk) + L(' min packing downtime', ' min de paro en empaque')) +
       _dg('🔧', woOpenedWk + L(' work orders opened · ', ' OT abiertas · ') + openWO.length + L(' still open', ' aún abiertas')) +
       _dg('📋', weekPM.length + L(' PMs completed · ', ' PM completados · ') + pmOverdue + L(' overdue now', ' vencidos ahora')) +
-      _dg(critParts ? '🟥' : '🔩', critParts + L(' parts at/below minimum', ' piezas en/bajo mínimo'));
+      _dg(critParts ? '🟥' : '🔩', critParts + L(' parts at/below minimum', ' piezas en/bajo mínimo')) +
+      (extUpdated ? _dg('📡', L('Farm records synced ', 'Registros sincronizados ') + extUpdated) : '');
 
     // ── Overall roll-up (today's status tiles that carry a real state) ──
-    var states = [safeS, prodS, mortS, qualS, feedS, waterS, dtS, pmS, woS, partsS].filter(function (s) { return s !== '-'; });
+    var states = [safeS, layS, prodS, mortS, qualS, feedS, waterS, dtS, pmS, woS, partsS].filter(function (s) { return s !== '-'; });
     var reds = states.filter(function (s) { return s === 'r'; }).length;
     var yels = states.filter(function (s) { return s === 'y'; }).length;
     var overall = reds ? 'r' : yels ? 'y' : 'g';
@@ -262,7 +290,10 @@
     var dateStr = new Date().toLocaleDateString(_es() ? 'es-ES' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     var head = '<div style="max-width:820px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 26px) 14px 60px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">' +
-        '<button onclick="closeTier1()" style="padding:11px 16px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#9ad6a0;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">← ' + L('Back', 'Atrás') + '</button>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button onclick="closeTier1()" style="padding:11px 16px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#9ad6a0;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">← ' + L('Back', 'Atrás') + '</button>' +
+          '<button onclick="typeof openTierSW===\'function\'&&openTierSW()" style="padding:11px 14px;background:#1a1408;border:1.5px solid #7a5a1a;border-radius:50px;color:#e8c96a;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">📘 SW</button>' +
+        '</div>' +
         '<div style="text-align:right;">' +
           '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:28px;letter-spacing:2px;line-height:1;color:#f0ead8;">📊 ' + L('TIER 1 BOARD', 'TABLERO TIER 1') + '</div>' +
           '<div style="' + MONO + 'font-size:10px;color:#7ab07a;margin-top:2px;">' + dateStr + '</div>' +

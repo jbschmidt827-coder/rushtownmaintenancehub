@@ -209,7 +209,10 @@
     var range = monthStart ? (new Date(monthStart + 'T00:00:00').toLocaleDateString(_es() ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' }) + ' – ' + new Date().toLocaleDateString(_es() ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' })) : '';
     var head = '<div style="max-width:820px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 26px) 14px 60px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">' +
-        '<button onclick="closeTier2()" style="padding:11px 16px;background:#0d1526;border:1.5px solid #2a4a7a;border-radius:50px;color:#93c5fd;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">← ' + L('Back', 'Atrás') + '</button>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button onclick="closeTier2()" style="padding:11px 16px;background:#0d1526;border:1.5px solid #2a4a7a;border-radius:50px;color:#93c5fd;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">← ' + L('Back', 'Atrás') + '</button>' +
+          '<button onclick="typeof openTierSW===\'function\'&&openTierSW()" style="padding:11px 14px;background:#1a1408;border:1.5px solid #7a5a1a;border-radius:50px;color:#e8c96a;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">📘 SW</button>' +
+        '</div>' +
         '<div style="text-align:right;">' +
           '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:28px;letter-spacing:2px;line-height:1;color:#eaf1ff;">📈 ' + L('TIER 2 · MONTH', 'TIER 2 · MES') + '</div>' +
           '<div style="' + MONO + 'font-size:10px;color:#6f8bb4;margin-top:2px;">' + range + '</div>' +
