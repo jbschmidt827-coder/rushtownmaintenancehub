@@ -1,8 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // tier2.js — TIER 2 DASHBOARD · MONTH (EN/ES)
-// The monthly roll-up above Tier 1. Last 4 weeks (28 days): month totals,
-// weekly trend bars, where maintenance time went (laborPunch), and a month
-// digest. Opens from a home Quick Action or the "Month view" link on Tier 1.
+// The monthly roll-up above Tier 1. CALENDAR MONTH-TO-DATE, grouped into weeks
+// of the month (W1 = 1st–7th, W2 = 8th–14th, …) building up as the month goes;
+// resets on the 1st. Month totals, weekly trend bars, where maintenance time
+// went (laborPunch), and a month digest. Opens from home or the Tier 1 link.
 // Pulls live (parallel): barnWalks, eggDailyRun, processingLog, mortalityLog,
 // pmHistory, laborPunch, maintProjects, safetySettings + globals workOrders /
 // ALL_PM+pmStatus / partsInventory.
@@ -10,19 +11,23 @@
 (function () {
   'use strict';
   var MONO = "font-family:'IBM Plex Mono',monospace;";
-  var DAYS = 28; // 4 weeks
 
   function _es() { try { return (typeof _lang !== 'undefined' && _lang === 'es'); } catch (e) { return false; } }
   function L(en, es) { return _es() ? es : en; }
   function _num(n) { try { return Number(n || 0).toLocaleString(); } catch (e) { return String(n || 0); } }
   function _dayStr(d) { return d.toISOString().slice(0, 10); }
 
-  // Trailing 28 days grouped into 4 weeks (oldest first). Returns [[dateStr×7]×4].
+  // Calendar month-to-date grouped into weeks of the month:
+  // W1 = 1st–7th, W2 = 8th–14th, W3 = 15th–21st, W4 = 22nd–28th, W5 = 29th+.
+  // Only weeks that have started exist, so the board builds up through the month.
   function _weeks() {
-    var days = [], today = new Date(); today.setHours(0, 0, 0, 0);
-    for (var i = DAYS - 1; i >= 0; i--) { var d = new Date(today); d.setDate(d.getDate() - i); days.push(_dayStr(d)); }
-    var w = [[], [], [], []];
-    days.forEach(function (ds, idx) { w[Math.floor(idx / 7)].push(ds); });
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var y = today.getFullYear(), m = today.getMonth(), dom = today.getDate();
+    var w = [];
+    for (var d = 1; d <= dom; d++) {
+      var wi = Math.floor((d - 1) / 7);
+      (w[wi] = w[wi] || []).push(_dayStr(new Date(y, m, d)));
+    }
     return w;
   }
 
@@ -58,7 +63,7 @@
   }
 
   function _trendRow(icon, label, total, unit, vals, color) {
-    var labels = ['W1', 'W2', 'W3', 'W4'].map(function (n) { return '<span style="' + MONO + 'font-size:8px;color:#5f7ba4;width:26px;display:inline-block;text-align:center;margin-right:8px;">' + n + '</span>'; }).join('');
+    var labels = vals.map(function (_, i) { return '<span style="' + MONO + 'font-size:8px;color:#5f7ba4;width:26px;display:inline-block;text-align:center;margin-right:8px;">W' + (i + 1) + '</span>'; }).join('');
     return '<div style="display:flex;align-items:center;gap:16px;padding:12px 4px;border-bottom:1px solid #16223880;">' +
       '<div style="flex:1;min-width:0;">' +
         '<div style="' + MONO + 'font-size:10px;letter-spacing:.5px;color:#7f9bc4;text-transform:uppercase;">' + icon + ' ' + label + '</div>' +
@@ -127,7 +132,8 @@
 
     // ── Month totals ──
     var checksDone = mChecks.filter(function (c) { return (Number(c.pct) || 0) >= 100; }).length;
-    var possibleChecks = totalHouses * DAYS;
+    var daysElapsed = weeks.reduce(function (s, w) { return s + w.length; }, 0) || 1;
+    var possibleChecks = totalHouses * daysElapsed;
     var complPct = possibleChecks ? Math.round(checksDone / possibleChecks * 100) : 0;
     var mortM = mMort.reduce(function (s, r) { return r.type === 'mortality' ? s + (Number(r.mortCount) || 0) : s; }, 0);
     var eggM = mEgg.reduce(function (s, r) { return s + (Number(r.eggs) || 0); }, 0);
@@ -149,7 +155,7 @@
       _metric('🔩', L('Critical parts', 'Piezas críticas'), String(critParts), L('at/below min', 'en/bajo mín'), critParts ? '#ef4444' : '#22c55e');
 
     // ── Weekly trend series ──
-    function _wk(map) { return [0, 1, 2, 3].map(function (i) { return map[i] || 0; }); }
+    function _wk(map) { return weeks.map(function (_, i) { return map[i] || 0; }); }
     function _byWeek(rows, dateKey, valFn) { var m = {}; rows.forEach(function (r) { var wi = wkIndex[r[dateKey]]; if (wi != null) m[wi] = (m[wi] || 0) + valFn(r); }); return m; }
     var eggWk = _byWeek(mEgg, 'date', function (r) { return Number(r.eggs) || 0; });
     var mortWk = _byWeek(mMort.filter(function (r) { return r.type === 'mortality'; }), 'date', function (r) { return Number(r.mortCount) || 0; });
@@ -181,7 +187,7 @@
 
     // ── Month digest ──
     function _dg(icon, txt) { return '<div style="display:flex;gap:9px;padding:8px 2px;border-bottom:1px solid #16223880;' + MONO + 'font-size:12px;color:#cfe0ff;"><span>' + icon + '</span><span>' + txt + '</span></div>'; }
-    var avgMortDay = Math.round(mortM / DAYS);
+    var avgMortDay = Math.round(mortM / daysElapsed);
     var digest =
       _dg(incidentsM ? '🟥' : '🦺', incidentsM ? L('Safety incident this month — review', 'Incidente este mes — revisar') : L('No safety incidents this month', 'Sin incidentes este mes')) +
       _dg('🐔', checksDone + L(' checks done · ', ' revisiones · ') + complPct + L('% completion rate', '% de cumplimiento')) +
@@ -211,9 +217,9 @@
       '</div>';
     if (loadingMsg) return head + '<div style="' + MONO + 'color:#9ac9d6;text-align:center;padding:50px;">' + loadingMsg + '</div></div>';
     return head +
-      _sec(L('Month totals · last 4 weeks', 'Totales del mes · 4 semanas')) +
+      _sec(L('Month to date · totals', 'Mes a la fecha · totales')) +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;">' + metrics + '</div>' +
-      _sec(L('Weekly trend', 'Tendencia semanal')) +
+      _sec(L('Week by week this month', 'Semana a semana este mes')) +
       '<div style="background:#0a1220;border:1.5px solid #1c2c44;border-radius:12px;padding:6px 14px;">' + trends + '</div>' +
       _sec(L('Where maintenance time went', 'A dónde fue el tiempo de mantenimiento')) +
       '<div style="background:#0a1220;border:1.5px solid #1c2c44;border-radius:12px;padding:12px 14px;">' + lpRows + '</div>' +
