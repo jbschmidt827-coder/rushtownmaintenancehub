@@ -1682,7 +1682,12 @@ if (typeof window !== 'undefined') window._bwArrangeCards = _bwArrangeCards;
       var id = farm + '-' + house + '-' + (typeof LDATE === 'function' ? LDATE() : new Date().toISOString().slice(0, 10));
       db.collection('barnWalks').doc(id).get().then(function (doc) {
         var r = doc.exists ? doc.data() : null;
-        var done = r && (r.ts || r.employee) && (Number(r.pct) || 0) >= 100;
+        // Any already-SUBMITTED check (record exists with a submit stamp) opens as a
+        // read-only summary first — with an "Edit this check" button to continue/fix.
+        // This prevents a mostly-done check from dropping straight into editable mode
+        // and being accidentally overwritten (the top work-loss complaint). pct is NOT
+        // the gate: partial submits are valid and still deserve the view-first summary.
+        var done = r && (r.ts || r.employee);
         if (done) _view(farm, house, r); else _real(farm, house);
       }).catch(function () { _real(farm, house); });
     } catch (e) { _real(farm, house); }
@@ -1691,7 +1696,8 @@ if (typeof window !== 'undefined') window._bwArrangeCards = _bwArrangeCards;
 
 // Friendly labels for the "still to finish" hint.
 const _BW_BLOCK_LABELS = {
-  employee:'Your name', mortality:'Mortality', equipment:'Equipment', air:'Air quality',
+  employee:'Your name', mortality:'Mortality', eggscollect:'Eggs collected',
+  equipment:'Equipment', air:'Air quality',
   feedwater:'Feed & water', belts:'Egg belts', pest:'Pest', checklist:'Checklist',
   weekly:'Weekly review', cageclean:'Cage cleaning', notes:'Notes'
 };

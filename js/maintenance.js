@@ -3379,42 +3379,6 @@ var CL_TKS = {
   ]}
 };
 
-// Maintenance-specific checklist tabs
-var CL_TKS_MAINT = {
-  fans:{label:'Fans',note:'Check all ventilation fans',tasks:[
-    'Inspect all fans are running — note any that are off or noisy.',
-    'Check fan belts for wear, cracking, or slippage.',
-    'Check fan blades for buildup — clean if needed.',
-    'Verify fan controllers and thermostats are set correctly.',
-    'Check inlet doors and curtains for proper operation.',
-    'Note any unusual vibration or noise and flag for repair.'
-  ]},
-  water:{label:'Water',note:'Water system check',tasks:[
-    'Check water pressure at front and back of each house.',
-    'Inspect nipple drinkers for drips or clogs.',
-    'Check regulator and pressure gauge readings.',
-    'Inspect all visible lines for leaks or damage.',
-    'Check well house pump — verify it is running normally.',
-    'Check water filters — replace if clogged.'
-  ]},
-  feed:{label:'Feed',note:'Feed system check',tasks:[
-    'Verify all auger motors are running.',
-    'Check feed pans — confirm birds have access to feed.',
-    'Inspect chains and belts for wear or damage.',
-    'Check hoppers — confirm adequate feed level.',
-    'Listen for unusual motor noise or vibration.',
-    'Check and tighten any loose connections or guards.'
-  ]},
-  elec:{label:'Electrical',note:'Electrical check',tasks:[
-    'Walk all electrical panels — check for tripped breakers.',
-    'Inspect all alarm systems — confirm they are active.',
-    'Check generator — verify it starts and runs properly.',
-    'Inspect controllers and timers for correct settings.',
-    'Check lighting — replace any burned out bulbs.',
-    'Note any burning smells, flickering, or other electrical issues.'
-  ]}
-};
-
 var CL_TABS_PROD  = ['fly','rod'];  // weekly tabs kept for Fly/Rodent checks
 var CL_TABS_MAINT = ['fans','water','feed','elec'];
 

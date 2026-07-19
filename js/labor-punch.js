@@ -176,7 +176,7 @@
         '<div style="' + MONO + 'font-size:10px;color:#7a9a7a;margin-bottom:14px;">' + lpL('Track maintenance time that goes to help other departments.', 'Registra el tiempo de mantenimiento que va a ayudar a otros departamentos.') + '</div>' +
         // Name
         '<label style="' + MONO + 'font-size:10px;letter-spacing:1px;color:#5a8a5a;text-transform:uppercase;display:block;margin-bottom:4px;">' + lpL('Your name', 'Tu nombre') + '</label>' +
-        '<input id="lp-name" list="staff-datalist" value="' + _lpEsc(tech) + '" oninput="if(window._lpNameDebounce)clearTimeout(window._lpNameDebounce);window._lpNameDebounce=setTimeout(renderLaborPunch,600)" placeholder="' + lpL('Type your name', 'Escribe tu nombre') + '" autocomplete="off" style="width:100%;box-sizing:border-box;padding:11px;border-radius:10px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:15px;font-weight:700;margin-bottom:14px;">' +
+        '<input id="lp-name" list="staff-datalist" value="' + _lpEsc(tech) + '" onchange="renderLaborPunch()" placeholder="' + lpL('Type your name', 'Escribe tu nombre') + '" autocomplete="off" style="width:100%;box-sizing:border-box;padding:11px;border-radius:10px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:15px;font-weight:700;margin-bottom:14px;">' +
         actionHtml +
         totalHtml +
         // Manual entry

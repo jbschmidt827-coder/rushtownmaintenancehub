@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v219-labortime';
+const CACHE_NAME = 'rushtown-v220-tier2';
 
 const SHELL_FILES = [
   '/',
@@ -59,6 +59,7 @@ const SHELL_FILES = [
   '/js/maintenance.js',
   '/js/labor-punch.js',
   '/js/tier1.js',
+  '/js/tier2.js',
   '/js/maint-projects.js',
   '/js/scorecard.js',
   '/js/production.js',
