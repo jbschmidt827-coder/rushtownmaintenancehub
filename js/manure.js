@@ -830,76 +830,132 @@ function manureToggleHouse(farm, house) {
 function _manTimeLbl(ts) {
   try { return ts ? new Date(ts).toLocaleTimeString(_mlang() === 'es' ? 'es-ES' : 'en-US', { hour: 'numeric', minute: '2-digit' }) : ''; } catch (e) { return ''; }
 }
+// LIVE version (v224): snapshot listeners instead of one-shot reads — the table
+// updates in real time WHILE a crew is entering belt %s / checks / issues in the
+// Manure tab (every tap writes manureLog, so it shows here within a second).
+// The ⚠ Issues cell is tappable and expands to show exactly WHAT went wrong:
+// which collector, belt rips, failed checks, can't-run, the note, and the WO#.
+var _manRunsUnsubs = [];
+var _manRunsData = { start: [], sub: [], log: [] };
+var _manRunsOpen = {};   // rowKey → true (expanded issue detail survives re-draws)
+
+function _manIssueDetail(x) {
+  // One collector's problems as a short bilingual line. Returns null if clean.
+  var bits = [];
+  if (x.cantRun) bits.push(ML('🚫 could not run', '🚫 no pudo correr'));
+  var lvl = Number(x.ripLevel || 0);
+  if (lvl > 0) bits.push('🩹 ' + ML('belt rip level ', 'rotura de banda nivel ') + lvl);
+  var fails = manChkFails(x);
+  if (fails.length) bits.push('✗ ' + fails.map(function (f) { var l = MAN_CHK_LABEL[f] || { en: f, es: f }; return ML(l.en, l.es); }).join(', '));
+  if (!bits.length) return null;
+  var line = '<b style="color:#f2a0a0;">C' + (x.collector != null ? x.collector : '?') + '</b> · ' + bits.join(' · ');
+  if ((x.issueNote || '').trim()) line += ' · 📝 ' + String(x.issueNote).trim().slice(0, 120);
+  if (x.woId) line += ' · <span style="color:#7ab0f6;">' + x.woId + '</span>';
+  if (x.by) line += ' <span style="color:#6a8a6a;">(' + x.by + ')</span>';
+  return line;
+}
+
+function _manRunsDraw() {
+  var el = document.getElementById('prod-sec-manure');
+  if (!el) return;
+  var days = {}; // farm|house|date → row
+  function rowFor(x) {
+    var k = x.farm + '|' + x.house + '|' + x.date;
+    if (!days[k]) days[k] = { key: k, farm: x.farm, house: x.house, date: x.date, start: null, sub: null, ran: 0, pctSum: 0, issues: 0, detail: [], ts: 0 };
+    days[k].ts = Math.max(days[k].ts, x.ts || 0);
+    return days[k];
+  }
+  _manRunsData.start.forEach(function (x) { if (x.farm) rowFor(x).start = x; });
+  _manRunsData.sub.forEach(function (x) { if (x.farm) rowFor(x).sub = x; });
+  _manRunsData.log.forEach(function (x) {
+    if (!x.farm) return;
+    var r = rowFor(x);
+    if (x.pctRun != null) { r.ran++; r.pctSum += Number(x.pctRun) || 0; }
+    var d = _manIssueDetail(x);
+    if (d) { r.issues++; r.detail.push(d); }
+  });
+  var list = Object.keys(days).map(function (k) { return days[k]; });
+  var pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+  if (pref === 'Hegins' || pref === 'Danville') list = list.filter(function (r) { return r.farm === pref; });
+  list.sort(function (a, b) { return (b.date > a.date ? 1 : b.date < a.date ? -1 : 0) || (b.ts - a.ts); });
+  var titleBar = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">' +
+    '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:#a87b3a;">💩 ' + ML('Manure Run Log — last 30 days', 'Registro de estiércol — últimos 30 días') + '</span>' +
+    '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;color:#4ade80;border:1px solid #2a5a2a;border-radius:20px;padding:2px 8px;">● ' + ML('LIVE', 'EN VIVO') + '</span>' +
+  '</div>';
+  if (!list.length) { el.innerHTML = titleBar + '<div style="color:#888;padding:20px;text-align:center;">' + ML('No manure runs in the last 30 days.', 'Sin corridas de estiércol en los últimos 30 días.') + '</div>'; return; }
+  var rows = list.map(function (r) {
+    var avg = r.ran ? Math.round(r.pctSum / r.ran) : 0;
+    var started = r.start
+      ? '<span style="color:#4ade80;">▶ ' + _manTimeLbl(r.start.startedAt || r.start.ts) + '</span>' + (r.start.by ? ' <span style="color:#7ab07a;">' + r.start.by + '</span>' : '')
+      : '<span style="color:#555;">—</span>';
+    var submitted = r.sub
+      ? '<span style="color:#4caf50;">✓ ' + _manTimeLbl(r.sub.ts) + '</span>' + (r.sub.by ? ' <span style="color:#7ab07a;">' + r.sub.by + '</span>' : '')
+      : '<span style="color:#d69e2e;">' + ML('open', 'abierta') + '</span>';
+    var ranCell = r.ran
+      ? r.ran + '/' + MANURE_COLLECTORS + ' <span style="color:' + (avg >= 100 ? '#4caf50' : avg >= 50 ? '#d69e2e' : '#c0392b') + ';">' + avg + '%</span>'
+      : '<span style="color:#555;">—</span>';
+    var rk = r.key.replace(/[^a-zA-Z0-9]/g, '_');
+    var issueCell = r.issues
+      ? '<button onclick="manRunsToggle(\'' + rk + '\')" style="background:#3a0f0f;border:1px solid #c0392b;border-radius:6px;color:#f2a0a0;font-family:inherit;font-size:12px;font-weight:700;padding:4px 9px;cursor:pointer;">⚠ ' + r.issues + ' ▾</button>'
+      : '<span style="color:#4caf50;">✓</span>';
+    var dateLbl = r.date ? (r.date.slice(5).replace('-', '/')) : '—';
+    var main = '<tr style="border-bottom:1px solid #1a2a1a;">' +
+      '<td style="padding:8px 6px;color:#f0ead8;">' + dateLbl + '</td>' +
+      '<td style="padding:8px 6px;color:#7ab07a;">' + (r.farm || '—') + '</td>' +
+      '<td style="padding:8px 6px;color:#aaa;">H' + (r.house != null ? r.house : '—') + '</td>' +
+      '<td style="padding:8px 6px;">' + started + '</td>' +
+      '<td style="padding:8px 6px;">' + submitted + '</td>' +
+      '<td style="padding:8px 6px;color:#aaa;">' + ranCell + '</td>' +
+      '<td style="padding:8px 6px;">' + issueCell + '</td>' +
+    '</tr>';
+    var det = r.issues
+      ? '<tr id="manrun-det-' + rk + '" style="display:' + (_manRunsOpen[rk] ? 'table-row' : 'none') + ';"><td colspan="7" style="padding:0 6px 10px;">' +
+          '<div style="background:#1a0f0f;border:1px solid #5a1f1f;border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.7;color:#e8c9c9;">' + r.detail.join('<br>') + '</div>' +
+        '</td></tr>'
+      : '';
+    return main + det;
+  }).join('');
+  el.innerHTML = titleBar +
+    '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#4a6a4a;margin-bottom:8px;">' + ML('▶ = belt run started · ✓ = house submitted · tap ⚠ to see what went wrong', '▶ = banda iniciada · ✓ = casa enviada · toca ⚠ para ver qué falló') + '</div>' +
+    '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:12px;min-width:560px;">' +
+    '<thead><tr style="border-bottom:1px solid #2a4a2a;">' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Date', 'Fecha') + '</th>' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Farm', 'Granja') + '</th>' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('House', 'Casa') + '</th>' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Started', 'Inició') + '</th>' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Submitted', 'Enviada') + '</th>' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Ran', 'Corrió') + '</th>' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Issues', 'Problemas') + '</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+
+function manRunsToggle(rk) {
+  _manRunsOpen[rk] = !_manRunsOpen[rk];
+  var tr = document.getElementById('manrun-det-' + rk);
+  if (tr) tr.style.display = _manRunsOpen[rk] ? 'table-row' : 'none';
+}
+
 function renderProdManureRuns() {
   var el = document.getElementById('prod-sec-manure');
   if (!el || typeof db === 'undefined' || !db) return;
+  // Kill old listeners before attaching fresh ones (tab can be reopened).
+  _manRunsUnsubs.forEach(function (u) { try { u(); } catch (e) {} });
+  _manRunsUnsubs = [];
   el.innerHTML = '<div style="color:#aaa;font-family:\'IBM Plex Mono\',monospace;font-size:12px;margin-bottom:12px;">' + ML('Loading manure run log…', 'Cargando registro de estiércol…') + '</div>';
   var cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
-  Promise.all([
-    db.collection('manureStart').where('ts', '>=', cutoff).orderBy('ts', 'desc').get(),
-    db.collection('manureSubmit').where('ts', '>=', cutoff).orderBy('ts', 'desc').get(),
-    db.collection('manureLog').where('ts', '>=', cutoff).orderBy('ts', 'desc').get()
-  ]).then(function (snaps) {
-    var days = {}; // farm|house|date → row
-    function rowFor(x) {
-      var k = x.farm + '|' + x.house + '|' + x.date;
-      if (!days[k]) days[k] = { farm: x.farm, house: x.house, date: x.date, start: null, sub: null, ran: 0, pctSum: 0, issues: 0, ts: 0 };
-      days[k].ts = Math.max(days[k].ts, x.ts || 0);
-      return days[k];
-    }
-    snaps[0].forEach(function (d) { var x = d.data() || {}; if (!x.farm) return; var r = rowFor(x); r.start = x; });
-    snaps[1].forEach(function (d) { var x = d.data() || {}; if (!x.farm) return; var r = rowFor(x); r.sub = x; });
-    snaps[2].forEach(function (d) {
-      var x = d.data() || {}; if (!x.farm) return;
-      var r = rowFor(x);
-      if (x.pctRun != null) { r.ran++; r.pctSum += Number(x.pctRun) || 0; }
-      if (x.cantRun || Number(x.ripLevel || 0) > 0 || manChkFails(x).length) r.issues++;
-    });
-    var list = Object.keys(days).map(function (k) { return days[k]; });
-    // Site scope like the walk logs: preferred farm only (Master sees both).
-    var pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
-    if (pref === 'Hegins' || pref === 'Danville') list = list.filter(function (r) { return r.farm === pref; });
-    list.sort(function (a, b) { return (b.date > a.date ? 1 : b.date < a.date ? -1 : 0) || (b.ts - a.ts); });
-    var titleBar = '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:#a87b3a;margin-bottom:10px;">💩 ' + ML('Manure Run Log — last 30 days', 'Registro de estiércol — últimos 30 días') + '</div>';
-    if (!list.length) { el.innerHTML = titleBar + '<div style="color:#888;padding:20px;text-align:center;">' + ML('No manure runs in the last 30 days.', 'Sin corridas de estiércol en los últimos 30 días.') + '</div>'; return; }
-    var rows = list.map(function (r) {
-      var avg = r.ran ? Math.round(r.pctSum / r.ran) : 0;
-      var started = r.start
-        ? '<span style="color:#4ade80;">▶ ' + _manTimeLbl(r.start.startedAt || r.start.ts) + '</span>' + (r.start.by ? ' <span style="color:#7ab07a;">' + r.start.by + '</span>' : '')
-        : '<span style="color:#555;">—</span>';
-      var submitted = r.sub
-        ? '<span style="color:#4caf50;">✓ ' + _manTimeLbl(r.sub.ts) + '</span>' + (r.sub.by ? ' <span style="color:#7ab07a;">' + r.sub.by + '</span>' : '')
-        : '<span style="color:#d69e2e;">' + ML('open', 'abierta') + '</span>';
-      var ranCell = r.ran
-        ? r.ran + '/' + MANURE_COLLECTORS + ' <span style="color:' + (avg >= 100 ? '#4caf50' : avg >= 50 ? '#d69e2e' : '#c0392b') + ';">' + avg + '%</span>'
-        : '<span style="color:#555;">—</span>';
-      var issueCell = r.issues ? '<span style="color:#e53e3e;">⚠ ' + r.issues + '</span>' : '<span style="color:#4caf50;">✓</span>';
-      var dateLbl = r.date ? (r.date.slice(5).replace('-', '/')) : '—';
-      return '<tr style="border-bottom:1px solid #1a2a1a;">' +
-        '<td style="padding:8px 6px;color:#f0ead8;">' + dateLbl + '</td>' +
-        '<td style="padding:8px 6px;color:#7ab07a;">' + (r.farm || '—') + '</td>' +
-        '<td style="padding:8px 6px;color:#aaa;">H' + (r.house != null ? r.house : '—') + '</td>' +
-        '<td style="padding:8px 6px;">' + started + '</td>' +
-        '<td style="padding:8px 6px;">' + submitted + '</td>' +
-        '<td style="padding:8px 6px;color:#aaa;">' + ranCell + '</td>' +
-        '<td style="padding:8px 6px;">' + issueCell + '</td>' +
-      '</tr>';
-    }).join('');
-    el.innerHTML = titleBar +
-      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#4a6a4a;margin-bottom:8px;">' + ML('▶ = when the belt run was started · ✓ = when the house was submitted', '▶ = cuándo se inició la banda · ✓ = cuándo se envió la casa') + '</div>' +
-      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:12px;min-width:560px;">' +
-      '<thead><tr style="border-bottom:1px solid #2a4a2a;">' +
-        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Date', 'Fecha') + '</th>' +
-        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Farm', 'Granja') + '</th>' +
-        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('House', 'Casa') + '</th>' +
-        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Started', 'Inició') + '</th>' +
-        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Submitted', 'Enviada') + '</th>' +
-        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Ran', 'Corrió') + '</th>' +
-        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + ML('Issues', 'Problemas') + '</th>' +
-      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
-  }).catch(function (e) {
-    el.innerHTML = '<div style="color:#e53e3e;padding:20px;">Error: ' + (e && e.message ? e.message : e) + '</div>';
-  });
+  function listen(coll, slot) {
+    try {
+      _manRunsUnsubs.push(
+        db.collection(coll).where('ts', '>=', cutoff).orderBy('ts', 'desc').onSnapshot(function (snap) {
+          _manRunsData[slot] = snap.docs.map(function (d) { return d.data() || {}; });
+          _manRunsDraw();
+        }, function (err) { console.error(coll + ' live log:', err); })
+      );
+    } catch (e) { console.error('listen ' + coll + ':', e); }
+  }
+  listen('manureStart', 'start');
+  listen('manureSubmit', 'sub');
+  listen('manureLog', 'log');
 }
 
 // Open the in-app How-To guide straight to the Manure section.
@@ -923,6 +979,7 @@ if (typeof window !== 'undefined') {
   window.manureBeltSchedSet = manureBeltSchedSet;
   window.manureToggleSchedule = manureToggleSchedule;
   window.manureStartRun = manureStartRun;
+  window.manRunsToggle = manRunsToggle;
   window.manureSubmitHouse = manureSubmitHouse;
   window.manureToggleHouse = manureToggleHouse;
   window.openManureHelp = openManureHelp;
