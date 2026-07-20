@@ -235,6 +235,21 @@ async function eggRunSetLanes(farm, m, val) {
     renderEggRun();
   } catch (e) { console.error('eggRunSetLanes:', e); }
 }
+// Eggs entered PER LANE. Machine total (eggs) = sum of the lanes, kept in sync so
+// eggs/min + the daily summary still work off one number.
+async function eggRunSetLaneEggs(farm, m, idx, val) {
+  try {
+    var rec = erRec(farm, m, erToday()) || {};
+    var lanesN = (rec.lanes != null) ? Number(rec.lanes) : 2; if (lanesN < 1) lanesN = 1;
+    var arr = Array.isArray(rec.laneEggs) ? rec.laneEggs.slice() : [];
+    while (arr.length < lanesN) arr.push(0);
+    arr[idx] = Math.max(0, Math.round(Number(val) || 0));
+    var total = arr.reduce(function (s, v) { return s + (Number(v) || 0); }, 0);
+    await _erSave(farm, m, { laneEggs: arr, eggs: total, eggsBy: erBy() });
+    if (typeof toast === 'function') toast('🥚 ' + farm + ' M' + m + ' L' + (idx + 1) + ': ' + arr[idx].toLocaleString());
+    renderEggRun();
+  } catch (e) { console.error('eggRunSetLaneEggs:', e); if (typeof toast === 'function') toast(erL('Could not save', 'No se pudo guardar')); }
+}
 
 // ── Render ──────────────────────────────────────────────────────────────────
 // Per-machine status line ("M1 🟢 running since 6:05 · Joe · 2h 10m").
@@ -259,7 +274,12 @@ function _erStatusLine(farm, m, rec, multi) {
 // Per-machine MANUAL entry: run time (min) + total eggs, computed eggs/hr.
 function _erMachineDetail(farm, m, rec, multi) {
   var MONO = "font-family:'IBM Plex Mono',monospace;";
-  var eggs = (rec && rec.eggs != null) ? Number(rec.eggs) : null;
+  var packer = (rec && rec.packer) ? rec.packer : '';
+  var lanes = (rec && rec.lanes != null) ? Number(rec.lanes) : 2;   // 2 lanes per machine
+  var nLanes = Math.max(1, Math.min(4, lanes || 2));
+  var laneEggs = (rec && Array.isArray(rec.laneEggs)) ? rec.laneEggs.slice() : [];
+  var laneSum = laneEggs.reduce(function (s, v) { return s + (Number(v) || 0); }, 0);
+  var eggs = laneSum > 0 ? laneSum : (rec && rec.eggs != null ? Number(rec.eggs) : null);  // total = sum of lanes
   var startC = (rec && rec.startClock) ? rec.startClock : '';
   var stopC = (rec && rec.stopClock) ? rec.stopClock : '';
   var mins = _erMinFromClock(startC, stopC);
@@ -267,8 +287,6 @@ function _erMachineDetail(farm, m, rec, multi) {
   var hrs = (mins || 0) / 60;
   var eph = (eggs && hrs > 0.05) ? Math.round(eggs / hrs) : null;
   var epm = (eggs && mins > 0) ? Math.round(eggs / mins) : null;
-  var packer = (rec && rec.packer) ? rec.packer : '';
-  var lanes = (rec && rec.lanes != null) ? rec.lanes : 2;   // 2 lanes per machine
   var by = (rec && (rec.manualBy || rec.eggsBy || rec.by)) ? (rec.manualBy || rec.eggsBy || rec.by) : '';
   var inp = 'background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:15px;font-weight:700;padding:9px 11px;color-scheme:dark;';
   return '<div style="' + (multi ? 'border-top:1px dashed #2a5a2a;padding-top:12px;margin-top:12px;' : '') + '">' +
@@ -297,14 +315,26 @@ function _erMachineDetail(farm, m, rec, multi) {
       else { var dt = stopM - tgtM; line = '<span style="color:#f87171;font-weight:700;">🎯 ⚠ ' + erFmtDur(dt * 60000) + ' ' + erL('downtime past ', 'de paro después de ') + erFmtClock(tgt) + '</span>'; }
       return '<div style="' + MONO + 'font-size:11px;margin-top:8px;background:#0c1a0c;border:1px solid #1e3a1e;border-radius:8px;padding:7px 10px;">' + line + '</div>';
     })() +
-    // Total eggs → eggs/min + eggs/hr
-    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;">' +
-      '<label style="' + MONO + 'font-size:12px;color:#f0d68a;font-weight:700;min-width:135px;">🥚 ' + erL('Total eggs today', 'Total de huevos hoy') + '</label>' +
-      '<input type="number" min="0" inputmode="numeric" value="' + (eggs != null ? eggs : '') + '" onchange="eggRunEggsSet(\'' + farm + '\',' + m + ',this.value)" placeholder="0" style="flex:1;min-width:100px;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:10px 12px;">' +
-      '<div style="' + MONO + 'font-size:11px;color:#9ab09a;line-height:1.7;">' +
-        (eggs != null ? ('= ' + (Math.round(eggs / 12 * 10) / 10).toLocaleString() + ' dz') : '') +
+    // Eggs BY LANE (2 lanes/machine) → machine total + eggs/min + eggs/hr
+    '<div style="margin-top:10px;">' +
+      '<label style="' + MONO + 'font-size:12px;color:#f0d68a;font-weight:700;display:block;margin-bottom:5px;">🥚 ' + erL('Eggs by lane', 'Huevos por carril') + '</label>' +
+      '<div style="display:grid;grid-template-columns:repeat(' + nLanes + ',1fr);gap:8px;">' +
+        (function () {
+          var out = '';
+          for (var i = 0; i < nLanes; i++) {
+            var lv = (laneEggs[i] != null && laneEggs[i] !== '') ? laneEggs[i] : '';
+            out += '<div>' +
+              '<div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">' + erL('Lane', 'Carril') + ' ' + (i + 1) + '</div>' +
+              '<input type="number" min="0" inputmode="numeric" value="' + lv + '" onchange="eggRunSetLaneEggs(\'' + farm + '\',' + m + ',' + i + ',this.value)" placeholder="0" style="width:100%;box-sizing:border-box;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:9px 10px;">' +
+            '</div>';
+          }
+          return out;
+        })() +
+      '</div>' +
+      '<div style="' + MONO + 'font-size:12px;color:#9ab09a;line-height:1.7;margin-top:7px;">' +
+        (eggs != null ? ('🥚 ' + erL('Machine total', 'Total máquina') + ': <b style="color:#f0d68a;">' + eggs.toLocaleString() + '</b> = ' + (Math.round(eggs / 12 * 10) / 10).toLocaleString() + ' dz') : erL('Enter each lane\'s eggs.', 'Ingresa los huevos de cada carril.')) +
         (epm ? ('<br><b style="color:#4ade80;">' + epm.toLocaleString() + ' ' + erL('eggs/min', 'huevos/min') + '</b>') : '') +
-        (eph ? ('<br><span style="color:#7ab07a;">' + eph.toLocaleString() + ' ' + erL('eggs/hr', 'huevos/hr') + '</span>') : '') +
+        (eph ? (' <span style="color:#7ab07a;">· ' + eph.toLocaleString() + ' ' + erL('eggs/hr', 'huevos/hr') + '</span>') : '') +
       '</div>' +
     '</div>' +
     (by ? '<div style="' + MONO + 'font-size:10px;color:#5a8a5a;margin-top:7px;">' + erL('Last entry by ', 'Última entrada por ') + by + '</div>' : '') +
