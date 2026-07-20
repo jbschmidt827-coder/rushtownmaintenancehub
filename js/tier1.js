@@ -53,6 +53,24 @@
   window.openTier1 = function () { var o = _ov(); o.style.display = 'block'; try { window.scrollTo(0, 0); } catch (e) {} renderTier1(); };
   window.closeTier1 = function () { var o = document.getElementById('tier1-overlay'); if (o) o.style.display = 'none'; };
 
+  // ── Site tabs: each tab = one site (Joe 2026-07-20). 'All' = whole operation. ──
+  var _t1Site = null;
+  var T1_SITES = ['Danville', 'Hegins', 'Turbotville', 'All'];
+  window.tier1Site = function (s) { _t1Site = s; renderTier1(); };
+  function _t1SiteInit() {
+    if (_t1Site) return _t1Site;
+    var pf = null; try { pf = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null; } catch (e) {}
+    _t1Site = (pf === 'Hegins' || pf === 'Danville') ? pf : 'Danville';
+    return _t1Site;
+  }
+  function _t1Tabs() {
+    return '<div style="display:flex;gap:7px;flex-wrap:wrap;margin:10px 0 2px;">' + T1_SITES.map(function (s) {
+      var on = s === _t1Site;
+      var lbl = s === 'All' ? L('All Sites', 'Todos') : s;
+      return '<button onclick="tier1Site(\'' + s + '\')" style="padding:9px 15px;border-radius:20px;' + MONO + 'font-size:12px;font-weight:700;cursor:pointer;background:' + (on ? '#14361c' : '#0c150c') + ';border:1.5px solid ' + (on ? '#4ade80' : '#1e3a1e') + ';color:' + (on ? '#4ade80' : '#7a9a7a') + ';">' + lbl + '</button>';
+    }).join('') + '</div>';
+  }
+
   // status: 'g' green, 'y' yellow, 'r' red, '-' unknown/gray
   function _dot(s) { return ({ g: '#22c55e', y: '#f59e0b', r: '#ef4444' })[s] || '#5a7a5a'; }
 
@@ -134,27 +152,50 @@
     var safety = [];
     try { if (typeof db !== 'undefined' && db) { var sd = await db.collection('safetySettings').doc('main').get(); if (sd.exists) safety = [sd.data()]; } } catch (e) {}
 
+    // ── Scope everything to the selected site tab (each tab = one site) ──
+    var S = _t1SiteInit();
+    function _fOK(v) { return S === 'All' || !v || v === S || v === 'Both'; }
+    if (S !== 'All') {
+      weekChecks = weekChecks.filter(function (c) { return c.farm === S; });
+      mwalks = mwalks.filter(function (w) { return w.farm === S; });
+      weekMort = weekMort.filter(function (m) { return m.farm === S; });
+      weekEgg = weekEgg.filter(function (r) { return _fOK(r.farm); });
+      weekPack = weekPack.filter(function (r) { return _fOK(r.farm || r.plant); });
+      weekFeed = weekFeed.filter(function (r) { return _fOK(r.farm); });
+      weekPM = weekPM.filter(function (x) { return _fOK(x.farm); });
+      var _only = {}; if (ext[S]) _only[S] = ext[S]; ext = _only;
+    }
+
     var checks = weekChecks.filter(function (c) { return c.date === t; });
     var eggRun = weekEgg.filter(function (r) { return r.date === t; });
     var packLog = weekPack.filter(function (r) { return r.date === t; });
     var hasChecks = checks.length > 0;
 
-    // ── App globals ──
+    // ── App globals (scoped to the site tab too) ──
     var WOs = (typeof workOrders !== 'undefined' && Array.isArray(workOrders)) ? workOrders : [];
+    if (S !== 'All') WOs = WOs.filter(function (w) { return w && _fOK(w.farm); });
     var openWO = WOs.filter(function (w) { return w && w.status !== 'completed'; });
     var urgentWO = openWO.filter(function (w) { var p = (w.priority || '').toLowerCase(); return p === 'urgent' || p === 'high'; });
     var woOpenedWk = WOs.filter(function (w) { return w && Number(w.ts) >= weekStartMs; }).length;
     var pmOverdue = 0;
-    try { if (typeof ALL_PM !== 'undefined' && typeof pmStatus === 'function') pmOverdue = ALL_PM.filter(function (p) { return pmStatus(p.id) === 'overdue'; }).length; } catch (e) {}
+    try {
+      if (typeof ALL_PM !== 'undefined' && typeof pmStatus === 'function') {
+        pmOverdue = ALL_PM.filter(function (p) {
+          if (S !== 'All' && !((p.farms || []).indexOf(S) !== -1 || p.farm === S || (!p.farms && !p.farm))) return false;
+          return pmStatus(p.id) === 'overdue';
+        }).length;
+      }
+    } catch (e) {}
     var critParts = 0;
     try { if (typeof partsInventory !== 'undefined' && partsInventory) { Object.keys(partsInventory).forEach(function (k) { var p = partsInventory[k] || {}; if ((Number(p.qty) || 0) <= (Number(p.min) || 1)) critParts++; }); } } catch (e) {}
-    var openProj = projects.filter(function (p) { return p && p.status !== 'done' && p.status !== 'completed'; }).length;
+    var openProj = projects.filter(function (p) { return p && p.status !== 'done' && p.status !== 'completed' && _fOK(p.farm); }).length;
 
     // ── Active houses (FARM_HOUSES holds arrays of house names, not counts) ──
     var FH = (typeof FARM_HOUSES !== 'undefined') ? FARM_HOUSES : { Hegins: ['1','2','3','4','5','6','7','8'], Danville: ['1','2','3','4','5'] };
     var totalHouses = 0;
     Object.keys(FH).forEach(function (f) {
       if (f === 'Processing Plant') return;
+      if (S !== 'All' && f !== S) return;
       var arr = Array.isArray(FH[f]) ? FH[f] : [];
       arr.forEach(function (h) {
         var num = String(h).replace(/^\s*house\s*/i, '').trim();
@@ -167,7 +208,8 @@
     var doneToday = {}; checks.forEach(function (c) { if ((Number(c.pct) || 0) >= 100) doneToday[c.farm + '-' + c.house] = 1; });
     var prodDone = Object.keys(doneToday).length;
     var prodPct = totalHouses ? Math.round(prodDone / totalHouses * 100) : 0;
-    var prodS = prodPct >= TH.prodG ? 'g' : prodPct >= TH.prodY ? 'y' : 'r';
+    // No app house data for this site (e.g. Turbotville) → gray, not red.
+    var prodS = totalHouses === 0 ? '-' : (prodPct >= TH.prodG ? 'g' : prodPct >= TH.prodY ? 'y' : 'r');
 
     // Mortality today (from today's checks): total + worst single house
     var mortToday = checks.reduce(function (s, c) { return s + (Number(c.mortCount) || 0); }, 0);
@@ -188,14 +230,21 @@
     millToday = Math.round(millToday * 10) / 10; millWk = Math.round(millWk * 10) / 10;
     var millS = millWk === 0 ? '-' : (millToday > 0 ? 'g' : 'y');
 
-    // Lay % + live birds (farm records via tierExternal; lay values are fractions)
-    var birdsTotal = 0, layNum = 0, layDen = 0;
-    Object.keys(ext).forEach(function (k) {
+    // Lay % + live birds (farm records via tierExternal; lay values are fractions).
+    // Per-farm breakdown shown on the tiles so a big combined number can never be
+    // misread as one farm (1.5M = ALL farms, not Danville). Lay prefers the 7-day
+    // avg — steadier when a farm's sheet has blank days.
+    var birdsTotal = 0, layNum = 0, layDen = 0, birdBits = [], layBits = [];
+    function _abbr(k) { return ({ Hegins: 'Heg', Danville: 'Dan', Turbotville: 'Tur' })[k] || k.slice(0, 3); }
+    function _pctOf(v) { if (v == null) return null; return Math.round((v <= 2 ? v * 100 : v) * 10) / 10; }
+    Object.keys(ext).sort().forEach(function (k) {
       var fl = ext[k] && ext[k].flock;
       if (fl && fl.birds) {
         birdsTotal += fl.birds;
-        var lay = (fl.layLatest != null ? fl.layLatest : fl.lay7d);
-        if (lay != null) { layNum += lay * fl.birds; layDen += fl.birds; }
+        birdBits.push(_abbr(k) + ' ' + Math.round(fl.birds / 1000) + 'k');
+        var lay = (fl.lay7d != null ? fl.lay7d : fl.layLatest);
+        var lp = _pctOf(lay);
+        if (lay != null) { layNum += lay * fl.birds; layDen += fl.birds; layBits.push(_abbr(k) + ' ' + Math.round(lp) + '%'); }
       }
     });
     var layPct = null;
@@ -229,9 +278,9 @@
     var GM = "closeTier1();typeof go==='function'&&go('maint');";
     var tiles = [
       _tile('🦺', L('Safety', 'Seguridad'), safeS, safeDays == null ? '—' : (safeDays + ' ' + L('days safe', 'días')), '', ''),
-      _tile('🐣', L('Lay Rate', 'Postura'), layS, layPct == null ? '—' : (layPct + '%'), layPct == null ? L('no farm data', 'sin datos') : L('flock avg', 'prom parvada'), ''),
-      _tile('🐥', L('Live Birds', 'Aves Vivas'), birdsTotal > 0 ? 'g' : '-', birdsTotal > 0 ? _num(birdsTotal) : '—', L('all farms', 'todas granjas'), ''),
-      _tile('🐔', L('Production', 'Producción'), prodS, prodDone + '/' + totalHouses, L('houses', 'casas') + ' · ' + prodPct + '%', "closeTier1();typeof openCompletion==='function'&&openCompletion()"),
+      _tile('🐣', L('Lay Rate', 'Postura'), layS, layPct == null ? '—' : (layPct + '%'), layPct == null ? L('no farm data', 'sin datos') : (S === 'All' ? layBits.join(' · ') : L('flock avg 7d', 'prom 7d')), ''),
+      _tile('🐥', L('Live Birds', 'Aves Vivas'), birdsTotal > 0 ? 'g' : '-', birdsTotal > 0 ? _num(birdsTotal) : '—', S === 'All' ? birdBits.join(' · ') : S, ''),
+      _tile('🐔', L('Production', 'Producción'), prodS, totalHouses === 0 ? '—' : (prodDone + '/' + totalHouses), totalHouses === 0 ? L('no house checks here', 'sin revisiones aquí') : (L('houses', 'casas') + ' · ' + prodPct + '%'), "closeTier1();typeof openCompletion==='function'&&openCompletion()"),
       _tile('💀', L('Mortality', 'Mortalidad'), mortS, !hasChecks ? '—' : String(mortToday), !hasChecks ? L('no checks yet', 'sin revisiones') : (L('worst house', 'peor casa') + ' ' + mortWorst), "closeTier1();typeof openCompletion==='function'&&openCompletion()"),
       _tile('✅', L('Quality', 'Calidad'), qualS, !hasChecks ? '—' : (flagCount + ' ' + L('flags', 'alertas')), L('today', 'hoy'), ''),
       _tile('🥚', L('Egg Flow', 'Flujo Huevos'), eggS, eggsToday > 0 ? _num(eggsToday) : '—', eggsToday > 0 ? L('processed', 'procesados') : L('no run yet', 'sin corrida'), "closeTier1();typeof openProcessing==='function'&&openProcessing()"),
@@ -306,10 +355,10 @@
           '<button onclick="typeof openTierSW===\'function\'&&openTierSW()" style="padding:11px 14px;background:#1a1408;border:1.5px solid #7a5a1a;border-radius:50px;color:#e8c96a;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">📘 SW</button>' +
         '</div>' +
         '<div style="text-align:right;">' +
-          '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:28px;letter-spacing:2px;line-height:1;color:#f0ead8;">📊 ' + L('TIER 1 BOARD', 'TABLERO TIER 1') + '</div>' +
+          '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:28px;letter-spacing:2px;line-height:1;color:#f0ead8;">📊 ' + L('TIER 1 BOARD', 'TABLERO TIER 1') + (_t1Site && _t1Site !== 'All' ? ' · ' + _t1Site.toUpperCase() : '') + '</div>' +
           '<div style="' + MONO + 'font-size:10px;color:#7ab07a;margin-top:2px;">' + dateStr + '</div>' +
         '</div>' +
-      '</div>';
+      '</div>' + _t1Tabs();
     if (loadingMsg) return head + '<div style="' + MONO + 'color:#9ac9d6;text-align:center;padding:50px;">' + loadingMsg + '</div></div>';
     return head +
       '<div style="display:flex;align-items:center;gap:10px;background:#0c1a0c;border:1.5px solid ' + dot + ';border-radius:12px;padding:12px 14px;margin:10px 0 4px;">' +
