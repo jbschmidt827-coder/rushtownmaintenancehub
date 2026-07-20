@@ -85,9 +85,20 @@
       .catch(function (e) { console.error('maintSchedule save:', e); if (typeof toast === 'function') toast(msL('⚠ Save failed — try again', '⚠ No se guardó — intenta de nuevo')); });
   }
 
+  // "06:30" → "6:30 AM" (shows raw text for old free-text entries)
+  function _fmtTime(v) {
+    if (!v) return '';
+    var m = /^(\d{1,2}):(\d{2})$/.exec(String(v).trim());
+    if (!m) return _esc(v);
+    var h = parseInt(m[1], 10), min = m[2];
+    var ap = h >= 12 ? 'PM' : 'AM';
+    h = h % 12; if (h === 0) h = 12;
+    return h + ':' + min + ' ' + ap;
+  }
+
   // ── Entry display row ──
   function _entryRow(bucket, i, e, canEdit) {
-    var time = (e.start || e.end) ? '<span style="color:#d6b34a;">' + _esc(e.start || '') + (e.end ? '–' + _esc(e.end) : '') + '</span> · ' : '';
+    var time = (e.start || e.end) ? '<span style="color:#d6b34a;">🕐 ' + _fmtTime(e.start) + (e.end ? ' – ' + _fmtTime(e.end) : '') + '</span> · ' : '';
     var wiBtn = e.wiId
       ? '<button onclick="msOpenWI(\'' + _esc(e.wiId) + '\')" style="background:#0d1f3a;border:1px solid #2a5a8a;border-radius:6px;color:#7ab0f6;' + MONO + 'font-size:10px;font-weight:700;padding:4px 8px;cursor:pointer;margin-top:4px;">📖 ' + _esc(e.wiTitle || msL('Work Instruction', 'Instrucción')) + '</button>'
       : '';
@@ -116,8 +127,10 @@
       '</div>' +
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">' +
         '<input id="ms-duty-' + bid + '" placeholder="' + msL('Job (e.g. Fans + PMs houses 4-6)', 'Trabajo (ej. Ventiladores + PM casas 4-6)') + '" style="flex:3;min-width:150px;padding:9px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:12px;">' +
-        '<input id="ms-start-' + bid + '" placeholder="' + msL('start', 'inicio') + '" style="flex:0 0 60px;padding:9px 6px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:12px;">' +
-        '<input id="ms-end-' + bid + '" placeholder="' + msL('end', 'fin') + '" style="flex:0 0 60px;padding:9px 6px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:12px;">' +
+        '<label style="flex:0 0 auto;display:flex;align-items:center;gap:4px;' + MONO + 'font-size:10px;color:#7a9a7a;">' + msL('start', 'inicio') +
+          '<input id="ms-start-' + bid + '" type="time" step="300" style="padding:8px 6px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:13px;color-scheme:dark;"></label>' +
+        '<label style="flex:0 0 auto;display:flex;align-items:center;gap:4px;' + MONO + 'font-size:10px;color:#7a9a7a;">' + msL('end', 'fin') +
+          '<input id="ms-end-' + bid + '" type="time" step="300" style="padding:8px 6px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:13px;color-scheme:dark;"></label>' +
       '</div>' +
       '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
         '<select id="ms-wi-' + bid + '" style="flex:3;min-width:150px;padding:9px;border-radius:8px;border:1.5px solid #2a4a6a;background:#060d14;color:#b8d0f0;' + MONO + 'font-size:11px;"><option value="">📖 ' + msL('attach work instruction (optional)', 'adjuntar instrucción (opcional)') + '</option>' + wiOpts + '</select>' +
