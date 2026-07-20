@@ -98,9 +98,16 @@
       _get('mortalityLog', ['date', '>=', monthStart]),
       _get('pmHistory', ['ts', '>=', monthStartMs]),
       _get('laborPunch', ['ts', '>=', monthStartMs]),
-      _get('maintProjects')
+      _get('maintProjects'),
+      _get('tierExternal'),
+      _get('feedMade', ['date', '>=', monthStart])
     ]);
     var mChecks = res[0], mEgg = res[1], mPack = res[2], mMort = res[3], mPM = res[4], mLabor = res[5], projects = res[6];
+    var ext = {}; (res[7] || []).forEach(function (d) { try { ext[d._id] = JSON.parse(d.json || '{}'); } catch (e) {} });
+    var mFeed = res[8] || [];
+    // DAYS SAFE — same source of truth as Tier 1 / the printed huddle boards.
+    var safeDays = null;
+    Object.keys(ext).forEach(function (k) { var ds = ext[k] && ext[k].daysSafe; if (ds != null && (safeDays == null || ds < safeDays)) safeDays = ds; });
     var safety = [];
     try { if (typeof db !== 'undefined' && db) { var sd = await db.collection('safetySettings').doc('main').get(); if (sd.exists) safety = [sd.data()]; } } catch (e) {}
 
@@ -139,6 +146,7 @@
     var eggM = mEgg.reduce(function (s, r) { return s + (Number(r.eggs) || 0); }, 0);
     var dtM = mPack.reduce(function (s, r) { return s + (Number(r.downtimeMin) || 0); }, 0);
     var flagsM = mChecks.reduce(function (s, c) { return s + ((c.flags && c.flags.length) || 0); }, 0);
+    var millM = Math.round(mFeed.reduce(function (s, r) { return s + (Number(r.tons) || 0); }, 0) * 10) / 10;
     var incidentsM = (safety[0] && safety[0].lastIncidentDate && String(safety[0].lastIncidentDate).slice(0, 10) >= monthStart) ? 1 : 0;
 
     var metrics =
@@ -147,12 +155,13 @@
       _metric('🥚', L('Eggs processed', 'Huevos procesados'), _num(eggM), '', '#eab308') +
       _metric('⏱', L('Packing downtime', 'Paro empaque'), _num(dtM), 'min', '#f59e0b') +
       _metric('⚠️', L('Quality flags', 'Alertas calidad'), _num(flagsM), '', '#f59e0b') +
-      _metric('🦺', L('Safety incidents', 'Incidentes'), String(incidentsM), L('this month', 'este mes'), incidentsM ? '#ef4444' : '#22c55e') +
+      _metric('🦺', L('Days safe', 'Días seguros'), safeDays == null ? '—' : String(safeDays), incidentsM ? L('incident this month!', '¡incidente este mes!') : L('no incidents', 'sin incidentes'), (incidentsM || (safeDays != null && safeDays < 7)) ? '#ef4444' : '#22c55e') +
       _metric('🔧', L('WOs opened', 'OT abiertas'), _num(woOpenedM), openWO + ' ' + L('open now', 'abiertas'), '#3b82f6') +
       _metric('✅', L('WOs closed', 'OT cerradas'), _num(woClosedM), L('this month', 'este mes'), '#22c55e') +
       _metric('📋', L('PMs completed', 'PM completados'), _num(mPM.length), pmOverdue + ' ' + L('overdue now', 'vencidos'), '#3b82f6') +
       _metric('🗂', L('Projects open', 'Proyectos'), String(openProj), '', '#3b82f6') +
-      _metric('🔩', L('Critical parts', 'Piezas críticas'), String(critParts), L('at/below min', 'en/bajo mín'), critParts ? '#ef4444' : '#22c55e');
+      _metric('🔩', L('Critical parts', 'Piezas críticas'), String(critParts), L('at/below min', 'en/bajo mín'), critParts ? '#ef4444' : '#22c55e') +
+      _metric('🌾', L('Mill output', 'Molino'), millM > 0 ? _num(millM) : '—', millM > 0 ? L('tons this month', 'ton este mes') : L('no data yet', 'sin datos aún'), '#a3e635');
 
     // ── Weekly trend series ──
     function _wk(map) { return weeks.map(function (_, i) { return map[i] || 0; }); }
@@ -189,7 +198,8 @@
     function _dg(icon, txt) { return '<div style="display:flex;gap:9px;padding:8px 2px;border-bottom:1px solid #16223880;' + MONO + 'font-size:12px;color:#cfe0ff;"><span>' + icon + '</span><span>' + txt + '</span></div>'; }
     var avgMortDay = Math.round(mortM / daysElapsed);
     var digest =
-      _dg(incidentsM ? '🟥' : '🦺', incidentsM ? L('Safety incident this month — review', 'Incidente este mes — revisar') : L('No safety incidents this month', 'Sin incidentes este mes')) +
+      _dg(incidentsM ? '🟥' : '🦺', (safeDays != null ? (safeDays + L(' days safe · ', ' días seguros · ')) : '') + (incidentsM ? L('incident this month — review', 'incidente este mes — revisar') : L('no incidents this month', 'sin incidentes este mes'))) +
+      _dg('🌾', millM > 0 ? (_num(millM) + L(' tons feed made', ' ton de alimento hecho')) : L('Mill: no data entered yet', 'Molino: sin datos aún')) +
       _dg('🐔', checksDone + L(' checks done · ', ' revisiones · ') + complPct + L('% completion rate', '% de cumplimiento')) +
       _dg('💀', _num(mortM) + L(' birds mortality · avg ', ' aves · prom ') + avgMortDay + L('/day', '/día')) +
       _dg('🥚', _num(eggM) + L(' eggs processed', ' huevos procesados')) +

@@ -120,7 +120,8 @@
       _get('mortalityLog', ['date', '>=', weekStart]),
       _get('pmHistory', ['ts', '>=', weekStartMs]),
       _get('maintProjects'),
-      _get('tierExternal')
+      _get('tierExternal'),
+      _get('feedMade', ['date', '>=', weekStart])
     ]);
     var weekChecks = res[0], mwalks = res[1], weekEgg = res[2], weekPack = res[3], weekMort = res[4], weekPM = res[5], projects = res[6];
     // Farm-record numbers pushed daily at ~6:05 AM by the Command Center
@@ -129,6 +130,7 @@
     (res[7] || []).forEach(function (d) {
       try { ext[d._id] = JSON.parse(d.json || '{}'); if (d.updated > extUpdated) extUpdated = d.updated; } catch (e) {}
     });
+    var weekFeed = res[8] || [];
     var safety = [];
     try { if (typeof db !== 'undefined' && db) { var sd = await db.collection('safetySettings').doc('main').get(); if (sd.exists) safety = [sd.data()]; } } catch (e) {}
 
@@ -172,11 +174,19 @@
     var mortWorst = checks.reduce(function (m, c) { return Math.max(m, Number(c.mortCount) || 0); }, 0);
     var mortS = !hasChecks ? '-' : (mortWorst >= TH.mortHouseR ? 'r' : mortWorst >= TH.mortHouseY ? 'y' : 'g');
 
-    // Safety: days since last incident (falls back to the Command Center's DAYS SAFE)
+    // Safety: the Command Center's DAYS SAFE is the source of truth (same number
+    // as the printed huddle boards — worst/lowest across farms). Falls back to
+    // the app's own safetySettings only if the sync hasn't run.
     var safeDays = null;
-    if (safety[0] && safety[0].lastIncidentDate) { try { safeDays = Math.floor((Date.now() - new Date(safety[0].lastIncidentDate).getTime()) / 86400000); } catch (e) {} }
-    if (safeDays == null) { Object.keys(ext).forEach(function (k) { var ds = ext[k] && ext[k].daysSafe; if (ds != null && (safeDays == null || ds < safeDays)) safeDays = ds; }); }
+    Object.keys(ext).forEach(function (k) { var ds = ext[k] && ext[k].daysSafe; if (ds != null && (safeDays == null || ds < safeDays)) safeDays = ds; });
+    if (safeDays == null && safety[0] && safety[0].lastIncidentDate) { try { safeDays = Math.floor((Date.now() - new Date(safety[0].lastIncidentDate).getTime()) / 86400000); } catch (e) {} }
     var safeS = safeDays == null ? '-' : (safeDays >= TH.safeDaysG ? 'g' : safeDays >= TH.safeDaysY ? 'y' : 'r');
+
+    // Mill: feed made (tons) — from the app's own Feed Made records
+    var millToday = 0, millWk = 0;
+    weekFeed.forEach(function (r) { var tn = Number(r.tons) || 0; millWk += tn; if (r.date === t) millToday += tn; });
+    millToday = Math.round(millToday * 10) / 10; millWk = Math.round(millWk * 10) / 10;
+    var millS = millWk === 0 ? '-' : (millToday > 0 ? 'g' : 'y');
 
     // Lay % + live birds (farm records via tierExternal; lay values are fractions)
     var birdsTotal = 0, layNum = 0, layDen = 0;
@@ -226,6 +236,7 @@
       _tile('✅', L('Quality', 'Calidad'), qualS, !hasChecks ? '—' : (flagCount + ' ' + L('flags', 'alertas')), L('today', 'hoy'), ''),
       _tile('🥚', L('Egg Flow', 'Flujo Huevos'), eggS, eggsToday > 0 ? _num(eggsToday) : '—', eggsToday > 0 ? L('processed', 'procesados') : L('no run yet', 'sin corrida'), "closeTier1();typeof openProcessing==='function'&&openProcessing()"),
       _tile('🌽', L('Feed', 'Alimento'), feedS, !hasChecks ? '—' : (feedBad === 0 ? L('OK', 'OK') : feedBad + ' ' + L('low', 'bajo')), '', ''),
+      _tile('🌾', L('Mill Output', 'Molino'), millS, millWk === 0 ? '—' : (millToday + ' ' + L('tons today', 'ton hoy')), millWk === 0 ? L('no data yet', 'sin datos aún') : (millWk + ' ' + L('tons this week', 'ton semana')), ''),
       _tile('💧', L('Water', 'Agua'), waterS, (!hasChecks && !mwalks.length) ? '—' : (waterBad === 0 ? L('OK', 'OK') : waterBad + ' ' + L('issues', 'problemas')), '', ''),
       _tile('⏱', L('Downtime', 'Paro'), dtS, packLog.length === 0 ? '—' : (dtMin + ' min'), L('packing today', 'empaque hoy'), ''),
       _tile('📋', L('Past Due PMs', 'PM Vencidos'), pmS, String(pmOverdue), L('overdue', 'vencidos'), GM + "setTimeout(function(){typeof goMaintSection==='function'&&goMaintSection('pm')},150)"),
@@ -272,7 +283,7 @@
       (extUpdated ? _dg('📡', L('Farm records synced ', 'Registros sincronizados ') + extUpdated) : '');
 
     // ── Overall roll-up (today's status tiles that carry a real state) ──
-    var states = [safeS, layS, prodS, mortS, qualS, feedS, waterS, dtS, pmS, woS, partsS].filter(function (s) { return s !== '-'; });
+    var states = [safeS, layS, prodS, mortS, qualS, feedS, millS, waterS, dtS, pmS, woS, partsS].filter(function (s) { return s !== '-'; });
     var reds = states.filter(function (s) { return s === 'r'; }).length;
     var yels = states.filter(function (s) { return s === 'y'; }).length;
     var overall = reds ? 'r' : yels ? 'y' : 'g';
