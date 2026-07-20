@@ -12,6 +12,11 @@
 // wired to any button — the UI is manual-entry only.
 // ═══════════════════════════════════════════════════════════════════════════
 const EGGRUN_MACHINES = { Hegins: [1, 2], Danville: [1] };
+// Target finish ("all eggs done") time per plant. Any run time PAST this counts
+// as DOWNTIME (Joe, Hegins). "HH:MM" 24h. Add plants here as targets are set.
+const EGGRUN_TARGET_DONE = { Hegins: '11:45' };
+function erTargetDone(farm) { return EGGRUN_TARGET_DONE[farm] || null; }
+function _erMinOfDay(hhmm) { var m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '')); return m ? (+m[1]) * 60 + (+m[2]) : null; }
 
 function erL(en, es) { try { return (typeof _lang !== 'undefined' && _lang === 'es') ? es : en; } catch (e) { return en; } }
 
@@ -184,6 +189,53 @@ async function eggRunSetManualMin(farm, m, val) {
   }
 }
 
+// Run minutes from actual clock start/stop ("HH:MM"). Handles a run past midnight.
+function _erMinFromClock(start, stop) {
+  var a = /^(\d{1,2}):(\d{2})$/.exec(String(start || '')), b = /^(\d{1,2}):(\d{2})$/.exec(String(stop || ''));
+  if (!a || !b) return null;
+  var s = (+a[1]) * 60 + (+a[2]), e = (+b[1]) * 60 + (+b[2]);
+  var d = e - s; if (d < 0) d += 1440;
+  return d;
+}
+// "06:30" → "6:30 AM" for display (raw text if not HH:MM).
+function erFmtClock(v) {
+  var m = /^(\d{1,2}):(\d{2})$/.exec(String(v || '')); if (!m) return v || '';
+  var h = +m[1], ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12;
+  return h + ':' + m[2] + ' ' + ap;
+}
+// Save an actual start/stop time-of-day; run time (manualMin) is recomputed from the pair.
+async function eggRunSetClock(farm, m, which, val) {
+  try {
+    var rec = erRec(farm, m, erToday()) || {};
+    var patch = {}; patch[which === 'stop' ? 'stopClock' : 'startClock'] = val || null;
+    var start = which === 'start' ? val : (rec.startClock || null);
+    var stop = which === 'stop' ? val : (rec.stopClock || null);
+    var rm = _erMinFromClock(start, stop);
+    if (rm != null) patch.manualMin = rm;
+    // Anything past the plant's target done-time is downtime (Hegins target 11:45).
+    var tgt = _erMinOfDay(erTargetDone(farm)), stopMin = _erMinOfDay(stop);
+    if (tgt != null && stopMin != null) patch.downtimeMin = Math.max(0, stopMin - tgt);
+    patch.manualBy = erBy();
+    await _erSave(farm, m, patch);
+    if (typeof toast === 'function') toast('⏱ ' + farm + ' M' + m + ' ' + (which === 'stop' ? erL('stop', 'fin') : erL('start', 'inicio')) + ' ' + erFmtClock(val));
+    renderEggRun();
+  } catch (e) { console.error('eggRunSetClock:', e); if (typeof toast === 'function') toast(erL('Could not save time', 'No se pudo guardar')); }
+}
+// Each machine = 1 packer running 2 lanes. Save the packer name (onchange/blur so
+// typing isn't interrupted).
+async function eggRunSetPacker(farm, m, val) {
+  try { await _erSave(farm, m, { packer: (val || '').trim(), manualBy: erBy() }); }
+  catch (e) { console.error('eggRunSetPacker:', e); }
+}
+// Lanes running on this machine (default 2).
+async function eggRunSetLanes(farm, m, val) {
+  try {
+    var n = (val === '' || val == null) ? null : Math.max(0, Math.round(Number(val) || 0));
+    await _erSave(farm, m, { lanes: n, manualBy: erBy() });
+    renderEggRun();
+  } catch (e) { console.error('eggRunSetLanes:', e); }
+}
+
 // ── Render ──────────────────────────────────────────────────────────────────
 // Per-machine status line ("M1 🟢 running since 6:05 · Joe · 2h 10m").
 function _erStatusLine(farm, m, rec, multi) {
@@ -208,26 +260,51 @@ function _erStatusLine(farm, m, rec, multi) {
 function _erMachineDetail(farm, m, rec, multi) {
   var MONO = "font-family:'IBM Plex Mono',monospace;";
   var eggs = (rec && rec.eggs != null) ? Number(rec.eggs) : null;
-  var mins = (rec && rec.manualMin != null) ? Number(rec.manualMin)
-           : (rec && erRuns(rec).length ? Math.round(erTotalMs(rec) / 60000) : null);  // legacy runs fallback
+  var startC = (rec && rec.startClock) ? rec.startClock : '';
+  var stopC = (rec && rec.stopClock) ? rec.stopClock : '';
+  var mins = _erMinFromClock(startC, stopC);
+  if (mins == null && rec && rec.manualMin != null) mins = Number(rec.manualMin);  // legacy fallback
   var hrs = (mins || 0) / 60;
   var eph = (eggs && hrs > 0.05) ? Math.round(eggs / hrs) : null;
+  var epm = (eggs && mins > 0) ? Math.round(eggs / mins) : null;
+  var packer = (rec && rec.packer) ? rec.packer : '';
+  var lanes = (rec && rec.lanes != null) ? rec.lanes : 2;   // 2 lanes per machine
   var by = (rec && (rec.manualBy || rec.eggsBy || rec.by)) ? (rec.manualBy || rec.eggsBy || rec.by) : '';
+  var inp = 'background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:15px;font-weight:700;padding:9px 11px;color-scheme:dark;';
   return '<div style="' + (multi ? 'border-top:1px dashed #2a5a2a;padding-top:12px;margin-top:12px;' : '') + '">' +
-    (multi ? '<div style="' + MONO + 'font-size:12px;color:#d6b36a;font-weight:700;margin-bottom:8px;">' + erL('Machine', 'Máquina') + ' ' + m + '</div>' : '') +
-    // Run time (minutes)
+    '<div style="' + MONO + 'font-size:12px;color:#d6b36a;font-weight:700;margin-bottom:8px;">🖥 ' + erL('Machine', 'Máquina') + ' ' + m + '</div>' +
+    // Packer + lanes
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
-      '<label style="' + MONO + 'font-size:12px;color:#9ad6a0;font-weight:700;min-width:135px;">⏱ ' + erL('Run time (minutes)', 'Tiempo (minutos)') + '</label>' +
-      '<input type="number" min="0" inputmode="numeric" value="' + (mins != null ? mins : '') + '" onchange="eggRunSetManualMin(\'' + farm + '\',' + m + ',this.value)" placeholder="min" style="flex:1;min-width:100px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:10px 12px;">' +
-      (mins != null ? '<span style="' + MONO + 'font-size:11px;color:#9ab09a;">= ' + erFmtDur(mins * 60000) + '</span>' : '') +
+      '<label style="' + MONO + 'font-size:12px;color:#9cc0f6;font-weight:700;min-width:135px;">👷 ' + erL('Packer', 'Empacador') + '</label>' +
+      '<input list="staff-datalist" value="' + String(packer).replace(/"/g, '&quot;') + '" onchange="eggRunSetPacker(\'' + farm + '\',' + m + ',this.value)" placeholder="' + erL('name', 'nombre') + '" autocomplete="off" style="flex:2;min-width:120px;' + inp + '">' +
+      '<label style="' + MONO + 'font-size:12px;color:#9ab09a;">' + erL('Lanes', 'Carriles') + '</label>' +
+      '<input type="number" min="0" max="2" inputmode="numeric" value="' + lanes + '" onchange="eggRunSetLanes(\'' + farm + '\',' + m + ',this.value)" style="flex:0 0 56px;text-align:center;' + inp + '">' +
     '</div>' +
-    // Total eggs
+    // Start + Stop time of day
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;">' +
+      '<label style="' + MONO + 'font-size:12px;color:#9ad6a0;font-weight:700;min-width:135px;">⏱ ' + erL('Start / Stop time', 'Hora inicio / fin') + '</label>' +
+      '<input type="time" step="60" value="' + startC + '" onchange="eggRunSetClock(\'' + farm + '\',' + m + ',\'start\',this.value)" style="flex:1;min-width:96px;' + inp + '">' +
+      '<input type="time" step="60" value="' + stopC + '" onchange="eggRunSetClock(\'' + farm + '\',' + m + ',\'stop\',this.value)" style="flex:1;min-width:96px;' + inp + '">' +
+      (mins != null ? '<span style="' + MONO + 'font-size:12px;color:#4ade80;font-weight:700;">= ' + erFmtDur(mins * 60000) + ' ' + erL('run', 'corrida') + '</span>' : '') +
+    '</div>' +
+    // Target done-time + downtime past it (Hegins target 11:45)
+    (function () {
+      var tgt = erTargetDone(farm); if (!tgt) return '';
+      var tgtM = _erMinOfDay(tgt), stopM = _erMinOfDay(stopC);
+      var line;
+      if (stopM == null) { line = '<span style="color:#d6b36a;">🎯 ' + erL('target done ', 'meta ') + erFmtClock(tgt) + '</span>'; }
+      else if (stopM <= tgtM) { line = '<span style="color:#4ade80;font-weight:700;">🎯 ✅ ' + erL('done by ', 'terminó antes de ') + erFmtClock(tgt) + '</span>'; }
+      else { var dt = stopM - tgtM; line = '<span style="color:#f87171;font-weight:700;">🎯 ⚠ ' + erFmtDur(dt * 60000) + ' ' + erL('downtime past ', 'de paro después de ') + erFmtClock(tgt) + '</span>'; }
+      return '<div style="' + MONO + 'font-size:11px;margin-top:8px;background:#0c1a0c;border:1px solid #1e3a1e;border-radius:8px;padding:7px 10px;">' + line + '</div>';
+    })() +
+    // Total eggs → eggs/min + eggs/hr
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;">' +
       '<label style="' + MONO + 'font-size:12px;color:#f0d68a;font-weight:700;min-width:135px;">🥚 ' + erL('Total eggs today', 'Total de huevos hoy') + '</label>' +
       '<input type="number" min="0" inputmode="numeric" value="' + (eggs != null ? eggs : '') + '" onchange="eggRunEggsSet(\'' + farm + '\',' + m + ',this.value)" placeholder="0" style="flex:1;min-width:100px;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:10px 12px;">' +
-      '<div style="' + MONO + 'font-size:11px;color:#9ab09a;line-height:1.6;">' +
+      '<div style="' + MONO + 'font-size:11px;color:#9ab09a;line-height:1.7;">' +
         (eggs != null ? ('= ' + (Math.round(eggs / 12 * 10) / 10).toLocaleString() + ' dz') : '') +
-        (eph ? ('<br><b style="color:#4ade80;">' + eph.toLocaleString() + ' ' + erL('eggs/hr', 'huevos/hr') + '</b>') : '') +
+        (epm ? ('<br><b style="color:#4ade80;">' + epm.toLocaleString() + ' ' + erL('eggs/min', 'huevos/min') + '</b>') : '') +
+        (eph ? ('<br><span style="color:#7ab07a;">' + eph.toLocaleString() + ' ' + erL('eggs/hr', 'huevos/hr') + '</span>') : '') +
       '</div>' +
     '</div>' +
     (by ? '<div style="' + MONO + 'font-size:10px;color:#5a8a5a;margin-top:7px;">' + erL('Last entry by ', 'Última entrada por ') + by + '</div>' : '') +
@@ -248,12 +325,14 @@ function _erDailySummary(farms, t) {
     });
     var hrs = totMin / 60;
     var eph = (totEggs && hrs > 0.05) ? Math.round(totEggs / hrs) : null;
+    var epm = (totEggs && totMin > 0) ? Math.round(totEggs / totMin) : null;
     return '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid #163016;">' +
       '<span style="' + MONO + 'font-size:13px;font-weight:700;color:#e8f5ec;">🥚 ' + farm + '</span>' +
       '<span style="' + MONO + 'font-size:12px;color:#9ab09a;">' +
         '⏱ <b style="color:#9ad6a0;">' + (hasData ? erFmtDur(totMin * 60000) : '—') + '</b>' +
         ' · 🥚 <b style="color:#f0d68a;">' + (totEggs ? totEggs.toLocaleString() : '—') + '</b>' +
-        ' · <b style="color:' + (eph ? '#4ade80' : '#555') + ';">' + (eph ? (eph.toLocaleString() + ' ' + erL('eggs/hr', 'huevos/hr')) : '—') + '</b>' +
+        ' · <b style="color:' + (epm ? '#4ade80' : '#555') + ';">' + (epm ? (epm.toLocaleString() + ' ' + erL('eggs/min', 'huevos/min')) : '—') + '</b>' +
+        (eph ? ' <span style="color:#7ab07a;">(' + eph.toLocaleString() + ' ' + erL('eggs/hr', 'huevos/hr') + ')</span>' : '') +
       '</span>' +
     '</div>';
   }).join('');
