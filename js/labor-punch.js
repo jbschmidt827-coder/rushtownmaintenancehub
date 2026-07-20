@@ -205,10 +205,12 @@
     var rows = today.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); }).map(function (d) {
       var open2 = d.status !== 'closed' && !d.stop;
       var dur = open2 ? (lpL('open…', 'abierto…')) : _lpFmtDur(Number(d.minutes) || 0);
+      // Delete removed per Joe (2026-07-20) — a stray tap was wiping real time
+      // entries. Times are now permanent from the tablet. (lpRemove kept below
+      // for a future leader-gated correction path once login is back on.)
       return '<div style="display:flex;align-items:center;gap:8px;' + MONO + 'font-size:12px;color:#cfe0a0;padding:7px 0;border-bottom:1px solid #163016;">' +
         '<span style="flex:1;">' + _lpEsc(d.tech || '—') + ' → <b style="color:#9cc0f6;">' + _lpEsc(d.dept) + '</b>' + (d.manual ? ' <span style="color:#7a9a7a;">(' + lpL('manual', 'manual') + ')</span>' : '') + '</span>' +
         '<span style="color:' + (open2 ? '#fbbf24' : '#f0d68a') + ';font-weight:700;">' + dur + '</span>' +
-        '<button onclick="lpRemove(\'' + d._id + '\')" style="background:none;border:none;color:#7a4a4a;cursor:pointer;font-size:14px;padding:0 4px;">✕</button>' +
       '</div>';
     }).join('') || '<div style="' + MONO + 'font-size:12px;color:#5a7a5a;padding:8px 0;">' + lpL('No time logged yet today.', 'Sin tiempo registrado hoy.') + '</div>';
 
