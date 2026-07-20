@@ -89,6 +89,29 @@
     // ── JOE\'s HOOD CHICKEN ──
     ['🧢 HOOD CHICKEN 🧢',          'Joe pulled up with the Hood Chicken — gold chain, lil\' grill, struttin\' the barn like he runs it. (He does.)', _discoChicken],
     ['🐔 CERTIFIED STREET 🐔',      'Joe\'s Hood Chicken don\'t peck — it drops the beat. Bawk bawk, straight fire.', _discoChicken],
+    // ── Fresh batch (v233) ──
+    ['🥚 YOLK\'S ON YOU 🥚',        'Three taps and all you got was this joke. Worth it, though.'],
+    ['🐔 HEN COMMITTEE 🐔',         'The hens formed a committee to review your clicking. Verdict: pending.'],
+    ['🌽 CORN FUTURES 🌽',          'The flock invested in corn futures. Bold. Delicious.', _cornStorm],
+    ['🐓 ROOSTER ALARM 🐓',         'Rooster set a 4 AM alarm. For everyone. You\'re welcome.', _roosterAlarm],
+    ['🥚 QUALITY CHECK 🥚',         'A hen inspected your work. Gave it a solid "bawk out of ten."'],
+    ['🚀 TO THE MOON 🚀',           'A chicken strapped to a rocket. Mission: find better corn.', _rocketChicken],
+    ['🛸 CHICKABDUCTION 🛸',        'The mothership came for one hen. She went willingly. Traitor.', _ufoChicken],
+    ['🐣 IT HATCHED 🐣',            'You clicked so hard an egg actually hatched. Name it after yourself.', _giantEggHatch],
+    ['🪶 FEATHER STORM 🪶',         'Somebody ruffled the wrong hen. It\'s snowing feathers now.', _featherStorm],
+    ['🚜 PARKING JOB 🚜',           'The loader got parked sideways again. The chickens are judging.'],
+    ['📉 EGG-CONOMICS 📉',          'Supply up, demand up, chickens smug. Textbook.'],
+    ['🐔 GONE VIRAL 🐔',            'A barn cam caught a hen doing your job better. Two million views.'],
+    ['🐓 SHIFT CHANGE 🐓',          'The night rooster clocked in. Same energy, worse attitude.'],
+    ['📞 ON HOLD 📞',               'Maintenance put the chicken on hold. The chicken is not pleased.'],
+    ['🐣 NEW HIRE 🐣',              'A chick started today. Already out-working someone. No names.'],
+    ['🐔 WHO RUNS IT 🐔',           'You think you run the barn. The barn runs on the chickens. Humbling.'],
+    ['🥚 BONUS EGG 🥚',             'Surprise — a hen laid a bonus egg in your honor. Handle with care.'],
+    ['🌽 SNACK BREAK 🌽',           '{name} earned a snack. The flock voted unanimously.'],
+    ['🧹 CLEAN SWEEP 🧹',           '{name} left the barn cleaner than they found it. Chef\'s kiss.'],
+    ['🥚 EGG-STRA CREDIT 🥚',       '{name}, that was above and beyond. The hens took notes.'],
+    ['🐔 BAWK TO WORK 🐔',          'Break\'s over. The rooster said so. Blame the rooster.'],
+    ['🎤 DROP THE MIC 🎤',          '{name} closed it out and walked off. The flock went wild.'],
   ];
 
   // ── Per-facility packs — appended to COMMON for the active site ──
@@ -145,6 +168,12 @@
     _chickenTornado,
     _oldRoosterWheelchair,
     _youngTeachesOld,
+    _cornStorm,
+    _rocketChicken,
+    _giantEggHatch,
+    _ufoChicken,
+    _featherStorm,
+    _roosterAlarm,
   ];
 
   // ── Public entry point ──────────────────────────────────────
@@ -498,6 +527,110 @@
         }, i * 100);
       })(i);
     }
+  }
+
+  // ── Effect 17: Corn storm (rains corn + the odd chicken) ────
+  function _cornStorm() {
+    for (var i = 0; i < 28; i++) {
+      (function(i){ setTimeout(function(){
+        var el = document.createElement('div');
+        el.textContent = Math.random() < 0.85 ? '🌽' : '🐔';
+        el.style.cssText = 'position:fixed;z-index:9998;pointer-events:none;font-size:' + (20 + Math.random()*18) + 'px;left:' + (Math.random()*100) + 'vw;top:-40px;transition:top 1.6s linear,transform 1.6s linear;';
+        document.body.appendChild(el);
+        setTimeout(function(){ el.style.top = '110vh'; el.style.transform = 'rotate(' + (Math.random()*540-270) + 'deg)'; }, 30);
+        setTimeout(function(){ el.remove(); }, 1700);
+      }, i*90); })(i);
+    }
+  }
+
+  // ── Effect 18: Rocket chicken blasts across the screen ──────
+  function _rocketChicken() {
+    var el = document.createElement('div');
+    el.textContent = '🚀🐔';
+    el.style.cssText = 'position:fixed;z-index:9998;pointer-events:none;font-size:54px;left:-140px;bottom:8vh;white-space:nowrap;transition:left 2.6s cubic-bezier(.4,0,.9,.4),bottom 2.6s cubic-bezier(.4,0,.9,.4),transform 2.6s;filter:drop-shadow(0 0 12px rgba(255,180,60,.8));';
+    document.body.appendChild(el);
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.style.left = '120vw'; el.style.bottom = '92vh'; el.style.transform = 'rotate(22deg)'; }); });
+    setTimeout(function(){ el.remove(); }, 2800);
+  }
+
+  // ── Effect 19: Giant egg shakes + hatches into a chick ──────
+  function _giantEggHatch() {
+    var egg = document.createElement('div');
+    egg.textContent = '🥚';
+    egg.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;left:50%;top:46%;transform:translate(-50%,-50%) scale(.2);font-size:120px;transition:transform .5s;';
+    document.body.appendChild(egg);
+    requestAnimationFrame(function(){ egg.style.transform = 'translate(-50%,-50%) scale(1)'; });
+    var shakes = 0;
+    var iv = setInterval(function(){
+      shakes++;
+      egg.style.transform = 'translate(-50%,-50%) scale(1) rotate(' + (shakes % 2 ? 9 : -9) + 'deg)';
+      if (shakes > 7) {
+        clearInterval(iv);
+        egg.textContent = '🐣';
+        egg.style.transform = 'translate(-50%,-50%) scale(1.35) rotate(0)';
+        for (var i = 0; i < 10; i++) {
+          (function(i){
+            var c = document.createElement('div');
+            c.textContent = ['🐥','🐤','🥚'][i % 3];
+            c.style.cssText = 'position:fixed;z-index:9998;pointer-events:none;left:50%;top:46%;font-size:26px;transition:transform .9s ease-out,opacity .9s;';
+            document.body.appendChild(c);
+            var ang = (Math.PI * 2) * (i / 10), dist = 120 + Math.random() * 80;
+            requestAnimationFrame(function(){ c.style.transform = 'translate(' + (Math.cos(ang)*dist) + 'px,' + (Math.sin(ang)*dist) + 'px)'; c.style.opacity = '0'; });
+            setTimeout(function(){ c.remove(); }, 950);
+          })(i);
+        }
+        setTimeout(function(){ egg.style.transition = 'transform .4s,opacity .4s'; egg.style.opacity = '0'; egg.style.transform = 'translate(-50%,-50%) scale(2.2)'; setTimeout(function(){ egg.remove(); }, 450); }, 700);
+      }
+    }, 130);
+  }
+
+  // ── Effect 20: UFO abducts a chicken with a tractor beam ────
+  function _ufoChicken() {
+    var ufo = document.createElement('div'); ufo.textContent = '🛸';
+    ufo.style.cssText = 'position:fixed;z-index:9998;pointer-events:none;font-size:60px;left:-130px;top:12vh;transition:left 1.2s ease-out;';
+    document.body.appendChild(ufo);
+    var hen = document.createElement('div'); hen.textContent = '🐔';
+    hen.style.cssText = 'position:fixed;z-index:9998;pointer-events:none;font-size:40px;left:44vw;top:74vh;transition:top 1.4s ease-in,opacity 1.4s,transform 1.4s;';
+    document.body.appendChild(hen);
+    requestAnimationFrame(function(){ ufo.style.left = '42vw'; });
+    setTimeout(function(){
+      var beam = document.createElement('div');
+      beam.style.cssText = 'position:fixed;z-index:9997;pointer-events:none;left:45vw;top:16vh;width:70px;height:60vh;background:linear-gradient(to bottom,rgba(120,255,180,.55),rgba(120,255,180,0));clip-path:polygon(35% 0,65% 0,100% 100%,0 100%);';
+      document.body.appendChild(beam);
+      hen.style.top = '16vh'; hen.style.transform = 'scale(.4) rotate(360deg)'; hen.style.opacity = '0';
+      setTimeout(function(){ beam.remove(); ufo.style.transition = 'left 1s ease-in'; ufo.style.left = '120vw'; }, 1400);
+      setTimeout(function(){ ufo.remove(); hen.remove(); }, 2600);
+    }, 1200);
+  }
+
+  // ── Effect 21: Feather storm flutters down ──────────────────
+  function _featherStorm() {
+    for (var i = 0; i < 26; i++) {
+      (function(i){ setTimeout(function(){
+        var el = document.createElement('div'); el.textContent = '🪶';
+        el.style.cssText = 'position:fixed;z-index:9998;pointer-events:none;font-size:' + (16 + Math.random()*16) + 'px;left:' + (Math.random()*100) + 'vw;top:-30px;transition:top 2.4s linear,transform 2.4s ease-in-out;';
+        document.body.appendChild(el);
+        setTimeout(function(){ el.style.top = '108vh'; el.style.transform = 'translateX(' + (Math.random()*120-60) + 'px) rotate(' + (Math.random()*720-360) + 'deg)'; }, 30);
+        setTimeout(function(){ el.remove(); }, 2500);
+      }, i*110); })(i);
+    }
+  }
+
+  // ── Effect 22: Rooster alarm — flash + COCK-A-DOODLE-DOO ────
+  function _roosterAlarm() {
+    var flash = document.createElement('div');
+    flash.style.cssText = 'position:fixed;inset:0;z-index:9997;pointer-events:none;background:radial-gradient(circle,rgba(255,220,120,.55),transparent 70%);opacity:0;transition:opacity .3s;';
+    document.body.appendChild(flash);
+    var r = document.createElement('div'); r.textContent = '🐓';
+    r.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;left:50%;top:45%;transform:translate(-50%,-50%) scale(.4) rotate(-15deg);font-size:100px;transition:transform .3s;';
+    document.body.appendChild(r);
+    var msg = document.createElement('div'); msg.textContent = 'COCK-A-DOODLE-DOO!';
+    msg.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;left:50%;top:64%;transform:translateX(-50%) scale(.6);font-family:\'Bebas Neue\',sans-serif;letter-spacing:3px;font-size:40px;color:#f0c419;text-shadow:0 2px 8px rgba(0,0,0,.6);opacity:0;transition:opacity .3s,transform .3s;';
+    document.body.appendChild(msg);
+    requestAnimationFrame(function(){ flash.style.opacity = '1'; r.style.transform = 'translate(-50%,-50%) scale(1) rotate(8deg)'; msg.style.opacity = '1'; msg.style.transform = 'translateX(-50%) scale(1)'; });
+    var wob = 0;
+    var iv = setInterval(function(){ wob++; r.style.transform = 'translate(-50%,-50%) scale(1) rotate(' + (wob % 2 ? 10 : -10) + 'deg)'; if (wob > 5) clearInterval(iv); }, 160);
+    setTimeout(function(){ flash.style.opacity = '0'; r.style.transition = 'opacity .4s,transform .4s'; r.style.opacity = '0'; msg.style.opacity = '0'; setTimeout(function(){ flash.remove(); r.remove(); msg.remove(); }, 450); }, 1600);
   }
 
   // ── Effect 11: Conga line of dancing chickens ──────────────

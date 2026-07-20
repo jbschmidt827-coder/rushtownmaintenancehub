@@ -159,6 +159,48 @@
         '</div>'
       : '';
 
+    // ── THIS WEEK — hours OUT of maintenance by employee (last 7 days) ──
+    var weekAgo = Date.now() - 7 * 86400000;
+    var wk = _lpDocs.filter(function (d) { return d.status === 'closed' && (Number(d.ts) || 0) >= weekAgo; });
+    var byTech = {}, byDept = {}, weekTotal = 0;
+    wk.forEach(function (d) {
+      var m = Number(d.minutes) || 0; if (m <= 0) return;
+      var who = d.tech || '—';
+      if (!byTech[who]) byTech[who] = { total: 0, depts: {} };
+      byTech[who].total += m; byTech[who].depts[d.dept] = (byTech[who].depts[d.dept] || 0) + m;
+      byDept[d.dept] = (byDept[d.dept] || 0) + m; weekTotal += m;
+    });
+    var techKeys = Object.keys(byTech).sort(function (a, b) { return byTech[b].total - byTech[a].total; });
+    var weekHtml;
+    if (!techKeys.length) {
+      weekHtml = '<div style="' + MONO + 'font-size:12px;color:#5a7a5a;padding:10px 0;">' + lpL('No time out of maintenance logged this week.', 'Sin tiempo fuera de mantenimiento esta semana.') + '</div>';
+    } else {
+      var techRows = techKeys.map(function (who) {
+        var rec = byTech[who];
+        var chips = Object.keys(rec.depts).sort(function (a, b) { return rec.depts[b] - rec.depts[a]; })
+          .map(function (dp) { return '<span style="background:#0d1f3a;border:1px solid #2a5a8a;border-radius:6px;color:#9cc0f6;padding:2px 7px;margin:2px 3px 0 0;display:inline-block;font-size:10px;">' + _lpEsc(dp) + ' ' + _lpFmtDur(rec.depts[dp]) + '</span>'; }).join('');
+        return '<div style="padding:8px 0;border-bottom:1px solid #163016;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:baseline;">' +
+            '<b style="color:#f0ead8;' + MONO + 'font-size:13px;">' + _lpEsc(who) + '</b>' +
+            '<b style="color:#fbbf24;' + MONO + 'font-size:14px;">' + _lpFmtDur(rec.total) + '</b>' +
+          '</div>' +
+          '<div style="margin-top:3px;">' + chips + '</div>' +
+        '</div>';
+      }).join('');
+      var deptSummary = Object.keys(byDept).sort(function (a, b) { return byDept[b] - byDept[a]; })
+        .map(function (dp) { var pct = Math.round(byDept[dp] / weekTotal * 100); return _lpEsc(dp) + ' ' + _lpFmtDur(byDept[dp]) + ' (' + pct + '%)'; }).join(' · ');
+      weekHtml =
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">' +
+          '<span style="' + MONO + 'font-size:11px;color:#9ad6a0;font-weight:700;">' + lpL('Hours out by employee', 'Horas fuera por empleado') + '</span>' +
+          '<span style="' + MONO + 'font-size:12px;color:#fbbf24;font-weight:700;">' + lpL('total', 'total') + ' ' + _lpFmtDur(weekTotal) + '</span>' +
+        '</div>' +
+        techRows +
+        '<div style="' + MONO + 'font-size:10px;color:#8aa88a;margin-top:8px;line-height:1.6;"><b style="color:#7ab07a;">' + lpL('Where the labor went:', 'A dónde fue el trabajo:') + '</b> ' + deptSummary + '</div>';
+    }
+    var weekSection =
+      '<div style="' + MONO + 'font-size:10px;letter-spacing:1px;color:#5a8a5a;text-transform:uppercase;margin-bottom:6px;">📆 ' + lpL('This week · out of maintenance', 'Esta semana · fuera de mantenimiento') + '</div>' +
+      '<div style="background:#0c1a0c;border:1px solid #1e3a1e;border-radius:10px;padding:8px 12px;margin-bottom:14px;">' + weekHtml + '</div>';
+
     // Today's log rows (most recent first).
     var rows = today.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); }).map(function (d) {
       var open2 = d.status !== 'closed' && !d.stop;
@@ -188,6 +230,7 @@
             '<button onclick="lpManual()" style="flex:0 0 auto;padding:9px 14px;border-radius:8px;background:#14361c;border:1.5px solid #4ade80;color:#4ade80;' + MONO + 'font-size:14px;font-weight:700;cursor:pointer;">+ ' + lpL('Add', 'Agregar') + '</button>' +
           '</div>' +
         '</div>' +
+        weekSection +
         // Today's log
         '<div style="' + MONO + 'font-size:10px;letter-spacing:1px;color:#5a8a5a;text-transform:uppercase;margin-bottom:6px;">' + lpL('Today · ' + t, 'Hoy · ' + t) + '</div>' +
         '<div style="background:#0c1a0c;border:1px solid #1e3a1e;border-radius:10px;padding:4px 12px;">' + rows + '</div>' +
