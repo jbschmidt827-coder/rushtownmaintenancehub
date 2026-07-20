@@ -34,6 +34,29 @@
         ['Techs use ⏱ Time (Maintenance tab) EVERY time they help another department.', 'Los técnicos usan ⏱ Time (pestaña Mantenimiento) CADA vez que ayudan a otro departamento.'],
         ['Any part at/below minimum → order it and note it today.', 'Cualquier pieza en/bajo mínimo → ordénala y anótalo hoy.']
       ]},
+      { icon: '🚿', title: ['Maintenance — Front-End Flow Protector', 'Mantenimiento — Protector de Flujo (Frente)'], who: ['Front of houses — feed, water, eggs', 'Frente de las casas — alimento, agua, huevos'], items: [
+        ['The health and well-being of the chickens comes FIRST — before any task, always.', 'La salud y el bienestar de las gallinas es PRIMERO — antes de cualquier tarea, siempre.'],
+        ['Monitor feed: lines running, no empty pans, bin levels checked — problems flagged TODAY.', 'Vigila el alimento: líneas corriendo, sin platos vacíos, niveles de tolva revisados — problemas marcados HOY.'],
+        ['Monitor egg flow + egg collectors: belts moving, no jams, collectors clear house by house.', 'Vigila el flujo de huevos + colectores: bandas moviendo, sin atascos, colectores limpios casa por casa.'],
+        ['Watch water at the front: pressure, leaks, drinkers — anything off gets a Work Order.', 'Vigila el agua al frente: presión, fugas, bebederos — cualquier falla genera una Orden de Trabajo.'],
+        ['Run your assigned PMs and mark them done in the app the same day.', 'Haz tus PM asignados y márcalos hechos en la app el mismo día.'],
+        ['Open the job\'s 📖 Work Instruction before starting anything you don\'t do daily.', 'Abre la 📖 Instrucción de Trabajo antes de empezar algo que no haces a diario.']
+      ]},
+      { icon: '🔄', title: ['Maintenance — Back-End / Manure Runner', 'Mantenimiento — Trasero / Estiércol'], who: ['Back of houses — manure, belts, cleanup', 'Parte trasera — estiércol, bandas, limpieza'], items: [
+        ['The health and well-being of the chickens comes FIRST — before any task, always.', 'La salud y el bienestar de las gallinas es PRIMERO — antes de cualquier tarea, siempre.'],
+        ['Run the manure belts on schedule; log every run + belt %s in the Manure tab.', 'Corre las bandas de estiércol según el horario; registra cada corrida + % en la pestaña Estiércol.'],
+        ['Make sure ALL belts are adjusted and tracking right — a rip caught early is a cheap fix.', 'Asegura que TODAS las bandas estén ajustadas y alineadas — una rotura detectada temprano es barata.'],
+        ['Watch water at the back: lines, leaks, pressure — report anything off the same day.', 'Vigila el agua atrás: líneas, fugas, presión — reporta cualquier falla el mismo día.'],
+        ['Keep the back of every house cleaned up.', 'Mantén limpia la parte trasera de cada casa.'],
+        ['Remove dead chickens through the week — never let them sit.', 'Retira las gallinas muertas durante la semana — nunca las dejes acumularse.']
+      ]},
+      { icon: '🧰', title: ['Maintenance — Lead', 'Mantenimiento — Líder'], who: ['Sets up the team + owns parts', 'Organiza al equipo + dueño de piezas'], items: [
+        ['Set up ALL staff every morning — everyone knows their houses, jobs, and times (📅 Schedule tab).', 'Organiza a TODO el personal cada mañana — todos saben sus casas, trabajos y horarios (pestaña 📅 Horario).'],
+        ['Build NEXT week by Friday: assign projects and labor on the schedule before the week starts.', 'Arma la PRÓXIMA semana antes del viernes: asigna proyectos y mano de obra antes de que empiece la semana.'],
+        ['Make sure the app is used EVERY day: WOs closed, PMs marked, punch-outs logged, schedule followed.', 'Asegura que la app se use CADA día: OT cerradas, PM marcados, salidas registradas, horario seguido.'],
+        ['Jump into any house or department that needs help — you cover the whole operation.', 'Entra a cualquier casa o departamento que necesite ayuda — cubres toda la operación.'],
+        ['FULLY responsible for parts & inventory: counts right, minimums set, orders placed before we run out.', 'TOTALMENTE responsable de piezas e inventario: conteos correctos, mínimos definidos, pedidos antes de quedarnos sin nada.']
+      ]},
       { icon: '🏭', title: ['Processing Leader', 'Líder de Procesamiento'], who: ['Danville plant', 'Planta Danville'], items: [
         ['Start of run: tap ▶ Start on the machine. End of run: ⏹ Stop + total eggs (Daily Run).', 'Inicio de corrida: toca ▶ Start. Fin: ⏹ Stop + total de huevos (Corrida Diaria).'],
         ['Log downtime minutes with the reason — every stop, every day.', 'Registra los minutos de paro con la razón — cada paro, cada día.'],
