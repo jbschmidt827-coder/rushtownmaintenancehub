@@ -1188,8 +1188,13 @@ function bwInitFlow() {
   var _clCard = _bwCard('checklist');
   if (_clCard) {
     _clCard.classList.remove('bw-locked', 'bw-collapsed');
-    if (_bwChecklistDone()) _clCard.classList.add('bw-collapsed');
+    // v242: ALL condition cards now live INSIDE the checklist's blocks — don't
+    // collapse the checklist while any is unanswered (they'd be hidden while
+    // still required).
+    if (_bwChecklistDone() && _bwEmbeddedDone()) _clCard.classList.add('bw-collapsed');
   }
+  // Embedded cards are never flow-locked — crew fills them during their block.
+  _BW_EMBEDDED.forEach(function (n) { var c = _bwCard(n); if (c) c.classList.remove('bw-locked', 'bw-collapsed'); });
   bwFlowRefresh(false);
 }
 
@@ -1246,9 +1251,13 @@ function bwFlowRefresh(fromTap) {
       }
     }
   }
-  // Keep the Daily Checklist card OPEN until all its tasks are reviewed, then collapse it (per Joe).
+  // Keep the Daily Checklist card OPEN until all its tasks are reviewed AND
+  // every embedded condition card is answered (v242: all conditions live in
+  // their blocks now).
   var _clc = _bwCard('checklist');
-  if (_clc) { if (_bwChecklistDone()) _clc.classList.add('bw-collapsed'); else _clc.classList.remove('bw-collapsed'); }
+  if (_clc) { if (_bwChecklistDone() && _bwEmbeddedDone()) _clc.classList.add('bw-collapsed'); else _clc.classList.remove('bw-collapsed'); }
+  // Embedded cards stay tappable regardless of flow position.
+  _BW_EMBEDDED.forEach(function (n) { var c = _bwCard(n); if (c) c.classList.remove('bw-locked'); });
   // Record live completion % for this house so the barn grid can show it fill in
   if (_bwFarm && _bwHouse) BARN_PROGRESS[_bwFarm + '-' + _bwHouse] = _bwComputePct();
   checkBWReady();
@@ -1625,6 +1634,12 @@ if (typeof window !== 'undefined') window.bwTagNote = bwTagNote;
 // logged-in user IS the name). Runtime DOM reorder + hide — no risky HTML
 // surgery. Re-applied on every barn-walk open so it always sticks.
 var _BW_CARD_ORDER = ['checklist','mortality','eggscollect','air','feedwater','belts','pest','equipment','weekly','cageclean','notes'];
+// Cards embedded inside the 7 blocks (v240/v242) — never flow-locked, and the
+// checklist card can't collapse until every one of them is answered.
+var _BW_EMBEDDED = ['feedwater','air','mortality','pest','eggscollect','belts','equipment'];
+function _bwEmbeddedDone() {
+  try { return _BW_EMBEDDED.every(function (n) { return bwBlockComplete(n); }); } catch (e) { return false; }
+}
 function _bwArrangeCards() {
   try {
     var modal = document.getElementById('barn-walk-modal');
@@ -1639,6 +1654,33 @@ function _bwArrangeCards() {
       container.appendChild(c);
       // Compact every condition card so the 7-block checklist stays the focus.
       if (name !== 'checklist') c.classList.add('bw-compact');
+    });
+    // v240/v242 (per Joe): MERGE condition cards into their time block — each
+    // condition is answered INSIDE the block where the work happens, not down
+    // below. Inserted inside the block's bordered wrapper, right after its task
+    // rows, in this order. pct/flow logic unaffected (reads each card's own
+    // inline display). Ordered pairs: [cardName, blockId].
+    var MERGE_INTO_BLOCK = [
+      ['feedwater', 'b1'],   // Block 1 · Feed/Water/Vent
+      ['air',       'b1'],   //   air + entry doors + inlet vents
+      ['mortality', 'b2'],   // Block 2 · Mortality & Bird Check
+      ['pest',      'b2'],   //   rodent/fly live in b2's rows already
+      ['eggscollect','b5'],  // Block 4 · After run · under egg collectors
+      ['belts',     'b6'],   // Block 6 · Equipment Check
+      ['equipment', 'b6'],
+    ];
+    var _anchor = {};   // blockId → last inserted node (keeps listed order)
+    MERGE_INTO_BLOCK.forEach(function (pair) {
+      var name = pair[0], blk = pair[1];
+      var card = modal.querySelector('.bw-card[data-bw-block="' + name + '"]');
+      var body = modal.querySelector('[data-block-body="' + blk + '"]');
+      if (card && body && body.parentNode) {
+        var after = _anchor[blk] || body;
+        after.parentNode.insertBefore(card, after.nextSibling);
+        _anchor[blk] = card;
+        card.classList.add('bw-compact');
+        card.classList.remove('bw-locked', 'bw-collapsed');   // usable during its block
+      }
     });
     // Hide the name/"Employee Check-In" card when we already know who's logged in.
     var emp = container.querySelector('.bw-card[data-bw-block="employee"]');

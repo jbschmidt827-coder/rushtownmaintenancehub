@@ -45,6 +45,27 @@
   }
 
   function _nameVal() { var el = document.getElementById('tc-name'); return el ? String(el.value || '').trim() : ''; }
+
+  // Name PICKER like the Daily EE Check — pick from the staff list instead of
+  // typing (Joe 2026-07-22). ALL active staff (login-roster lesson: never
+  // site-scope a sign-in list — people cover other sites). Falls back to a
+  // text input if the staff list isn't loaded yet.
+  function _nameField(cur) {
+    var names = [];
+    try {
+      if (typeof staffList !== 'undefined' && Array.isArray(staffList)) {
+        names = staffList.filter(function (s) { return s && s.active !== false && s.name; })
+          .map(function (s) { return s.name; })
+          .sort(function (a, b) { return a.localeCompare(b); });
+      }
+    } catch (e) {}
+    if (!names.length) {
+      return '<input id="tc-name" list="staff-datalist" value="' + _esc(cur) + '" onchange="renderTimeClock()" placeholder="' + tcL('Type your name', 'Escribe tu nombre') + '" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1.5px solid #2a5a6a;background:#06121a;color:#e8f5ec;' + MONO + 'font-size:16px;font-weight:700;margin-bottom:12px;">';
+    }
+    var opts = '<option value="">— ' + tcL('pick your name', 'elige tu nombre') + ' —</option>' +
+      names.map(function (n) { var e = _esc(n); return '<option value="' + e + '"' + (n === cur ? ' selected' : '') + '>' + e + '</option>'; }).join('');
+    return '<select id="tc-name" onchange="renderTimeClock()" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1.5px solid #2a5a6a;background:#06121a;color:#e8f5ec;' + MONO + 'font-size:16px;font-weight:700;margin-bottom:12px;">' + opts + '</select>';
+  }
   function _openPunch(name) {
     if (!name) return null;
     return _tcDocs.find(function (d) { return d.status === 'in' && !d.outTs && String(d.name || '').toLowerCase() === name.toLowerCase(); }) || null;
@@ -137,7 +158,7 @@
         '</div>' +
       '</div>' +
       '<label style="' + MONO + 'font-size:10px;letter-spacing:1px;color:#5a8a9a;text-transform:uppercase;display:block;margin-bottom:4px;">' + tcL('Your name', 'Tu nombre') + '</label>' +
-      '<input id="tc-name" list="staff-datalist" value="' + _esc(name) + '" onchange="renderTimeClock()" placeholder="' + tcL('Type your name', 'Escribe tu nombre') + '" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1.5px solid #2a5a6a;background:#06121a;color:#e8f5ec;' + MONO + 'font-size:16px;font-weight:700;margin-bottom:12px;">' +
+      _nameField(name) +
       action +
       '<div style="' + MONO + 'font-size:10px;letter-spacing:1px;color:#5a8a9a;text-transform:uppercase;margin-bottom:6px;">📅 ' + tcL('Today', 'Hoy') + ' · ' + t + '</div>' +
       '<div style="background:#0c181c;border:1px solid #1e3a44;border-radius:10px;padding:4px 12px;margin-bottom:14px;">' + todayRows + '</div>' +
