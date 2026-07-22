@@ -664,8 +664,32 @@ function _bwReplayQueued() {
       if (q.length - still.length > 0) console.log('Replayed', q.length - still.length, 'queued daily check(s)');
     });
   } catch (e) { /* non-fatal */ }
+  // v238: morning walks queue too (same deterministic farm-house-date doc).
+  try {
+    const mq = JSON.parse(localStorage.getItem('mwQueuedSubmits') || '[]');
+    if (mq.length) {
+      const mstill = [];
+      let mchain = Promise.resolve();
+      mq.forEach(rec => {
+        const id = (rec && rec.farm && rec.house != null && rec.date) ? (rec.farm + '-' + rec.house + '-' + rec.date) : null;
+        mchain = mchain.then(() =>
+          (id ? db.collection('morningWalks').doc(id).set(rec, { merge: true })
+              : db.collection('morningWalks').add(rec)).catch(() => { mstill.push(rec); }));
+      });
+      mchain.then(() => {
+        localStorage.setItem('mwQueuedSubmits', JSON.stringify(mstill));
+        if (mq.length - mstill.length > 0) console.log('Replayed', mq.length - mstill.length, 'queued morning walk(s)');
+      });
+    }
+  } catch (e) { /* non-fatal */ }
 }
+// v238: replay parked checks aggressively — a check should NEVER wait for the
+// next app open. Shortly after boot, whenever the connection comes back,
+// whenever the app is foregrounded, and every 5 minutes as a safety net.
 setTimeout(_bwReplayQueued, 6000);
+try { window.addEventListener('online', function () { setTimeout(_bwReplayQueued, 1500); }); } catch (e) {}
+try { document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(_bwReplayQueued, 1500); }); } catch (e) {}
+setInterval(_bwReplayQueued, 5 * 60 * 1000);
 
 // ── NIGHTLY ROLLOVER: unsubmitted = incomplete + discarded ──────────────────
 // A daily check NOT submitted by midnight counts as INCOMPLETE and is DISCARDED
@@ -1811,8 +1835,18 @@ async function submitBarnWalk() {
   // every employee updates the SAME daily entry instead of creating a new one
   // per person. Read it first to know if this is the first submit today (so
   // auto-WOs fire once) and to append everyone who worked it (contributors[]).
+  // v238 P0: scrub `undefined` fields BEFORE the write. An undefined field
+  // makes the SDK reject the ENTIRE set() (sync throw) — legacy fields like
+  // `dryers` (no UI anymore) and day-gated ones (`fly` on non-Tuesdays) were
+  // undefined on every fresh check, so EVERY fresh submit threw → queued to
+  // localStorage → only uploaded on the next app open. That was the "checks
+  // entered but never came in" bug. (core.js also sets
+  // ignoreUndefinedProperties — this is belt-and-suspenders.)
+  Object.keys(record).forEach(function (k) { if (record[k] === undefined) record[k] = null; });
+
   const _bwId = _bwFarm + '-' + _bwHouse + '-' + record.date;
   let isFirstSubmit = true;
+  let _bwSaveQueued = false;   // true → record parked locally, NOT yet in Firestore
   try {
     const _ref = db.collection('barnWalks').doc(_bwId);
     let _prev = null;
@@ -1825,13 +1859,17 @@ async function submitBarnWalk() {
     await _ref.set(record, { merge: true });
     _bwDocId = _bwId;
   } catch(e) {
-    // NEVER lose a walk: park it on the device and replay on next app load.
+    // NEVER lose a walk: park it on the device and replay (on reconnect, on a
+    // timer, and at next app load — see _bwReplayQueued wiring).
     console.error('barnWalk save failed — queued locally:', e);
+    _bwSaveQueued = true;
     try {
       const q = JSON.parse(localStorage.getItem('bwQueuedSubmits') || '[]');
       q.push(record);
       localStorage.setItem('bwQueuedSubmits', JSON.stringify(q));
     } catch(e2) { console.error('local queue failed too:', e2); }
+    // Honest feedback: amber "saved on device" instead of the green success.
+    try { if (typeof toast === 'function') toast((typeof _lang !== 'undefined' && _lang === 'es') ? '📴 Guardado en la tablet — se enviará al reconectar' : '📴 Saved on this tablet — will upload when connection returns'); } catch (e3) {}
   }
 
   // ── Activity Log ──
@@ -2461,7 +2499,17 @@ async function submitMorningWalk() {
     record.firstBy = (_prev && _prev.firstBy) || employee;
     record.firstTs = (_prev && _prev.firstTs) || record.ts;
     await _ref.set(record, { merge: true });
-  } catch(e) { console.error('morningWalk save:', e); }
+  } catch(e) {
+    // v238: same never-lose-a-walk queue as the daily check (was console-only —
+    // a failed morning walk vanished while the crew saw success).
+    console.error('morningWalk save:', e);
+    try {
+      const q = JSON.parse(localStorage.getItem('mwQueuedSubmits') || '[]');
+      q.push(record);
+      localStorage.setItem('mwQueuedSubmits', JSON.stringify(q));
+      if (typeof toast === 'function') toast((typeof _lang !== 'undefined' && _lang === 'es') ? '📴 Guardado en la tablet — se enviará al reconectar' : '📴 Saved on this tablet — will upload when connection returns');
+    } catch(e2) { console.error('mw local queue failed too:', e2); }
+  }
 
   // ── Activity Log ──
   try {

@@ -12,6 +12,19 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+// ── v238 P0 FIX: never let an `undefined` field kill a save ────────────────
+// The SDK REJECTS the ENTIRE write (synchronous throw, before network) if any
+// field is `undefined`. submitBarnWalk carried legacy fields (dryers, some
+// day-gated ones like fly) that are undefined on a fresh check → every fresh
+// Daily EE Check submit threw, fell into the localStorage queue, and only
+// uploaded on the NEXT app open. That was the "checks were done but never came
+// in until everyone restarted" bug. With this setting, undefined fields are
+// simply ignored instead of poisoning the write. MUST run before any other
+// Firestore use (and before enablePersistence).
+try {
+  db.settings({ ignoreUndefinedProperties: true, merge: true });
+} catch (e) { console.warn('db.settings failed:', e); }
+
 // ── OFFLINE PERSISTENCE ──────────────────────────────────────────────────
 // Keeps a copy of Firestore data in the browser's IndexedDB so the app loads
 // and shows live data even with no signal in the barns. Writes made while
@@ -779,7 +792,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v237 · Jul 20 2026';
+var APP_VERSION = 'v238 · Jul 22 2026';
 
 // LOCAL calendar day "YYYY-MM-DD". Everything that means "today" must use this,
 // NOT new Date().toISOString().slice(0,10) — toISOString is UTC, so on Eastern

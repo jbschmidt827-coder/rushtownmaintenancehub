@@ -1576,10 +1576,24 @@ async function updateShipStatus(fbId,newStatus) {
   const update={status:newStatus};
   if(['shipped','delivered'].includes(newStatus)) { const t=new Date(); update.actDep=t.toTimeString().slice(0,5); }
   if(newStatus==='hold') {
-    update.delayReason=prompt('Hold/delay reason (optional):')||'';
-    const dm=prompt('Damage or shortage notes (optional):')||'';
-    if(dm) update.damageNotes=dm;
+    // v238: native prompt() is SUPPRESSED in the installed iPad PWA (returned
+    // null every time → hold/damage reasons were silently saved empty). Use the
+    // in-app promptInline instead, chained: reason → damage notes → save.
+    if (typeof promptInline === 'function') {
+      promptInline('Hold/delay reason (optional):', function (reason) {
+        update.delayReason = (reason || '').trim();
+        promptInline('Damage or shortage notes (optional):', function (dm) {
+          if (dm && dm.trim()) update.damageNotes = dm.trim();
+          _shipApplyUpdate(fbId, record, update, newStatus);
+        });
+      });
+      return;
+    }
+    update.delayReason='';
   }
+  _shipApplyUpdate(fbId, record, update, newStatus);
+}
+async function _shipApplyUpdate(fbId, record, update, newStatus) {
   try {
     if(!fbId.startsWith('demo-')) await db.collection('opsShipping').doc(fbId).update(update);
     Object.assign(record,update);

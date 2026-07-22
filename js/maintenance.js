@@ -327,10 +327,10 @@ async function saveWOUpdate(fbId) {
   const entry = { text, by, time, ts: Date.now() };
 
   try {
-    const wo = workOrders.find(w => w._fbId === fbId);
-    const current = wo?.updates || [];
+    // v238: arrayUnion instead of read-modify-write — two people commenting on
+    // the same WO at the same time no longer clobber each other's update.
     await db.collection('workOrders').doc(fbId).update({
-      updates: [...current, entry]
+      updates: firebase.firestore.FieldValue.arrayUnion(entry)
     });
     const res = document.getElementById('wo-update-result');
     if (res) res.style.display = 'block';
@@ -2057,6 +2057,7 @@ async function savePartsQty() {
   if (!editingPartId) return;
   const min = parseInt(document.getElementById('parts-modal-min').value)||1;
   const oldQty = (partsInventory[editingPartId]||{qty:0}).qty;
+  const oldMin = (partsInventory[editingPartId]||{min:1}).min;
   partsInventory[editingPartId] = {qty: editingPartQty, min};
   try {
     await db.collection('partsInventory').doc(editingPartId).set({qty: editingPartQty, min, ts: firebase.firestore.FieldValue.serverTimestamp()});
@@ -2072,7 +2073,13 @@ async function savePartsQty() {
       date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
       ts: Date.now()
     });
-  } catch(e) { console.error(e); }
+  } catch(e) {
+    // v238: a failed write used to leave the screen showing a count that never
+    // saved (inventory accuracy risk). Revert the local copy and say so.
+    console.error(e);
+    partsInventory[editingPartId] = {qty: oldQty, min: oldMin};
+    alert('⚠ Parts count did NOT save — check connection and try again.');
+  }
   closePartsModal();
   renderParts();
   updatePartsAlerts();
@@ -4363,7 +4370,8 @@ async function opsSaveMortality() {
   if (!OPS_DATA.mortality) OPS_DATA.mortality = {};
   OPS_DATA.mortality[key] = record;
   setSyncDot('saving');
-  await db.collection('opsLogs').doc(key).set(record);
+  try { await db.collection('opsLogs').doc(key).set(record); }
+  catch (e) { console.error('opsSaveMortality:', e); delete OPS_DATA.mortality[key]; setSyncDot('live'); alert('⚠ Mortality entry did NOT save — try again.'); return; }
   setSyncDot('live');
   opsBwRenderMort();
   opsUpdateLandingCard();
@@ -4381,7 +4389,8 @@ async function opsSaveTemp() {
   if (!OPS_DATA.temp) OPS_DATA.temp = {};
   OPS_DATA.temp[key] = record;
   setSyncDot('saving');
-  await db.collection('opsLogs').doc(key).set(record);
+  try { await db.collection('opsLogs').doc(key).set(record); }
+  catch (e) { console.error('opsSaveTemp:', e); delete OPS_DATA.temp[key]; setSyncDot('live'); alert('⚠ Temp entry did NOT save — try again.'); return; }
   setSyncDot('live');
   document.getElementById('bw-temp-val').value = '';
   document.getElementById('bw-temp-loc').value = '';
@@ -4401,7 +4410,8 @@ async function opsSavePSI() {
   if (!OPS_DATA.psi) OPS_DATA.psi = {};
   OPS_DATA.psi[key] = record;
   setSyncDot('saving');
-  await db.collection('opsLogs').doc(key).set(record);
+  try { await db.collection('opsLogs').doc(key).set(record); }
+  catch (e) { console.error('opsSavePSI:', e); delete OPS_DATA.psi[key]; setSyncDot('live'); alert('⚠ PSI entry did NOT save — try again.'); return; }
   setSyncDot('live');
   document.getElementById('bw-psi-val').value = '';
   document.getElementById('bw-psi-loc').value = '';
