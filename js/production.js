@@ -1800,7 +1800,11 @@ async function submitBarnWalk() {
     pct: (function () { try { return (typeof _bwComputePct === 'function') ? _bwComputePct() : null; } catch (e) { return null; } })(),
     date: LDATE(),
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
-    ts: Date.now()
+    ts: Date.now(),
+    // Stamp which app build this check was submitted from — makes a stale iPad
+    // (old cached version) instantly identifiable when a check comes in wrong or
+    // not at all. Safe: just a label on the record.
+    appVersion: (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '')
   };
 
   // ONE record per house per DAY — deterministic doc id (farm-house-date) so
