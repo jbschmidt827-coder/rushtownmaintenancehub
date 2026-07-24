@@ -138,7 +138,7 @@
       catch (e) { console.warn('tier1 sub ' + key + ':', e); }
     }
     sub('barnWalks', db.collection('barnWalks').where('date', '>=', ws));
-    sub('morningWalks', db.collection('morningWalks').where('date', '==', t));
+    sub('morningWalks', db.collection('morningWalks').where('date', '>=', ws));
     sub('eggDailyRun', db.collection('eggDailyRun').where('date', '>=', ws));
     sub('processingLog', db.collection('processingLog').where('date', '>=', ws));
     sub('mortalityLog', db.collection('mortalityLog').where('date', '>=', ws));
@@ -189,9 +189,19 @@
       var _only = {}; if (ext[S]) _only[S] = ext[S]; ext = _only;
     }
 
-    var checks = weekChecks.filter(function (c) { return c.date === t; });
-    var eggRun = weekEgg.filter(function (r) { return r.date === t; });
-    var packLog = weekPack.filter(function (r) { return r.date === t; });
+    // ── Day scoping w/ YESTERDAY FALLBACK (v246): the NOW tiles read today, but
+    // first thing in the morning today is empty — so if nothing's entered today
+    // yet, fall back to yesterday's completed data and label it, instead of a
+    // blank board. Lay/Birds/Safety (farm records) + WO/PM/Parts are always
+    // current and unaffected.
+    var _yd = (function () { var d = new Date(); d.setDate(d.getDate() - 1); return _dayStr(d); })();
+    var _todayHasData = weekChecks.some(function (c) { return c.date === t; }) || weekEgg.some(function (r) { return r.date === t; }) || weekPack.some(function (r) { return r.date === t; });
+    var effDay = _todayHasData ? t : _yd;
+    var _dayLbl = _todayHasData ? '' : L(' · yesterday', ' · ayer');
+    var checks = weekChecks.filter(function (c) { return c.date === effDay; });
+    var eggRun = weekEgg.filter(function (r) { return r.date === effDay; });
+    var packLog = weekPack.filter(function (r) { return r.date === effDay; });
+    mwalks = mwalks.filter(function (w) { return w.date === effDay; });
     var hasChecks = checks.length > 0;
 
     // ── App globals (scoped to the site tab too) ──
@@ -361,14 +371,18 @@
     var overall = reds ? 'r' : yels ? 'y' : 'g';
     var overallTxt = reds ? (reds + ' ' + L('need attention', 'requieren atención')) : yels ? (yels + ' ' + L('to watch', 'a vigilar')) : L('All green', 'Todo en verde');
 
-    o.innerHTML = _shell(null, tiles, overall, overallTxt, trends, digest);
+    // Yesterday-fallback banner above the NOW tiles.
+    var dayNote = _todayHasData ? '' :
+      '<div style="' + MONO + 'font-size:11px;color:#e8c96a;background:#231a08;border:1.5px solid #7a5a1a;border-radius:10px;padding:9px 12px;margin:2px 0 4px;">🕓 ' +
+      L('Showing YESTERDAY (' + _yd.slice(5).replace('-', '/') + ') — nothing entered today yet', 'Mostrando AYER (' + _yd.slice(5).replace('-', '/') + ') — nada ingresado hoy aún') + '</div>';
+    o.innerHTML = _shell(null, tiles, overall, overallTxt, trends, digest, dayNote);
   }
 
   function _sec(label) {
     return '<div style="' + MONO + 'font-size:11px;letter-spacing:1.5px;color:#6aa06a;text-transform:uppercase;margin:22px 2px 9px;font-weight:700;">' + label + '</div>';
   }
 
-  function _shell(loadingMsg, tiles, overall, overallTxt, trends, digest) {
+  function _shell(loadingMsg, tiles, overall, overallTxt, trends, digest, dayNote) {
     var dot = overall ? _dot(overall) : '#5a7a5a';
     var dateStr = new Date().toLocaleDateString(_es() ? 'es-ES' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     var head = '<div style="max-width:820px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 26px) 14px 60px;">' +
@@ -389,6 +403,7 @@
         '<span style="' + MONO + 'font-size:14px;font-weight:700;color:#f0ead8;">' + overallTxt + '</span>' +
       '</div>' +
       _sec(L('Now · tap a tile to open it', 'Ahora · toca para abrir')) +
+      (dayNote || '') +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:9px;">' + tiles + '</div>' +
       _sec(L('This week · trends', 'Esta semana · tendencias')) +
       '<div style="background:#0c1a0c;border:1.5px solid #1e3a1e;border-radius:12px;padding:6px 14px;">' + trends + '</div>' +
