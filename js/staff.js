@@ -769,7 +769,13 @@ async function renderStaffSched() {
   const weekStart = new Date(_staffSchedWeekOf + 'T00:00:00');
 
   // Build table
-  let html = '<table style="width:100%;border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:11px;">';
+  // v248: quick roster controls right on the schedule — fix a wrong name, add a
+  // person, without leaving this screen. (Tap any name below to edit it too.)
+  let html = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">' +
+    '<button onclick="if(typeof enterApp===\'function\')enterApp(\'staff\')" style="padding:8px 13px;background:#14361c;border:1.5px solid #4ade80;border-radius:8px;color:#86efac;font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:700;cursor:pointer;">＋ Add / manage roster</button>' +
+    '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#5a7a5a;">✏️ tap any name to fix it / edit details</span>' +
+  '</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:11px;">';
 
   // Header
   html += '<thead><tr>';
@@ -803,7 +809,7 @@ async function renderStaffSched() {
     html += `<tr style="border-top:1px solid #121e12;${onCall ? 'background:#0d1a0d;' : ''}${isLeader ? 'border-left:3px solid #4ade80;' : ''}">`;
     html += `<td style="padding:6px 10px;color:#c0d8c0;white-space:nowrap;">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-        <span>${s.name}</span>
+        <span onclick="editStaffOpen('${safeId}')" style="cursor:pointer;border-bottom:1px dotted #4a6a4a;" title="Edit name / role / site / PIN">${s.name} <span style="font-size:10px;">✏️</span></span>
         ${isLeader ? '<span style="font-size:9px;background:#1a4a1a;border:1px solid #4ade80;border-radius:4px;padding:1px 5px;color:#4ade80;font-family:\'IBM Plex Mono\',monospace;font-weight:700;">👑 LEADER</span>' : ''}
         ${onCall ? '<span style="font-size:9px;background:#1a4a1a;border:1px solid #4ade80;border-radius:4px;padding:1px 5px;color:#4ade80;font-family:\'IBM Plex Mono\',monospace;font-weight:700;">ON CALL</span>' : ''}
       </div>
