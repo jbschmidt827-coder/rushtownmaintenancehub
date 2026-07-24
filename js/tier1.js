@@ -50,8 +50,12 @@
     }
     return o;
   }
-  window.openTier1 = function () { var o = _ov(); o.style.display = 'block'; try { window.scrollTo(0, 0); } catch (e) {} renderTier1(); };
-  window.closeTier1 = function () { var o = document.getElementById('tier1-overlay'); if (o) o.style.display = 'none'; };
+  window.openTier1 = function () {
+    var o = _ov(); o.style.display = 'block'; try { window.scrollTo(0, 0); } catch (e) {}
+    if (!_t1listening) o.innerHTML = _shell(L('Loading live status…', 'Cargando estado…'));
+    _t1Listen(); _t1draw();
+  };
+  window.closeTier1 = function () { var o = document.getElementById('tier1-overlay'); if (o) o.style.display = 'none'; _t1Unlisten(); };
 
   // ── Site tabs: each tab = one site (Joe 2026-07-20). 'All' = whole operation. ──
   var _t1Site = null;
@@ -121,36 +125,55 @@
     } catch (e) { return []; }
   }
 
-  async function renderTier1() {
+  // ── LIVE (v244): onSnapshot listeners fill _t1cache so the board updates on
+  // every tablet the moment data lands — no reopening. openTier1 attaches them;
+  // closeTier1 detaches. Snapshots are debounced into one repaint. ──
+  var _t1subs = [], _t1listening = false, _t1cache = {}, _t1tick = null, _t1RAF = null;
+  function _t1Listen() {
+    if (_t1listening || typeof db === 'undefined' || !db) return;
+    _t1listening = true;
+    var b = _weekBuckets(); var ws = b[0].date; var wsMs = new Date(ws + 'T00:00:00').getTime(); var t = _today();
+    function sub(key, q) {
+      try { _t1subs.push(q.onSnapshot(function (snap) { _t1cache[key] = snap.docs.map(function (d) { return Object.assign({}, d.data(), { _id: d.id }); }); _t1Redraw(); }, function (e) { console.warn('tier1 ' + key + ':', e); })); }
+      catch (e) { console.warn('tier1 sub ' + key + ':', e); }
+    }
+    sub('barnWalks', db.collection('barnWalks').where('date', '>=', ws));
+    sub('morningWalks', db.collection('morningWalks').where('date', '==', t));
+    sub('eggDailyRun', db.collection('eggDailyRun').where('date', '>=', ws));
+    sub('processingLog', db.collection('processingLog').where('date', '>=', ws));
+    sub('mortalityLog', db.collection('mortalityLog').where('date', '>=', ws));
+    sub('pmHistory', db.collection('pmHistory').where('ts', '>=', wsMs));
+    sub('maintProjects', db.collection('maintProjects'));
+    sub('tierExternal', db.collection('tierExternal'));
+    sub('feedMade', db.collection('feedMade').where('date', '>=', ws));
+    try { _t1subs.push(db.collection('safetySettings').doc('main').onSnapshot(function (doc) { _t1cache.safety = doc.exists ? [doc.data()] : []; _t1Redraw(); })); } catch (e) {}
+    // App globals (workOrders / ALL_PM / partsInventory) update in their own
+    // listeners — repaint every 30s while open so those tiles stay fresh too.
+    _t1tick = setInterval(function () { var o = document.getElementById('tier1-overlay'); if (o && o.style.display !== 'none') _t1draw(); else { clearInterval(_t1tick); _t1tick = null; } }, 30000);
+  }
+  function _t1Unlisten() { _t1subs.forEach(function (u) { try { u(); } catch (e) {} }); _t1subs = []; _t1listening = false; if (_t1tick) { clearInterval(_t1tick); _t1tick = null; } }
+  function _t1Redraw() { if (_t1RAF) return; _t1RAF = setTimeout(function () { _t1RAF = null; _t1draw(); }, 120); }
+  function renderTier1() { _t1Listen(); _t1draw(); }   // back-compat entry (tier1Site)
+
+  function _t1draw() {
     var o = _ov();
-    o.innerHTML = _shell(L('Loading live status…', 'Cargando estado…'));
+    if (o.style.display === 'none') return;
     var t = _today();
     var buckets = _weekBuckets();
     var weekStart = buckets[0].date;
     var weekStartMs = new Date(weekStart + 'T00:00:00').getTime();
 
-    // ── Parallel live pulls (week window; today derived by filter) ──
-    var res = await Promise.all([
-      _get('barnWalks', ['date', '>=', weekStart]),
-      _get('morningWalks', ['date', '==', t]),
-      _get('eggDailyRun', ['date', '>=', weekStart]),
-      _get('processingLog', ['date', '>=', weekStart]),
-      _get('mortalityLog', ['date', '>=', weekStart]),
-      _get('pmHistory', ['ts', '>=', weekStartMs]),
-      _get('maintProjects'),
-      _get('tierExternal'),
-      _get('feedMade', ['date', '>=', weekStart])
-    ]);
-    var weekChecks = res[0], mwalks = res[1], weekEgg = res[2], weekPack = res[3], weekMort = res[4], weekPM = res[5], projects = res[6];
-    // Farm-record numbers pushed daily at ~6:05 AM by the Command Center
-    // (push_tier_firestore.py): lay %, live birds, days safe, hours, cases.
+    var weekChecks = (_t1cache.barnWalks || []).slice(), mwalks = (_t1cache.morningWalks || []).slice(),
+        weekEgg = (_t1cache.eggDailyRun || []).slice(), weekPack = (_t1cache.processingLog || []).slice(),
+        weekMort = (_t1cache.mortalityLog || []).slice(), weekPM = (_t1cache.pmHistory || []).slice(),
+        projects = (_t1cache.maintProjects || []).slice();
+    // Farm-record numbers pushed daily by the Command Center (tierExternal).
     var ext = {}, extUpdated = '';
-    (res[7] || []).forEach(function (d) {
+    (_t1cache.tierExternal || []).forEach(function (d) {
       try { ext[d._id] = JSON.parse(d.json || '{}'); if (d.updated > extUpdated) extUpdated = d.updated; } catch (e) {}
     });
-    var weekFeed = res[8] || [];
-    var safety = [];
-    try { if (typeof db !== 'undefined' && db) { var sd = await db.collection('safetySettings').doc('main').get(); if (sd.exists) safety = [sd.data()]; } } catch (e) {}
+    var weekFeed = (_t1cache.feedMade || []).slice();
+    var safety = _t1cache.safety || [];
 
     // ── Scope everything to the selected site tab (each tab = one site) ──
     var S = _t1SiteInit();
