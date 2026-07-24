@@ -18,6 +18,7 @@ const COMP_CHECKS = [
 ];
 
 var _compData = { morning: null, check: null, manure: null };
+var _compFellback = {};   // key → true when that column is showing YESTERDAY (nothing done today yet)
 var _compLoading = false;
 
 function compToday() { return (typeof LDATE === 'function') ? LDATE() : new Date().toISOString().slice(0, 10); }
@@ -42,19 +43,27 @@ function compDone(key, farm, house) { var s = _compData[key]; return !!(s && s.h
 
 async function compLoad() {
   if (typeof db === 'undefined' || !db) return;
-  _compLoading = true; renderCompletion();
+  _compLoading = true; _compFellback = {}; renderCompletion();
   var today = compToday();
+  // yesterday, derived from today's string so it matches LDATE's local day
+  var _p = today.split('-');
+  var _yd = new Date(+_p[0], +_p[1] - 1, +_p[2]); _yd.setDate(_yd.getDate() - 1);
+  var yday = _yd.getFullYear() + '-' + String(_yd.getMonth() + 1).padStart(2, '0') + '-' + String(_yd.getDate()).padStart(2, '0');
+  function _setFrom(snap) { var s = new Set(); snap.forEach(function (d) { var x = d.data(); if (x && x.farm != null && x.house != null) s.add(x.farm + '|' + _compHnum(x.house)); }); return s; }
   try {
     var results = await Promise.all(COMP_CHECKS.map(function (c) {
       return db.collection(c.coll).where('date', '==', today).get()
         .then(function (snap) {
-          var s = new Set();
-          snap.forEach(function (d) { var x = d.data(); if (x && x.farm != null && x.house != null) s.add(x.farm + '|' + _compHnum(x.house)); });
-          return { key: c.key, set: s };
+          var s = _setFrom(snap);
+          if (s.size > 0) return { key: c.key, set: s, fell: false };
+          // Nothing done today yet → fall back to YESTERDAY for this column so
+          // the board isn't a wall of red X first thing in the morning.
+          return db.collection(c.coll).where('date', '==', yday).get()
+            .then(function (sn2) { var s2 = _setFrom(sn2); return { key: c.key, set: s2, fell: s2.size > 0 }; });
         })
-        .catch(function (e) { console.error('completion load ' + c.coll + ':', e); return { key: c.key, set: new Set() }; });
+        .catch(function (e) { console.error('completion load ' + c.coll + ':', e); return { key: c.key, set: new Set(), fell: false }; });
     }));
-    results.forEach(function (r) { _compData[r.key] = r.set; });
+    results.forEach(function (r) { _compData[r.key] = r.set; if (r.fell) _compFellback[r.key] = true; });
   } catch (e) { console.error('compLoad:', e); }
   _compLoading = false; renderCompletion();
 }
@@ -79,7 +88,10 @@ function _compCell(key, farm, house) {
     return '<td style="text-align:center;padding:0;"><div style="margin:3px;padding:9px 4px;color:#3a5a66;font-family:\'IBM Plex Mono\',monospace;font-size:13px;">—</div></td>';
   }
   var done = compDone(key, farm, house);
-  return '<td style="text-align:center;padding:0;"><div style="margin:3px;border-radius:7px;background:' + (done ? '#14532d' : '#3a1414') + ';color:' + (done ? '#86efac' : '#f8a4a4') + ';font-family:\'IBM Plex Mono\',monospace;font-size:18px;font-weight:800;padding:10px 4px;">' + (done ? '✓' : '✗') + '</div></td>';
+  var fell = !!_compFellback[key];   // this column is showing yesterday
+  var bg = done ? (fell ? '#2a2410' : '#14532d') : '#3a1414';
+  var fg = done ? (fell ? '#e8c96a' : '#86efac') : '#f8a4a4';
+  return '<td style="text-align:center;padding:0;"><div style="margin:3px;border-radius:7px;background:' + bg + ';color:' + fg + ';font-family:\'IBM Plex Mono\',monospace;font-size:18px;font-weight:800;padding:10px 4px;">' + (done ? '✓' : '✗') + '</div></td>';
 }
 
 function renderCompletion() {
@@ -113,7 +125,7 @@ function renderCompletion() {
           '<td style="text-align:center;padding:6px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:15px;font-weight:800;color:' + hcol + ';">' + hPct + '%</td>' +
         '</tr>';
       });
-      var headCells = COMP_CHECKS.map(function (c) { return '<th style="padding:6px 4px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#7fb8cc;text-transform:uppercase;letter-spacing:0.5px;">' + compL(c.label, c.labelEs) + '</th>'; }).join('');
+      var headCells = COMP_CHECKS.map(function (c) { return '<th style="padding:6px 4px;font-family:\'IBM Plex Mono\',monospace;font-size:10px;font-weight:700;color:#7fb8cc;text-transform:uppercase;letter-spacing:0.5px;">' + compL(c.label, c.labelEs) + (_compFellback[c.key] ? '<br><span style="color:#e8c96a;font-size:8px;">' + compL('yesterday', 'ayer') + '</span>' : '') + '</th>'; }).join('');
       var footCells = COMP_CHECKS.map(function (c) {
         var p = colApp[c.key] ? Math.round(colDone[c.key] / colApp[c.key] * 100) : 0;
         var cc = p === 100 ? '#4ade80' : (p === 0 ? '#f8a4a4' : '#e8d36a');
@@ -154,6 +166,12 @@ function renderCompletion() {
         '</div>' +
       '</div>' +
       '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#9ac9d6;line-height:1.5;background:#0a1c26;border:1px solid #1e3a46;border-radius:10px;padding:10px 12px;margin:8px 0 14px;">' + compL('Green ✓ = done today · red ✗ = still open · — = not applicable. Columns: <b style="color:#9ad6ea;">Morning</b> Walk · <b style="color:#9ad6ea;">Daily</b> Check · <b style="color:#9ad6ea;">Manure</b>. % shows per house and per check.', 'Verde ✓ = hecho hoy · rojo ✗ = pendiente · — = no aplica. Columnas: Caminata de la <b style="color:#9ad6ea;">Mañana</b> · Revisión <b style="color:#9ad6ea;">Diaria</b> · <b style="color:#9ad6ea;">Estiércol</b>. El % se muestra por casa y por revisión.') + '</div>' +
+      (function () {
+        var fl = COMP_CHECKS.filter(function (c) { return _compFellback[c.key]; }).map(function (c) { return compL(c.label, c.labelEs); });
+        if (!fl.length) return '';
+        return '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#e8c96a;background:#231a08;border:1.5px solid #7a5a1a;border-radius:10px;padding:9px 12px;margin:0 0 12px;">🕓 ' +
+          compL(fl.join(' & ') + ' showing YESTERDAY (amber ✓) — not started today yet.', fl.join(' y ') + ' mostrando AYER (✓ ámbar) — no iniciado hoy aún.') + '</div>';
+      })() +
       body +
     '</div>';
 }
