@@ -219,6 +219,20 @@ function woCardHtml(wo) {
       <button onclick="event.stopPropagation();woSetStatus('${wo._fbId}','open')" style="flex:1;padding:9px;background:#2a1a1a;border:1px solid #7f1d1d;border-radius:8px;color:#f87171;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">${t('wo.btn.reopen')}</button>`;
   }
 
+  // ── WO TIME (v245): hands-on stopwatch (workMin) + auto open→close turnaround ──
+  const _wm = Number(wo.workMin) || 0;
+  const _running = wo.timerStart ? Math.max(0, Math.round((Date.now() - wo.timerStart) / 60000)) : null;
+  const _fmtM = (m) => m < 60 ? (m + 'm') : (Math.floor(m / 60) + 'h ' + (m % 60) + 'm');
+  const workedLine = (_wm > 0 || _running != null)
+    ? `<div style="margin-top:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:${_running != null ? '#4ade80' : '#7ab0f6'};">⏱ ${_running != null ? ('WORKING NOW · ' + _fmtM(_running) + (_wm > 0 ? (' (total ' + _fmtM(_wm + _running) + ')') : '')) : ('Labor time: ' + _fmtM(_wm))}</div>`
+    : '';
+  let timerBtn = '';
+  if (wo.status !== 'completed' && !wo._pending) {
+    timerBtn = wo.timerStart
+      ? `<button onclick="event.stopPropagation();woTimerStop('${wo._fbId}')" style="flex:1;padding:9px;background:#3a1414;border:1px solid #e5533c;border-radius:8px;color:#ffb4a6;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">⏹ Stop work</button>`
+      : `<button onclick="event.stopPropagation();woTimerStart('${wo._fbId}')" style="flex:1;padding:9px;background:#0d2a12;border:1px solid #2a7a3a;border-radius:8px;color:#86efac;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">▶ Start work</button>`;
+  }
+
   const completionPhotoStrip = (wo.completionPhotos && wo.completionPhotos.length)
     ? `<div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;">${wo.completionPhotos.map(p=>`<img src="${p}" style="height:55px;border-radius:6px;border:1px solid #2a5a2a;cursor:zoom-in;" onclick="event.stopPropagation();openCompletionPhotoViewer('${wo._fbId}')">`).join('')}</div>`
     : '';
@@ -260,6 +274,7 @@ function woCardHtml(wo) {
       <p>${wo.desc}</p>
       ${wo.parts?`<p style="margin-top:5px;font-size:12px;color:var(--green-mid)">🔩 ${wo.parts}</p>`:''}
       ${completedInfo}
+      ${workedLine}
       ${photoStrip}
       ${updateLog}
     </div>
@@ -275,6 +290,7 @@ function woCardHtml(wo) {
     </div>` : `
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
       ${actionBtns}
+      ${timerBtn}
       <button onclick="event.stopPropagation();openWOUpdate('${wo._fbId}')" style="padding:9px 12px;background:#1a2a1a;border:1px solid #2a4a2a;border-radius:8px;color:#7ab07a;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">💬 Update</button>
       <button onclick="event.stopPropagation();openWOEdit('${wo._fbId}')" title="Edit work order details" style="padding:9px 10px;background:#15152a;border:1px solid #2a2a4a;border-radius:8px;color:#9a9ae0;font-size:13px;cursor:pointer;">✏️</button>
       <button onclick="event.stopPropagation();toggleWORail('${wo._fbId}',${!wo.actionRail})" title="${wo.actionRail?'Remove from Action Rail':'Add to Action Rail'}" style="padding:9px 10px;background:${wo.actionRail?'#2a1f00':'#1a1a1a'};border:1px solid ${wo.actionRail?'#856404':'#333'};border-radius:8px;color:${wo.actionRail?'#f59e0b':'#555'};font-size:13px;cursor:pointer;" >⚡</button>
@@ -662,6 +678,56 @@ async function woSetStatus(fbId, newStatus) {
   }
   setSyncDot('live');
 }
+
+// ── WO TIME TRACKING (v245): hands-on stopwatch per work order ──────────────
+// Start = stamp timerStart (ms) + who. Stop = add elapsed minutes to workMin,
+// append a workLog segment, clear the running stamp. Auto open→close turnaround
+// is computed separately from ts→completedTs (see woCardHtml "closed in").
+async function woTimerStart(fbId) {
+  const wo = workOrders.find(w => w._fbId === fbId);
+  if (!wo) return;
+  if (wo.timerStart) { if (typeof toast === 'function') toast('Timer already running'); return; }
+  const by = (typeof getDeviceUser === 'function' && getDeviceUser()) || wo.assignedTo || wo.tech || '';
+  const now = Date.now();
+  wo.timerStart = now; wo.timerBy = by;   // optimistic
+  if (wo.status === 'open') wo.status = 'in-progress';
+  renderWO();
+  if (fbId.startsWith('demo-')) return;
+  setSyncDot('saving');
+  try {
+    const patch = { timerStart: now, timerBy: by };
+    if (wo.status === 'in-progress') patch.status = 'in-progress';
+    await db.collection('workOrders').doc(fbId).update(patch);
+    if (typeof toast === 'function') toast('▶ Work timer started');
+  } catch (e) {
+    console.error('woTimerStart:', e); wo.timerStart = null; renderWO();
+    alert('Could not start timer: ' + e.message);
+  }
+  setSyncDot('live');
+}
+async function woTimerStop(fbId) {
+  const wo = workOrders.find(w => w._fbId === fbId);
+  if (!wo || !wo.timerStart) return;
+  const now = Date.now();
+  const mins = Math.max(0, Math.round((now - wo.timerStart) / 60000));
+  const startedAt = wo.timerStart, startedBy = wo.timerBy || '';
+  wo.workMin = (Number(wo.workMin) || 0) + mins; wo.timerStart = null; wo.timerBy = null;   // optimistic
+  renderWO();
+  if (fbId.startsWith('demo-')) return;
+  setSyncDot('saving');
+  try {
+    await db.collection('workOrders').doc(fbId).update({
+      workMin: wo.workMin, timerStart: null, timerBy: null,
+      workLog: firebase.firestore.FieldValue.arrayUnion({ by: startedBy, min: mins, start: startedAt, stop: now })
+    });
+    if (typeof toast === 'function') toast('⏹ Logged ' + (mins < 60 ? mins + 'm' : (Math.floor(mins/60) + 'h ' + (mins%60) + 'm')) + ' to this WO');
+  } catch (e) {
+    console.error('woTimerStop:', e);
+    alert('Could not stop timer: ' + e.message);
+  }
+  setSyncDot('live');
+}
+if (typeof window !== 'undefined') { window.woTimerStart = woTimerStart; window.woTimerStop = woTimerStop; }
 
 // SITE_TECHS removed — Staff panel is the only source of names app-wide.
 // Backwards-compat shim: some legacy code may still reference SITE_TECHS[farm].
