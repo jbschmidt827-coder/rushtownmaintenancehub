@@ -1761,12 +1761,24 @@ if (typeof window !== 'undefined') window._bwArrangeCards = _bwArrangeCards;
 })();
 
 // Friendly labels for the "still to finish" hint.
-const _BW_BLOCK_LABELS = {
-  employee:'Your name', mortality:'Mortality', eggscollect:'Eggs collected',
-  equipment:'Equipment', air:'Air quality',
-  feedwater:'Feed & water', belts:'Egg belts', pest:'Pest', checklist:'Checklist',
-  weekly:'Weekly review', cageclean:'Cage cleaning', notes:'Notes'
+// v250: bilingual — this feeds the "Finish first: …" hint under Submit and the
+// nudge in submitBarnWalk, both of which crew see constantly.
+const _BW_BLOCK_LABELS_PAIR = {
+  employee:['Your name','Tu nombre'], mortality:['Mortality','Mortalidad'],
+  eggscollect:['Eggs collected','Huevos recolectados'],
+  equipment:['Equipment','Equipo'], air:['Air quality','Calidad del aire'],
+  feedwater:['Feed & water','Alimento y agua'], belts:['Egg belts','Bandas de huevo'],
+  pest:['Pest','Plagas'], checklist:['Checklist','Lista de tareas'],
+  weekly:['Weekly review','Revisión semanal'], cageclean:['Cage cleaning','Limpieza de jaulas'],
+  notes:['Notes','Notas']
 };
+function _bwBlockLabel(n) {
+  var p = _BW_BLOCK_LABELS_PAIR[n];
+  if (!p) return n;
+  try { return (typeof _lang !== 'undefined' && _lang === 'es') ? p[1] : p[0]; } catch (e) { return p[0]; }
+}
+// Back-compat: some code reads the flat map.
+const _BW_BLOCK_LABELS = Object.keys(_BW_BLOCK_LABELS_PAIR).reduce(function (o, k) { o[k] = _BW_BLOCK_LABELS_PAIR[k][0]; return o; }, {});
 function checkBWReady() {
   // The Submit button is ALWAYS tappable. If a section is unfinished we guide
   // the user to it on tap (see submitBarnWalk) and show a hint here — instead of
@@ -1780,7 +1792,8 @@ function checkBWReady() {
     if (ready) { hint.style.display = 'none'; hint.textContent = ''; }
     else {
       hint.style.display = 'block';
-      hint.textContent = '⚠ Finish first: ' + incomplete.map(n => _BW_BLOCK_LABELS[n] || n).join(' · ');
+      const _fl = (typeof _lang !== 'undefined' && _lang === 'es') ? '⚠ Termina primero: ' : '⚠ Finish first: ';
+      hint.textContent = _fl + incomplete.map(n => _bwBlockLabel(n)).join(' · ');
     }
   }
 }

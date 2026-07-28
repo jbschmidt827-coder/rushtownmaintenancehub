@@ -792,7 +792,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v249 · Jul 27 2026';
+var APP_VERSION = 'v250 · Jul 27 2026';
 
 // LOCAL calendar day "YYYY-MM-DD". Everything that means "today" must use this,
 // NOT new Date().toISOString().slice(0,10) — toISOString is UTC, so on Eastern
@@ -1848,6 +1848,24 @@ function toggleLang() {
   // Daily Checklist (employee task list + live dashboard)
   try { if (typeof renderChecklist === 'function')          renderChecklist(); } catch(e){}
   try { if (typeof renderChecklistDashboard === 'function') renderChecklistDashboard(); } catch(e){}
+  // v250: the newer full-screen overlays + sub-tabs were never wired here, so
+  // they stayed English until closed and reopened. Re-render whichever is open.
+  function _reopenIfOpen(id, fn) {
+    try {
+      var el = document.getElementById(id);
+      if (el && el.style.display !== 'none' && typeof window[fn] === 'function') window[fn]();
+    } catch (e) {}
+  }
+  _reopenIfOpen('tier1-overlay', 'openTier1');
+  _reopenIfOpen('tier2-overlay', 'openTier2');
+  _reopenIfOpen('tiersw-overlay', 'openTierSW');
+  _reopenIfOpen('timeclock-overlay', 'renderTimeClock');
+  try { if (window._maintSection === 'time'     && typeof renderLaborPunch === 'function')     renderLaborPunch(); } catch(e){}
+  try { if (window._maintSection === 'schedule' && typeof renderMaintSchedule === 'function')  renderMaintSchedule(); } catch(e){}
+  try { if (window._prodSection === 'eggflow'   && typeof renderEggFlow === 'function')        renderEggFlow(); } catch(e){}
+  try { if (window._prodSection === 'manure'    && typeof renderProdManureRuns === 'function') renderProdManureRuns(); } catch(e){}
+  try { if (typeof renderEggRun === 'function')    renderEggRun(); } catch(e){}
+  try { if (typeof renderProcessing === 'function') renderProcessing(); } catch(e){}
 }
 
 // ── Form-level text translations (labels, options, placeholders, buttons) ──
@@ -1989,6 +2007,53 @@ const FORM_TEXT = {
   // ── Barn walk modal: yes/no buttons ──
   '❌ YES':                           { es:'❌ SÍ' },
   '✅ NO':                            { es:'✅ NO' },
+  // v250: the ✅YES / ❌NO twins were missing, so those buttons stayed English
+  // while their partner translated (half-English pairs on the daily check).
+  '✅ YES':                           { es:'✅ SÍ' },
+  '❌ NO':                            { es:'❌ NO' },
+  '✅ Open':                          { es:'✅ Abierta' },
+  '✅ Closed':                        { es:'✅ Cerrada' },
+  '🥚 Eggs Collected':                { es:'🥚 Huevos Recolectados' },
+  'Eggs collected in this house today': { es:'Huevos recolectados hoy en esta casa' },
+  'Entry doors open?':                { es:'¿Puertas de entrada abiertas?' },
+  'Air inlet vents open?':            { es:'¿Ventilas de entrada de aire abiertas?' },
+  '(Tuesdays only)':                  { es:'(solo martes)' },
+  'MARK EACH ITEM PASS OR FAIL — IN ORDER': { es:'MARCA CADA PUNTO PASA O FALLA — EN ORDEN' },
+  'Tap any issue found:':             { es:'Toca cualquier problema encontrado:' },
+  'Where was the majority of mortality found?': { es:'¿Dónde se encontró la mayoría de la mortalidad?' },
+  'Anything abnormal? Tap all that apply:': { es:'¿Algo anormal? Toca todo lo que aplique:' },
+  'Tools missing':                    { es:'Faltan herramientas' },
+  'Admin Access':                     { es:'Acceso de Administrador' },
+  'Enter PIN to continue':            { es:'Ingresa el PIN para continuar' },
+  'Incorrect PIN — try again':        { es:'PIN incorrecto — intenta de nuevo' },
+  // v250: the 10 daily-checklist TASK LABELS — the actual work list the crew
+  // reads all day. These were English-only.
+  'Quick feed, water & ventilation check':
+    { es:'Revisión rápida de alimento, agua y ventilación' },
+  'Mortality & bird check — count, chute, sick/loose birds':
+    { es:'Mortalidad y revisión de aves — conteo, chute, aves enfermas/sueltas' },
+  'Water tubes cleaned — front & back of house':
+    { es:'Tubos de agua limpiados — frente y fondo de la casa' },
+  'Clean under each egg collector — front of manure belts to front of house':
+    { es:'Limpia bajo cada colector de huevos — del frente de las bandas al frente de la casa' },
+  'Blow out the house — walls, cages, egg collectors & floors (top & bottom)':
+    { es:'Sopletea la casa — paredes, jaulas, colectores y pisos (arriba y abajo)' },
+  'Wheelbarrow emptied & back of house tidied':
+    { es:'Carretilla vaciada y fondo de la casa ordenado' },
+  'Clean under the cages — all rows, both floors':
+    { es:'Limpia bajo las jaulas — todas las filas, ambos pisos' },
+  'Clean designated hallways (swept & tidied)':
+    { es:'Limpia los pasillos designados (barridos y ordenados)' },
+  'Fly check — inspect all traps & bait stations':
+    { es:'Revisión de moscas — inspecciona trampas y estaciones de cebo' },
+  'Equipment check — anything major that needs addressed':
+    { es:'Revisión de equipo — cualquier cosa mayor que necesite atención' },
+  'End of day check — all tasks done & all tools returned':
+    { es:'Revisión de fin del día — todas las tareas hechas y herramientas devueltas' },
+  // Section warning headers on the daily check
+  '⚠ LOG THE ISSUE & NOTIFY MANAGER': { es:'⚠ REGISTRA EL PROBLEMA Y AVISA AL GERENTE' },
+  '⚠ NOTIFY THE BARN MANAGER':        { es:'⚠ AVISA AL GERENTE DE LA CASA' },
+  '⚠ CONFIRM BEFORE YOU LEAVE':       { es:'⚠ CONFIRMA ANTES DE IRTE' },
   '⚠️ YES':                          { es:'⚠️ SÍ' },
   '🟢 ON':                           { es:'🟢 ENCENDIDO' },
   '🔴 OFF':                          { es:'🔴 APAGADO' },

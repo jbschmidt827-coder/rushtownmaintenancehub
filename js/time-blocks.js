@@ -20,47 +20,71 @@
 
   // Joe's 7-block daily EE process (in priority order). Each block shows only
   // the tasks that apply today (see VISIBILITY for the cleaning rotation).
+  // v250: bilingual. Every label/window carries an ES twin; blockMeta() picks.
+  function tbL(en, es) { try { return (typeof _lang !== 'undefined' && _lang === 'es') ? es : en; } catch (e) { return en; } }
+
   const BLOCKS = [
     { id:'b1',
       label:'BLOCK 1 · 7:00–7:15 · FEED / WATER / VENT',
+      labelEs:'BLOQUE 1 · 7:00–7:15 · ALIMENTO / AGUA / VENTILACIÓN',
       shortLabel:'Block 1 · Feed/Water/Vent',
+      shortLabelEs:'Bloque 1 · Alimento/Agua/Vent',
       window:'7:00 – 7:15 AM · 15 min',
+      windowEs:'7:00 – 7:15 AM · 15 min',
       color:'#7ad07a', bg:'#0a2010', border:'#2a5a2a',
       defaultTasks:['fwv'] },
     { id:'b2',
       label:'BLOCK 2 · 7:15–9:00 · MORTALITY & BIRD CHECK',
+      labelEs:'BLOQUE 2 · 7:15–9:00 · MORTALIDAD Y REVISIÓN DE AVES',
       shortLabel:'Block 2 · Mortality',
+      shortLabelEs:'Bloque 2 · Mortalidad',
       window:'7:15 – 9:00 AM · 1h 45m',
+      windowEs:'7:15 – 9:00 AM · 1h 45m',
       color:'#e07070', bg:'#1a0808', border:'#5a2a2a',
       defaultTasks:['birdcheck','flycheck','rodentcheck'] },
     { id:'b3',
       label:'BLOCK 3 · 9:00–12:00 · DEEP CLEANING',
+      labelEs:'BLOQUE 3 · 9:00–12:00 · LIMPIEZA PROFUNDA',
       shortLabel:'Block 3 · Cleaning',
+      shortLabelEs:'Bloque 3 · Limpieza',
       window:'9:00 AM – 12:00 PM · today only',
+      windowEs:'9:00 AM – 12:00 PM · solo hoy',
       color:'#5aa8f8', bg:'#0d1f3a', border:'#1e3a6a',
       defaultTasks:['blowoff','undercages'] },
     { id:'b5',
       label:'BLOCK 4 · AFTER RUN · UNDER EGG COLLECTORS',
+      labelEs:'BLOQUE 4 · DESPUÉS DE LA CORRIDA · BAJO LOS COLECTORES',
       shortLabel:'Block 4 · After run',
+      shortLabelEs:'Bloque 4 · Después de correr',
       window:'after the house ran · 45 min',
+      windowEs:'después de correr la casa · 45 min',
       color:'#e0b048', bg:'#1a1200', border:'#4a3500',
       defaultTasks:['frontofhouse','wheelbarrow'] },
     { id:'b4',
       label:'BLOCK 5 · 12:30–1:00 · HALLWAYS',
+      labelEs:'BLOQUE 5 · 12:30–1:00 · PASILLOS',
       shortLabel:'Block 5 · Hallways',
+      shortLabelEs:'Bloque 5 · Pasillos',
       window:'12:30 – 1:00 PM · 30 min',
+      windowEs:'12:30 – 1:00 PM · 30 min',
       color:'#5aa8f8', bg:'#0d1f3a', border:'#1e3a6a',
       defaultTasks:['hallways'] },
     { id:'b6',
       label:'BLOCK 6 · EQUIPMENT CHECK',
+      labelEs:'BLOQUE 6 · REVISIÓN DE EQUIPO',
       shortLabel:'Block 6 · Equipment',
+      shortLabelEs:'Bloque 6 · Equipo',
       window:'before end of day',
+      windowEs:'antes del fin del día',
       color:'#e0b048', bg:'#1a1200', border:'#4a3500',
       defaultTasks:['equipcheck'] },
     { id:'b7',
       label:'BLOCK 7 · END OF DAY',
+      labelEs:'BLOQUE 7 · FIN DEL DÍA',
       shortLabel:'Block 7 · End of day',
+      shortLabelEs:'Bloque 7 · Fin del día',
       window:'end of shift · 20 min',
+      windowEs:'fin del turno · 20 min',
       color:'#9a9ad0', bg:'#0f0f1f', border:'#3a3a5a',
       defaultTasks:['endofday'] },
   ];
@@ -69,7 +93,10 @@
   // Danville starts 7:00 AM with a 9:30 break (see FARM_SCHEDULE in
   // production.js). Falls back to the generic BLOCKS text if unknown.
   // Joe's blocks carry fixed clock windows, so no farm-schedule override.
-  function blockMeta(b) { return { label: b.label, window: b.window }; }
+  function blockMeta(b) {
+    return { label: tbL(b.label, b.labelEs || b.label), window: tbL(b.window, b.windowEs || b.window) };
+  }
+  function blockShort(b) { return tbL(b.shortLabel, b.shortLabelEs || b.shortLabel); }
 
   // Headers are built once at boot (before a barn is picked), so re-stamp
   // the farm-specific times every time the barn-walk modal opens.
@@ -219,9 +246,9 @@
     const k = rowKey(row);
     const btn = document.createElement('button');
     btn.className = 'bw-cl-move-btn';
-    btn.title = 'Move to a different time block';
+    btn.title = tbL('Move to a different time block','Mover a otro bloque de tiempo');
     btn.style.cssText = 'padding:5px 8px;border-radius:6px;border:1px solid #3a3a5a;background:#0a0a1f;color:#9a9ad0;font-family:\'IBM Plex Mono\',monospace;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:4px;touch-action:manipulation;min-width:44px;min-height:44px;';
-    btn.textContent = '↕ Move';
+    btn.textContent = tbL('↕ Move','↕ Mover');
     btn.onclick = function (e) { e.stopPropagation(); openMoveMenu(k, btn); };
     btnRow.appendChild(btn);
   }
@@ -236,8 +263,8 @@
       const opt = document.createElement('button');
       opt.style.cssText = 'display:block;width:100%;text-align:left;padding:9px 10px;margin:0 0 4px;background:' + (isCurrent ? '#1a3a1a' : '#050f05') + ';border:1px solid ' + b.color + '55;border-radius:7px;color:#f0ead8;font-family:\'IBM Plex Mono\',monospace;font-size:11px;cursor:' + (isCurrent ? 'default' : 'pointer') + ';';
       opt.innerHTML =
-        '<span style="color:' + b.color + ';font-weight:700;">' + b.shortLabel + '</span><br>' +
-        '<span style="font-size:9px;color:#7a9a7a;">' + blockMeta(b).window + (isCurrent ? ' · current' : '') + '</span>';
+        '<span style="color:' + b.color + ';font-weight:700;">' + blockShort(b) + '</span><br>' +
+        '<span style="font-size:9px;color:#7a9a7a;">' + blockMeta(b).window + (isCurrent ? tbL(' · current',' · actual') : '') + '</span>';
       if (!isCurrent) opt.onclick = function () { moveTask(key, b.id); menu.remove(); };
       menu.appendChild(opt);
     });
@@ -319,8 +346,8 @@
     if (hdr) { hdr.style.marginBottom = collapsed ? '0' : ''; hdr.style.paddingBottom = collapsed ? '0' : ''; hdr.style.borderBottom = collapsed ? 'none' : ''; }
 
     if (tasks.length === 0) {
-      elap.textContent = '⏱ no tasks';
-      stat.textContent = '— empty';
+      elap.textContent = tbL('⏱ no tasks','⏱ sin tareas');
+      stat.textContent = tbL('— empty','— vacío');
       stat.style.color = '#5a7a5a'; stat.style.borderColor = '#1a3a1a'; stat.style.background = '#0a1a0a';
       if (blkEl) blkEl.style.opacity = '0.55';
       return;
@@ -330,16 +357,16 @@
     // Closed
     if (st.closedAt) {
       const min = Math.round((st.closedAt - (st.startedAt || st.closedAt)) / 60000);
-      stat.textContent = '✓ closed · ' + fmt(min) + ' actual' + (collapsed ? ' · tap to view' : '');
+      stat.textContent = tbL('✓ closed · ','✓ cerrado · ') + fmt(min) + tbL(' actual',' real') + (collapsed ? tbL(' · tap to view',' · toca para ver') : '');
       stat.style.color = '#4caf50'; stat.style.borderColor = '#2a5a2a'; stat.style.background = '#0a2a0a';
-      elap.textContent = '⏱ planned ' + fmt(expected) + ' · actual ' + fmt(min);
+      elap.textContent = tbL('⏱ planned ','⏱ planeado ') + fmt(expected) + tbL(' · actual ',' · real ') + fmt(min);
       elap.style.color = (min <= expected) ? '#4caf50' : '#d69e2e';
       elap.style.borderColor = '#2a5a2a'; elap.style.background = '#0a2a0a';
       return;
     }
 
     // Open status
-    stat.textContent = reviewed + '/' + tasks.length + ' reviewed';
+    stat.textContent = reviewed + '/' + tasks.length + tbL(' reviewed',' revisadas');
     if (reviewed === 0) {
       stat.style.color = '#5a7a5a'; stat.style.borderColor = '#1a3a1a'; stat.style.background = '#0a1a0a';
     } else if (reviewed < tasks.length) {
@@ -350,14 +377,14 @@
 
     if (st.startedAt) {
       const mins = (Date.now() - st.startedAt) / 60000;
-      elap.textContent = '⏱ ' + fmt(mins) + ' elapsed · planned ' + fmt(expected);
+      elap.textContent = '⏱ ' + fmt(mins) + tbL(' elapsed · planned ',' transcurrido · planeado ') + fmt(expected);
       if (mins > expected && expected > 0) {
         elap.style.color = '#e07070'; elap.style.borderColor = '#5a2020'; elap.style.background = '#1a0505';
       } else {
         elap.style.color = '#7ab07a'; elap.style.borderColor = '#1a4a1a'; elap.style.background = '#0a2a0a';
       }
     } else {
-      elap.textContent = '⏱ planned ' + fmt(expected) + ' · not started';
+      elap.textContent = tbL('⏱ planned ','⏱ planeado ') + fmt(expected) + tbL(' · not started',' · no iniciado');
       elap.style.color = '#5a8a5a'; elap.style.borderColor = '#1a3a1a'; elap.style.background = '#0a1a0a';
     }
   }
@@ -491,14 +518,14 @@
 
     if (badge) {
       if (total === 0) {
-        badge.textContent = '⏱ no tasks today';
+        badge.textContent = tbL('⏱ no tasks today','⏱ sin tareas hoy');
         badge.style.color = '#5a8a5a'; badge.style.borderColor = '#1a3a1a';
       } else if (remainMin === 0) {
         badge.textContent = '✅ All ' + fmt(totalMin) + ' done (100%)';
         badge.style.color = '#4caf50'; badge.style.borderColor = '#2a5a2a';
       } else {
         // Compact mobile-friendly layout: total · done · left  (pct%)
-        badge.textContent = '⏱ ' + fmt(totalMin) + ' total · ' + fmt(doneMin) + ' done · ' + fmt(remainMin) + ' left  (' + pct + '%)';
+        badge.textContent = '⏱ ' + fmt(totalMin) + tbL(' total · ',' total · ') + fmt(doneMin) + tbL(' done · ',' hecho · ') + fmt(remainMin) + tbL(' left  (',' falta  (') + pct + '%)';
         // Color shifts as more is completed
         if (pct >= 75)      { badge.style.color = '#4caf50'; badge.style.borderColor = '#2a5a2a'; }
         else if (pct >= 25) { badge.style.color = '#d69e2e'; badge.style.borderColor = '#4a3500'; }
