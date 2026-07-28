@@ -18,8 +18,12 @@
 
   var _efUnsub = null;
   var _efData = [];          // last-30-day eggFlow docs
+  var _efWalks = [];         // last-30-day barnWalks (for eggsCollected per house)
+  var _efWalkUnsub = null;
   var _efTick = null;        // 20s live-duration repaint
   var _efDirty = {};         // farm_house → dirty-line ON toggled before a run starts
+  var _EF_STUCK_MIN = 8 * 60;   // a "run" longer than 8h = someone forgot to tap Stop
+  function _num(n) { try { return Number(n || 0).toLocaleString(); } catch (e) { return String(n || 0); } }
 
   function _efSite() {
     try { var p = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null; if (p === 'Hegins' || p === 'Danville') return p; } catch (e) {}
@@ -109,6 +113,110 @@
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
+  // ── PER-HOUSE ROLLUP + TRENDING TARGETS ───────────────────────────────────
+  // For each house: how many runs, total + average run time, average speed, the
+  // eggs collected (from the Daily EE Check), and EGGS PER HOUR. The TARGET for
+  // each house is its OWN trailing average (last 14 days) — so every barn trends
+  // against its own proven pace instead of one number forced on every house.
+  // Runs left open >8h are excluded from averages (forgot to tap Stop) and shown
+  // as a data-fix warning.
+  function _efStats(site, houses, days) {
+    var cut = Date.now() - days * 86400000;
+    var out = {};
+    houses.forEach(function (h) { out[h] = { runs: 0, min: 0, speed: [], eggs: 0, eggDays: 0, stuck: 0 }; });
+    _efData.forEach(function (r) {
+      if (r.farm !== site) return;
+      var h = String(r.house); if (!out[h]) return;
+      if ((r.startTs || 0) < cut) return;
+      if (r.status !== 'done' || r.minutes == null) return;
+      var m = Number(r.minutes) || 0;
+      if (m > _EF_STUCK_MIN) { out[h].stuck++; return; }   // don't let a forgotten Stop skew it
+      out[h].runs++; out[h].min += m;
+      if (r.speed != null && r.speed !== '') out[h].speed.push(Number(r.speed));
+    });
+    _efWalks.forEach(function (w) {
+      if (w.farm !== site) return;
+      var h = String(w.house); if (!out[h]) return;
+      var ts = Number(w.ts) || 0; if (ts < cut) return;
+      var e = Number(w.eggsCollected) || 0;
+      if (e > 0) { out[h].eggs += e; out[h].eggDays++; }
+    });
+    Object.keys(out).forEach(function (h) {
+      var s = out[h];
+      s.avgMin = s.runs ? Math.round(s.min / s.runs) : null;
+      s.avgSpeed = s.speed.length ? Math.round(s.speed.reduce(function (a, b) { return a + b; }, 0) / s.speed.length * 10) / 10 : null;
+      s.avgEggs = s.eggDays ? Math.round(s.eggs / s.eggDays) : null;
+      s.eggsPerHr = (s.avgEggs && s.avgMin) ? Math.round(s.avgEggs / (s.avgMin / 60)) : null;
+    });
+    return out;
+  }
+
+  function _drawSummary(site, houses) {
+    var wk = _efStats(site, houses, 7);    // this week = actual
+    var tgt = _efStats(site, houses, 14);  // 14-day average = the house's target
+    var stuckTotal = houses.reduce(function (s, h) { return s + (wk[h] ? wk[h].stuck : 0); }, 0);
+    var anyData = houses.some(function (h) { return wk[h] && wk[h].runs > 0; });
+    if (!anyData) return '';
+
+    function cell(v, unit) { return v == null ? '<span style="color:#4a6a4a;">—</span>' : ('<b style="color:#f0ead8;">' + _num(v) + '</b>' + (unit ? '<span style="color:#7a9a7a;font-size:9px;"> ' + unit + '</span>' : '')); }
+    // vs-target arrow: for run time LOWER is better; for eggs/hr HIGHER is better.
+    function vs(actual, target, lowerBetter) {
+      if (actual == null || target == null || !target) return '';
+      var d = Math.round((actual - target) / target * 100);
+      if (Math.abs(d) < 3) return '<span style="color:#7a9a7a;font-size:9px;"> ≈ target</span>';
+      var good = lowerBetter ? d < 0 : d > 0;
+      return '<span style="color:' + (good ? '#4ade80' : '#f0a0a0') + ';font-size:9px;"> ' + (d > 0 ? '▲' : '▼') + Math.abs(d) + '%</span>';
+    }
+
+    var rows = houses.map(function (h) {
+      var a = wk[h], t = tgt[h];
+      if (!a || !a.runs) return '';
+      return '<tr style="border-bottom:1px solid #1a2a1a;">' +
+        '<td style="padding:8px 6px;color:#f0ead8;font-weight:700;">H' + _esc(h) + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#aaa;">' + a.runs + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;">' + cell(a.avgMin, 'min') + vs(a.avgMin, t.avgMin, true) + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#7a9a7a;font-size:10px;">' + (t.avgMin != null ? (t.avgMin + ' min') : '—') + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;">' + cell(a.avgSpeed) + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;">' + cell(a.avgEggs) + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;">' + cell(a.eggsPerHr) + vs(a.eggsPerHr, t.eggsPerHr, false) + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#7a9a7a;font-size:10px;">' + (t.eggsPerHr != null ? _num(t.eggsPerHr) : '—') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    // Site totals
+    var tRuns = 0, tMin = 0, tEggs = 0;
+    houses.forEach(function (h) { if (wk[h]) { tRuns += wk[h].runs; tMin += wk[h].min; tEggs += wk[h].eggs; } });
+    var tEggsHr = (tEggs && tMin) ? Math.round(tEggs / (tMin / 60)) : null;
+
+    return '<div style="' + MONO + 'font-size:11px;letter-spacing:1px;color:#6aa06a;text-transform:uppercase;margin:16px 2px 8px;font-weight:700;">📊 ' +
+        efL('This week by house · vs each barn\'s own target', 'Esta semana por casa · vs la meta de cada casa') + '</div>' +
+      (stuckTotal ? '<div style="' + MONO + 'font-size:10.5px;color:#e8c96a;background:#231a08;border:1.5px solid #7a5a1a;border-radius:9px;padding:8px 11px;margin-bottom:8px;">⚠ ' +
+        efL(stuckTotal + ' run(s) left open over 8h (someone forgot to tap Stop) — excluded from the averages. Fix by stopping the run.',
+            stuckTotal + ' corrida(s) abiertas más de 8h (no se tocó Detener) — excluidas de los promedios.') + '</div>' : '') +
+      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:12px;min-width:620px;">' +
+      '<thead><tr style="border-bottom:1px solid #2a4a2a;">' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:left;">' + efL('House', 'Casa') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Runs', 'Corridas') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Avg run', 'Prom corrida') + '</th>' +
+        '<th style="padding:7px 6px;color:#7a9a7a;text-align:center;font-size:9px;">🎯 ' + efL('target', 'meta') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Avg speed', 'Prom vel') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Eggs/day', 'Huevos/día') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Eggs/hour', 'Huevos/hora') + '</th>' +
+        '<th style="padding:7px 6px;color:#7a9a7a;text-align:center;font-size:9px;">🎯 ' + efL('target', 'meta') + '</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody>' +
+      '<tfoot><tr style="border-top:1.5px solid #2a4a2a;">' +
+        '<td style="padding:8px 6px;color:#9ad6a0;font-weight:700;">' + efL('TOTAL', 'TOTAL') + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + tRuns + '</td>' +
+        '<td colspan="2" style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + _dur(tMin * 60000) + ' ' + efL('total run time', 'tiempo total') + '</td>' +
+        '<td style="padding:8px 6px;"></td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + _num(tEggs) + '</td>' +
+        '<td colspan="2" style="padding:8px 6px;text-align:center;color:#4ade80;font-weight:700;">' + (tEggsHr ? (_num(tEggsHr) + ' ' + efL('eggs/hr site', 'huevos/hr sitio')) : '—') + '</td>' +
+      '</tr></tfoot></table></div>' +
+      '<div style="' + MONO + 'font-size:9.5px;color:#4a6a4a;margin-top:6px;line-height:1.6;">' +
+        efL('🎯 target = that barn\'s own 14-day average. ▼/▲ = this week vs its target (lower run time and higher eggs/hour are better). Eggs come from the Daily EE Check "eggs collected".',
+            '🎯 meta = el promedio de 14 días de esa casa. ▼/▲ = esta semana vs su meta (menos tiempo y más huevos/hora es mejor). Los huevos vienen de la Revisión Diaria.') + '</div>';
+  }
+
   function _draw() {
     var host = document.getElementById('prod-sec-eggflow');
     if (!host) return;
@@ -123,6 +231,7 @@
       '</div>' +
       '<div style="' + MONO + 'font-size:10px;color:#7a9a7a;margin-bottom:12px;">' + efL('Set the speed, tap Start when the belts run, Stop when done. Times save automatically.', 'Pon la velocidad, toca Iniciar cuando corran las bandas, Detener al terminar. Los tiempos se guardan solos.') + '</div>' +
       '<div style="display:grid;gap:9px;">' + cards + '</div>' +
+      _drawSummary(site, houses) +
       _drawLog(host, site);
   }
 
@@ -177,6 +286,14 @@
         _draw();
       }, function (err) { console.error('eggFlow live:', err); host.innerHTML = '<div style="color:#e53e3e;padding:16px;">' + (err && err.message ? err.message : err) + '</div>'; });
     } catch (e) { console.error('renderEggFlow:', e); }
+    // Eggs collected per house comes from the Daily EE Check — needed for eggs/hour.
+    if (_efWalkUnsub) { try { _efWalkUnsub(); } catch (e) {} _efWalkUnsub = null; }
+    try {
+      _efWalkUnsub = db.collection('barnWalks').where('ts', '>=', cutoff).onSnapshot(function (snap) {
+        _efWalks = snap.docs.map(function (d) { return d.data() || {}; });
+        _draw();
+      }, function (err) { console.warn('eggFlow barnWalks:', err); });
+    } catch (e) { console.warn('eggFlow walks listen:', e); }
     // Repaint running timers every 20s.
     if (_efTick) clearInterval(_efTick);
     _efTick = setInterval(function () { if (document.getElementById('prod-sec-eggflow') && document.getElementById('prod-sec-eggflow').offsetParent !== null) _draw(); }, 20000);
