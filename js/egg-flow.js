@@ -26,6 +26,10 @@
   var _efDirty = {};         // farm_house → dirty-line ON toggled before a run starts
   var _EF_STUCK_MIN = 8 * 60;   // a "run" longer than 8h = someone forgot to tap Stop
   function _num(n) { try { return Number(n || 0).toLocaleString(); } catch (e) { return String(n || 0); } }
+  // 1 case = 30 dozen = 360 eggs (Joe 2026-07-28)
+  var EGGS_PER_DZ = 12, DZ_PER_CASE = 30, EGGS_PER_CASE = EGGS_PER_DZ * DZ_PER_CASE;
+  function _dz(eggs) { return eggs ? Math.round(eggs / EGGS_PER_DZ) : null; }
+  function _cases(eggs) { return eggs ? Math.round(eggs / EGGS_PER_CASE * 10) / 10 : null; }
 
   function _efSite() {
     try { var p = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null; if (p === 'Hegins' || p === 'Danville') return p; } catch (e) {}
@@ -178,6 +182,10 @@
       s.avgEggs = s.eggDays ? Math.round(s.eggs / s.eggDays) : null;
       if (s.avgEggs == null && farmEggs[h]) { s.avgEggs = farmEggs[h]; s.eggsFromFarm = true; }
       s.eggsPerHr = (s.avgEggs && s.avgMin) ? Math.round(s.avgEggs / (s.avgMin / 60)) : null;
+      s.dzPerHr = s.eggsPerHr ? Math.round(s.eggsPerHr / EGGS_PER_DZ) : null;
+      s.casesPerHr = s.eggsPerHr ? Math.round(s.eggsPerHr / EGGS_PER_CASE * 10) / 10 : null;
+      s.dzPerDay = _dz(s.avgEggs);
+      s.casesPerDay = _cases(s.avgEggs);
     });
     return out;
   }
@@ -209,15 +217,26 @@
         '<td style="padding:8px 6px;text-align:center;color:#7a9a7a;font-size:10px;">' + (t.avgMin != null ? (t.avgMin + ' min') : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;">' + cell(a.avgSpeed) + '</td>' +
         '<td style="padding:8px 6px;text-align:center;">' + cell(a.avgEggs) + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#cfe0a0;">' + (a.dzPerDay != null ? _num(a.dzPerDay) : '—') + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#cfe0a0;">' + (a.casesPerDay != null ? _num(a.casesPerDay) : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;">' + cell(a.eggsPerHr) + vs(a.eggsPerHr, t.eggsPerHr, false) + '</td>' +
-        '<td style="padding:8px 6px;text-align:center;color:#7a9a7a;font-size:10px;">' + (t.eggsPerHr != null ? _num(t.eggsPerHr) : '—') + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#e8d36a;font-weight:700;">' + (a.dzPerHr != null ? _num(a.dzPerHr) : '—') + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#4ade80;font-weight:700;">' + (a.casesPerHr != null ? _num(a.casesPerHr) : '—') + '</td>' +
       '</tr>';
     }).join('');
 
-    // Site totals
+    // Site totals — eggs use each house's avg/day (farm records), not just the
+    // hand-typed ones, so the TOTAL row can't read 0 while the rows show numbers.
     var tRuns = 0, tMin = 0, tEggs = 0;
-    houses.forEach(function (h) { if (wk[h]) { tRuns += wk[h].runs; tMin += wk[h].min; tEggs += wk[h].eggs; } });
-    var tEggsHr = (tEggs && tMin) ? Math.round(tEggs / (tMin / 60)) : null;
+    houses.forEach(function (h) {
+      if (!wk[h]) return;
+      tRuns += wk[h].runs; tMin += wk[h].min;
+      tEggs += (wk[h].avgEggs || 0);
+    });
+    var tAvgMin = 0, nH = 0;
+    houses.forEach(function (h) { if (wk[h] && wk[h].avgMin) { tAvgMin += wk[h].avgMin; nH++; } });
+    // Site eggs/hour = total eggs per day ÷ the average house run length (hours).
+    var tEggsHr = (tEggs && nH) ? Math.round(tEggs / ((tAvgMin / nH) / 60)) : null;
 
     return '<div style="' + MONO + 'font-size:11px;letter-spacing:1px;color:#6aa06a;text-transform:uppercase;margin:16px 2px 8px;font-weight:700;">📊 ' +
         efL('7-day trend by house · vs last week', 'Tendencia 7 días por casa · vs la semana pasada') + '</div>' +
@@ -232,16 +251,22 @@
         '<th style="padding:7px 6px;color:#7a9a7a;text-align:center;font-size:9px;">🎯 ' + efL('target', 'meta') + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Avg speed', 'Prom vel') + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Eggs/day', 'Huevos/día') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Dz/day', 'Dz/día') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Cases/day', 'Cajas/día') + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Eggs/hour', 'Huevos/hora') + '</th>' +
-        '<th style="padding:7px 6px;color:#7a9a7a;text-align:center;font-size:9px;">🎯 ' + efL('target', 'meta') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Dz/hour', 'Dz/hora') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Cases/hour', 'Cajas/hora') + '</th>' +
       '</tr></thead><tbody>' + rows + '</tbody>' +
       '<tfoot><tr style="border-top:1.5px solid #2a4a2a;">' +
         '<td style="padding:8px 6px;color:#9ad6a0;font-weight:700;">' + efL('TOTAL', 'TOTAL') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + tRuns + '</td>' +
-        '<td colspan="2" style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + _dur(tMin * 60000) + ' ' + efL('total run time', 'tiempo total') + '</td>' +
-        '<td style="padding:8px 6px;"></td>' +
+        '<td colspan="3" style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + _dur(tMin * 60000) + ' ' + efL('total run time', 'tiempo total') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + _num(tEggs) + '</td>' +
-        '<td colspan="2" style="padding:8px 6px;text-align:center;color:#4ade80;font-weight:700;">' + (tEggsHr ? (_num(tEggsHr) + ' ' + efL('eggs/hr site', 'huevos/hr sitio')) : '—') + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#cfe0a0;font-weight:700;">' + (_dz(tEggs) != null ? _num(_dz(tEggs)) : '—') + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#cfe0a0;font-weight:700;">' + (_cases(tEggs) != null ? _num(_cases(tEggs)) : '—') + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + (tEggsHr ? _num(tEggsHr) : '—') + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#e8d36a;font-weight:700;">' + (tEggsHr ? _num(_dz(tEggsHr)) : '—') + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:#4ade80;font-weight:700;">' + (tEggsHr ? _num(_cases(tEggsHr)) : '—') + '</td>' +
       '</tr></tfoot></table></div>' +
       '<div style="' + MONO + 'font-size:9.5px;color:#4a6a4a;margin-top:6px;line-height:1.6;">' +
         efL('7-DAY TREND · 🎯 target = that barn\'s own PRIOR 7 days. ▼/▲ = this week vs last week (lower run time and higher eggs/hour are better). Eggs come from the Farm Production Records (same files as Tier 1).',
