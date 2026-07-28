@@ -20,6 +20,8 @@
   var _efData = [];          // last-30-day eggFlow docs
   var _efWalks = [];         // last-30-day barnWalks (for eggsCollected per house)
   var _efWalkUnsub = null;
+  var _efExt = {};           // tierExternal by farm → eggs per house from the farm records
+  var _efExtUnsub = null;
   var _efTick = null;        // 20s live-duration repaint
   var _efDirty = {};         // farm_house → dirty-line ON toggled before a run starts
   var _EF_STUCK_MIN = 8 * 60;   // a "run" longer than 8h = someone forgot to tap Stop
@@ -120,14 +122,41 @@
   // against its own proven pace instead of one number forced on every house.
   // Runs left open >8h are excluded from averages (forgot to tap Stop) and shown
   // as a data-fix warning.
-  function _efStats(site, houses, days) {
-    var cut = Date.now() - days * 86400000;
+  // Eggs per house per day from the FARM RECORDS (tierExternal, pushed daily from
+  // the Command Center): eggs/day = lay% × live birds. Used when the crew hasn't
+  // typed "eggs collected" on the Daily EE Check, so eggs/hour always has data.
+  function _efFarmEggs(site) {
+    var map = {};
+    try {
+      var d = (_efExt || {})[site];
+      if (!d || !Array.isArray(d.houses)) return map;
+      d.houses.forEach(function (h) {
+        var num = String(h.name || '').replace(/^\s*house\s*/i, '').trim();
+        // 1st choice: real counted eggs from the Farm Production Records
+        // (pushed by push_house_eggs.py — the same files Tier 1 is built from).
+        if (h.eggsPerDay != null && Number(h.eggsPerDay) > 0) { map[num] = Math.round(Number(h.eggsPerDay)); return; }
+        // Fallback: lay % × live birds (mathematically the same thing).
+        var lay = (h.lay7d != null ? h.lay7d : h.layLatest);
+        if (lay == null || !h.birds) return;
+        if (lay > 2) lay = lay / 100;                       // sheets store fractions
+        map[num] = Math.round(lay * h.birds);
+      });
+    } catch (e) {}
+    return map;
+  }
+
+  // Window = [fromDaysAgo, toDaysAgo) back from now. Actual week = [0,7),
+  // target/prior week = [7,14) → ▼/▲ is a real week-over-week trend.
+  function _efStats(site, houses, fromDays, toDays) {
+    var now = Date.now();
+    var hi = now - fromDays * 86400000;   // newest edge
+    var lo = now - toDays * 86400000;     // oldest edge
     var out = {};
     houses.forEach(function (h) { out[h] = { runs: 0, min: 0, speed: [], eggs: 0, eggDays: 0, stuck: 0 }; });
     _efData.forEach(function (r) {
       if (r.farm !== site) return;
       var h = String(r.house); if (!out[h]) return;
-      if ((r.startTs || 0) < cut) return;
+      var ts = r.startTs || 0; if (ts < lo || ts >= hi) return;
       if (r.status !== 'done' || r.minutes == null) return;
       var m = Number(r.minutes) || 0;
       if (m > _EF_STUCK_MIN) { out[h].stuck++; return; }   // don't let a forgotten Stop skew it
@@ -137,23 +166,25 @@
     _efWalks.forEach(function (w) {
       if (w.farm !== site) return;
       var h = String(w.house); if (!out[h]) return;
-      var ts = Number(w.ts) || 0; if (ts < cut) return;
+      var ts = Number(w.ts) || 0; if (ts < lo || ts >= hi) return;
       var e = Number(w.eggsCollected) || 0;
       if (e > 0) { out[h].eggs += e; out[h].eggDays++; }
     });
+    var farmEggs = _efFarmEggs(site);
     Object.keys(out).forEach(function (h) {
       var s = out[h];
       s.avgMin = s.runs ? Math.round(s.min / s.runs) : null;
       s.avgSpeed = s.speed.length ? Math.round(s.speed.reduce(function (a, b) { return a + b; }, 0) / s.speed.length * 10) / 10 : null;
       s.avgEggs = s.eggDays ? Math.round(s.eggs / s.eggDays) : null;
+      if (s.avgEggs == null && farmEggs[h]) { s.avgEggs = farmEggs[h]; s.eggsFromFarm = true; }
       s.eggsPerHr = (s.avgEggs && s.avgMin) ? Math.round(s.avgEggs / (s.avgMin / 60)) : null;
     });
     return out;
   }
 
   function _drawSummary(site, houses) {
-    var wk = _efStats(site, houses, 7);    // this week = actual
-    var tgt = _efStats(site, houses, 14);  // 14-day average = the house's target
+    var wk = _efStats(site, houses, 0, 7);    // THIS week (last 7 days) = actual
+    var tgt = _efStats(site, houses, 7, 14);  // PRIOR week = the trend target
     var stuckTotal = houses.reduce(function (s, h) { return s + (wk[h] ? wk[h].stuck : 0); }, 0);
     var anyData = houses.some(function (h) { return wk[h] && wk[h].runs > 0; });
     if (!anyData) return '';
@@ -189,7 +220,7 @@
     var tEggsHr = (tEggs && tMin) ? Math.round(tEggs / (tMin / 60)) : null;
 
     return '<div style="' + MONO + 'font-size:11px;letter-spacing:1px;color:#6aa06a;text-transform:uppercase;margin:16px 2px 8px;font-weight:700;">📊 ' +
-        efL('This week by house · vs each barn\'s own target', 'Esta semana por casa · vs la meta de cada casa') + '</div>' +
+        efL('7-day trend by house · vs last week', 'Tendencia 7 días por casa · vs la semana pasada') + '</div>' +
       (stuckTotal ? '<div style="' + MONO + 'font-size:10.5px;color:#e8c96a;background:#231a08;border:1.5px solid #7a5a1a;border-radius:9px;padding:8px 11px;margin-bottom:8px;">⚠ ' +
         efL(stuckTotal + ' run(s) left open over 8h (someone forgot to tap Stop) — excluded from the averages. Fix by stopping the run.',
             stuckTotal + ' corrida(s) abiertas más de 8h (no se tocó Detener) — excluidas de los promedios.') + '</div>' : '') +
@@ -213,8 +244,8 @@
         '<td colspan="2" style="padding:8px 6px;text-align:center;color:#4ade80;font-weight:700;">' + (tEggsHr ? (_num(tEggsHr) + ' ' + efL('eggs/hr site', 'huevos/hr sitio')) : '—') + '</td>' +
       '</tr></tfoot></table></div>' +
       '<div style="' + MONO + 'font-size:9.5px;color:#4a6a4a;margin-top:6px;line-height:1.6;">' +
-        efL('🎯 target = that barn\'s own 14-day average. ▼/▲ = this week vs its target (lower run time and higher eggs/hour are better). Eggs come from the Daily EE Check "eggs collected".',
-            '🎯 meta = el promedio de 14 días de esa casa. ▼/▲ = esta semana vs su meta (menos tiempo y más huevos/hora es mejor). Los huevos vienen de la Revisión Diaria.') + '</div>';
+        efL('7-DAY TREND · 🎯 target = that barn\'s own PRIOR 7 days. ▼/▲ = this week vs last week (lower run time and higher eggs/hour are better). Eggs come from the Farm Production Records (same files as Tier 1).',
+            'TENDENCIA 7 DÍAS · 🎯 meta = los 7 días anteriores de esa casa. ▼/▲ = esta semana vs la pasada (menos tiempo y más huevos/hora es mejor). Los huevos vienen de los Registros de Producción.') + '</div>';
   }
 
   function _draw() {
@@ -294,6 +325,15 @@
         _draw();
       }, function (err) { console.warn('eggFlow barnWalks:', err); });
     } catch (e) { console.warn('eggFlow walks listen:', e); }
+    // Farm-record eggs per house (tierExternal, refreshed by the 6am push).
+    if (_efExtUnsub) { try { _efExtUnsub(); } catch (e) {} _efExtUnsub = null; }
+    try {
+      _efExtUnsub = db.collection('tierExternal').onSnapshot(function (snap) {
+        var m = {};
+        snap.docs.forEach(function (d) { try { m[d.id] = JSON.parse((d.data() || {}).json || '{}'); } catch (e) {} });
+        _efExt = m; _draw();
+      }, function (err) { console.warn('eggFlow tierExternal:', err); });
+    } catch (e) { console.warn('eggFlow ext listen:', e); }
     // Repaint running timers every 20s.
     if (_efTick) clearInterval(_efTick);
     _efTick = setInterval(function () { if (document.getElementById('prod-sec-eggflow') && document.getElementById('prod-sec-eggflow').offsetParent !== null) _draw(); }, 20000);
