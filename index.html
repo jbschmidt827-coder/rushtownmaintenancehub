@@ -5348,7 +5348,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260724-v248"></script>
+<script defer src="js/core.js?v=20260727-v249"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
 <script defer src="js/eos-rollup.js?v=20260506c"></script>
@@ -5457,10 +5457,12 @@ if ('serviceWorker' in navigator) {
   var swRefreshing = false;
   var updateInitiated = false;  // only true once WE apply an update
 
-  // Reload exactly once, the instant the new worker takes control — but only
-  // for a real update we triggered, never for the first-ever install claim.
+  // v249: reload the INSTANT a new worker takes control, whoever triggered it.
+  // (Was gated on updateInitiated, so a worker that self-activated — the new
+  // skipWaiting path — never refreshed the page and the tablet kept running old
+  // code. Drafts autosave, so a refresh is safe.)
   navigator.serviceWorker.addEventListener('controllerchange', function() {
-    if (!updateInitiated || swRefreshing) return;
+    if (swRefreshing) return;
     swRefreshing = true;
     window.location.reload();
   });
@@ -5516,13 +5518,10 @@ if ('serviceWorker' in navigator) {
       // there's nothing to "update" from.
       function handleNewWorker(worker) {
         if (!worker || !navigator.serviceWorker.controller) return;
-        // Safe to auto-apply when the tablet is asleep/backgrounded, or awake
-        // but nobody is mid-task. Otherwise let them tap when ready.
-        if (document.hidden || !userIsBusy()) {
-          applyUpdate(worker);
-        } else {
-          showUpdateBar(worker);
-        }
+        // v249: ALWAYS apply. Holding back for "not busy" left never-idle
+        // tablets (Hegins) stranded on an old build that silently dropped data.
+        // Work is autosaved as a draft, so applying immediately is safe.
+        applyUpdate(worker);
       }
 
       if (reg.waiting) handleNewWorker(reg.waiting);
@@ -5548,12 +5547,14 @@ if ('serviceWorker' in navigator) {
       window.addEventListener('focus', checkForUpdate);
       window.addEventListener('pageshow', checkForUpdate);
 
-      // Belt-and-suspenders for a tablet that stays awake all day: poll every
-      // 30 minutes so it never sits more than half an hour behind a deploy.
+      // Check right now on load, then every 5 minutes (was 30) so a tablet that
+      // stays awake all day can never sit far behind a deploy.
+      checkForUpdate();
+      if (reg.waiting) handleNewWorker(reg.waiting);
       setInterval(function() {
         checkForUpdate();
         if (reg.waiting) handleNewWorker(reg.waiting);
-      }, 30 * 60 * 1000);
+      }, 5 * 60 * 1000);
     }).catch(function(err) { console.warn('SW registration failed:', err); });
   });
 }

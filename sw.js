@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v248-staffedit';
+const CACHE_NAME = 'rushtown-v249-forceupdate';
 
 const SHELL_FILES = [
   '/',
@@ -123,11 +123,11 @@ self.addEventListener('install', event => {
             .catch(() => null)
         )
       ))
-      // NOTE: intentionally NO self.skipWaiting() here. The new worker WAITS so
-      // the page can show a "New version ready" bar; it activates only when the
-      // user taps Update (which posts SKIP_WAITING, handled below). This avoids
-      // surprise reloads mid-task. On a first install (no existing worker) the
-      // browser activates it immediately anyway.
+      // v249 (per Joe — Hegins iPads stuck on an old build): TAKE OVER
+      // IMMEDIATELY. Waiting for an idle moment/tap meant a tablet that's never
+      // idle could sit on a stale version for days and silently drop data. The
+      // crew's work is autosaved as a draft, so a refresh is safe.
+      .then(() => self.skipWaiting())
   );
 });
 
