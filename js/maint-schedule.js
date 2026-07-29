@@ -25,6 +25,20 @@
   }
   var MS_SITES = ['Hegins', 'Danville', 'Processing Plant', 'Feed Mill', 'Both'];
 
+  // v256b (per Joe): the job categories the maintenance crew is assigned to.
+  // Matches the Standard Work roles — Flow = front-end (feed/water/egg flow),
+  // Manure = back-end (belts/manure/cleanup), WO/Emergency = breakdowns.
+  function MS_JOBS() {
+    return [
+      { id: 'Flow',         en: '🚿 Flow (feed · water · egg flow)', es: '🚿 Flujo (alimento · agua · huevos)' },
+      { id: 'Manure',       en: '🔄 Manure (belts · back of house)',  es: '🔄 Estiércol (bandas · fondo)' },
+      { id: 'WO/Emergency', en: '🔧 WO / Emergency',                  es: '🔧 OT / Emergencia' },
+      { id: 'PMs',          en: '📋 PMs',                             es: '📋 PM' },
+      { id: 'Project',      en: '🗂 Project',                         es: '🗂 Proyecto' },
+      { id: 'Other',        en: '✏️ Other (type below)',              es: '✏️ Otro (escribe abajo)' }
+    ];
+  }
+
   var _msData = null;
   var _msUnsub = null;
   var _msEdit = false;
@@ -32,27 +46,39 @@
   function _todayKey() { return MS_DAYS[(new Date().getDay() + 6) % 7]; }
   function _todayDate() { return (typeof LDATE === 'function') ? LDATE() : new Date().toISOString().slice(0, 10); }
 
-  function _canEdit() {
-    try {
-      if (typeof isLoggedIn === 'function' && isLoggedIn()) {
-        return (typeof _isLeader === 'function') ? !!_isLeader() : true;
-      }
-    } catch (e) {}
-    return true;
-  }
+  // v256 (per Joe): EVERYONE can add + edit the schedule — not leader-only.
+  // The crew fills in who's where and what they're doing; every entry stamps the
+  // person who added it (`by`), so it's still traceable.
+  function _canEdit() { return true; }
 
-  // Maintenance techs for a site (leaders included via getDeptStaff).
+  // v256: ANY employee at that location can be scheduled (not just Maintenance) —
+  // Joe schedules people by location + what they're doing. Maintenance crew for
+  // the site sorts to the top, then everyone else at that site, then all staff.
   function _msTechs(site) {
+    var farm = (site === 'Both' || !site) ? null : site;
+    var maint = [], rest = [];
     try {
-      if (typeof getDeptStaff === 'function') {
-        var farm = (site === 'Both' || !site) ? null : site;
-        // Processing Plant / Feed Mill techs are usually tagged Both — fall back to all.
-        var names = getDeptStaff(farm, 'Maintenance') || [];
-        if (!names.length) names = getDeptStaff(null, 'Maintenance') || [];
-        return names;
+      if (typeof getDeptStaff === 'function') maint = getDeptStaff(farm, 'Maintenance') || [];
+      if (typeof staffList !== 'undefined' && Array.isArray(staffList)) {
+        staffList.forEach(function (s) {
+          if (!s || s.active === false || !s.name) return;
+          var atSite = !farm || s.farm === farm || s.farm === 'Both' || s.farm === 'All';
+          if (!atSite) return;
+          if (maint.indexOf(s.name) === -1) rest.push(s.name);
+        });
       }
     } catch (e) {}
-    return [];
+    rest.sort(function (a, b) { return a.localeCompare(b); });
+    var out = maint.slice().sort(function (a, b) { return a.localeCompare(b); }).concat(rest);
+    if (!out.length) {
+      try {
+        if (typeof staffList !== 'undefined' && Array.isArray(staffList)) {
+          out = staffList.filter(function (s) { return s && s.active !== false && s.name; })
+            .map(function (s) { return s.name; }).sort(function (a, b) { return a.localeCompare(b); });
+        }
+      } catch (e) {}
+    }
+    return out;
   }
 
   function _msWIs() {
@@ -107,7 +133,11 @@
       '<span style="flex:1;' + MONO + 'font-size:12px;color:#d8e8d8;line-height:1.5;">' +
         time + '<b style="color:#9ad6a0;">' + _esc(e.tech || '—') + '</b>' +
         (e.site ? ' <span style="color:#7ab0f6;">@ ' + _esc(e.site) + '</span>' : '') +
-        (e.duty ? '<br><span style="color:#b8c8b8;">' + _esc(e.duty) + '</span>' : '') +
+        (e.duty ? ('<br>' + (function () {
+          // Color-code the job so a leader can scan the day at a glance.
+          var col = { Flow: '#7ad6d6', Manure: '#d6a86a', 'WO/Emergency': '#f0a0a0', PMs: '#9cc0f6', Project: '#c0a0f0' }[e.job] || '#b8c8b8';
+          return '<span style="color:' + col + ';font-weight:' + (e.job ? '700' : '400') + ';">' + _esc(e.duty) + '</span>';
+        })()) : '') +
         '<br>' + wiBtn + (wiBtn ? ' ' : '') + swBtn +
       '</span>' +
       (canEdit ? '<button onclick="msRemove(\'' + bucket + '\',' + i + ')" style="background:none;border:none;color:#7a4a4a;cursor:pointer;font-size:15px;padding:4px 6px;">✕</button>' : '') +
@@ -126,7 +156,11 @@
         '<select id="ms-tech-' + bid + '" style="flex:2;min-width:130px;padding:9px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:13px;"><option value="">' + msL('— tech —', '— técnico —') + '</option>' + techOpts + '</select>' +
       '</div>' +
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">' +
-        '<input id="ms-duty-' + bid + '" placeholder="' + msL('Job (e.g. Fans + PMs houses 4-6)', 'Trabajo (ej. Ventiladores + PM casas 4-6)') + '" style="flex:3;min-width:150px;padding:9px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:12px;">' +
+        '<select id="ms-cat-' + bid + '" style="flex:2;min-width:170px;padding:9px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:12px;">' +
+          '<option value="">' + msL('— job —', '— trabajo —') + '</option>' +
+          MS_JOBS().map(function (j) { return '<option value="' + j.id + '">' + msL(j.en, j.es) + '</option>'; }).join('') +
+        '</select>' +
+        '<input id="ms-duty-' + bid + '" placeholder="' + msL('Detail (e.g. houses 4-6)', 'Detalle (ej. casas 4-6)') + '" style="flex:2;min-width:130px;padding:9px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:12px;">' +
         '<label style="flex:0 0 auto;display:flex;align-items:center;gap:4px;' + MONO + 'font-size:10px;color:#7a9a7a;">' + msL('start', 'inicio') +
           '<input id="ms-start-' + bid + '" type="time" step="300" style="padding:8px 6px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:13px;color-scheme:dark;"></label>' +
         '<label style="flex:0 0 auto;display:flex;align-items:center;gap:4px;' + MONO + 'font-size:10px;color:#7a9a7a;">' + msL('end', 'fin') +
@@ -220,12 +254,15 @@
   window.msAdd = function (bucket) {
     var bid = bucket.replace(/[^a-zA-Z0-9]/g, '_');
     var g = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
-    var tech = g('ms-tech-' + bid), site = g('ms-site-' + bid), duty = g('ms-duty-' + bid);
+    var tech = g('ms-tech-' + bid), site = g('ms-site-' + bid), detail = g('ms-duty-' + bid);
+    var cat = g('ms-cat-' + bid);
+    // duty = the job category + any detail ("Flow — houses 4-6")
+    var duty = (cat && cat !== 'Other') ? (cat + (detail ? ' — ' + detail : '')) : detail;
     var start = g('ms-start-' + bid), end = g('ms-end-' + bid), wiId = g('ms-wi-' + bid);
-    if (!tech && !duty) { if (typeof toast === 'function') toast(msL('Pick a tech or type a job first', 'Elige un técnico o escribe un trabajo primero')); return; }
+    if (!tech && !duty) { if (typeof toast === 'function') toast(msL('Pick a tech or a job first', 'Elige un técnico o un trabajo primero')); return; }
     var wiTitle = '';
     if (wiId) { var w = _msWIs().filter(function (x) { return (x.wiId || x._fbId) === wiId; })[0]; wiTitle = w ? (w.title || '') : ''; }
-    _bucketList(bucket, true).push({ tech: tech, site: site, duty: duty, start: start, end: end, wiId: wiId, wiTitle: wiTitle, by: (typeof getDeviceUser === 'function' && getDeviceUser()) || '', ts: Date.now() });
+    _bucketList(bucket, true).push({ tech: tech, site: site, duty: duty, job: cat || '', start: start, end: end, wiId: wiId, wiTitle: wiTitle, by: (typeof getDeviceUser === 'function' && getDeviceUser()) || '', ts: Date.now() });
     _msDraw();
     _save();
   };
@@ -236,5 +273,15 @@
     _msDraw();
     _save();
   };
-  window.renderMaintSchedule = function () { _load(); _msDraw(); };
+  window.renderMaintSchedule = function () {
+    _load();
+    // v256: if nothing is scheduled yet, open in EDIT mode so the add rows are
+    // right there — no hunting for the ✏️ button on an empty screen.
+    try {
+      var days = (_msData && _msData.days) || {};
+      var anything = Object.keys(days).some(function (k) { return Array.isArray(days[k]) && days[k].length; });
+      if (!anything) _msEdit = true;
+    } catch (e) {}
+    _msDraw();
+  };
 })();
