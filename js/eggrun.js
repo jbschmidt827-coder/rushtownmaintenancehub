@@ -14,7 +14,7 @@
 const EGGRUN_MACHINES = { Hegins: [1, 2], Danville: [1] };
 // Target finish ("all eggs done") time per plant. Any run time PAST this counts
 // as DOWNTIME (Joe, Hegins). "HH:MM" 24h. Add plants here as targets are set.
-const EGGRUN_TARGET_DONE = { Hegins: '11:45' };
+const EGGRUN_TARGET_DONE = { Hegins: '11:48' };   // Joe 2026-07-29 (was 11:45)
 function erTargetDone(farm) { return EGGRUN_TARGET_DONE[farm] || null; }
 function _erMinOfDay(hhmm) { var m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '')); return m ? (+m[1]) * 60 + (+m[2]) : null; }
 
@@ -368,7 +368,85 @@ function _erDailySummary(farms, t) {
   }).join('');
   return '<div style="background:#0d2a12;border:1.5px solid #2a7a3a;border-radius:12px;padding:12px 14px;margin-bottom:14px;">' +
     '<div style="' + MONO + 'font-size:12px;font-weight:700;color:#7ab07a;margin-bottom:2px;">📊 ' + erL('TODAY — Processing report', 'HOY — Reporte de procesamiento') + ' · ' + t + '</div>' +
-    rows + '</div>';
+    rows +
+    farms.map(function (f) { return _erPackerTable(f, t); }).join('') +
+    '</div>';
+}
+
+// ── BY PACKER (Joe 2026-07-29) ──────────────────────────────────────────────
+// One row per packer: their run time (from the clock times they entered), their
+// total eggs (sum of their lanes), eggs/dz/cases per hour, and whether they beat
+// the plant's target finish time. Eggs also roll up to a plant TOTAL so the
+// numbers tie back to the day's total eggs.
+var ER_EGGS_PER_DZ = 12, ER_DZ_PER_CASE = 30, ER_EGGS_PER_CASE = 360;
+function _erPackerTable(farm, t) {
+  var MONO = "font-family:'IBM Plex Mono',monospace;";
+  var machines = erMachines(farm);
+  var tgt = erTargetDone(farm), tgtM = tgt ? _erMinOfDay(tgt) : null;
+  var any = false, tEggs = 0, tMin = 0;
+  var rows = machines.map(function (m) {
+    var rec = erRec(farm, m, t) || {};
+    var packer = rec.packer || '';
+    var lanes = (rec.lanes != null) ? Number(rec.lanes) : 2;
+    var laneEggs = Array.isArray(rec.laneEggs) ? rec.laneEggs : [];
+    var eggs = laneEggs.reduce(function (s, v) { return s + (Number(v) || 0); }, 0) || (Number(rec.eggs) || 0);
+    var mins = _erMinFromClock(rec.startClock, rec.stopClock);
+    if (mins == null && rec.manualMin != null) mins = Number(rec.manualMin);
+    if (!packer && !eggs && mins == null) return '';
+    any = true; tEggs += eggs; tMin += (mins || 0);
+    var eph = (eggs && mins) ? Math.round(eggs / (mins / 60)) : null;
+    var dzh = eph ? Math.round(eph / ER_EGGS_PER_DZ) : null;
+    var csh = eph ? Math.round(eph / ER_EGGS_PER_CASE * 10) / 10 : null;
+    var stopM = _erMinOfDay(rec.stopClock);
+    var onTime = (tgtM != null && stopM != null)
+      ? (stopM <= tgtM
+          ? '<span style="color:#4ade80;font-weight:700;">✅ ' + erL('on time', 'a tiempo') + '</span>'
+          : '<span style="color:#f87171;font-weight:700;">⚠ +' + erFmtDur((stopM - tgtM) * 60000) + '</span>')
+      : '<span style="color:#5a7a5a;">—</span>';
+    return '<tr style="border-bottom:1px solid #163016;">' +
+      '<td style="padding:7px 6px;color:#f0ead8;font-weight:700;">' + (packer ? String(packer).replace(/</g, '&lt;') : (erL('Machine', 'Máquina') + ' ' + m)) + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#9cc0f6;">M' + m + ' · ' + lanes + ' ' + erL('lanes', 'carriles') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#d6b36a;">' + (rec.startClock ? erFmtClock(rec.startClock) : '—') + ' → ' + (rec.stopClock ? erFmtClock(rec.stopClock) : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + (mins != null ? erFmtDur(mins * 60000) : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#f0d68a;font-weight:700;">' + (eggs ? eggs.toLocaleString() : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#cfe0a0;">' + (eggs ? Math.round(eggs / ER_EGGS_PER_DZ).toLocaleString() : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#cfe0a0;">' + (eggs ? (Math.round(eggs / ER_EGGS_PER_CASE * 10) / 10).toLocaleString() : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#4ade80;">' + (eph ? eph.toLocaleString() : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#e8d36a;">' + (dzh ? dzh.toLocaleString() : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#4ade80;font-weight:700;">' + (csh ? csh.toLocaleString() : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;">' + onTime + '</td>' +
+    '</tr>';
+  }).join('');
+  if (!any) return '';
+  var tEph = (tEggs && tMin) ? Math.round(tEggs / (tMin / 60)) : null;
+  return '<div style="margin-top:10px;">' +
+    '<div style="' + MONO + 'font-size:11px;font-weight:700;color:#9cc0f6;letter-spacing:1px;margin-bottom:5px;">👷 ' + erL('BY PACKER', 'POR EMPACADOR') + ' · ' + farm +
+      (tgt ? ('<span style="color:#d6b36a;font-weight:400;"> · 🎯 ' + erL('target done ', 'meta ') + erFmtClock(tgt) + '</span>') : '') + '</div>' +
+    '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:11.5px;min-width:720px;">' +
+    '<thead><tr style="border-bottom:1px solid #2a5a2a;">' +
+      '<th style="padding:6px;color:#5a8a5a;text-align:left;">' + erL('Packer', 'Empacador') + '</th>' +
+      '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('Machine', 'Máquina') + '</th>' +
+      '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('Start → Stop', 'Inicio → Fin') + '</th>' +
+      '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('Run time', 'Tiempo') + '</th>' +
+      '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('Eggs', 'Huevos') + '</th>' +
+      '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('Dz', 'Dz') + '</th>' +
+      '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('Cases', 'Cajas') + '</th>' +
+      '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('Eggs/hr', 'Huevos/hr') + '</th>' +
+      '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('Dz/hr', 'Dz/hr') + '</th>' +
+      '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('Cases/hr', 'Cajas/hr') + '</th>' +
+      '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('vs target', 'vs meta') + '</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody>' +
+    '<tfoot><tr style="border-top:1.5px solid #2a5a2a;">' +
+      '<td colspan="3" style="padding:7px 6px;color:#9ad6a0;font-weight:700;">' + erL('PLANT TOTAL', 'TOTAL PLANTA') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + (tMin ? erFmtDur(tMin * 60000) : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#f0d68a;font-weight:700;">' + (tEggs ? tEggs.toLocaleString() : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#cfe0a0;font-weight:700;">' + (tEggs ? Math.round(tEggs / ER_EGGS_PER_DZ).toLocaleString() : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#cfe0a0;font-weight:700;">' + (tEggs ? (Math.round(tEggs / ER_EGGS_PER_CASE * 10) / 10).toLocaleString() : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#4ade80;font-weight:700;">' + (tEph ? tEph.toLocaleString() : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#e8d36a;font-weight:700;">' + (tEph ? Math.round(tEph / ER_EGGS_PER_DZ).toLocaleString() : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#4ade80;font-weight:700;">' + (tEph ? (Math.round(tEph / ER_EGGS_PER_CASE * 10) / 10).toLocaleString() : '—') + '</td>' +
+      '<td style="padding:7px 6px;"></td>' +
+    '</tr></tfoot></table></div></div>';
 }
 
 // ── Eggs Packed Out → PALLET INVENTORY + SHIPPING (per Joe) ──────────────────
