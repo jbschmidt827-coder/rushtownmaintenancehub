@@ -46,8 +46,32 @@
     } catch (e) {}
     return out;
   }
-  function _openRun(farm, house) {
-    return _efData.filter(function (r) { return r.farm === farm && String(r.house) === String(house) && r.status === 'open'; })
+
+  // ── HOW EACH SITE RUNS (Joe 2026-07-28) ───────────────────────────────────
+  // Hegins runs its egg belts in GROUPS of houses — one Start/Stop covers the
+  // whole group. Danville runs house by house. So the unit of work here is a
+  // "run unit": either a single house (Danville) or a group (Hegins).
+  var EF_GROUPS = {
+    Hegins: [
+      { id: 'G1', label: 'Group 1', houses: ['1', '3', '4'] },
+      { id: 'G2', label: 'Group 2', houses: ['5', '6', '7', '8'] }
+    ]
+  };
+  function _efUnits(farm) {
+    var live = _efHouses(farm);                       // active (down houses removed)
+    var groups = EF_GROUPS[farm];
+    if (groups) {
+      return groups.map(function (g) {
+        var hs = g.houses.filter(function (h) { return live.indexOf(h) !== -1; });
+        return { key: g.id, label: g.label, houses: hs, isGroup: true };
+      }).filter(function (g) { return g.houses.length; });
+    }
+    return live.map(function (h) { return { key: h, label: efL('House', 'Casa') + ' ' + h, houses: [h], isGroup: false }; });
+  }
+  // A run doc's identity: group id for Hegins, house number for Danville.
+  function _efRunKey(r) { return r.group ? String(r.group) : String(r.house); }
+  function _openRun(farm, unitKey) {
+    return _efData.filter(function (r) { return r.farm === farm && _efRunKey(r) === String(unitKey) && r.status === 'open'; })
       .sort(function (a, b) { return (b.startTs || 0) - (a.startTs || 0); })[0] || null;
   }
   function _dur(ms) {
@@ -59,8 +83,9 @@
   function _timeLbl(ts) { try { return ts ? new Date(ts).toLocaleTimeString(_lang === 'es' ? 'es-ES' : 'en-US', { hour: 'numeric', minute: '2-digit' }) : ''; } catch (e) { return ''; } }
 
   // ── House cards (start/stop + speed) ──
-  function _houseCard(farm, house) {
-    var run = _openRun(farm, house);
+  function _houseCard(farm, unit) {
+    var house = unit.key;              // group id (Hegins) or house number (Danville)
+    var run = _openRun(farm, unit.key);
     var running = !!run;
     var elapsed = running ? _dur(Date.now() - (run.startTs || Date.now())) : '';
     var speedVal = running ? (run.speed != null ? _esc(run.speed) : '') : '';
@@ -69,7 +94,9 @@
     var dirtyBtn = '<button onclick="efToggleDirty(\'' + _esc(farm) + '\',\'' + _esc(house) + '\')" style="flex:0 0 auto;padding:7px 11px;border-radius:8px;' + MONO + 'font-size:11px;font-weight:700;cursor:pointer;background:' + (dirtyOn ? '#3a2f0a' : '#0c150c') + ';border:1.5px solid ' + (dirtyOn ? '#d6b34a' : '#2a4a2a') + ';color:' + (dirtyOn ? '#f0d68a' : '#6a8a6a') + ';">🥚 ' + efL('Dirty line', 'Línea sucia') + ': ' + (dirtyOn ? efL('ON', 'SÍ') : efL('OFF', 'NO')) + '</button>';
     return '<div style="background:' + (running ? '#101f10' : '#0c150c') + ';border:1.5px solid ' + (running ? '#4ade80' : '#1e3a1e') + ';border-radius:12px;padding:12px 13px;">' +
       '<div style="display:flex;align-items:center;gap:10px;">' +
-        '<span style="' + MONO + 'font-size:15px;font-weight:700;color:#f0ead8;min-width:60px;">' + efL('House', 'Casa') + ' ' + _esc(house) + '</span>' +
+        '<span style="' + MONO + 'font-size:15px;font-weight:700;color:#f0ead8;">' + _esc(unit.label) +
+          (unit.isGroup ? '<span style="font-size:10px;color:#9cc0f6;font-weight:400;"> · ' + efL('Houses', 'Casas') + ' ' + unit.houses.join(' · ') + '</span>' : '') +
+        '</span>' +
         (running
           ? '<span style="' + MONO + 'font-size:11px;color:#4ade80;">● ' + efL('running', 'corriendo') + ' ' + elapsed + '</span>'
           : '<span style="' + MONO + 'font-size:11px;color:#5a7a5a;">' + efL('not running', 'sin correr') + '</span>') +
@@ -99,7 +126,7 @@
       var dirty = r.dirtyLine ? '<span style="color:#f0d68a;">🥚 ' + efL('ON', 'SÍ') + '</span>' : '<span style="color:#4a6a4a;">—</span>';
       return '<tr style="border-bottom:1px solid #1a2a1a;">' +
         '<td style="padding:8px 6px;color:#f0ead8;">' + dateLbl + '</td>' +
-        '<td style="padding:8px 6px;color:#aaa;">H' + _esc(r.house) + '</td>' +
+        '<td style="padding:8px 6px;color:#aaa;">' + (r.groupLabel ? (_esc(r.groupLabel) + '<span style="color:#5a7a7a;font-size:9px;"> ' + _esc((r.houses||[]).join('·')) + '</span>') : ('H' + _esc(r.house))) + '</td>' +
         '<td style="padding:8px 6px;color:#e8d36a;font-weight:700;text-align:center;">' + (r.speed != null && r.speed !== '' ? _esc(r.speed) : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;">' + dirty + '</td>' +
         '<td style="padding:8px 6px;color:#9ad6a0;">' + dur + '</td>' +
@@ -151,28 +178,33 @@
 
   // Window = [fromDaysAgo, toDaysAgo) back from now. Actual week = [0,7),
   // target/prior week = [7,14) → ▼/▲ is a real week-over-week trend.
-  function _efStats(site, houses, fromDays, toDays) {
+  // Keyed by RUN UNIT (group id at Hegins, house number at Danville).
+  function _efStats(site, units, fromDays, toDays) {
     var now = Date.now();
     var hi = now - fromDays * 86400000;   // newest edge
     var lo = now - toDays * 86400000;     // oldest edge
     var out = {};
-    houses.forEach(function (h) { out[h] = { runs: 0, min: 0, speed: [], eggs: 0, eggDays: 0, stuck: 0 }; });
+    var unitOf = {};
+    units.forEach(function (u) {
+      out[u.key] = { runs: 0, min: 0, speed: [], eggs: 0, eggDays: 0, stuck: 0, houses: u.houses };
+      u.houses.forEach(function (h) { unitOf[h] = u.key; });   // house → its unit
+    });
     _efData.forEach(function (r) {
       if (r.farm !== site) return;
-      var h = String(r.house); if (!out[h]) return;
+      var k = _efRunKey(r); if (!out[k]) return;
       var ts = r.startTs || 0; if (ts < lo || ts >= hi) return;
       if (r.status !== 'done' || r.minutes == null) return;
       var m = Number(r.minutes) || 0;
-      if (m > _EF_STUCK_MIN) { out[h].stuck++; return; }   // don't let a forgotten Stop skew it
-      out[h].runs++; out[h].min += m;
-      if (r.speed != null && r.speed !== '') out[h].speed.push(Number(r.speed));
+      if (m > _EF_STUCK_MIN) { out[k].stuck++; return; }   // don't let a forgotten Stop skew it
+      out[k].runs++; out[k].min += m;
+      if (r.speed != null && r.speed !== '') out[k].speed.push(Number(r.speed));
     });
     _efWalks.forEach(function (w) {
       if (w.farm !== site) return;
-      var h = String(w.house); if (!out[h]) return;
+      var k = unitOf[String(w.house)]; if (!k) return;       // roll a house's eggs into its unit
       var ts = Number(w.ts) || 0; if (ts < lo || ts >= hi) return;
       var e = Number(w.eggsCollected) || 0;
-      if (e > 0) { out[h].eggs += e; out[h].eggDays++; }
+      if (e > 0) { out[k].eggs += e; out[k].eggDays++; }
     });
     var farmEggs = _efFarmEggs(site);
     Object.keys(out).forEach(function (h) {
@@ -180,7 +212,11 @@
       s.avgMin = s.runs ? Math.round(s.min / s.runs) : null;
       s.avgSpeed = s.speed.length ? Math.round(s.speed.reduce(function (a, b) { return a + b; }, 0) / s.speed.length * 10) / 10 : null;
       s.avgEggs = s.eggDays ? Math.round(s.eggs / s.eggDays) : null;
-      if (s.avgEggs == null && farmEggs[h]) { s.avgEggs = farmEggs[h]; s.eggsFromFarm = true; }
+      // Farm-record eggs: for a GROUP, sum every house in the group.
+      if (s.avgEggs == null) {
+        var fe = (s.houses || [h]).reduce(function (sum, hh) { return sum + (farmEggs[hh] || 0); }, 0);
+        if (fe > 0) { s.avgEggs = fe; s.eggsFromFarm = true; }
+      }
       s.eggsPerHr = (s.avgEggs && s.avgMin) ? Math.round(s.avgEggs / (s.avgMin / 60)) : null;
       s.dzPerHr = s.eggsPerHr ? Math.round(s.eggsPerHr / EGGS_PER_DZ) : null;
       s.casesPerHr = s.eggsPerHr ? Math.round(s.eggsPerHr / EGGS_PER_CASE * 10) / 10 : null;
@@ -190,12 +226,15 @@
     return out;
   }
 
-  function _drawSummary(site, houses) {
-    var wk = _efStats(site, houses, 0, 7);    // THIS week (last 7 days) = actual
-    var tgt = _efStats(site, houses, 7, 14);  // PRIOR week = the trend target
-    var stuckTotal = houses.reduce(function (s, h) { return s + (wk[h] ? wk[h].stuck : 0); }, 0);
-    var anyData = houses.some(function (h) { return wk[h] && wk[h].runs > 0; });
+  function _drawSummary(site, units) {
+    var keys = units.map(function (u) { return u.key; });
+    var labelOf = {}; units.forEach(function (u) { labelOf[u.key] = u.isGroup ? (u.label + ' (' + u.houses.join('·') + ')') : ('H' + u.key); });
+    var wk = _efStats(site, units, 0, 7);    // THIS week (last 7 days) = actual
+    var tgt = _efStats(site, units, 7, 14);  // PRIOR week = the trend target
+    var stuckTotal = keys.reduce(function (s, h) { return s + (wk[h] ? wk[h].stuck : 0); }, 0);
+    var anyData = keys.some(function (h) { return wk[h] && wk[h].runs > 0; });
     if (!anyData) return '';
+    var houses = keys;   // rows are keyed by run unit
 
     function cell(v, unit) { return v == null ? '<span style="color:#4a6a4a;">—</span>' : ('<b style="color:#f0ead8;">' + _num(v) + '</b>' + (unit ? '<span style="color:#7a9a7a;font-size:9px;"> ' + unit + '</span>' : '')); }
     // vs-target arrow: for run time LOWER is better; for eggs/hr HIGHER is better.
@@ -211,7 +250,7 @@
       var a = wk[h], t = tgt[h];
       if (!a || !a.runs) return '';
       return '<tr style="border-bottom:1px solid #1a2a1a;">' +
-        '<td style="padding:8px 6px;color:#f0ead8;font-weight:700;">H' + _esc(h) + '</td>' +
+        '<td style="padding:8px 6px;color:#f0ead8;font-weight:700;">' + _esc(labelOf[h] || h) + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#aaa;">' + a.runs + '</td>' +
         '<td style="padding:8px 6px;text-align:center;">' + cell(a.avgMin, 'min') + vs(a.avgMin, t.avgMin, true) + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#7a9a7a;font-size:10px;">' + (t.avgMin != null ? (t.avgMin + ' min') : '—') + '</td>' +
@@ -245,7 +284,7 @@
             stuckTotal + ' corrida(s) abiertas más de 8h (no se tocó Detener) — excluidas de los promedios.') + '</div>' : '') +
       '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:12px;min-width:620px;">' +
       '<thead><tr style="border-bottom:1px solid #2a4a2a;">' +
-        '<th style="padding:7px 6px;color:#5a8a5a;text-align:left;">' + efL('House', 'Casa') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:left;">' + (EF_GROUPS[site] ? efL('Group', 'Grupo') : efL('House', 'Casa')) + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Runs', 'Corridas') + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Avg run', 'Prom corrida') + '</th>' +
         '<th style="padding:7px 6px;color:#7a9a7a;text-align:center;font-size:9px;">🎯 ' + efL('target', 'meta') + '</th>' +
@@ -278,16 +317,20 @@
     if (!host) return;
     var site = _efSite();
     var houses = _efHouses(site);
-    var cards = houses.map(function (h) { return _houseCard(site, h); }).join('') ||
+    var units = _efUnits(site);          // groups at Hegins, houses at Danville
+    var cards = units.map(function (u) { return _houseCard(site, u); }).join('') ||
       '<div style="' + MONO + 'font-size:12px;color:#5a7a5a;padding:14px;">' + efL('No active houses for this site.', 'Sin casas activas para este sitio.') + '</div>';
     host.innerHTML =
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">' +
         '<span style="' + MONO + 'font-size:13px;font-weight:700;color:#a3d0e8;letter-spacing:1px;">🚿 ' + efL('Egg Flow', 'Flujo de Huevos') + ' · ' + _esc(site) + '</span>' +
         '<span style="' + MONO + 'font-size:9px;color:#4ade80;border:1px solid #2a5a2a;border-radius:20px;padding:2px 8px;">● ' + efL('LIVE', 'EN VIVO') + '</span>' +
       '</div>' +
-      '<div style="' + MONO + 'font-size:10px;color:#7a9a7a;margin-bottom:12px;">' + efL('Set the speed, tap Start when the belts run, Stop when done. Times save automatically.', 'Pon la velocidad, toca Iniciar cuando corran las bandas, Detener al terminar. Los tiempos se guardan solos.') + '</div>' +
+      '<div style="' + MONO + 'font-size:10px;color:#7a9a7a;margin-bottom:12px;">' +
+        efL('Set the speed, tap Start when the belts run, Stop when done. Times save automatically.', 'Pon la velocidad, toca Iniciar cuando corran las bandas, Detener al terminar. Los tiempos se guardan solos.') +
+        (EF_GROUPS[site] ? ('<br>' + efL('This site runs in GROUPS — one Start/Stop covers the whole group.', 'Este sitio corre en GRUPOS — un Iniciar/Detener cubre todo el grupo.')) : '') +
+      '</div>' +
       '<div style="display:grid;gap:9px;">' + cards + '</div>' +
-      _drawSummary(site, houses) +
+      _drawSummary(site, units) +
       _drawLog(host, site);
   }
 
@@ -304,7 +347,14 @@
       return;
     }
     var key = farm + '_' + house;
-    db.collection('eggFlow').add({ farm: farm, house: String(house), speed: speed, dirtyLine: !!_efDirty[key], startTs: Date.now(), stopTs: null, minutes: null, status: 'open', date: _today(), by: _by(), ts: Date.now() })
+    // Hegins runs in groups: record the group id + the houses it covers so the
+    // rollup can split eggs across them. Danville stays a single house.
+    var unit = _efUnits(farm).filter(function (u) { return u.key === String(house); })[0];
+    var rec = { farm: farm, house: String(house), speed: speed, dirtyLine: !!_efDirty[key],
+                startTs: Date.now(), stopTs: null, minutes: null, status: 'open',
+                date: _today(), by: _by(), ts: Date.now() };
+    if (unit && unit.isGroup) { rec.group = unit.key; rec.groupLabel = unit.label; rec.houses = unit.houses.slice(); }
+    db.collection('eggFlow').add(rec)
       .then(function () { delete _efDirty[key]; if (typeof toast === 'function') toast(efL('▶ Run started', '▶ Corrida iniciada')); })
       .catch(function (e) { console.error('efStart:', e); if (typeof toast === 'function') toast(efL('⚠ Could not start', '⚠ No se pudo iniciar')); });
   };
