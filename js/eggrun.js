@@ -15,6 +15,22 @@ const EGGRUN_MACHINES = { Hegins: [1, 2], Danville: [1] };
 // Target finish ("all eggs done") time per plant. Any run time PAST this counts
 // as DOWNTIME (Joe, Hegins). "HH:MM" 24h. Add plants here as targets are set.
 const EGGRUN_TARGET_DONE = { Hegins: '11:48' };   // Joe 2026-07-29 (was 11:45)
+// HOW EGGS ARE COUNTED per plant (Joe 2026-07-30): Hegins packs by LANE off the
+// machine; Danville counts by HOUSE — the packer enters the total eggs for each
+// house (or the houses assigned to them). Machine total = the sum either way.
+const EGGRUN_BY_HOUSE = { Danville: true };
+function erByHouse(farm) { return !!EGGRUN_BY_HOUSE[farm]; }
+function erActiveHouses(farm) {
+  var out = [];
+  try {
+    var arr = (typeof FARM_HOUSES !== 'undefined' && FARM_HOUSES[farm]) ? FARM_HOUSES[farm] : [];
+    arr.forEach(function (h) {
+      var n = String(h).replace(/^\s*house\s*/i, '').trim();
+      if (!(typeof isHouseDown === 'function' && isHouseDown(farm, n))) out.push(n);
+    });
+  } catch (e) {}
+  return out;
+}
 function erTargetDone(farm) { return EGGRUN_TARGET_DONE[farm] || null; }
 function _erMinOfDay(hhmm) { var m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '')); return m ? (+m[1]) * 60 + (+m[2]) : null; }
 
@@ -235,6 +251,21 @@ async function eggRunSetLanes(farm, m, val) {
     renderEggRun();
   } catch (e) { console.error('eggRunSetLanes:', e); }
 }
+// Eggs entered PER HOUSE (Danville). Machine total = sum of the houses, so
+// eggs/min, the packer table and the daily summary all still work off one number.
+async function eggRunSetHouseEggs(farm, m, house, val) {
+  try {
+    var rec = erRec(farm, m, erToday()) || {};
+    var map = Object.assign({}, rec.houseEggs || {});
+    var n = Math.max(0, Math.round(Number(val) || 0));
+    if (n > 0) map[String(house)] = n; else delete map[String(house)];
+    var total = Object.keys(map).reduce(function (s, k) { return s + (Number(map[k]) || 0); }, 0);
+    await _erSave(farm, m, { houseEggs: map, eggs: total, eggsBy: erBy() });
+    if (typeof toast === 'function') toast('🥚 ' + farm + ' H' + house + ': ' + n.toLocaleString());
+    renderEggRun();
+  } catch (e) { console.error('eggRunSetHouseEggs:', e); if (typeof toast === 'function') toast(erL('Could not save', 'No se pudo guardar')); }
+}
+
 // Eggs entered PER LANE. Machine total (eggs) = sum of the lanes, kept in sync so
 // eggs/min + the daily summary still work off one number.
 async function eggRunSetLaneEggs(farm, m, idx, val) {
@@ -279,7 +310,12 @@ function _erMachineDetail(farm, m, rec, multi) {
   var nLanes = Math.max(1, Math.min(4, lanes || 2));
   var laneEggs = (rec && Array.isArray(rec.laneEggs)) ? rec.laneEggs.slice() : [];
   var laneSum = laneEggs.reduce(function (s, v) { return s + (Number(v) || 0); }, 0);
-  var eggs = laneSum > 0 ? laneSum : (rec && rec.eggs != null ? Number(rec.eggs) : null);  // total = sum of lanes
+  var byHouse = erByHouse(farm);
+  var houseEggs = (rec && rec.houseEggs) ? rec.houseEggs : {};
+  var houseSum = Object.keys(houseEggs).reduce(function (s, k) { return s + (Number(houseEggs[k]) || 0); }, 0);
+  var eggs = byHouse
+    ? (houseSum > 0 ? houseSum : (rec && rec.eggs != null ? Number(rec.eggs) : null))
+    : (laneSum > 0 ? laneSum : (rec && rec.eggs != null ? Number(rec.eggs) : null));
   var startC = (rec && rec.startClock) ? rec.startClock : '';
   var stopC = (rec && rec.stopClock) ? rec.stopClock : '';
   var mins = _erMinFromClock(startC, stopC);
@@ -295,8 +331,9 @@ function _erMachineDetail(farm, m, rec, multi) {
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
       '<label style="' + MONO + 'font-size:12px;color:#9cc0f6;font-weight:700;min-width:135px;">👷 ' + erL('Packer', 'Empacador') + '</label>' +
       '<input list="staff-datalist" value="' + String(packer).replace(/"/g, '&quot;') + '" onchange="eggRunSetPacker(\'' + farm + '\',' + m + ',this.value)" placeholder="' + erL('name', 'nombre') + '" autocomplete="off" style="flex:2;min-width:120px;' + inp + '">' +
-      '<label style="' + MONO + 'font-size:12px;color:#9ab09a;">' + erL('Lanes', 'Carriles') + '</label>' +
-      '<input type="number" min="0" max="2" inputmode="numeric" value="' + lanes + '" onchange="eggRunSetLanes(\'' + farm + '\',' + m + ',this.value)" style="flex:0 0 56px;text-align:center;' + inp + '">' +
+      (byHouse ? '' :
+        ('<label style="' + MONO + 'font-size:12px;color:#9ab09a;">' + erL('Lanes', 'Carriles') + '</label>' +
+         '<input type="number" min="0" max="2" inputmode="numeric" value="' + lanes + '" onchange="eggRunSetLanes(\'' + farm + '\',' + m + ',this.value)" style="flex:0 0 56px;text-align:center;' + inp + '">')) +
     '</div>' +
     // Start + Stop time of day
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;">' +
@@ -317,22 +354,39 @@ function _erMachineDetail(farm, m, rec, multi) {
     })() +
     // Eggs BY LANE (2 lanes/machine) → machine total + eggs/min + eggs/hr
     '<div style="margin-top:10px;">' +
-      '<label style="' + MONO + 'font-size:12px;color:#f0d68a;font-weight:700;display:block;margin-bottom:5px;">🥚 ' + erL('Eggs by lane', 'Huevos por carril') + '</label>' +
-      '<div style="display:grid;grid-template-columns:repeat(' + nLanes + ',1fr);gap:8px;">' +
-        (function () {
-          var out = '';
-          for (var i = 0; i < nLanes; i++) {
-            var lv = (laneEggs[i] != null && laneEggs[i] !== '') ? laneEggs[i] : '';
-            out += '<div>' +
-              '<div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">' + erL('Lane', 'Carril') + ' ' + (i + 1) + '</div>' +
-              '<input type="number" min="0" inputmode="numeric" value="' + lv + '" onchange="eggRunSetLaneEggs(\'' + farm + '\',' + m + ',' + i + ',this.value)" placeholder="0" style="width:100%;box-sizing:border-box;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:9px 10px;">' +
-            '</div>';
-          }
-          return out;
-        })() +
-      '</div>' +
+      '<label style="' + MONO + 'font-size:12px;color:#f0d68a;font-weight:700;display:block;margin-bottom:5px;">🥚 ' +
+        (byHouse ? erL('Eggs by house', 'Huevos por casa') : erL('Eggs by lane', 'Huevos por carril')) + '</label>' +
+      (byHouse
+        ? (function () {
+            // Danville: one box per active house — the packer enters that house's
+            // total eggs. Machine total = the sum of the houses they ran.
+            var hs = erActiveHouses(farm);
+            var cols = Math.min(4, Math.max(2, hs.length));
+            var out = '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:8px;">';
+            hs.forEach(function (h) {
+              var hv = (houseEggs[h] != null && houseEggs[h] !== '') ? houseEggs[h] : '';
+              out += '<div>' +
+                '<div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">' + erL('House', 'Casa') + ' ' + h + '</div>' +
+                '<input type="number" min="0" inputmode="numeric" value="' + hv + '" onchange="eggRunSetHouseEggs(\'' + farm + '\',' + m + ',\'' + h + '\',this.value)" placeholder="0" style="width:100%;box-sizing:border-box;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:9px 10px;">' +
+              '</div>';
+            });
+            return out + '</div>';
+          })()
+        : ('<div style="display:grid;grid-template-columns:repeat(' + nLanes + ',1fr);gap:8px;">' +
+            (function () {
+              var out = '';
+              for (var i = 0; i < nLanes; i++) {
+                var lv = (laneEggs[i] != null && laneEggs[i] !== '') ? laneEggs[i] : '';
+                out += '<div>' +
+                  '<div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">' + erL('Lane', 'Carril') + ' ' + (i + 1) + '</div>' +
+                  '<input type="number" min="0" inputmode="numeric" value="' + lv + '" onchange="eggRunSetLaneEggs(\'' + farm + '\',' + m + ',' + i + ',this.value)" placeholder="0" style="width:100%;box-sizing:border-box;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:9px 10px;">' +
+                '</div>';
+              }
+              return out;
+            })() +
+          '</div>')) +
       '<div style="' + MONO + 'font-size:12px;color:#9ab09a;line-height:1.7;margin-top:7px;">' +
-        (eggs != null ? ('🥚 ' + erL('Machine total', 'Total máquina') + ': <b style="color:#f0d68a;">' + eggs.toLocaleString() + '</b> = ' + (Math.round(eggs / 12 * 10) / 10).toLocaleString() + ' dz') : erL('Enter each lane\'s eggs.', 'Ingresa los huevos de cada carril.')) +
+        (eggs != null ? ('🥚 ' + erL('Machine total', 'Total máquina') + ': <b style="color:#f0d68a;">' + eggs.toLocaleString() + '</b> = ' + (Math.round(eggs / 12 * 10) / 10).toLocaleString() + ' dz') : (byHouse ? erL('Enter each house\'s eggs.', 'Ingresa los huevos de cada casa.') : erL('Enter each lane\'s eggs.', 'Ingresa los huevos de cada carril.'))) +
         (epm ? ('<br><b style="color:#4ade80;">' + epm.toLocaleString() + ' ' + erL('eggs/min', 'huevos/min') + '</b>') : '') +
         (eph ? (' <span style="color:#7ab07a;">· ' + eph.toLocaleString() + ' ' + erL('eggs/hr', 'huevos/hr') + '</span>') : '') +
       '</div>' +
@@ -389,7 +443,11 @@ function _erPackerTable(farm, t) {
     var packer = rec.packer || '';
     var lanes = (rec.lanes != null) ? Number(rec.lanes) : 2;
     var laneEggs = Array.isArray(rec.laneEggs) ? rec.laneEggs : [];
-    var eggs = laneEggs.reduce(function (s, v) { return s + (Number(v) || 0); }, 0) || (Number(rec.eggs) || 0);
+    var hEggs = rec.houseEggs || {};
+    var hKeys = Object.keys(hEggs).filter(function (k) { return Number(hEggs[k]) > 0; }).sort();
+    var eggs = (erByHouse(farm) ? hKeys.reduce(function (s, k) { return s + Number(hEggs[k]); }, 0) : 0)
+            || laneEggs.reduce(function (s, v) { return s + (Number(v) || 0); }, 0)
+            || (Number(rec.eggs) || 0);
     var mins = _erMinFromClock(rec.startClock, rec.stopClock);
     if (mins == null && rec.manualMin != null) mins = Number(rec.manualMin);
     if (!packer && !eggs && mins == null) return '';
@@ -405,7 +463,10 @@ function _erPackerTable(farm, t) {
       : '<span style="color:#5a7a5a;">—</span>';
     return '<tr style="border-bottom:1px solid #163016;">' +
       '<td style="padding:7px 6px;color:#f0ead8;font-weight:700;">' + (packer ? String(packer).replace(/</g, '&lt;') : (erL('Machine', 'Máquina') + ' ' + m)) + '</td>' +
-      '<td style="padding:7px 6px;text-align:center;color:#9cc0f6;">M' + m + ' · ' + lanes + ' ' + erL('lanes', 'carriles') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#9cc0f6;">' +
+        (erByHouse(farm)
+          ? (hKeys.length ? (erL('Houses ', 'Casas ') + hKeys.map(function (k) { return 'H' + k; }).join(' · ')) : erL('no houses yet', 'sin casas'))
+          : ('M' + m + ' · ' + lanes + ' ' + erL('lanes', 'carriles'))) + '</td>' +
       '<td style="padding:7px 6px;text-align:center;color:#d6b36a;">' + (rec.startClock ? erFmtClock(rec.startClock) : '—') + ' → ' + (rec.stopClock ? erFmtClock(rec.stopClock) : '—') + '</td>' +
       '<td style="padding:7px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + (mins != null ? erFmtDur(mins * 60000) : '—') + '</td>' +
       '<td style="padding:7px 6px;text-align:center;color:#f0d68a;font-weight:700;">' + (eggs ? eggs.toLocaleString() : '—') + '</td>' +
@@ -655,6 +716,11 @@ if (typeof window !== 'undefined') {
   window.eggRunSelToggle = eggRunSelToggle;
   window.eggRunEggsSet = eggRunEggsSet;
   window.eggRunSetManualMin = eggRunSetManualMin;
+  window.eggRunSetPacker = eggRunSetPacker;
+  window.eggRunSetLanes = eggRunSetLanes;
+  window.eggRunSetLaneEggs = eggRunSetLaneEggs;
+  window.eggRunSetHouseEggs = eggRunSetHouseEggs;   // Danville: eggs by house
+  window.eggRunSetClock = eggRunSetClock;
   window.palTypeSet = palTypeSet;
   window.palToggleSel = palToggleSel;
   window.palAdd = palAdd;

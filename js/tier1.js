@@ -11,6 +11,17 @@
   'use strict';
   var MONO = "font-family:'IBM Plex Mono',monospace;";
 
+  // ── EGGS/HOUR TARGETS (set 2026-07-30 from each plant's own median of the
+  // first weeks of real data; goal6 = +9% in 6 months per Joe). Pass = at/above
+  // target. These are the Tier 1 / Tier 2 productivity KPI. ──
+  // Measured in CASES/HOUR per Joe (1 case = 30 dz = 360 eggs).
+  var EGGS_PER_CASE_T1 = 360;
+  var EGG_RATE_TARGET = {
+    Hegins:   { target: 131.7, goal6: 143.6 },   // 47,414 → 51,681 eggs/hr
+    Danville: { target: 157.7, goal6: 171.9 }    // 56,760 → 61,869 eggs/hr
+  };
+  window.EGG_RATE_TARGET = EGG_RATE_TARGET;
+
   // ── Tunable thresholds (green ≤ / ≥, else yellow, else red) ──
   var TH = {
     safeDaysG: 30, safeDaysY: 7,          // days since last incident
@@ -146,6 +157,7 @@
     sub('maintProjects', db.collection('maintProjects'));
     sub('tierExternal', db.collection('tierExternal'));
     sub('feedMade', db.collection('feedMade').where('date', '>=', ws));
+    sub('eggFlow', db.collection('eggFlow').where('date', '>=', ws));   // belt run minutes (Danville)
     try { _t1subs.push(db.collection('safetySettings').doc('main').onSnapshot(function (doc) { _t1cache.safety = doc.exists ? [doc.data()] : []; _t1Redraw(); })); } catch (e) {}
     // App globals (workOrders / ALL_PM / partsInventory) update in their own
     // listeners — repaint every 30s while open so those tiles stay fresh too.
@@ -257,6 +269,43 @@
     if (safeDays == null && safety[0] && safety[0].lastIncidentDate) { try { safeDays = Math.floor((Date.now() - new Date(safety[0].lastIncidentDate).getTime()) / 86400000); } catch (e) {} }
     var safeS = safeDays == null ? '-' : (safeDays >= TH.safeDaysG ? 'g' : safeDays >= TH.safeDaysY ? 'y' : 'r');
 
+    // ── EGGS/HOUR vs TARGET (the productivity KPI) ─────────────────────────
+    // Hegins packs on 2 machines (eggDailyRun run minutes); Danville's belts run
+    // per house (eggFlow minutes). Either way: eggs ÷ run hours, today first and
+    // this week as the fallback so the tile is never blank mid-morning.
+    var rateS = '-', rateDay = null, rateWk = null, rateTgt = null, rateGoal = null, rateSub = '', rateDayLbl = '';
+    (function () {
+      if (S === 'All') return;                                  // per-plant KPI
+      var conf = EGG_RATE_TARGET[S]; if (!conf) return;
+      rateTgt = conf.target; rateGoal = conf.goal6;
+      // Eggs that came off the houses (farm records) → cases.
+      var eggsDay = 0;
+      try { (ext[S] && ext[S].houses || []).forEach(function (x) { eggsDay += Number(x.eggsPerDay) || 0; }); } catch (e) {}
+      if (!eggsDay) return;
+      var casesDay = eggsDay / EGGS_PER_CASE_T1;
+      // Run minutes per DAY: Hegins = packing machines, Danville = house belts.
+      var byDate = {};
+      var rows = (S === 'Hegins') ? weekEgg : (_t1cache.eggFlow || []);
+      var minField = (S === 'Hegins') ? 'manualMin' : 'minutes';
+      rows.forEach(function (r) {
+        var m = Number(r[minField]) || 0; if (m <= 0 || m > 960) return;   // drop forgotten-Stop runs
+        if (!r.date) return;
+        byDate[r.date] = (byDate[r.date] || 0) + m;
+      });
+      var days = Object.keys(byDate).sort();
+      if (!days.length) return;
+      // DAILY = today if it has runs, else the latest day that does.
+      var pick = (byDate[t] != null) ? t : days[days.length - 1];
+      rateDay = Math.round(casesDay / (byDate[pick] / 60) * 10) / 10;
+      rateDayLbl = (pick === t) ? L('today', 'hoy') : (pick.slice(5).replace('-', '/'));
+      // WEEKLY = average of each day's cases/hour across the days logged.
+      var per = days.map(function (d) { return casesDay / (byDate[d] / 60); });
+      rateWk = Math.round(per.reduce(function (a, b) { return a + b; }, 0) / per.length * 10) / 10;
+      // Pass/fail on the WEEKLY average (one slow day shouldn't flip the light).
+      rateS = (rateWk >= rateTgt) ? 'g' : (rateWk >= rateTgt * 0.95 ? 'y' : 'r');
+      rateSub = L('wk avg ', 'prom sem ') + rateWk + ' · ' + L('target ', 'meta ') + rateTgt;
+    })();
+
     // Mill: feed made (tons) — from the app's own Feed Made records
     var millToday = 0, millWk = 0;
     weekFeed.forEach(function (r) { var tn = Number(r.tons) || 0; millWk += tn; if (r.date === t) millToday += tn; });
@@ -318,6 +367,10 @@
       _tile('✅', L('Quality', 'Calidad'), qualS, !hasChecks ? '—' : (flagCount + ' ' + L('flags', 'alertas')), L('today', 'hoy'), ''),
       _tile('🥚', L('Egg Flow', 'Flujo Huevos'), eggS, eggsToday > 0 ? _num(eggsToday) : '—', eggsToday > 0 ? L('processed', 'procesados') : L('no run yet', 'sin corrida'), "closeTier1();typeof openProcessing==='function'&&openProcessing()"),
       _tile('🌽', L('Feed', 'Alimento'), feedS, !hasChecks ? '—' : (feedBad === 0 ? L('OK', 'OK') : feedBad + ' ' + L('low', 'bajo')), '', ''),
+      _tile('📦', L('Cases / Hour', 'Cajas / Hora'), rateS,
+            rateDay == null ? '—' : (rateDay + ' ' + L('cases/hr', 'cajas/hr')),
+            rateDay == null ? L('no run data yet', 'sin datos de corrida') : (rateDayLbl + ' · ' + rateSub),
+            "closeTier1();typeof openProcessing==='function'&&openProcessing()"),
       _tile('🌾', L('Mill Output', 'Molino'), millS, millWk === 0 ? '—' : (millToday + ' ' + L('tons today', 'ton hoy')), millWk === 0 ? L('no data yet', 'sin datos aún') : (millWk + ' ' + L('tons this week', 'ton semana')), ''),
       _tile('💧', L('Water', 'Agua'), waterS, (!hasChecks && !mwalks.length) ? '—' : (waterBad === 0 ? L('OK', 'OK') : waterBad + ' ' + L('issues', 'problemas')), '', ''),
       _tile('⏱', L('Downtime', 'Paro'), dtS, packLog.length === 0 ? '—' : (dtMin + ' min'), L('packing today', 'empaque hoy'), ''),
@@ -365,7 +418,7 @@
       (extUpdated ? _dg('📡', L('Farm records synced ', 'Registros sincronizados ') + extUpdated) : '');
 
     // ── Overall roll-up (today's status tiles that carry a real state) ──
-    var states = [safeS, layS, prodS, mortS, qualS, feedS, millS, waterS, dtS, pmS, woS, partsS].filter(function (s) { return s !== '-'; });
+    var states = [safeS, layS, prodS, mortS, qualS, feedS, millS, rateS, waterS, dtS, pmS, woS, partsS].filter(function (s) { return s !== '-'; });
     var reds = states.filter(function (s) { return s === 'r'; }).length;
     var yels = states.filter(function (s) { return s === 'y'; }).length;
     var overall = reds ? 'r' : yels ? 'y' : 'g';

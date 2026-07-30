@@ -100,11 +100,14 @@
       _get('laborPunch', ['ts', '>=', monthStartMs]),
       _get('maintProjects'),
       _get('tierExternal'),
-      _get('feedMade', ['date', '>=', monthStart])
+      _get('feedMade', ['date', '>=', monthStart]),
+      _get('eggDailyRun', ['date', '>=', monthStart]),
+      _get('eggFlow', ['date', '>=', monthStart])
     ]);
     var mChecks = res[0], mEgg = res[1], mPack = res[2], mMort = res[3], mPM = res[4], mLabor = res[5], projects = res[6];
     var ext = {}; (res[7] || []).forEach(function (d) { try { ext[d._id] = JSON.parse(d.json || '{}'); } catch (e) {} });
     var mFeed = res[8] || [];
+    var mEggRun = res[9] || [], mEggFlow = res[10] || [];
     // DAYS SAFE — same source of truth as Tier 1 / the printed huddle boards.
     var safeDays = null;
     Object.keys(ext).forEach(function (k) { var ds = ext[k] && ext[k].daysSafe; if (ds != null && (safeDays == null || ds < safeDays)) safeDays = ds; });
@@ -147,6 +150,55 @@
     var dtM = mPack.reduce(function (s, r) { return s + (Number(r.downtimeMin) || 0); }, 0);
     var flagsM = mChecks.reduce(function (s, c) { return s + ((c.flags && c.flags.length) || 0); }, 0);
     var millM = Math.round(mFeed.reduce(function (s, r) { return s + (Number(r.tons) || 0); }, 0) * 10) / 10;
+
+    // ── CASES/HOUR by plant — month avg vs target vs the +9% 6-month goal ────
+    // Same math as Tier 1 but averaged over the whole month, so this is the
+    // scoreboard for the monthly review.
+    var CPC = 360;
+    var TGT = (typeof EGG_RATE_TARGET !== 'undefined') ? EGG_RATE_TARGET
+            : { Hegins: { target: 131.7, goal6: 143.6 }, Danville: { target: 157.7, goal6: 171.9 } };
+    function _casesPerHr(site) {
+      var eggsDay = 0;
+      try { ((ext[site] || {}).houses || []).forEach(function (x) { eggsDay += Number(x.eggsPerDay) || 0; }); } catch (e) {}
+      if (!eggsDay) return null;
+      var cases = eggsDay / CPC;
+      var rows = (site === 'Hegins') ? mEggRun : mEggFlow;
+      var fld = (site === 'Hegins') ? 'manualMin' : 'minutes';
+      var byDate = {};
+      rows.forEach(function (r) {
+        if ((r.farm || '') !== site) return;
+        var m = Number(r[fld]) || 0; if (m <= 0 || m > 960) return;
+        if (!r.date) return;
+        byDate[r.date] = (byDate[r.date] || 0) + m;
+      });
+      var days = Object.keys(byDate);
+      if (!days.length) return null;
+      var per = days.map(function (d) { return cases / (byDate[d] / 60); });
+      return { avg: Math.round(per.reduce(function (a, b) { return a + b; }, 0) / per.length * 10) / 10,
+               best: Math.round(Math.max.apply(null, per) * 10) / 10,
+               worst: Math.round(Math.min.apply(null, per) * 10) / 10, days: days.length };
+    }
+    var rateRows = ['Hegins', 'Danville'].map(function (site) {
+      var r = _casesPerHr(site), cfg = TGT[site] || {};
+      if (!r) return '<div style="' + MONO + 'font-size:11px;color:#6f8bb4;padding:7px 2px;">' + site + ' — ' + L('no run data this month', 'sin datos este mes') + '</div>';
+      var pass = r.avg >= cfg.target;
+      var pctToGoal = cfg.goal6 ? Math.round(r.avg / cfg.goal6 * 100) : null;
+      return '<div style="padding:9px 2px;border-bottom:1px solid #16223880;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;">' +
+          '<b style="color:#eaf1ff;' + MONO + 'font-size:13px;">' + site + '</b>' +
+          '<span style="' + MONO + 'font-size:15px;font-weight:700;color:' + (pass ? '#22c55e' : '#f59e0b') + ';">' + r.avg + ' ' + L('cases/hr', 'cajas/hr') +
+            '<span style="font-size:10px;font-weight:400;color:' + (pass ? '#22c55e' : '#f87171') + ';"> ' + (pass ? '✅ PASS' : '⚠ ' + L('below target', 'bajo la meta')) + '</span></span>' +
+        '</div>' +
+        '<div style="' + MONO + 'font-size:10px;color:#7f9bc4;margin-top:3px;">' +
+          '🎯 ' + L('target ', 'meta ') + cfg.target + ' · 🚀 ' + L('6-mo goal ', 'meta 6m ') + cfg.goal6 + ' (+9%)' +
+          ' · ' + L('best ', 'mejor ') + r.best + ' · ' + L('worst ', 'peor ') + r.worst + ' · ' + r.days + ' ' + L('days', 'días') +
+        '</div>' +
+        '<div style="height:7px;background:#132038;border-radius:4px;overflow:hidden;margin-top:5px;">' +
+          '<div style="height:100%;width:' + Math.max(0, Math.min(100, pctToGoal || 0)) + '%;background:' + (pass ? '#22c55e' : '#f59e0b') + ';"></div>' +
+        '</div>' +
+        '<div style="' + MONO + 'font-size:9px;color:#5f7ba4;margin-top:2px;">' + (pctToGoal || 0) + '% ' + L('of the 6-month goal', 'de la meta de 6 meses') + '</div>' +
+      '</div>';
+    }).join('');
     var incidentsM = (safety[0] && safety[0].lastIncidentDate && String(safety[0].lastIncidentDate).slice(0, 10) >= monthStart) ? 1 : 0;
 
     var metrics =
@@ -208,14 +260,14 @@
       _dg('📋', mPM.length + L(' PMs completed · ', ' PM completados · ') + pmOverdue + L(' overdue now', ' vencidos ahora')) +
       _dg('🔧', (lpTotal ? (lpTotal / 60).toFixed(1) : '0') + L(' maintenance hours to other departments', ' horas de mantenimiento a otros departamentos'));
 
-    o.innerHTML = _shell(null, metrics, trends, lpRows, digest, monthStart);
+    o.innerHTML = _shell(null, metrics, trends, lpRows, digest, monthStart, rateRows);
   }
 
   function _sec(label) {
     return '<div style="' + MONO + 'font-size:11px;letter-spacing:1.5px;color:#6f8bb4;text-transform:uppercase;margin:22px 2px 9px;font-weight:700;">' + label + '</div>';
   }
 
-  function _shell(loadingMsg, metrics, trends, lpRows, digest, monthStart) {
+  function _shell(loadingMsg, metrics, trends, lpRows, digest, monthStart, rateRows) {
     var range = monthStart ? (new Date(monthStart + 'T00:00:00').toLocaleDateString(_es() ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' }) + ' – ' + new Date().toLocaleDateString(_es() ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' })) : '';
     var head = '<div style="max-width:820px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 26px) 14px 60px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">' +
@@ -234,6 +286,8 @@
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;">' + metrics + '</div>' +
       _sec(L('Week by week this month', 'Semana a semana este mes')) +
       '<div style="background:#0a1220;border:1.5px solid #1c2c44;border-radius:12px;padding:6px 14px;">' + trends + '</div>' +
+      _sec(L('Cases per hour · month avg vs target', 'Cajas por hora · prom mes vs meta')) +
+      '<div style="background:#0a1220;border:1.5px solid #1c2c44;border-radius:12px;padding:6px 14px;">' + rateRows + '</div>' +
       _sec(L('Where maintenance time went', 'A dónde fue el tiempo de mantenimiento')) +
       '<div style="background:#0a1220;border:1.5px solid #1c2c44;border-radius:12px;padding:12px 14px;">' + lpRows + '</div>' +
       _sec(L('Month digest', 'Resumen del mes')) +
