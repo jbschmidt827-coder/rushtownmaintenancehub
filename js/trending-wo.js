@@ -198,11 +198,9 @@
             `<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5a8a5a;padding:14px;text-align:center;">No WOs match this filter.</div>`}
         </div>
 
-        <!-- 4-button action bar -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+        <!-- Action bar — Daily Report + EOS push buttons removed per Joe 2026-08-03 (EOS report retired) -->
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
           ${twActBtn('twAutoDraft()',  '⚙', 'Auto-Draft Action Rail',  repeats.length, '#e53e3e', true)}
-          ${twActBtn('twPushDaily()',  '▤', 'Push to Daily Report',    Math.min(5, pareto.length), '#4caf50', false)}
-          ${twActBtn('twPushEOS()',    '▥', 'Push to EOS Report',      repeats.length, '#3b82f6', false)}
           ${twActBtn('twFlagTier2()',  '▶', 'Flag in Tier 2 Agenda',   repeats.length, '#d69e2e', false)}
         </div>
 

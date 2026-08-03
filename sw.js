@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v260-nodoorwo';
+const CACHE_NAME = 'rushtown-v261-noeos';
 
 const SHELL_FILES = [
   '/',
@@ -102,12 +102,8 @@ const SHELL_FILES = [
   '/js/barn-entry.js',
   '/js/barn-status-panel.js',
   '/js/daily-checklist.js',
-  '/js/daily-report.js',
   '/js/time-blocks.js',
   '/js/trending-wo.js',
-  '/js/eos.js',
-  '/js/eos-hours.js',
-  '/js/eos-rollup.js',
   '/js/selftest.js',
   '/manifest.json'
 ];

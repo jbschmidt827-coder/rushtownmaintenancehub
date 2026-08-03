@@ -1182,7 +1182,8 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
       <button class="nav-tab" id="tab-ship" onclick="go('ship')" data-i18n="nav.ship" style="display:none;">🚚 Shipping</button>
       <button class="nav-tab" id="tab-kpi" onclick="go('kpi')" data-i18n="nav.kpi" style="display:none;">🥚 KPI</button>
       <button class="nav-tab" id="tab-reports" onclick="go('reports')" data-i18n="nav.reports" style="display:none;">📊 Reports</button>
-      <button class="nav-tab" id="tab-daily" onclick="go('daily')" style="display:none;">📋 Daily Report</button>
+      <!-- 📋 Daily Report (EOS) nav tab REMOVED per Joe 2026-08-03 -->
+
       <button class="nav-tab" id="tab-sched" onclick="go('sched')" data-i18n="nav.sched" style="display:none;">📅 Schedule</button>
       <button class="nav-tab" id="tab-staff" onclick="go('staff')" style="display:none;">👥 Staff</button>
 <button class="nav-tab" id="tab-check" onclick="go('check')" style="display:none;">🐓 Daily Check</button>
@@ -1544,13 +1545,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
         <div style="font-size:12px;color:#6a90d9;margin-top:4px;" data-i18n="prod.morning_walk_sub">Lead / WNO — water, temp, feed, fans, blowers</div>
       </div>
     </button>
-    <button onclick="go('daily')" style="width:100%;padding:24px 20px;background:#0a1f0a;border:2px solid #4ade80;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
-      <span style="font-size:40px;line-height:1;">📋</span>
-      <div>
-        <div data-i18n="landing.eos_report" style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:#f0ead8;">EOS Report</div>
-        <div data-i18n="landing.eos_report_sub" style="font-size:12px;color:#7ab07a;margin-top:4px;">End-of-shift summary &amp; sign-off — before you go home</div>
-      </div>
-    </button>
+<!-- EOS Report tile REMOVED per Joe 2026-08-03 ("remove EOS report from app"). -->
     <button onclick="openProdSummary()" style="width:100%;padding:24px 20px;background:#1a1a0a;border:2px solid #5a5a00;border-radius:16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:18px;text-align:left;">
       <span style="font-size:40px;line-height:1;">📋</span>
       <div>
@@ -5348,10 +5343,9 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260730-v259"></script>
+<script defer src="js/core.js?v=20260803-v261"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
-<script defer src="js/barn-status-panel.js?v=20260515-resilience"></script>
-<script defer src="js/eos-rollup.js?v=20260506c"></script>
+<script defer src="js/barn-status-panel.js?v=20260803-v261"></script>
 <script defer src="js/maintenance.js?v=20260723-v245"></script>
 <script defer src="js/labor-punch.js?v=20260720-v234"></script>
 <script defer src="js/tier1.js?v=20260730-v258"></script>
@@ -5359,7 +5353,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/tier-sw.js?v=20260720-v230"></script>
 <script defer src="js/maint-schedule.js?v=20260729-v257"></script>
 <script defer src="js/egg-flow.js?v=20260728-v254"></script><script defer src="js/maint-projects.js?v=20260715-v211"></script>
-<script defer src="js/trending-wo.js?v=20260715-v211"></script>
+<script defer src="js/trending-wo.js?v=20260803-v261"></script>
 <script defer src="js/packaging.js?v=20260715-v211"></script>
 <script defer src="js/eggrun.js?v=20260730-v259"></script>
 <script defer src="js/processing.js?v=20260716-v218"></script>
@@ -5400,9 +5394,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/notifications.js?v=20260515-resilience"></script>
 <script defer src="js/oncall.js?v=20260424"></script>
 <script defer src="js/daily-checklist.js?v=20260706-v191"></script>
-<script defer src="js/eos.js?v=20260715-v211"></script>
-<script defer src="js/eos-hours.js?v=20260715-v211"></script>
-<script defer src="js/daily-report.js?v=20260715-v211"></script>
+<!-- eos.js / eos-hours.js / daily-report.js REMOVED per Joe 2026-08-03 — EOS report retired. Data (endOfShift, rocks, l10Todos, idsIssues) untouched in Firestore. -->
 <script defer src="js/selftest.js?v=20260710-v196"></script>
 <style>
 @keyframes notif-slide-in {

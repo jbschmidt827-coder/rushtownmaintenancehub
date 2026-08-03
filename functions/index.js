@@ -415,7 +415,6 @@ APP MAP (how to get around):
 • QUICK ACTIONS → 🔧 New Work Order (fast form: name, house, problem, priority, photos; 🎤 button lets you dictate the description), 📖 How To Use guide, 🥠 Farm Fortune, 🏚 House Status (mark a house down/up for rebuild — closes its open work orders).
 • Work orders: Quick WO = fastest. Urgent priority pushes a notification to the team. ⚡ Action Rail on a WO card can turn it into a Project.
 • 🌐 ES/EN button switches language app-wide. The version number is at the bottom of the home screen; the app updates itself when iPads wake.
-• End-of-Shift report lives under Production → EOS Report.
 • House down for rebuild? Quick Actions → 🏚 House Status — its checks disappear from tracking until marked back up.
 
 RULES: Never invent features that aren't listed. If unsure, say so and point to 📖 How To Use. Keep answers under 120 words unless steps demand more.`;
