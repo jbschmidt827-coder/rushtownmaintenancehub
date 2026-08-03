@@ -176,6 +176,36 @@
     return map;
   }
 
+  // TRUE per-house KPI (Joe 2026-08-03): PRODUCTION RATE = lay % (eggs/day ÷ live
+  // birds) per run unit, from the same tierExternal farm-record push that feeds
+  // Tier 1. Molt/out houses (lay < 20%) are skipped so a flock-out can't drag a
+  // group's number the way Hegins H7 once did.
+  function _efProdRate(site, units) {
+    var out = {};
+    try {
+      var d = (_efExt || {})[site];
+      var hs = (d && Array.isArray(d.houses)) ? d.houses : [];
+      var info = {};   // house num → { eggs/day, birds }
+      hs.forEach(function (h) {
+        var num = String(h.name || '').replace(/^\s*house\s*/i, '').trim();
+        var birds = Number(h.birds) || 0;
+        var lay = (h.lay7d != null ? h.lay7d : h.layLatest);
+        if (lay != null && lay > 2) lay = lay / 100;          // sheets store fractions
+        var eggs = (h.eggsPerDay != null && Number(h.eggsPerDay) > 0) ? Number(h.eggsPerDay)
+                 : ((lay != null && birds) ? lay * birds : null);
+        var layC = (eggs != null && birds) ? (eggs / birds) : lay;
+        if (layC == null || layC < 0.20 || !birds) return;    // molt / out / no data
+        info[num] = { eggs: eggs, birds: birds };
+      });
+      units.forEach(function (u) {
+        var e = 0, b = 0;
+        (u.houses || []).forEach(function (hh) { var i = info[hh]; if (i) { e += i.eggs; b += i.birds; } });
+        out[u.key] = b ? { lay: Math.round(e / b * 1000) / 10, birds: b, eggs: Math.round(e) } : null;
+      });
+    } catch (e) {}
+    return out;
+  }
+
   // Window = [fromDaysAgo, toDaysAgo) back from now. Actual week = [0,7),
   // target/prior week = [7,14) → ▼/▲ is a real week-over-week trend.
   // Keyed by RUN UNIT (group id at Hegins, house number at Danville).
@@ -231,6 +261,12 @@
     var labelOf = {}; units.forEach(function (u) { labelOf[u.key] = u.isGroup ? (u.label + ' (' + u.houses.join('·') + ')') : ('H' + u.key); });
     var wk = _efStats(site, units, 0, 7);    // THIS week (last 7 days) = actual
     var tgt = _efStats(site, units, 7, 14);  // PRIOR week = the trend target
+    var prod = _efProdRate(site, units);     // production rate (lay %) per unit
+    function prodCell(p, bold) {
+      if (!p || p.lay == null) return '<td style="padding:8px 6px;text-align:center;color:#4a6a4a;">—</td>';
+      var c = p.lay >= 90 ? '#4ade80' : (p.lay >= 85 ? '#e8c96a' : '#f0a0a0');
+      return '<td style="padding:8px 6px;text-align:center;color:' + c + ';font-weight:700;" title="' + _num(p.birds) + ' birds">' + p.lay + '%</td>';
+    }
     var stuckTotal = keys.reduce(function (s, h) { return s + (wk[h] ? wk[h].stuck : 0); }, 0);
     var anyData = keys.some(function (h) { return wk[h] && wk[h].runs > 0; });
     if (!anyData) return '';
@@ -258,6 +294,7 @@
         '<td style="padding:8px 6px;text-align:center;">' + cell(a.avgEggs) + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#cfe0a0;">' + (a.dzPerDay != null ? _num(a.dzPerDay) : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#cfe0a0;">' + (a.casesPerDay != null ? _num(a.casesPerDay) : '—') + '</td>' +
+        prodCell(prod[h]) +
         '<td style="padding:8px 6px;text-align:center;">' + cell(a.eggsPerHr) + vs(a.eggsPerHr, t.eggsPerHr, false) + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#e8d36a;font-weight:700;">' + (a.dzPerHr != null ? _num(a.dzPerHr) : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#4ade80;font-weight:700;">' + (a.casesPerHr != null ? _num(a.casesPerHr) : '—') + '</td>' +
@@ -276,13 +313,17 @@
     houses.forEach(function (h) { if (wk[h] && wk[h].avgMin) { tAvgMin += wk[h].avgMin; nH++; } });
     // Site eggs/hour = total eggs per day ÷ the average house run length (hours).
     var tEggsHr = (tEggs && nH) ? Math.round(tEggs / ((tAvgMin / nH) / 60)) : null;
+    // Site production rate = all units' eggs/day ÷ all their live birds.
+    var tB = 0, tE2 = 0;
+    keys.forEach(function (h) { var p = prod[h]; if (p) { tB += p.birds; tE2 += p.eggs; } });
+    var tLay = tB ? Math.round(tE2 / tB * 1000) / 10 : null;
 
     return '<div style="' + MONO + 'font-size:11px;letter-spacing:1px;color:#6aa06a;text-transform:uppercase;margin:16px 2px 8px;font-weight:700;">📊 ' +
         efL('7-day trend by house · vs last week', 'Tendencia 7 días por casa · vs la semana pasada') + '</div>' +
       (stuckTotal ? '<div style="' + MONO + 'font-size:10.5px;color:#e8c96a;background:#231a08;border:1.5px solid #7a5a1a;border-radius:9px;padding:8px 11px;margin-bottom:8px;">⚠ ' +
         efL(stuckTotal + ' run(s) left open over 8h (someone forgot to tap Stop) — excluded from the averages. Fix by stopping the run.',
             stuckTotal + ' corrida(s) abiertas más de 8h (no se tocó Detener) — excluidas de los promedios.') + '</div>' : '') +
-      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:12px;min-width:620px;">' +
+      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:12px;min-width:700px;">' +
       '<thead><tr style="border-bottom:1px solid #2a4a2a;">' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:left;">' + (EF_GROUPS[site] ? efL('Group', 'Grupo') : efL('House', 'Casa')) + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Runs', 'Corridas') + '</th>' +
@@ -292,7 +333,8 @@
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Eggs/day', 'Huevos/día') + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Dz/day', 'Dz/día') + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Cases/day', 'Cajas/día') + '</th>' +
-        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Eggs/hour', 'Huevos/hora') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">🥚 ' + efL('Prod rate', '% Prod') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">🚿 ' + efL('Flow eggs/hr', 'Flujo huevos/hr') + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Dz/hour', 'Dz/hora') + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Cases/hour', 'Cajas/hora') + '</th>' +
       '</tr></thead><tbody>' + rows + '</tbody>' +
@@ -303,13 +345,14 @@
         '<td style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + _num(tEggs) + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#cfe0a0;font-weight:700;">' + (_dz(tEggs) != null ? _num(_dz(tEggs)) : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#cfe0a0;font-weight:700;">' + (_cases(tEggs) != null ? _num(_cases(tEggs)) : '—') + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;font-weight:700;color:' + (tLay == null ? '#4a6a4a' : (tLay >= 90 ? '#4ade80' : (tLay >= 85 ? '#e8c96a' : '#f0a0a0'))) + ';">' + (tLay != null ? (tLay + '%') : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + (tEggsHr ? _num(tEggsHr) : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#e8d36a;font-weight:700;">' + (tEggsHr ? _num(_dz(tEggsHr)) : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#4ade80;font-weight:700;">' + (tEggsHr ? _num(_cases(tEggsHr)) : '—') + '</td>' +
       '</tr></tfoot></table></div>' +
       '<div style="' + MONO + 'font-size:9.5px;color:#4a6a4a;margin-top:6px;line-height:1.6;">' +
-        efL('7-DAY TREND · 🎯 target = that barn\'s own PRIOR 7 days. ▼/▲ = this week vs last week (lower run time and higher eggs/hour are better). Eggs come from the Farm Production Records (same files as Tier 1).',
-            'TENDENCIA 7 DÍAS · 🎯 meta = los 7 días anteriores de esa casa. ▼/▲ = esta semana vs la pasada (menos tiempo y más huevos/hora es mejor). Los huevos vienen de los Registros de Producción.') + '</div>';
+        efL('7-DAY TREND · 🎯 target = that barn\'s own PRIOR 7 days. ▼/▲ = this week vs last week (lower run time and higher eggs/hour are better). Eggs come from the Farm Production Records (same files as Tier 1). 🥚 Prod rate = eggs/day ÷ live birds (lay %) — green ≥90 · amber ≥85 · red below; molt/out houses excluded. 🚿 Flow = eggs/hour while the belts run.',
+            'TENDENCIA 7 DÍAS · 🎯 meta = los 7 días anteriores de esa casa. ▼/▲ = esta semana vs la pasada (menos tiempo y más huevos/hora es mejor). Los huevos vienen de los Registros de Producción. 🥚 % Prod = huevos/día ÷ aves vivas — verde ≥90 · ámbar ≥85 · rojo abajo; casas en muda/vacías excluidas. 🚿 Flujo = huevos/hora mientras corren las bandas.') + '</div>';
   }
 
   function _draw() {
