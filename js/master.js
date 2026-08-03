@@ -22,7 +22,13 @@
   var WO_FARMS = { Hegins: ['Hegins'], Danville: ['Danville', 'Processing Plant'] };
 
   function _me() { try { return (typeof getDeviceUser === 'function') ? String(getDeviceUser() || '').trim() : ''; } catch (e) { return ''; } }
-  function _isJoe() { var n = _me().toLowerCase(); return n === 'joe' || n.indexOf('joe schmidt') === 0 || n.indexOf('joe s') === 0; }
+  // Roster name is "Joseph Schmidt" — match Joe/Joseph + Schmidt (fixed v266).
+  function _isJoe() {
+    var n = _me().toLowerCase().replace(/[^a-z ]/g, '').trim();
+    if (!n) return false;
+    if (n === 'joe' || n === 'joseph') return true;
+    return /^jo/.test(n) && /schmidt/.test(n);
+  }
   function _tgt(site) { var t = (window.EGG_RATE_TARGET && window.EGG_RATE_TARGET[site]) || TGT_FALLBACK[site]; return t || { target: null, goal6: null }; }
   function _dstr(offset) { return new Date(Date.now() - offset * 86400000).toISOString().slice(0, 10); }
   function _esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -51,21 +57,66 @@
     return (d && d > 0 && d <= 960) ? d : null;
   }
 
-  function _fetchAll() {
-    var d14 = _dstr(13), t14 = Date.now() - 14 * 86400000;
+  var _cache = null;   // { days, data } — so switching tabs doesn't refetch
+  function _fetchAll(days) {
+    days = days || 14;
+    if (_cache && _cache.days >= days) return Promise.resolve(_cache.data);
+    var dFrom = _dstr(days - 1), tFrom = Date.now() - days * 86400000;
     return Promise.all([
-      db.collection('eggDailyRun').where('date', '>=', d14).get(),
-      db.collection('eggFlow').where('date', '>=', d14).get(),
+      db.collection('eggDailyRun').where('date', '>=', dFrom).get(),
+      db.collection('eggFlow').where('date', '>=', dFrom).get(),
       db.collection('tierExternal').get(),
-      db.collection('workOrders').where('ts', '>=', t14).get()
+      db.collection('workOrders').where('ts', '>=', tFrom).get(),
+      db.collection('barnWalks').where('date', '>=', dFrom).get().catch(function () { return null; })
     ]).then(function (r) {
-      var runs = [], flows = [], ext = {}, wos = [];
+      var runs = [], flows = [], ext = {}, wos = [], walks = [];
       r[0].forEach(function (d) { runs.push(d.data()); });
       r[1].forEach(function (d) { flows.push(d.data()); });
       r[2].forEach(function (d) { try { ext[d.id] = JSON.parse((d.data() || {}).json || '{}'); } catch (e) {} });
       r[3].forEach(function (d) { wos.push(d.data()); });
-      return { runs: runs, flows: flows, ext: ext, wos: wos };
+      if (r[4]) r[4].forEach(function (d) { walks.push(d.data()); });
+      var D = { runs: runs, flows: flows, ext: ext, wos: wos, walks: walks };
+      _cache = { days: days, data: D };
+      return D;
     });
+  }
+
+  // ── WEEKLY buckets: index 0 = oldest, last = current week ──
+  function _weeks(n) {
+    var out = [];
+    for (var w = n - 1; w >= 0; w--) {
+      out.push({ fromD: w * 7, toD: (w + 1) * 7, label: _dstr((w + 1) * 7 - 1).slice(5) + '–' + _dstr(w * 7).slice(5), cur: w === 0 });
+    }
+    return out;
+  }
+  function _weekAgg(D, site, fromD, toD) {
+    var dset = {}, i;
+    for (i = fromD; i < toD; i++) dset[_dstr(i)] = 1;
+    var rate = _avg(_dayRates(D, site, fromD, toD));
+    var mins = 0, eggs = 0, mort = 0, daysRun = {};
+    if (site === 'Hegins') {
+      D.runs.forEach(function (r) {
+        if (r.farm !== 'Hegins' || !dset[r.date]) return;
+        var m = _mMin(r); if (!m) return;
+        mins += m; eggs += Number(r.eggs) || 0; daysRun[r.date] = 1;
+      });
+    } else {
+      D.flows.forEach(function (f) {
+        if (f.farm !== site || f.status !== 'done' || f.minutes == null || !dset[f.date]) return;
+        var m = Number(f.minutes) || 0; if (m <= 0 || m > 480) return;
+        mins += m; daysRun[f.date] = 1;
+      });
+      eggs = _extEggs(D.ext, site) * Object.keys(daysRun).length;   // no egg history — est. from today's rate
+    }
+    (D.walks || []).forEach(function (w) {
+      if (w.farm !== site || !dset[w.date]) return;
+      mort += Number(w.mortCount) || 0;
+    });
+    var farms = WO_FARMS[site] || [site];
+    var hi = Date.now() - fromD * 86400000, lo = Date.now() - toD * 86400000;
+    var opened = D.wos.filter(function (w) { return farms.indexOf(w.farm) >= 0 && (w.ts || 0) >= lo && (w.ts || 0) < hi; }).length;
+    var closed = D.wos.filter(function (w) { var t = w.completedTs || 0; return farms.indexOf(w.farm) >= 0 && w.status === 'completed' && t >= lo && t < hi; }).length;
+    return { rate: rate, hours: Math.round(mins / 60 * 10) / 10, cases: Math.round(eggs / EGGS_PER_CASE), mort: mort, opened: opened, closed: closed, days: Object.keys(daysRun).length };
   }
 
   function _extEggs(ext, site) {
@@ -176,6 +227,72 @@
   setInterval(_chip, 60000);
   setInterval(_badge, 10 * 60000);   // re-check alerts every 10 min
 
+  // ── 📈 WEEKLY TRENDS tab (8 weeks, week over week) ──
+  function _weeklyHtml(D, sites) {
+    var wks = _weeks(8);
+    return sites.map(function (site) {
+      var t = _tgt(site);
+      var rows = wks.map(function (w) { return Object.assign({ label: w.label, cur: w.cur }, _weekAgg(D, site, w.fromD, w.toD)); });
+      var withRate = rows.filter(function (r) { return r.rate != null; });
+      if (!withRate.length) return '<div style="' + MONO + 'font-size:11.5px;color:#6a5a8a;margin-bottom:10px;"><b style="color:#efe8fa;">' + site + '</b> — no run data in the last 8 weeks yet.</div>';
+      var top = Math.max.apply(null, rows.map(function (r) { return r.rate || 0; }).concat([t.target || 0, t.goal6 || 0, 1]));
+      var H = 110;
+      var tLine = t.target ? Math.round(t.target / top * H) : null;
+      var gLine = t.goal6 ? Math.round(t.goal6 / top * H) : null;
+      var bars = rows.map(function (r) {
+        var h = r.rate ? Math.max(4, Math.round(r.rate / top * H)) : 3;
+        var c = r.rate == null ? '#2a2340' : (t.target && r.rate >= t.target) ? '#4ade80' : (t.target && r.rate >= t.target * 0.95) ? '#e8c96a' : '#f0a0a0';
+        return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;min-width:0;">' +
+          '<span style="' + MONO + 'font-size:9px;color:' + (r.cur ? '#efe8fa' : '#9a8ac0') + ';font-weight:' + (r.cur ? '700' : '400') + ';">' + (r.rate != null ? r.rate : '·') + '</span>' +
+          '<div style="width:78%;height:' + h + 'px;background:' + c + ';border-radius:3px 3px 0 0;' + (r.cur ? 'box-shadow:0 0 0 1.5px #efe8fa inset;' : '') + '"></div>' +
+        '</div>';
+      }).join('');
+      var labels = rows.map(function (r) {
+        return '<div style="flex:1;text-align:center;' + MONO + 'font-size:7.5px;color:' + (r.cur ? '#c9b0f0' : '#5a4a7a') + ';min-width:0;overflow:hidden;">' + r.label + '</div>';
+      }).join('');
+      // week-over-week move on the most recent two weeks that have data
+      var lastTwo = withRate.slice(-2);
+      var mv = (lastTwo.length === 2 && lastTwo[0].rate) ? Math.round((lastTwo[1].rate - lastTwo[0].rate) / lastTwo[0].rate * 100) : null;
+      var tbl = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:11px;min-width:560px;">' +
+        '<thead><tr style="border-bottom:1px solid #3a2f55;color:#6a5a8a;">' +
+          '<th style="text-align:left;padding:5px 6px;">Week</th><th style="padding:5px 6px;">Cases/hr</th><th style="padding:5px 6px;">vs prior</th>' +
+          '<th style="padding:5px 6px;">Run hrs</th><th style="padding:5px 6px;">Cases</th><th style="padding:5px 6px;">Mort</th><th style="padding:5px 6px;">WO open/close</th>' +
+        '</tr></thead><tbody>' +
+        rows.slice().reverse().map(function (r, i, arr) {
+          var prior = arr[i + 1];
+          var d = (r.rate != null && prior && prior.rate) ? Math.round((r.rate - prior.rate) / prior.rate * 100) : null;
+          var rc = r.rate == null ? '#6a5a8a' : (t.target && r.rate >= t.target) ? '#4ade80' : (t.target && r.rate >= t.target * 0.95) ? '#e8c96a' : '#f0a0a0';
+          return '<tr style="border-bottom:1px solid #241d3a;' + (r.cur ? 'background:#1d1630;' : '') + '">' +
+            '<td style="padding:6px;color:#cfc0e8;">' + r.label + (r.cur ? ' <span style="color:#c9b0f0;font-size:8.5px;">NOW</span>' : '') + '</td>' +
+            '<td style="padding:6px;text-align:center;font-weight:700;color:' + rc + ';">' + (r.rate != null ? r.rate : '—') + '</td>' +
+            '<td style="padding:6px;text-align:center;color:' + (d == null ? '#6a5a8a' : d >= 0 ? '#4ade80' : '#f0a0a0') + ';">' + (d == null ? '—' : (d >= 0 ? '▲' : '▼') + Math.abs(d) + '%') + '</td>' +
+            '<td style="padding:6px;text-align:center;color:#cfc0e8;">' + (r.hours || '—') + '</td>' +
+            '<td style="padding:6px;text-align:center;color:#cfc0e8;">' + _num(r.cases || null) + '</td>' +
+            '<td style="padding:6px;text-align:center;color:' + (r.mort > 0 ? '#e8c96a' : '#6a5a8a') + ';">' + (r.mort || '—') + '</td>' +
+            '<td style="padding:6px;text-align:center;color:#cfc0e8;">' + r.opened + ' / <span style="color:#4ade80;">' + r.closed + '</span></td>' +
+          '</tr>';
+        }).join('') + '</tbody></table></div>';
+      return '<div style="margin-bottom:18px;">' +
+        '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap;">' +
+          '<b style="' + MONO + 'font-size:13px;color:#efe8fa;">' + site + '</b>' +
+          '<span style="' + MONO + 'font-size:10.5px;color:#9a8ac0;">8 weeks · cases/hr · 🎯 ' + (t.target || '—') + ' · 🚀 ' + (t.goal6 || '—') + '</span>' +
+          (mv != null ? ('<span style="' + MONO + 'font-size:10.5px;color:' + (mv >= 0 ? '#4ade80' : '#f0a0a0') + ';font-weight:700;">' + (mv >= 0 ? '▲' : '▼') + Math.abs(mv) + '% week over week</span>') : '') +
+        '</div>' +
+        '<div style="position:relative;background:#120d1d;border-radius:8px;padding:8px;">' +
+          (tLine != null ? '<div title="target" style="position:absolute;left:8px;right:8px;bottom:' + (8 + tLine) + 'px;border-top:1.5px dashed #4ade80;opacity:.75;"></div>' : '') +
+          (gLine != null ? '<div title="6-month goal" style="position:absolute;left:8px;right:8px;bottom:' + (8 + gLine) + 'px;border-top:1px dashed #8a6dd6;opacity:.6;"></div>' : '') +
+          '<div style="display:flex;align-items:flex-end;gap:4px;height:' + (H + 16) + 'px;position:relative;">' + bars + '</div>' +
+          '<div style="display:flex;gap:4px;margin-top:3px;">' + labels + '</div>' +
+        '</div>' +
+        '<div style="' + MONO + 'font-size:9px;color:#5a4a7a;margin:5px 0 7px;">🟩 dashed = target ' + (t.target || '—') + ' · 🟪 dashed = 6-month goal ' + (t.goal6 || '—') + ' · outlined bar = this week (still filling)</div>' +
+        tbl +
+      '</div>';
+    }).join('');
+  }
+
+  var _mTab = '7d';
+  window.masterTab = function (t) { _mTab = t; window.openMasterBoard(); };
+
   // ── The board ──
   window.openMasterBoard = function () {
     if (!_isJoe()) { if (typeof toast === 'function') toast('👑 This board is for Joe.'); return; }
@@ -195,22 +312,41 @@
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">' +
         '<button onclick="document.getElementById(\'master-overlay\').style.display=\'none\'" style="padding:11px 16px;background:#171222;border:1.5px solid #3a2f55;border-radius:50px;color:#c9b0f0;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">← Back</button>' +
         '<div style="text-align:right;">' +
-          '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:26px;letter-spacing:2px;line-height:1;color:#efe8fa;">👑 MASTER — 7-DAY TRENDS</div>' +
+          '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:26px;letter-spacing:2px;line-height:1;color:#efe8fa;">👑 MASTER BOARD</div>' +
           '<div style="' + MONO + 'font-size:10px;color:#6a5a8a;margin-top:2px;">Only your login sees this · alerts first, always</div>' +
         '</div>' +
       '</div>' +
-      '<div style="display:flex;gap:8px;margin-bottom:12px;">' + chip('Hegins') + chip('Danville') + '</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:10px;">' + chip('Hegins') + chip('Danville') + '</div>' +
+      '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
+        ['7d', 'weekly'].map(function (tb) {
+          var on = _mTab === tb;
+          return '<button onclick="masterTab(\'' + tb + '\')" style="flex:1;padding:11px;border-radius:10px;cursor:pointer;' + MONO + 'font-size:12px;font-weight:700;background:' + (on ? '#2a1d4a' : '#171222') + ';border:1.5px solid ' + (on ? '#8a6dd6' : '#3a2f55') + ';color:' + (on ? '#efe8fa' : '#6a5a8a') + ';">' +
+            (tb === '7d' ? '📅 7-DAY + ALERTS' : '📈 WEEKLY TRENDS') + '</button>';
+        }).join('') +
+      '</div>' +
       '<div id="master-body" style="' + MONO + 'font-size:12px;color:#9a8ac0;">Loading…</div>' +
     '</div>';
     o.style.display = 'block';
     try { window.scrollTo(0, 0); } catch (e) {}
 
-    _fetchAll().then(function (D) {
+    _fetchAll(_mTab === 'weekly' ? 63 : 14).then(function (D) {
       var body = document.getElementById('master-body'); if (!body) return;
       var sect = function (title, inner, border) {
         return '<div style="background:#191326;border:1.5px solid ' + (border || '#332a4d') + ';border-radius:12px;padding:13px 15px;margin-bottom:12px;">' +
           '<div style="' + MONO + 'font-size:10px;font-weight:700;letter-spacing:1px;color:#9a7ae0;text-transform:uppercase;margin-bottom:9px;">' + title + '</div>' + inner + '</div>';
       };
+
+      // ── WEEKLY TAB ──
+      if (_mTab === 'weekly') {
+        var alW = _alerts(D, sites).filter(function (a) { return a.sev === 'red'; });
+        body.innerHTML =
+          (alW.length ? sect('⚠ Still red right now', alW.map(function (a) {
+            return '<div style="' + MONO + 'font-size:12px;line-height:1.5;padding:8px 10px;border-radius:8px;margin-bottom:6px;background:#2a0d0d;border:1.5px solid #7f1d1d;color:#f0a0a0;">' + a.txt + '</div>';
+          }).join(''), '#7f1d1d') : '') +
+          sect('📈 Week over week — cases/hour, run hours, cases, mortality, WOs', _weeklyHtml(D, sites)) +
+          '<div style="' + MONO + 'font-size:9.5px;color:#4a3f66;line-height:1.6;">Weeks are rolling 7-day buckets back from today; the last bar is this week still filling. Hegins cases/hr = packer machines (real eggs per run); Danville = house belts × current farm-record eggs (no egg history stored, so Danville weekly CASES are an estimate — the rate is the number to trust). Mortality from Daily EE Checks.</div>';
+        return;
+      }
 
       // ⚠ Alerts
       var al = _alerts(D, sites);

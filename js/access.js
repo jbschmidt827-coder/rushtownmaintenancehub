@@ -122,6 +122,11 @@
   // Which LOCATIONS a person may pick. Leaders → all (null). Else by farm/area.
   function _allowedLocs(s) {
     try {
+      // FAIL-OPEN (fixed v266): an unmatched/unknown signed-in name must NOT be
+      // filtered. Joe's device user is "Joseph Schmidt"; any name that doesn't
+      // exactly match a roster record used to fall through to the restricted
+      // list below, which silently HID the 🏢 MASTER tile from him.
+      if (!s) return null;
       if (_leader(s)) return null;                       // all sites incl Master
       var area = _area(s), farm = (s && s.farm) || '';
       // Processing moved off the front screen (v202): plant staff now enter via

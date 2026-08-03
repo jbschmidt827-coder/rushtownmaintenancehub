@@ -19,9 +19,13 @@
   function _today() { try { return (typeof LDATE === 'function') ? LDATE() : new Date().toISOString().slice(0, 10); } catch (e) { return new Date().toISOString().slice(0, 10); } }
   function _me() { try { return (typeof getDeviceUser === 'function') ? (String(getDeviceUser() || '').trim() || 'shared device') : 'shared device'; } catch (e) { return 'shared device'; } }
   function _slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x'; }
+  // Owner check — the roster name is "Joseph Schmidt" (empId 1100), not "Joe",
+  // so match Joe/Joseph + Schmidt as well as a bare first name (fixed v266).
   function _isJoe() {
-    var n = _me().toLowerCase();
-    return n === 'joe' || n.indexOf('joe schmidt') === 0 || n.indexOf('joe s') === 0;
+    var n = _me().toLowerCase().replace(/[^a-z ]/g, '').trim();
+    if (!n) return false;
+    if (n === 'joe' || n === 'joseph') return true;
+    return /^jo/.test(n) && /schmidt/.test(n);
   }
 
   // ── The counter every module can call ──
