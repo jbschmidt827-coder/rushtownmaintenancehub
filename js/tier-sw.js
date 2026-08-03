@@ -27,6 +27,14 @@
         ['Any problem found → flag it in the check or open a Work Order the SAME day.', 'Cualquier problema → márcalo en la revisión o abre una Orden de Trabajo el MISMO día.'],
         ['Huddle: open 📊 Tier 1, read the reds/yellows out loud, assign one owner per red.', 'Reunión: abre 📊 Tier 1, lee los rojos/amarillos en voz alta, asigna un dueño por cada rojo.']
       ]},
+      { icon: '🐓', title: ['Barn Crew — Daily Employee Check', 'Personal de Casas — Revisión Diaria'], who: ['Hegins & Danville — every house, every day', 'Hegins y Danville — cada casa, cada día'], items: [
+        ['Do your 🐓 Daily Employee Check block by block through the shift — submitted before you go home.', 'Haz tu 🐓 Revisión Diaria bloque por bloque durante el turno — enviada antes de irte.'],
+        ['Count and REMOVE all mortality; enter the real number — no blanks.', 'Cuenta y RETIRA toda la mortalidad; escribe el número real — sin vacíos.'],
+        ['Water tubes cleaned front & back, every day.', 'Tubos de agua limpios adelante y atrás, cada día.'],
+        ['Watch the egg belt — jams, piled eggs, off-track = tell your leader NOW.', 'Vigila la banda de huevos — atascos, huevos amontonados o banda desalineada = avisa a tu líder YA.'],
+        ['Follow the blow-off / under-cage schedule on your checklist days.', 'Sigue el calendario de sopleteo / bajo jaulas en tus días de lista.'],
+        ['Anything broken: write it in Notes AND tell your leader — Work Order if it\'s equipment.', 'Algo roto: escríbelo en Notas Y avisa a tu líder — Orden de Trabajo si es equipo.']
+      ]},
       { icon: '🔧', title: ['Maintenance Leader', 'Líder de Mantenimiento'], who: ['Both plants', 'Ambas plantas'], items: [
         ['Morning: open 📊 Tier 1 → Past Due PMs, Open WO (urgent first), Critical Parts.', 'Mañana: abre 📊 Tier 1 → PM Vencidos, OT Abiertas (urgentes primero), Piezas Críticas.'],
         ['Assign every open WO an owner; completed WOs are CLOSED in the app the same day (notes + parts used).', 'Asigna dueño a cada OT abierta; las OT terminadas se CIERRAN en la app el mismo día (notas + piezas).'],
@@ -63,6 +71,25 @@
         ['Pallets packed + shipments entered so inventory stays true.', 'Pallets empacados + envíos registrados para que el inventario sea real.'],
         ['Huddle: check ⏱ Downtime and 🥚 Egg Flow tiles; assign an owner to any red.', 'Reunión: revisa los cuadros ⏱ Paro y 🥚 Flujo; asigna dueño a cualquier rojo.']
       ]},
+      { icon: '🥚', title: ['Egg Packer', 'Empacador de Huevos'], who: ['Hegins machines · Danville by house', 'Máquinas Hegins · Danville por casa'], items: [
+        ['Enter your name as Packer + set the Start time when the machine starts.', 'Pon tu nombre como Empacador + la hora de Inicio cuando arranca la máquina.'],
+        ['Enter eggs by lane (Hegins) or by house (Danville) — the machine total must be real.', 'Registra huevos por carril (Hegins) o por casa (Danville) — el total debe ser real.'],
+        ['Hegins target: done by 11:48 — past that is downtime; log the reason.', 'Meta Hegins: terminar a las 11:48 — después de eso es paro; registra la razón.'],
+        ['Set the Stop time when the run ends — never leave a run open.', 'Pon la hora de Paro al terminar — nunca dejes una corrida abierta.'],
+        ['Keep the product safe — handle eggs and cases per SOP; damage gets reported, never shipped.', 'Protege el producto — maneja huevos y cajas según el SOP; el daño se reporta, nunca se envía.']
+      ]},
+      { icon: '📦', title: ['Processing Line Crew', 'Personal de Línea — Procesamiento'], who: ['Danville plant', 'Planta Danville'], items: [
+        ['Know the day\'s target: cases/hour on the board — help the line hit it.', 'Conoce la meta del día: cajas/hora en el tablero — ayuda a la línea a lograrla.'],
+        ['Every stop gets logged: downtime minutes + the reason.', 'Cada paro se registra: minutos de paro + la razón.'],
+        ['Log breakage/cracks honestly — real numbers fix real problems.', 'Registra quebrados/fisuras con honestidad — números reales arreglan problemas reales.'],
+        ['Keep your area clean (5S) and the product safe (SOP).', 'Mantén tu área limpia (5S) y el producto seguro (SOP).']
+      ]},
+      { icon: '🚚', title: ['Driver', 'Chofer'], who: ['Load-outs & deliveries', 'Cargas y entregas'], items: [
+        ['Verify the load before leaving: quantity, labels, no damage — SOP 001 final inspection.', 'Verifica la carga antes de salir: cantidad, etiquetas, sin daños — inspección final SOP 001.'],
+        ['Nylon straps + corner protectors on metal loads — no movement in transit.', 'Correas de nylon + protectores de esquina en cargas metálicas — sin movimiento en tránsito.'],
+        ['Log every load out in the app (Danville Load-Out / Shipping).', 'Registra cada salida en la app (Load-Out de Danville / Envíos).'],
+        ['Damage found = STOP, photo, tell the supervisor.', '¿Daño? = ALTO, foto, avisa al supervisor.']
+      ]},
       { icon: '🌽', title: ['Feed Mill Leader', 'Líder del Molino'], who: ['All sites', 'Todos los sitios'], items: [
         ['Enter Feed Made (farm + house + tons) every day it runs.', 'Registra Alimento Hecho (granja + casa + toneladas) cada día que corre.'],
         ['Check the 🌽 Feed tile; any house reporting empty gets a call TODAY.', 'Revisa el cuadro 🌽 Alimento; cualquier casa vacía recibe llamada HOY.'],
@@ -76,6 +103,22 @@
       ]}
     ];
   }
+
+  // ── "I know my job requirements" sign-off (Joe 2026-08-03) ──
+  // Every card gets an agree button; acceptance is saved by sopAccept()
+  // (maintenance.js) into sopSignoffs + mirrored to the employee's staffCerts.
+  function _swKey(r) { return 'SW:' + String(r.title[0]).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
+  function _me() { try { return (typeof getDeviceUser === 'function') ? String(getDeviceUser() || '').replace(/"/g, '&quot;') : ''; } catch (e) { return ''; } }
+  window.tswAgree = function (i) {
+    var r = ROLES()[i]; if (!r) return;
+    if (typeof window.sopAccept !== 'function') { if (typeof toast === 'function') toast(L('Update the app first', 'Actualiza la app primero')); return; }
+    window.sopAccept(_swKey(r), {
+      title: r.title[0] + ' — Standard Work',
+      inputId: 'tsw-ack-name-' + i,
+      listId: 'tsw-ack-list-' + i,
+      terms: 'Job requirements — read, understood & accepted'
+    });
+  };
 
   function _ov() {
     var o = document.getElementById('tiersw-overlay');
@@ -110,7 +153,17 @@
           '</span>' +
           '<span id="tsw-chev-' + i + '" style="color:#d6b34a;font-size:15px;">▸</span>' +
         '</button>' +
-        '<div id="tsw-body-' + i + '" style="display:none;padding:2px 14px 12px;">' + items + '</div>' +
+        '<div id="tsw-body-' + i + '" style="display:none;padding:2px 14px 12px;">' + items +
+          '<div style="background:#0d1a0d;border:1.5px solid #1f7a3a;border-radius:10px;padding:10px;margin-top:10px;">' +
+            '<div style="' + MONO + 'font-size:9.5px;font-weight:700;letter-spacing:1px;color:#4ade80;text-transform:uppercase;margin-bottom:5px;">✍️ ' + L('I know my job requirements', 'Conozco los requisitos de mi puesto') + '</div>' +
+            '<div style="' + MONO + 'font-size:11px;color:#cfe6d6;line-height:1.5;margin-bottom:7px;">' + L('By agreeing, you confirm you read this card, you know what this job requires, and you accept it. Logged under your name.', 'Al aceptar confirmas que leíste esta tarjeta, sabes lo que requiere este puesto y lo aceptas. Queda registrado con tu nombre.') + '</div>' +
+            '<div style="display:flex;gap:7px;flex-wrap:wrap;">' +
+              '<input list="staff-datalist" id="tsw-ack-name-' + i + '" value="' + _me() + '" placeholder="' + L('Your name', 'Tu nombre') + '" autocomplete="off" style="flex:2;min-width:130px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:13px;font-weight:700;padding:9px 10px;">' +
+              '<button onclick="tswAgree(' + i + ')" style="flex:1;min-width:170px;padding:10px 12px;background:#1f7a3a;border:1.5px solid #2a9a4a;border-radius:8px;color:#eafff0;' + MONO + 'font-size:11.5px;font-weight:700;cursor:pointer;letter-spacing:.4px;">✓ ' + L('I AGREE — I KNOW THIS JOB', 'ACEPTO — CONOZCO ESTE TRABAJO') + '</button>' +
+            '</div>' +
+            '<div id="tsw-ack-list-' + i + '" style="' + MONO + 'font-size:10px;color:#7ab07a;margin-top:7px;line-height:1.6;"></div>' +
+          '</div>' +
+        '</div>' +
       '</div>';
     }).join('');
     o.innerHTML = '<div style="max-width:720px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 26px) 14px 60px;">' +
@@ -118,7 +171,7 @@
         '<button onclick="closeTierSW()" style="padding:11px 16px;background:#1a1408;border:1.5px solid #7a5a1a;border-radius:50px;color:#e8c96a;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">← ' + L('Back', 'Atrás') + '</button>' +
         '<div style="text-align:right;">' +
           '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:26px;letter-spacing:2px;line-height:1;color:#f0e6c8;">📘 ' + L('TIER STANDARD WORK', 'TRABAJO ESTÁNDAR TIER') + '</div>' +
-          '<div style="' + MONO + 'font-size:10px;color:#a08a4a;margin-top:2px;">' + L('Who feeds the boards, every day', 'Quién alimenta los tableros, cada día') + '</div>' +
+          '<div style="' + MONO + 'font-size:10px;color:#a08a4a;margin-top:2px;">' + L('Every job\'s standard work — sign that you know yours', 'El trabajo estándar de cada puesto — firma que conoces el tuyo') + '</div>' +
         '</div>' +
       '</div>' +
       '<div style="' + MONO + 'font-size:11px;color:#c9b478;background:#171207;border:1px solid #3a2f14;border-radius:10px;padding:10px 12px;margin-bottom:14px;line-height:1.5;">' +
@@ -126,6 +179,10 @@
           'Si cada líder cumple su tarjeta a diario, cada luz de los tableros es real. Verde significa verde.') + '</div>' +
       cards + '</div>';
     o.style.display = 'block';
+    // Fill each card's "who signed" line from sopSignoffs
+    if (typeof window._sopLoadAcks === 'function') {
+      ROLES().forEach(function (r, i) { window._sopLoadAcks(_swKey(r), 'tsw-ack-list-' + i); });
+    }
     try { window.scrollTo(0, 0); } catch (e) {}
   };
 })();

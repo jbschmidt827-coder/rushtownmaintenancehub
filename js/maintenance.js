@@ -7771,6 +7771,12 @@ function openWIView(wiId) {
   const _fmtD = (typeof fmtDate === 'function') ? fmtDate(wi.date) : (wi.date || '');
   if (wi.author || wi.date) metaParts.push('By ' + (wi.author || 'Unknown') + (wi.date ? ' · ' + _fmtD : ''));
 
+  // ── SOP click-to-accept (Joe 2026-08-03): every employee opens the SOP, taps
+  // "I understand & accept", and it's logged under their name — sopSignoffs
+  // collection + a staffCerts entry — proof on record they know the job.
+  const isSOP = /^SOP/i.test(String(wi.wiId || '')) || /^SOP\b/i.test(String(wi.title || ''));
+  const ackHtml = (isSOP && typeof _sopAckBlock === 'function') ? _sopAckBlock(wi) : '';
+
   const html = `
     <div class="overlay open" id="wi-view-dyn-modal" style="z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.78);position:fixed;inset:0;padding:16px;" onclick="if(event.target===this)closeWIView()">
       <div style="background:#0a1a0a;border:1.5px solid #2a5a2a;border-radius:14px;max-width:560px;width:100%;max-height:92vh;overflow-y:auto;padding:18px 20px;">
@@ -7792,6 +7798,7 @@ function openWIView(wiId) {
         ${steps.length ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#7a9a7a;letter-spacing:1px;text-transform:uppercase;margin:14px 0 6px;">Steps</div>${stepsHtml}` : ''}
         ${strip('✅ What Good Looks Like',     wi.verification, '#9b59b6','#1a0a2a')}
         ${photosHtml}
+        ${ackHtml}
         <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #1a3a1a;align-items:center;">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7a9a7a;flex:1;">#${_esc(wi.wiId || wi._fbId || '—')} · ${steps.length} steps</div>
           <button onclick="wiDeleteCurrent()" style="padding:6px 12px;font-size:11px;background:#1a0505;border:1px solid #7f1d1d;color:#f87171;border-radius:7px;cursor:pointer;font-weight:600;font-family:'IBM Plex Sans',sans-serif;">🗑 Delete</button>
@@ -7804,7 +7811,84 @@ function openWIView(wiId) {
   const oldStatic = document.getElementById('wi-view-modal');
   if (oldStatic) oldStatic.classList.remove('open');
   document.body.insertAdjacentHTML('beforeend', html);
+  if (isSOP && typeof _sopLoadAcks === 'function') _sopLoadAcks(_sopKey(wi));
 }
+
+// ═══════════════════════════════════════════
+// SOP SIGN-OFF — tap to accept, logged per employee (Joe 2026-08-03)
+// Shows on any WI whose wiId/title starts with "SOP". Saves to sopSignoffs
+// and mirrors into staffCerts so it shows on the employee's cert record.
+// ═══════════════════════════════════════════
+function _sopLL(en, es) { return (typeof _lang !== 'undefined' && _lang === 'es') ? es : en; }
+function _sopKey(wi) { return String((wi && (wi.wiId || wi._fbId)) || ''); }
+function _sopAckBlock(wi) {
+  const key = _sopKey(wi);
+  let pre = '';
+  try { pre = (typeof getDeviceUser === 'function') ? (getDeviceUser() || '') : ''; } catch (e) {}
+  return `
+    <div style="background:#07240f;border:1.5px solid #1f7a3a;border-radius:10px;padding:12px;margin-top:14px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;color:#4ade80;text-transform:uppercase;margin-bottom:6px;">✍️ ${_sopLL('Sign-off — I understand & accept', 'Firma — Entiendo y acepto')}</div>
+      <div style="font-size:12px;color:#cfe6d6;line-height:1.5;margin-bottom:8px;">${_sopLL(
+        'By accepting, you confirm you have read this SOP, you understand it, you accept its terms, and you know how to do this job. Your acceptance is logged under your name with the date.',
+        'Al aceptar confirmas que leíste este SOP, lo entiendes, aceptas sus términos y sabes hacer este trabajo. Tu aceptación queda registrada con tu nombre y la fecha.')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input list="staff-datalist" id="sop-ack-name" value="${String(pre).replace(/"/g, '&quot;')}" placeholder="${_sopLL('Your name', 'Tu nombre')}" autocomplete="off" style="flex:2;min-width:150px;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:8px;color:#f0ead8;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;padding:10px 11px;">
+        <button onclick="sopAccept('${key.replace(/'/g, "\\'")}')" style="flex:1;min-width:180px;padding:11px 14px;background:#1f7a3a;border:1.5px solid #2a9a4a;border-radius:8px;color:#eafff0;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:700;cursor:pointer;letter-spacing:.5px;">✓ ${_sopLL('I UNDERSTAND & ACCEPT', 'ENTIENDO Y ACEPTO')}</button>
+      </div>
+      <div id="sop-ack-list" style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#7ab07a;margin-top:9px;line-height:1.6;">${_sopLL('Loading sign-offs…', 'Cargando firmas…')}</div>
+    </div>`;
+}
+function _sopLoadAcks(key, listElId) {
+  try {
+    if (typeof db === 'undefined' || !db || !key) return;
+    db.collection('sopSignoffs').where('sopId', '==', key).get().then(snap => {
+      const el = document.getElementById(listElId || 'sop-ack-list'); if (!el) return;
+      const rows = []; snap.forEach(d => rows.push(d.data()));
+      rows.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      if (!rows.length) { el.innerHTML = '— ' + _sopLL('No sign-offs yet. Be the first.', 'Aún no hay firmas. Sé el primero.'); return; }
+      el.innerHTML = '<b style="color:#4ade80;">' + rows.length + '</b> ' + _sopLL('signed', 'firmaron') + ': ' +
+        rows.map(r => String(r.employee || '?').replace(/</g, '&lt;') + ' <span style="color:#4a6a4a;">(' + (r.date || '') + ')</span>').join(' · ');
+    }).catch(() => {});
+  } catch (e) {}
+}
+// Generic acceptance: SOPs from the WI library AND Standard Work role cards
+// (tier-sw.js calls this too). opts = { title, inputId, listId, terms, label }.
+async function sopAccept(key, opts) {
+  opts = opts || {};
+  const inp = document.getElementById(opts.inputId || 'sop-ack-name');
+  const name = inp ? inp.value.trim() : '';
+  if (!name) { if (typeof toast === 'function') toast(_sopLL('Enter your name first', 'Escribe tu nombre primero')); if (inp) inp.focus(); return; }
+  const wi = (typeof allWI !== 'undefined' ? allWI : []).find(x => _sopKey(x) === key) || {};
+  const title = opts.title || wi.title || key;
+  const idLabel = wi.wiId || key;
+  try {
+    // One sign-off per person per document — a repeat tap just confirms it.
+    const dup = await db.collection('sopSignoffs').where('sopId', '==', key).where('employee', '==', name).get();
+    if (!dup.empty) { if (typeof toast === 'function') toast('✅ ' + name + ' — ' + _sopLL('already signed', 'ya firmó')); _sopLoadAcks(key, opts.listId); return; }
+    const date = (typeof LDATE === 'function') ? LDATE() : new Date().toISOString().slice(0, 10);
+    await db.collection('sopSignoffs').add({
+      sopId: key, title, employee: name, date, ts: Date.now(), accepted: true,
+      appVersion: (typeof APP_VERSION !== 'undefined' ? APP_VERSION : ''),
+      terms: opts.terms || 'Read, understood & accepted — knows how to do the job'
+    });
+    // Mirror onto the employee's record → Staff → 🏆 Certifications
+    try {
+      const st = (typeof staffList !== 'undefined' ? staffList : []).find(s => String(s.name || '').toLowerCase() === name.toLowerCase());
+      await db.collection('staffCerts').add({
+        staffId: st ? (st._fbId || '') : '', staffName: name,
+        certName: idLabel + ' — ' + title,
+        issuedDate: date, expiresDate: '', notes: opts.terms || _sopLL('Accepted in app (SOP sign-off)', 'Aceptado en la app (firma SOP)'), ts: Date.now()
+      });
+    } catch (e) { console.warn('staffCerts mirror failed (sign-off still saved):', e); }
+    if (typeof toast === 'function') toast('✅ ' + _sopLL('Signed — logged under', 'Firmado — registrado a nombre de') + ' ' + name);
+    _sopLoadAcks(key, opts.listId);
+  } catch (e) {
+    console.error('sopAccept:', e);
+    if (typeof toast === 'function') toast(_sopLL('Could not save — try again', 'No se pudo guardar — intenta de nuevo'));
+  }
+}
+window.sopAccept = sopAccept;
+window._sopLoadAcks = _sopLoadAcks;
 
 let _wiViewOpenedAt = 0;
 
