@@ -2045,7 +2045,8 @@ async function submitBarnWalk() {
     'Manure dryers off':          {problem:'Manure System',       priority:'high'},
 
     'Poor feathering':            {problem:'Building / Structure', priority:'normal'},
-    'House doors open':           {problem:'Building / Structure', priority:'high'},
+    // 'House doors open' — REMOVED per Joe 2026-08-03: doors open still FLAGS on
+    // the check + barn status, but no longer auto-creates a work order.
     'Air quality anomaly':        {problem:'Ventilation / Fans',  priority:'urgent'},
     'Feeders empty':              {problem:'Feed System',         priority:'urgent'},
     'Egg belt not working':       {problem:'Egg Collection',      priority:'urgent'},
