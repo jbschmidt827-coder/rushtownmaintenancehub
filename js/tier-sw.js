@@ -177,6 +177,10 @@
       '<div style="' + MONO + 'font-size:11px;color:#c9b478;background:#171207;border:1px solid #3a2f14;border-radius:10px;padding:10px 12px;margin-bottom:14px;line-height:1.5;">' +
         L('If every leader does their card daily, every light on the Tier boards is real. Green means green.',
           'Si cada líder cumple su tarjeta a diario, cada luz de los tableros es real. Verde significa verde.') + '</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:14px;">' +
+        '<button onclick="if(typeof openMySignoffs===\'function\')openMySignoffs()" style="flex:1;padding:12px;background:#0d1f0d;border:1.5px solid #2a9a4a;border-radius:10px;color:#4ade80;' + MONO + 'font-size:12px;font-weight:700;cursor:pointer;">📋 ' + L('MY SIGN-OFFS', 'MIS FIRMAS') + '</button>' +
+        '<button onclick="if(typeof openSignoffBoard===\'function\')openSignoffBoard()" style="flex:1;padding:12px;background:#171207;border:1.5px solid #7a5a1a;border-radius:10px;color:#e8c96a;' + MONO + 'font-size:12px;font-weight:700;cursor:pointer;">📊 ' + L('COVERAGE — WHO HASN\'T SIGNED', 'COBERTURA — QUIÉN NO HA FIRMADO') + '</button>' +
+      '</div>' +
       cards + '</div>';
     o.style.display = 'block';
     // Fill each card's "who signed" line from sopSignoffs
