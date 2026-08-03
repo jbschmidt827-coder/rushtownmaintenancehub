@@ -9,7 +9,8 @@
 // Houses: Hegins 4-8, Danville 1-5. Submitting a house collapses it; once every
 // house is submitted the farm's daily manure PMs auto-complete in the PM tracker.
 // ═══════════════════════════════════════════════════════════════════════════
-const MANURE_HOUSES     = { Hegins: [4, 5, 6, 7, 8], Danville: [1, 2, 3, 4, 5] };
+// Hegins H4 REMOVED per Joe 2026-08-03 — that house has no manure runs.
+const MANURE_HOUSES     = { Hegins: [5, 6, 7, 8], Danville: [1, 2, 3, 4, 5] };
 const MANURE_COLLECTORS = 6;
 const MANURE_PCTS       = [0, 50, 100];
 const MANURE_PCT_COL    = { 0: '#c0392b', 50: '#d69e2e', 100: '#2e7d32' };
@@ -19,7 +20,7 @@ const MANURE_PCT_COL    = { 0: '#c0392b', 50: '#d69e2e', 100: '#2e7d32' };
 // any of them in-app (saved to settings/manureBeltSchedule, live across devices).
 const MANURE_BELT_DUR_HR = 2.0;
 const MANURE_BELT_SCHED_DEFAULT = {
-  Hegins:   { 4: '06:00', 5: '08:00', 6: '10:00', 7: '12:00', 8: '14:00' },
+  Hegins:   { 5: '08:00', 6: '10:00', 7: '12:00', 8: '14:00' },
   Danville: { 1: '07:00', 2: '09:00', 3: '11:00', 4: '13:00', 5: '15:00' }
 };
 let _manBeltSched = null;   // live override from settings/manureBeltSchedule

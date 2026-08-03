@@ -141,7 +141,7 @@
     try { (await db.collection('morningWalks').where('date', '==', today).get()).forEach(d => { const x = d.data(); if (x && x.farm && x.house != null) mwSet.add(x.farm + '|' + _hnum(x.house)); }); } catch (e) { console.warn('scorecard morningWalks:', e); }
     try { (await db.collection('manureSubmit').where('date', '==', today).get()).forEach(d => { const x = d.data(); if (x && x.farm && x.house != null) msSet.add(x.farm + '|' + _hnum(x.house)); }); } catch (e) { console.warn('scorecard manureSubmit:', e); }
     const COMP_H = { Hegins: [1, 2, 3, 4, 5, 6, 7, 8], Danville: [1, 2, 3, 4, 5] };
-    const MAN_H = (typeof MANURE_HOUSES !== 'undefined') ? MANURE_HOUSES : { Hegins: [4, 5, 6, 7, 8], Danville: [1, 2, 3, 4, 5] };
+    const MAN_H = (typeof MANURE_HOUSES !== 'undefined') ? MANURE_HOUSES : { Hegins: [5, 6, 7, 8], Danville: [1, 2, 3, 4, 5] };
     let cDone = 0, cApp = 0, mwD = 0, mwA = 0, ckD = 0, ckA = 0, mnD = 0, mnA = 0;
     const _actH = f => (COMP_H[f] || []).filter(h => !(typeof isHouseDown === 'function' && isHouseDown(f, h)));
     farms.forEach(f => _actH(f).forEach(h => {

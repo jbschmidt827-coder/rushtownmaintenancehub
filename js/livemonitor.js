@@ -13,7 +13,7 @@
   'use strict';
 
   var FARM_HOUSES   = { Hegins: 8, Danville: 5 };
-  var MANURE_HOUSES = { Hegins: [4, 5, 6, 7, 8], Danville: [1, 2, 3, 4, 5] };
+  var MANURE_HOUSES = { Hegins: [5, 6, 7, 8], Danville: [1, 2, 3, 4, 5] };   // H4 Hegins: no manure runs (Joe 8/3)
   var LIVE_MS = 6 * 60000;   // "active now" window
 
   var _lmUnsub = [];
