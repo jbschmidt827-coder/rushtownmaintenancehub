@@ -122,6 +122,18 @@
     ['👀 CELIA STANDARD 👀',        'Celia\'s barns are so clean the eggs check themselves in. That\'s the standard.'],
     ['🤝 DREAM TEAM 🤝',            'Joe plans it, Nate builds it, the leads run it, the crew wins it. Rushtown.'],
     ['🐔 BOSS APPROVED 🐔',         'Leadership walked the barns and the chickens gave a standing ovation.'],
+    // ── SUMMER PACK (v265, per Joe) — away days, kickball & thank-yous ──
+    ['🏖 BOSSES AWAY 🏖',           'Joe and Brad are both away. The chickens are in charge now. First order of business: more corn.'],
+    ['📵 QUIET UP TOP 📵',          'Joe and Brad out at the same time? The hens already planned the party. Nate found out. Party moved.'],
+    ['🌴 SHAWN\'S OUT 🌴',          'Shawn\'s away — the chickens keep asking who\'s going to laugh at their jokes today.'],
+    ['👋 MISSING SHAWN 👋',         'Shawn\'s not in. Production is fine. Morale? The hens are counting the days.'],
+    ['🌸 CLAIRE\'S DAY OFF 🌸',     'Claire\'s away today. The clipboard is lost without her. Honestly, so are we.'],
+    ['⚽ KICKBALL TIME ⚽',          'Time for Ante to take the kids to play kickball! Not Mike though — we\'ve seen Mike run. We need Mike standing.', _kickballChicken],
+    ['🐔 KICKBALL STAR ⚽',          'The chicken kicked the kickball clean over Barn 4. Ante\'s team wants her as starting pitcher.', _kickballChicken],
+    ['🤕 EASY, MIKE 🤕',            'Mike signed up for kickball. The crew voted no — out of love. Mike upright is Mike undefeated.'],
+    ['🧺 PICNIC LEGENDS 🧺',        'That picnic was COOL. Best crew, best food, happiest chickens in the state. Let\'s run it back.'],
+    ['❤️ THANK YOU CREW ❤️',        'Thank you for all the help with this app — every tap, every check, every idea makes it better.'],
+    ['🏆 RUSHTOWN = YOU 🏆',        'Straight from Joe: Rushtown would not exist without this team. Every single one of you. Thank you.'],
   ];
 
   // ── Per-facility packs — appended to COMMON for the active site ──
@@ -220,6 +232,8 @@
 
   function _trigger(e) {
     _busy = true;
+    // Usage stat for Joe's 📈 board: how often the crew taps the chicken 3× (v265)
+    try { if (typeof trackUse === 'function') trackUse('chicken-joke'); } catch (eT) {}
     // Pool = company-wide jokes + whichever facility you're standing in.
     // Master / unknown location → everybody is fair game.
     var farm = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
@@ -313,6 +327,34 @@
   }
 
   // ── Effect 2: Screen shake ──────────────────────────────────
+  // ── Effect: chicken kicks a kickball (v265, per Joe) ────────
+  function _kickballChicken() {
+    var st = document.createElement('style');
+    st.id = 'kickball-style';
+    st.textContent =
+      '@keyframes _kbChick{0%{left:-90px}45%{left:34%}55%{left:33%;transform:rotate(-14deg)}60%{left:36%;transform:rotate(8deg)}100%{left:36%;transform:rotate(0)}}' +
+      '@keyframes _kbBall{0%,52%{left:44%;bottom:12vh;transform:rotate(0)}100%{left:110%;bottom:64vh;transform:rotate(1080deg)}}' +
+      '@keyframes _kbGoal{0%,55%{opacity:0;transform:scale(.4)}70%{opacity:1;transform:scale(1.25)}85%{transform:scale(1)}100%{opacity:0;transform:scale(1)}}';
+    document.head.appendChild(st);
+    var chick = document.createElement('div');
+    chick.className = 'kb-bit';
+    chick.style.cssText = 'position:fixed;bottom:10vh;left:-90px;font-size:64px;z-index:99999;pointer-events:none;animation:_kbChick 2.6s ease-out forwards;';
+    chick.textContent = '🐔';
+    var ball = document.createElement('div');
+    ball.className = 'kb-bit';
+    ball.style.cssText = 'position:fixed;bottom:12vh;left:44%;font-size:52px;z-index:99999;pointer-events:none;animation:_kbBall 2.6s cubic-bezier(.2,.7,.3,1) forwards;';
+    ball.textContent = '⚽';
+    var goal = document.createElement('div');
+    goal.className = 'kb-bit';
+    goal.style.cssText = 'position:fixed;top:30vh;left:0;right:0;text-align:center;font-size:44px;font-weight:900;color:#4ade80;z-index:99999;pointer-events:none;font-family:\'Bebas Neue\',sans-serif;letter-spacing:4px;animation:_kbGoal 3s ease forwards;text-shadow:0 4px 18px rgba(0,0,0,.6);';
+    goal.textContent = '⚽ GOOOOAL! 🐔';
+    document.body.appendChild(chick); document.body.appendChild(ball); document.body.appendChild(goal);
+    setTimeout(function () {
+      document.querySelectorAll('.kb-bit').forEach(function (el) { el.remove(); });
+      var s = document.getElementById('kickball-style'); if (s) s.remove();
+    }, 3400);
+  }
+
   function _screenShake() {
     _dropEggs(8);
     var style = document.createElement('style');
