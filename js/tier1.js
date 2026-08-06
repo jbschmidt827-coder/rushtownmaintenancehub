@@ -347,6 +347,52 @@
     var waterBad = mwalks.filter(function (w) { return (w.waterPSI != null && Number(w.waterPSI) < 20); }).length +
       checks.filter(function (c) { return (c.flags || []).some(function (f) { return /water/i.test(f); }); }).length;
     var waterS = (!hasChecks && !mwalks.length) ? '-' : (waterBad === 0 ? 'g' : waterBad <= TH.waterY ? 'y' : 'r');
+
+    // ── 💧 WATER VOLUME + 🌾 FEED ON HAND (v272) — real numbers off the Morning
+    // Walk (waterUsedGal / binA+binB tons), not just "is there a problem".
+    // A water DROP is the earliest bird-health signal we have, so it drives the
+    // tile colour: >25% under this site's own 7-day average = red.
+    // Readings come from BOTH the Morning Walk and the crew's Daily EE Check
+    // (v272) — each record's waterUsedGal is measured against the reading before
+    // it, so summing them gives the day's true total without double counting.
+    var _wkMW = (_t1cache.morningWalks || []).filter(function (w) { return S === 'All' || w.farm === S; })
+      .concat(weekChecks || []);
+    var _todayReads = mwalks.concat(checks || []);
+    var galToday = 0, galHouses = {};
+    _todayReads.forEach(function (w) { var g = Number(w.waterUsedGal); if (g > 0) { galToday += g; galHouses[w.farm + '-' + w.house] = 1; } });
+    galHouses = Object.keys(galHouses).length;
+    var _byDayGal = {};
+    _wkMW.forEach(function (w) { var g = Number(w.waterUsedGal); if (g > 0 && w.date) _byDayGal[w.date] = (_byDayGal[w.date] || 0) + g; });
+    var _galDays = Object.keys(_byDayGal).filter(function (d) { return d !== t; });
+    var galAvg = _galDays.length ? Math.round(_galDays.reduce(function (s, d) { return s + _byDayGal[d]; }, 0) / _galDays.length) : null;
+    var galDrop = (galAvg && galToday > 0) ? Math.round((galToday - galAvg) / galAvg * 100) : null;
+    if (galToday > 0 && galDrop != null && galDrop <= -25) waterS = 'r';
+    else if (galToday > 0 && galDrop != null && galDrop <= -10 && waterS === 'g') waterS = 'y';
+    var waterVal = galToday > 0 ? (_num(galToday) + ' gal')
+                 : (waterBad === 0 ? L('OK', 'OK') : waterBad + ' ' + L('issues', 'problemas'));
+    var waterSub = galToday > 0
+      ? (galHouses + ' ' + L('houses', 'casas') + (galAvg ? (' · ' + L('7d avg ', 'prom 7d ') + _num(galAvg) + (galDrop != null ? (' · ' + (galDrop >= 0 ? '▲' : '▼') + Math.abs(galDrop) + '%') : '')) : ''))
+      : (waterBad ? L('PSI / flags', 'PSI / alertas') : L('no meter reading yet', 'sin lectura del medidor'));
+    // Feed tons on hand = NEWEST bin reading per house today (A + B), morning
+    // walk or EE check, whichever was entered last.
+    var _tons = {}, _tonsTs = {};
+    _todayReads.forEach(function (w) {
+      var a = Number(w.binA), b = Number(w.binB);
+      if (isNaN(a) && isNaN(b)) return;
+      var k = w.farm + '-' + w.house, ts = Number(w.ts) || 0;
+      if (_tonsTs[k] != null && ts < _tonsTs[k]) return;
+      _tonsTs[k] = ts;
+      _tons[k] = (isNaN(a) ? 0 : a) + (isNaN(b) ? 0 : b);
+    });
+    var _tonsLow = Object.keys(_tons).filter(function (k) { return _tons[k] < 2; }).length;
+    var tonsOnHand = Object.keys(_tons).reduce(function (s, k) { return s + _tons[k]; }, 0);
+    var tonsHouses = Object.keys(_tons).length;
+    if (_tonsLow > 0 && feedS === 'g') feedS = 'y';
+    var feedVal = tonsHouses ? (Math.round(tonsOnHand * 10) / 10 + ' ' + L('tons', 'ton'))
+                : (!hasChecks ? '—' : (feedBad === 0 ? L('OK', 'OK') : feedBad + ' ' + L('low', 'bajo')));
+    var feedSub = tonsHouses
+      ? (L('on hand · ', 'en tolvas · ') + tonsHouses + ' ' + L('houses', 'casas') + (_tonsLow ? (' · ' + _tonsLow + ' ' + L('under 2 tons', 'bajo 2 ton')) : ''))
+      : (feedBad ? L('feeders / bins flagged', 'comederos / tolvas') : '');
     var flagCount = checks.reduce(function (s, c) { return s + ((c.flags && c.flags.length) || 0); }, 0);
     var qualS = !hasChecks ? '-' : (flagCount === TH.qualG ? 'g' : flagCount <= TH.qualY ? 'y' : 'r');
 
@@ -367,13 +413,13 @@
       _tile('💀', L('Mortality', 'Mortalidad'), mortS, !hasChecks ? '—' : String(mortToday), !hasChecks ? L('no checks yet', 'sin revisiones') : (L('worst house', 'peor casa') + ' ' + mortWorst), "closeTier1();typeof openCompletion==='function'&&openCompletion()"),
       _tile('✅', L('Quality', 'Calidad'), qualS, !hasChecks ? '—' : (flagCount + ' ' + L('flags', 'alertas')), L('today', 'hoy'), ''),
       _tile('🥚', L('Egg Flow', 'Flujo Huevos'), eggS, eggsToday > 0 ? _num(eggsToday) : '—', eggsToday > 0 ? L('processed', 'procesados') : L('no run yet', 'sin corrida'), "closeTier1();typeof openProcessing==='function'&&openProcessing()"),
-      _tile('🌽', L('Feed', 'Alimento'), feedS, !hasChecks ? '—' : (feedBad === 0 ? L('OK', 'OK') : feedBad + ' ' + L('low', 'bajo')), '', ''),
+      _tile('🌽', L('Feed', 'Alimento'), feedS, feedVal, feedSub, ''),
       _tile('📦', L('Cases / Hour', 'Cajas / Hora'), rateS,
             rateDay == null ? '—' : (rateDay + ' ' + L('cases/hr', 'cajas/hr')),
             rateDay == null ? L('no run data yet', 'sin datos de corrida') : (rateDayLbl + ' · ' + rateSub),
             "closeTier1();typeof openProcessing==='function'&&openProcessing()"),
       _tile('🌾', L('Mill Output', 'Molino'), millS, millWk === 0 ? '—' : (millToday + ' ' + L('tons today', 'ton hoy')), millWk === 0 ? L('no data yet', 'sin datos aún') : (millWk + ' ' + L('tons this week', 'ton semana')), ''),
-      _tile('💧', L('Water', 'Agua'), waterS, (!hasChecks && !mwalks.length) ? '—' : (waterBad === 0 ? L('OK', 'OK') : waterBad + ' ' + L('issues', 'problemas')), '', ''),
+      _tile('💧', L('Water', 'Agua'), waterS, (!hasChecks && !mwalks.length) ? '—' : waterVal, waterSub, ''),
       _tile('⏱', L('Downtime', 'Paro'), dtS, packLog.length === 0 ? '—' : (dtMin + ' min'), L('packing today', 'empaque hoy'), ''),
       _tile('📋', L('Past Due PMs', 'PM Vencidos'), pmS, String(pmOverdue), L('overdue', 'vencidos'), GM + "setTimeout(function(){typeof goMaintSection==='function'&&goMaintSection('pm')},150)"),
       _tile('🔧', L('Open WO', 'OT Abiertas'), woS, String(openWO.length), urgentWO.length ? (urgentWO.length + ' ' + L('urgent', 'urgente')) : L('none urgent', 'ninguna urgente'), GM),

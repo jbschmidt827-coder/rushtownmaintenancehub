@@ -887,7 +887,8 @@ function bwSaveDraft() {
   const today = LDATE();
   const fields = {};
   ['bw-employee','bw-notes','bw-mort-count','bw-loose-count','bw-rodent-count',
-   'bw-fly-count','bw-weekly-rodent-count','bw-feed-bin-reading','bw-eggs-collected'].forEach(id => {
+   'bw-fly-count','bw-weekly-rodent-count','bw-feed-bin-reading','bw-eggs-collected',
+   'bw-water-meter','bw-bin-a','bw-bin-b'].forEach(id => {
     const el = document.getElementById(id);
     if (el) fields[id] = el.value;
   });
@@ -1043,6 +1044,9 @@ function bwRecordToDraft(rec) {
       'bw-fly-count':           rec.flyCount   != null ? String(rec.flyCount)   : '',
       'bw-weekly-rodent-count': rec.weeklyRodentCount != null ? String(rec.weeklyRodentCount) : '',
       'bw-feed-bin-reading':    rec.feedBinReading    != null ? String(rec.feedBinReading)    : '',
+      'bw-water-meter':         rec.waterMeter        != null ? String(rec.waterMeter)        : '',
+      'bw-bin-a':               rec.binA              != null ? String(rec.binA)              : '',
+      'bw-bin-b':               rec.binB              != null ? String(rec.binB)              : '',
       'bw-eggs-collected':      rec.eggsCollected     != null ? String(rec.eggsCollected)     : '',
     },
     bwData: {
@@ -1161,6 +1165,53 @@ function _bwApplyPestDays() {
 }
 try { window._bwApplyPestDays = _bwApplyPestDays; } catch (e) {}
 
+// 💧 EE-check water meter (Joe 2026-08-06). Previous reading is the newest
+// waterMeter for THIS house across barnWalks AND morningWalks BEFORE today
+// (so a same-day Morning Walk reading doesn't double-count the day's usage —
+// usage is figured per record against the last reading before it).
+var _bwWaterHist = null;   // per open house: sorted newest-first readings
+async function _bwFetchWaterHist(farm, house) {
+  try {
+    if (typeof db === 'undefined' || !db) return [];
+    var out = [];
+    var qs = await Promise.all([
+      db.collection('barnWalks').where('farm','==',farm).where('house','==',String(house)).limit(25).get().catch(function(){return null;}),
+      db.collection('morningWalks').where('farm','==',farm).where('house','==',String(house)).limit(25).get().catch(function(){return null;})
+    ]);
+    qs.forEach(function (snap) { if (snap) snap.forEach(function (d) { var r = d.data(); if (r && r.waterMeter != null) out.push({ meter: Number(r.waterMeter), ts: r.ts || 0, date: r.date || '' }); }); });
+    out.sort(function (a, b) { return b.ts - a.ts; });
+    return out;
+  } catch (e) { return []; }
+}
+function _bwPrevWater() {
+  var today = (typeof LDATE === 'function') ? LDATE() : new Date().toISOString().slice(0, 10);
+  var list = _bwWaterHist || [];
+  // newest reading from any prior moment: earlier TODAY (morning walk) counts,
+  // so the crew's afternoon reading measures just the hours since.
+  for (var i = 0; i < list.length; i++) { if (list[i].ts < Date.now() - 30000 || list[i].date !== today) return list[i]; }
+  return list.length ? list[0] : null;
+}
+async function bwWaterUsage() {
+  var inp = document.getElementById('bw-water-meter');
+  var out = document.getElementById('bw-water-meter-status');
+  if (!inp || !out) return;
+  var v = inp.value === '' ? null : Number(inp.value);
+  if (v == null || isNaN(v)) { out.textContent = ''; return; }
+  var es = (typeof _lang !== 'undefined' && _lang === 'es');
+  if (_bwWaterHist === null) {
+    out.style.color = '#6a90d9'; out.textContent = es ? 'Buscando la última lectura…' : 'Looking up the last reading…';
+    _bwWaterHist = await _bwFetchWaterHist(_bwFarm, _bwHouse);
+  }
+  var prev = _bwPrevWater();
+  if (!prev) { out.style.color = '#6a90d9'; out.textContent = es ? 'Primera lectura de esta casa.' : 'First reading for this house.'; return; }
+  if (v < prev.meter) { out.style.color = '#f0a35a'; out.textContent = (es ? '⚠ Menor que la última (' : '⚠ Lower than the last (') + prev.meter.toLocaleString() + ') — ' + (es ? '¿medidor reemplazado?' : 'meter replaced?'); return; }
+  var used = Math.round(v - prev.meter);
+  out.style.color = used === 0 ? '#e53e3e' : '#4ade80';
+  out.textContent = used === 0 ? (es ? '⚠ El medidor no se movió' : '⚠ Meter did not move')
+                              : ('💧 ' + used.toLocaleString() + (es ? ' galones desde la última lectura' : ' gallons since last reading'));
+}
+try { window.bwWaterUsage = bwWaterUsage; } catch (e) {}
+
 // "Signed in as X — NOT YOU? SWITCH" bar on the check (crew 2026-08-06). Makes
 // the identity visible even when the login gate didn't show, and one tap swaps.
 function _bwWhoAmI() {
@@ -1180,6 +1231,7 @@ function _bwWhoAmI() {
 try { window._bwWhoAmI = _bwWhoAmI; } catch (e) {}
 
 function bwInitFlow() {
+  _bwWaterHist = null;   // fresh house → fresh water-meter history
   _bwApplyPestDays();
   _bwWhoAmI();
   const isEs = (typeof _lang !== 'undefined' && _lang === 'es');
@@ -1884,9 +1936,21 @@ async function submitBarnWalk() {
   const flyCount    = document.getElementById('bw-fly-count').value    ? Number(document.getElementById('bw-fly-count').value)    : null;
   const weeklyRodentCount = document.getElementById('bw-weekly-rodent-count')?.value ? Number(document.getElementById('bw-weekly-rodent-count').value) : null;
   const feedBinReading    = document.getElementById('bw-feed-bin-reading')?.value ? Number(document.getElementById('bw-feed-bin-reading').value) : null;
+  // 💧 water meter + 🌾 bins from the crew walk (v272)
+  const _bwm = document.getElementById('bw-water-meter')?.value;
+  const waterMeter = (_bwm !== undefined && _bwm !== '') ? Number(_bwm) : null;
+  let waterUsedGal = null;
+  if (waterMeter !== null) {
+    const _pw = _bwPrevWater();
+    if (_pw && waterMeter >= _pw.meter) waterUsedGal = Math.round(waterMeter - _pw.meter);
+  }
+  const _flatMeter = (waterUsedGal === 0);   // pushed onto flags AFTER they're declared
+  const binA = document.getElementById('bw-bin-a')?.value !== '' && document.getElementById('bw-bin-a') ? Number(document.getElementById('bw-bin-a').value) : null;
+  const binB = document.getElementById('bw-bin-b')?.value !== '' && document.getElementById('bw-bin-b') ? Number(document.getElementById('bw-bin-b').value) : null;
   const eggsCollected     = document.getElementById('bw-eggs-collected')?.value ? Number(document.getElementById('bw-eggs-collected').value) : null;
 
   const flags = [];
+  if (_flatMeter) flags.push('Water meter did not move');
   // NOTE: Mortality and Loose Birds are logged to mortalityLog only — never create a WO
   if (_bwData.dryers === 'off')         flags.push('Manure dryers off');
   if (_bwData.feather === 'poor')       flags.push('Poor feathering');
@@ -1911,6 +1975,7 @@ async function submitBarnWalk() {
   const record = {
     farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
     waterPSI, temp, mortCount, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading, eggsCollected,
+    waterMeter, waterUsedGal, binA, binB,
     naFields: _bwData._na || {},
     weeklyAck: !!_bwData._weeklyAck,
     mort: _bwData.mort, feather: _bwData.feather, air: _bwData.air,
@@ -2103,6 +2168,7 @@ async function submitBarnWalk() {
     'Air quality anomaly':        {problem:'Ventilation / Fans',  priority:'urgent'},
     'Feeders empty':              {problem:'Feed System',         priority:'urgent'},
     'Egg belt not working':       {problem:'Egg Collection',      priority:'urgent'},
+    'Water meter did not move':   {problem:'Watering System',     priority:'urgent'},
   };
   (async function () {
   if (isFirstSubmit && !(typeof isHouseDown === 'function' && isHouseDown(_bwFarm, _bwHouse))) {

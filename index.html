@@ -2857,6 +2857,24 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
         <button class="bw-yn-btn" id="bw-stand-dirty" onclick="bwSet('stand','dirty')">❌ Dirty</button>
       </div>
     </div>
+    <!-- 💧🌾 Water + feed inventory in the CREW's daily walk (Joe 2026-08-06:
+         "needs to be added in the daily EE walk and entry"). Optional — never
+         blocks submit; usage/levels feed the Tier boards. -->
+    <div style="margin-top:12px;">
+      <div class="bw-row-label">💧 Water meter (gallons)</div>
+      <input type="number" id="bw-water-meter" class="bw-input" placeholder="Total on the meter" min="0" step="1" inputmode="numeric" onchange="bwWaterUsage()" oninput="bwSaveDraft()">
+      <div id="bw-water-meter-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:4px;min-height:14px;"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+      <div>
+        <div class="bw-row-label">🌾 Bin A (tons)</div>
+        <input type="number" id="bw-bin-a" class="bw-input" placeholder="0.0" min="0" step="0.1" inputmode="decimal" oninput="bwSaveDraft()">
+      </div>
+      <div>
+        <div class="bw-row-label">🌾 Bin B (tons)</div>
+        <input type="number" id="bw-bin-b" class="bw-input" placeholder="0.0" min="0" step="0.1" inputmode="decimal" oninput="bwSaveDraft()">
+      </div>
+    </div>
   </div>
 
   <!-- Belts -->
@@ -5366,7 +5384,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/barn-status-panel.js?v=20260803-v261"></script>
 <script defer src="js/maintenance.js?v=20260803-v263"></script>
 <script defer src="js/labor-punch.js?v=20260720-v234"></script>
-<script defer src="js/tier1.js?v=20260806-v271"></script>
+<script defer src="js/tier1.js?v=20260806-v272"></script>
 <script defer src="js/tier2.js?v=20260730-v258"></script>
 <script defer src="js/tier-sw.js?v=20260803-v264"></script><script defer src="js/signoff.js?v=20260803-v264"></script><script defer src="js/usage.js?v=20260803-v267"></script><script defer src="js/master.js?v=20260803-v267"></script>
 <script defer src="js/maint-schedule.js?v=20260729-v257"></script>
@@ -5386,7 +5404,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/livemonitor.js?v=20260803-v266"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260715-v211"></script>
-<script defer src="js/production.js?v=20260806-v271"></script>
+<script defer src="js/production.js?v=20260806-v272"></script>
 <script defer src="js/scorecard.js?v=20260803-v266"></script>
 <script defer src="js/help.js?v=20260716-v217"></script>
 <script defer src="js/time-blocks.js?v=20260727-v250"></script>
