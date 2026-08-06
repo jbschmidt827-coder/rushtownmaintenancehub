@@ -296,6 +296,79 @@
     }).join('');
   }
 
+  // ── 💰 8-HOUR PLAN (v274, per Joe: "we run from 8 hours and did this many
+  // eggs — not by person, just operational cost"). Day span = first Start to
+  // last Stop across the plant's machines; plan = 8.0h; over-plan = the waste.
+  // Earned hours = cases ÷ that plant's target cases/hr → efficiency = earned/span.
+  var PLAN_HOURS = 8.0;
+  function _clockMin(c) { var m = /^(\d{1,2}):(\d{2})/.exec(String(c || '')); return m ? (+m[1]) * 60 + (+m[2]) : null; }
+  function _planDay(D, site, day) {
+    var st = null, en = null, eggs = 0, got = false;
+    D.runs.forEach(function (r) {
+      if (r.farm !== site || r.date !== day) return;
+      var a = _clockMin(r.startClock), b = _clockMin(r.stopClock);
+      if (a != null) { st = (st == null || a < st) ? a : st; }
+      if (b != null) { en = (en == null || b > en) ? b : en; }
+      eggs += Number(r.eggs) || 0; got = true;
+    });
+    if (!got || st == null || en == null || en <= st) return null;
+    var span = (en - st) / 60;
+    var cases = eggs / EGGS_PER_CASE;
+    var tgt = _tgt(site).target;
+    var earned = tgt ? cases / tgt : null;
+    return {
+      date: day, start: st, end: en,
+      span: Math.round(span * 10) / 10,
+      over: Math.round((span - PLAN_HOURS) * 10) / 10,
+      eggs: eggs, cases: Math.round(cases),
+      rate: span > 0.05 ? Math.round(cases / span * 10) / 10 : null,
+      earned: earned != null ? Math.round(earned * 10) / 10 : null,
+      eff: (earned != null && span > 0.05) ? Math.round(earned / span * 100) : null
+    };
+  }
+  function _fmtClk(min) { var h = Math.floor(min / 60), m = min % 60, ap = h >= 12 ? 'PM' : 'AM', h12 = h % 12 || 12; return h12 + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; }
+  function _planHtml(D, sites) {
+    return sites.map(function (site) {
+      var rows = [];
+      for (var i = 0; i < 7; i++) { var r = _planDay(D, site, _dstr(i)); if (r) rows.push(r); }
+      if (!rows.length) return '<div style="' + MONO + 'font-size:11.5px;color:#6a5a8a;margin-bottom:12px;"><b style="color:#efe8fa;">' + site + '</b> — no start/stop times entered in the last 7 days.</div>';
+      var tSpan = 0, tOver = 0, tCases = 0, tEarned = 0, nEff = 0, effSum = 0;
+      rows.forEach(function (r) { tSpan += r.span; tOver += Math.max(0, r.over); tCases += r.cases; if (r.earned != null) tEarned += r.earned; if (r.eff != null) { effSum += r.eff; nEff++; } });
+      var body = rows.map(function (r) {
+        var oc = r.over > 0.5 ? '#f0a0a0' : r.over > 0 ? '#e8c96a' : '#4ade80';
+        var ec = r.eff == null ? '#6a5a8a' : r.eff >= 90 ? '#4ade80' : r.eff >= 75 ? '#e8c96a' : '#f0a0a0';
+        return '<tr style="border-bottom:1px solid #241d3a;">' +
+          '<td style="padding:6px;color:#cfc0e8;">' + r.date.slice(5).replace('-', '/') + '</td>' +
+          '<td style="padding:6px;text-align:center;color:#9a8ac0;">' + _fmtClk(r.start) + '→' + _fmtClk(r.end) + '</td>' +
+          '<td style="padding:6px;text-align:center;color:#efe8fa;font-weight:700;">' + r.span + 'h</td>' +
+          '<td style="padding:6px;text-align:center;font-weight:700;color:' + oc + ';">' + (r.over > 0 ? '+' : '') + r.over + 'h</td>' +
+          '<td style="padding:6px;text-align:center;color:#cfc0e8;">' + _num(r.cases) + '</td>' +
+          '<td style="padding:6px;text-align:center;color:#cfc0e8;">' + (r.rate != null ? r.rate : '—') + '</td>' +
+          '<td style="padding:6px;text-align:center;color:#cfc0e8;">' + (r.earned != null ? r.earned + 'h' : '—') + '</td>' +
+          '<td style="padding:6px;text-align:center;font-weight:700;color:' + ec + ';">' + (r.eff != null ? r.eff + '%' : '—') + '</td>' +
+        '</tr>';
+      }).join('');
+      return '<div style="margin-bottom:16px;">' +
+        '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap;">' +
+          '<b style="' + MONO + 'font-size:13px;color:#efe8fa;">' + site + '</b>' +
+          '<span style="' + MONO + 'font-size:10.5px;color:#9a8ac0;">plan ' + PLAN_HOURS.toFixed(1) + 'h/day · 🎯 ' + (_tgt(site).target || '—') + ' cases/hr</span>' +
+          '<span style="' + MONO + 'font-size:10.5px;font-weight:700;color:' + (tOver > 1 ? '#f0a0a0' : '#4ade80') + ';">' + Math.round(tOver * 10) / 10 + 'h over plan this week</span>' +
+        '</div>' +
+        '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:11.5px;min-width:620px;">' +
+        '<thead><tr style="border-bottom:1px solid #3a2f55;color:#6a5a8a;"><th style="text-align:left;padding:5px 6px;">Day</th><th style="padding:5px 6px;">Ran</th><th style="padding:5px 6px;">Span</th><th style="padding:5px 6px;">vs 8h</th><th style="padding:5px 6px;">Cases</th><th style="padding:5px 6px;">Cases/hr</th><th style="padding:5px 6px;">Earned</th><th style="padding:5px 6px;">Efficiency</th></tr></thead>' +
+        '<tbody>' + body +
+        '<tr style="border-top:1.5px solid #3a2f55;">' +
+          '<td style="padding:6px;color:#c9b0f0;font-weight:700;">WEEK</td><td></td>' +
+          '<td style="padding:6px;text-align:center;color:#efe8fa;font-weight:700;">' + Math.round(tSpan * 10) / 10 + 'h</td>' +
+          '<td style="padding:6px;text-align:center;font-weight:700;color:' + (tOver > 1 ? '#f0a0a0' : '#4ade80') + ';">+' + Math.round(tOver * 10) / 10 + 'h</td>' +
+          '<td style="padding:6px;text-align:center;color:#efe8fa;font-weight:700;">' + _num(tCases) + '</td><td></td>' +
+          '<td style="padding:6px;text-align:center;color:#efe8fa;font-weight:700;">' + Math.round(tEarned * 10) / 10 + 'h</td>' +
+          '<td style="padding:6px;text-align:center;font-weight:700;color:#c9b0f0;">' + (nEff ? Math.round(effSum / nEff) + '%' : '—') + '</td>' +
+        '</tr></tbody></table></div>' +
+      '</div>';
+    }).join('');
+  }
+
   var _mTab = '7d';
   window.masterTab = function (t) { _mTab = t; window.openMasterBoard(); };
 
@@ -324,10 +397,10 @@
       '</div>' +
       '<div style="display:flex;gap:8px;margin-bottom:10px;">' + chip('Hegins') + chip('Danville') + '</div>' +
       '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
-        ['7d', 'weekly'].map(function (tb) {
+        ['7d', 'weekly', 'plan'].map(function (tb) {
           var on = _mTab === tb;
           return '<button onclick="masterTab(\'' + tb + '\')" style="flex:1;padding:11px;border-radius:10px;cursor:pointer;' + MONO + 'font-size:12px;font-weight:700;background:' + (on ? '#2a1d4a' : '#171222') + ';border:1.5px solid ' + (on ? '#8a6dd6' : '#3a2f55') + ';color:' + (on ? '#efe8fa' : '#6a5a8a') + ';">' +
-            (tb === '7d' ? '📅 7-DAY + ALERTS' : '📈 WEEKLY TRENDS') + '</button>';
+            (tb === '7d' ? '📅 7-DAY + ALERTS' : tb === 'weekly' ? '📈 WEEKLY TRENDS' : '💰 8-HOUR PLAN') + '</button>';
         }).join('') +
       '</div>' +
       '<div id="master-body" style="' + MONO + 'font-size:12px;color:#9a8ac0;">Loading…</div>' +
@@ -341,6 +414,14 @@
         return '<div style="background:#191326;border:1.5px solid ' + (border || '#332a4d') + ';border-radius:12px;padding:13px 15px;margin-bottom:12px;">' +
           '<div style="' + MONO + 'font-size:10px;font-weight:700;letter-spacing:1px;color:#9a7ae0;text-transform:uppercase;margin-bottom:9px;">' + title + '</div>' + inner + '</div>';
       };
+
+      // ── 💰 8-HOUR PLAN TAB ──
+      if (_mTab === 'plan') {
+        body.innerHTML =
+          sect('💰 Run day vs the 8-hour plan — operational cost, no per-person tracking', _planHtml(D, sites)) +
+          '<div style="' + MONO + 'font-size:9.5px;color:#4a3f66;line-height:1.7;">Span = first machine Start to last Stop that day (Daily Egg Run clocks). vs 8h = over/under the planned day — over-plan time is the waste to chase. Earned hours = cases ÷ that plant\'s target cases/hr (the hours the day SHOULD have taken at target speed). Efficiency = earned ÷ span: 100% means the day ran exactly at target pace; the gap below 100% is your recoverable time.</div>';
+        return;
+      }
 
       // ── WEEKLY TAB ──
       if (_mTab === 'weekly') {
