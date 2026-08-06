@@ -131,9 +131,16 @@
         '<td style="padding:8px 6px;text-align:center;">' + dirty + '</td>' +
         '<td style="padding:8px 6px;color:#9ad6a0;">' + dur + '</td>' +
         '<td style="padding:8px 6px;color:#7ab07a;">' + _timeLbl(r.startTs) + (r.by ? ' · ' + _esc(r.by) : '') + '</td>' +
+        // ✎/🗑 — crew feedback 2026-08-06 ("Tiff entered house 5 as house 1 and we
+        // couldn't fix it"). Edit = move the run to the right house/group;
+        // delete = confirm first. Both stamp who did it.
+        '<td style="padding:8px 6px;text-align:right;white-space:nowrap;">' +
+          '<button onclick="efEditRun(\'' + _esc(r._id) + '\')" title="' + efL('Fix house', 'Corregir casa') + '" style="padding:6px 9px;background:#0d1f3a;border:1px solid #2a4a7a;border-radius:7px;color:#9cc0f6;cursor:pointer;font-size:11px;">✎</button> ' +
+          '<button onclick="efDeleteRun(\'' + _esc(r._id) + '\')" title="' + efL('Delete run', 'Borrar corrida') + '" style="padding:6px 9px;background:#1a0505;border:1px solid #5a1d1d;border-radius:7px;color:#e08a8a;cursor:pointer;font-size:11px;">🗑</button>' +
+        '</td>' +
       '</tr>';
     }).join('');
-    if (!rows) rows = '<tr><td colspan="6" style="padding:18px;text-align:center;color:#888;">' + efL('No runs logged yet.', 'Sin corridas registradas.') + '</td></tr>';
+    if (!rows) rows = '<tr><td colspan="7" style="padding:18px;text-align:center;color:#888;">' + efL('No runs logged yet.', 'Sin corridas registradas.') + '</td></tr>';
     return '<div style="' + MONO + 'font-size:10px;color:#4a6a4a;margin:14px 0 6px;">' + efL('speed = the setting you ran · dirty = dirty line on · duration = how long the belts ran', 'velocidad = el ajuste · sucia = línea sucia encendida · duración = cuánto corrieron') + '</div>' +
       '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:12px;min-width:460px;">' +
       '<thead><tr style="border-bottom:1px solid #2a4a2a;">' +
@@ -143,8 +150,47 @@
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:center;">' + efL('Dirty line', 'Línea sucia') + '</th>' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + efL('Duration', 'Duración') + '</th>' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + efL('Started', 'Inició') + '</th>' +
+        '<th style="padding:8px 6px;color:#5a8a5a;text-align:right;">' + efL('Fix', 'Corregir') + '</th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
+
+  // ── Fix a mis-entered run: move it to the right house/group, or delete it ──
+  window.efEditRun = function (id) {
+    var r = _efData.find(function (x) { return x._id === id; });
+    if (!r || typeof db === 'undefined' || !db) return;
+    var site = r.farm;
+    var units = _efUnits(site);
+    var opts = units.map(function (u) { return u.isGroup ? (u.label + ' (' + u.houses.join('·') + ')') : ('H' + u.key); }).join(', ');
+    var ask = efL('Move this run to which house/group? Options: ', '¿A qué casa/grupo mover esta corrida? Opciones: ') + opts;
+    var go = function (val) {
+      if (!val) return;
+      var v = String(val).trim().toLowerCase().replace(/^h/, '').replace(/^group\s*/, 'g').replace(/^grupo\s*/, 'g');
+      var unit = units.find(function (u) {
+        return String(u.key).toLowerCase() === v || String(u.label || '').toLowerCase().indexOf(v) === 0 || (!u.isGroup && String(u.key) === v);
+      });
+      if (!unit) { if (typeof toast === 'function') toast(efL('No house/group called ', 'No existe ') + val); return; }
+      var patch = unit.isGroup
+        ? { group: unit.id, groupLabel: unit.label, houses: unit.houses, house: null, editedBy: (typeof getDeviceUser === 'function' ? getDeviceUser() : ''), editedTs: Date.now() }
+        : { house: String(unit.key), group: null, groupLabel: null, houses: null, editedBy: (typeof getDeviceUser === 'function' ? getDeviceUser() : ''), editedTs: Date.now() };
+      db.collection('eggFlow').doc(id).set(patch, { merge: true }).then(function () {
+        if (typeof toast === 'function') toast('✎ ' + efL('Run moved to ', 'Corrida movida a ') + (unit.label || 'H' + unit.key));
+      }).catch(function () { if (typeof toast === 'function') toast(efL('Could not save', 'No se pudo guardar')); });
+    };
+    if (typeof promptInline === 'function') promptInline(ask, go);
+    else { var v = window.prompt(ask); go(v); }
+  };
+  window.efDeleteRun = function (id) {
+    var r = _efData.find(function (x) { return x._id === id; });
+    if (!r || typeof db === 'undefined' || !db) return;
+    var lbl = (r.groupLabel || ('H' + r.house)) + ' · ' + (r.date || '');
+    var doIt = function () {
+      db.collection('eggFlow').doc(id).delete().then(function () {
+        if (typeof toast === 'function') toast('🗑 ' + efL('Run deleted', 'Corrida borrada') + ' — ' + lbl);
+      }).catch(function () { if (typeof toast === 'function') toast(efL('Could not delete', 'No se pudo borrar')); });
+    };
+    if (typeof confirmInline === 'function') confirmInline(efL('Delete this run? ', '¿Borrar esta corrida? ') + lbl, doIt);
+    else if (window.confirm('Delete run ' + lbl + '?')) doIt();
+  };
 
   // ── PER-HOUSE ROLLUP + TRENDING TARGETS ───────────────────────────────────
   // For each house: how many runs, total + average run time, average speed, the

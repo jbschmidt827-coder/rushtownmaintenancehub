@@ -2742,6 +2742,13 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   <!-- Employee -->
   <div class="bw-card" data-bw-block="employee">
     <div class="bw-card-title">👤 Employee Check-In</div>
+    <!-- Who this check will be stamped as — with a one-tap switch (crew feedback
+         2026-08-06: gate sometimes doesn't show → wrong person credited). -->
+    <div id="bw-whoami" style="display:none;align-items:center;gap:9px;background:#0d1f2e;border:1.5px solid #2a5a7a;border-radius:10px;padding:9px 12px;margin-bottom:10px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#9cc0f6;">
+      <span style="font-size:15px;">👤</span>
+      <span id="bw-whoami-name" style="flex:1;font-weight:700;color:#e8f0fa;"></span>
+      <button onclick="if(typeof signOutDevice==='function')signOutDevice()" style="padding:8px 13px;background:#1a3a5a;border:1.5px solid #3b82f6;border-radius:8px;color:#bcd3f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;" data-i18n="bw.notyou">NOT YOU? SWITCH</button>
+    </div>
     <input type="text" id="bw-employee" class="bw-input" placeholder="Enter your name..." oninput="checkBWReady()" list="barn-staff-datalist" autocomplete="off">
   </div>
 
@@ -2768,11 +2775,16 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
     </div>
   </div>
 
-  <!-- Eggs Collected (production) -->
-  <div class="bw-card" data-bw-block="eggscollect">
+  <!-- Eggs Collected (production) — whole card hidden 2026-08-06 (crew never has
+       the count; farm records supply eggs). Kept in DOM for draft/history safety. -->
+  <div class="bw-card" data-bw-block="eggscollect" style="display:none;">
     <div class="bw-card-title">🥚 Eggs Collected</div>
     <div class="bw-row-label">Eggs collected in this house today</div>
-    <input type="number" id="bw-eggs-collected" class="bw-input" placeholder="Total eggs (leave blank if not counted)" min="0" inputmode="numeric" oninput="bwSaveDraft()">
+    <!-- Egg-count input REMOVED per crew feedback 2026-08-06 — the crew never has
+         that number (it comes from the farm records / leader). Egg data flows
+         from push_house_eggs.py → tierExternal instead. Hidden, not deleted, so
+         drafts/history that reference the id can't break. -->
+    <input type="number" id="bw-eggs-collected" class="bw-input" style="display:none;" placeholder="" min="0" inputmode="numeric" oninput="bwSaveDraft()">
   </div>
 
   <!-- Equipment -->
@@ -2816,13 +2828,9 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
         <button class="bw-yn-btn" id="bw-doors-closed" onclick="bwSet('doors','closed')">Closed</button>
       </div>
     </div>
-    <div>
-      <div class="bw-row-label">Air inlet vents open?</div>
-      <div class="bw-yn-row">
-        <button class="bw-yn-btn" id="bw-inletVents-open"   onclick="bwSet('inletVents','open')">✅ Open</button>
-        <button class="bw-yn-btn" id="bw-inletVents-closed" onclick="bwSet('inletVents','closed')">Closed</button>
-      </div>
-    </div>
+    <!-- "Air inlet vents open?" REMOVED per crew feedback 2026-08-06: not
+         relevant in tunnel mode, kept getting mismarked. Historical records
+         with inletVents still display fine. -->
   </div>
 
   <!-- Feeding & Water -->
@@ -2866,11 +2874,13 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
     </div>
   </div>
 
-  <!-- Pest -->
+  <!-- Pest — day-scoped 2026-08-06 per crew: flies TUESDAY, rodents FRIDAY.
+       _bwApplyPestDays() (production.js) hides the off-day rows; the whole card
+       disappears on non-check days. -->
   <div class="bw-card" data-bw-block="pest">
     <div class="bw-card-title">🐀 Pest Control</div>
-    <div style="margin-bottom:12px;">
-      <div class="bw-row-label">Rodents present?</div>
+    <div id="bw-rodent-block" style="margin-bottom:12px;">
+      <div class="bw-row-label">Rodents present? <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7a9a7a;font-weight:400;margin-left:6px;">(Fridays only)</span></div>
       <div class="bw-yn-row">
         <button class="bw-yn-btn" id="bw-rodent-yes" onclick="bwSet('rodent','yes')">❌ YES</button>
         <button class="bw-yn-btn" id="bw-rodent-no"  onclick="bwSet('rodent','no')">✅ NO</button>
@@ -2891,7 +2901,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
         <input type="number" id="bw-fly-count" class="bw-input" placeholder="Enter fly count" min="0">
       </div>
     </div>
-    <div style="margin-top:12px;">
+    <div id="bw-weekly-rodent-block" style="margin-top:12px;">
       <div class="bw-row-label">Weekly rodent trap count</div>
       <div style="display:flex;gap:8px;">
         <input type="number" id="bw-weekly-rodent-count" class="bw-input" placeholder="Total rodents caught this week" min="0" style="flex:1;">
@@ -3208,7 +3218,15 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
         <div id="mw-temp-status" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:4px;min-height:14px;"></div>
       </div>
     </div>
-    <div>
+    <!-- 💧 Water meter — manual entry (Joe 2026-08-03). Volume was the last
+         untracked utility: PSI told us the line had pressure, never how much the
+         birds actually drank. Usage is figured from the previous reading. -->
+    <div style="margin-top:12px;">
+      <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">💧 Water Meter Reading (gallons) — usage figured from last reading</div>
+      <input type="number" id="mw-water-meter" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Total on the meter" min="0" step="1" inputmode="numeric" onchange="mwWaterUsage()">
+      <div id="mw-water-meter-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:6px;min-height:18px;"></div>
+    </div>
+    <div style="margin-top:12px;">
       <div style="font-size:11px;color:#6a90d9;margin-bottom:6px;">🌾 Feed Meter Reading (lbs) — updates bin level instantly</div>
       <input type="number" id="mw-feed-meter" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="Enter total lbs remaining" min="0" inputmode="numeric" onchange="liveUpdateFeedBin('mw-feed-meter','mw-feed-meter-status',_mwFarm,_mwHouse)">
       <div id="mw-feed-meter-status" style="font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:6px;min-height:18px;"></div>
@@ -5352,7 +5370,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/tier2.js?v=20260730-v258"></script>
 <script defer src="js/tier-sw.js?v=20260803-v264"></script><script defer src="js/signoff.js?v=20260803-v264"></script><script defer src="js/usage.js?v=20260803-v267"></script><script defer src="js/master.js?v=20260803-v267"></script>
 <script defer src="js/maint-schedule.js?v=20260729-v257"></script>
-<script defer src="js/egg-flow.js?v=20260803-v262"></script><script defer src="js/maint-projects.js?v=20260715-v211"></script>
+<script defer src="js/egg-flow.js?v=20260806-v270"></script><script defer src="js/maint-projects.js?v=20260715-v211"></script>
 <script defer src="js/trending-wo.js?v=20260803-v261"></script>
 <script defer src="js/packaging.js?v=20260715-v211"></script>
 <script defer src="js/eggrun.js?v=20260803-v268"></script>
@@ -5368,7 +5386,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/livemonitor.js?v=20260803-v266"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260715-v211"></script>
-<script defer src="js/production.js?v=20260803-v260"></script>
+<script defer src="js/production.js?v=20260806-v270"></script>
 <script defer src="js/scorecard.js?v=20260803-v266"></script>
 <script defer src="js/help.js?v=20260716-v217"></script>
 <script defer src="js/time-blocks.js?v=20260727-v250"></script>

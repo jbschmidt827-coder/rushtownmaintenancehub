@@ -1091,19 +1091,29 @@ function bwBlockComplete(name) {
       if (['feather','loose'].some(k => _bwData[k] === undefined)) return false;
       return _bwData.loose !== 'yes' || _bwHasVal('bw-loose-count');
     case 'air':
-      return ['air','doors','inletVents'].every(k => _bwData[k] !== undefined);
+      // inletVents dropped 2026-08-06 (crew feedback): tunnel-mode houses have no
+      // open inlets, so the required answer either blocked submit or got
+      // mismarked. Question removed from the form; gate follows.
+      return ['air','doors'].every(k => _bwData[k] !== undefined);
     case 'feedwater':
       return ['feed','waste','stand'].every(k => _bwData[k] !== undefined);
     case 'belts':
       return _bwData.eggbelt !== undefined;
     case 'pest': {
-      if (_bwData.rodent === undefined) return false;
-      if (_bwData.rodent === 'yes' && !_bwHasVal('bw-rodent-count')) return false;
-      if (new Date().getDay() === 2 && _bwData.fly === undefined) return false; // fly check required Tuesdays only
-      if (_bwData.fly === 'yes' && !_bwHasVal('bw-fly-count')) return false;
-      // Weekly rodent-trap count is only required on the rodent-check day (Fri) —
-      // otherwise it silently kept 'pest' incomplete every day, blocking 100%.
-      if (new Date().getDay() === 5) return _bwHasVal('bw-weekly-rodent-count') || _bwIsNA('bw-weekly-rodent-count');
+      // Crew feedback 2026-08-06: pest checks only on their designated days —
+      // FLIES on Tuesday, RODENTS on Friday. Any other day the pest questions are
+      // hidden (_bwApplyPestDays) and the block auto-passes. Answers given on the
+      // right day still gate their counts.
+      const day = new Date().getDay();
+      if (day === 5) {   // Friday = rodent day
+        if (_bwData.rodent === undefined) return false;
+        if (_bwData.rodent === 'yes' && !_bwHasVal('bw-rodent-count')) return false;
+        if (!(_bwHasVal('bw-weekly-rodent-count') || _bwIsNA('bw-weekly-rodent-count'))) return false;
+      }
+      if (day === 2) {   // Tuesday = fly day
+        if (_bwData.fly === undefined) return false;
+        if (_bwData.fly === 'yes' && !_bwHasVal('bw-fly-count')) return false;
+      }
       return true;
     }
     case 'checklist':
@@ -1134,7 +1144,44 @@ function bwToggleNA(id) {
   bwFlowRefresh(true);
 }
 
+// Pest questions only on their days (crew 2026-08-06): flies TUESDAY, rodents
+// FRIDAY. Off-day rows hide; on a day with neither, the whole pest card hides
+// and bwBlockComplete auto-passes it.
+function _bwApplyPestDays() {
+  try {
+    const day = new Date().getDay();
+    const rodentDay = day === 5, flyDay = day === 2;
+    const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+    show('bw-rodent-block', rodentDay);
+    show('bw-weekly-rodent-block', rodentDay);
+    show('bw-fly-block', flyDay);
+    const card = document.querySelector('[data-bw-block="pest"]');
+    if (card) card.style.display = (rodentDay || flyDay) ? '' : 'none';
+  } catch (e) {}
+}
+try { window._bwApplyPestDays = _bwApplyPestDays; } catch (e) {}
+
+// "Signed in as X — NOT YOU? SWITCH" bar on the check (crew 2026-08-06). Makes
+// the identity visible even when the login gate didn't show, and one tap swaps.
+function _bwWhoAmI() {
+  try {
+    const wrap = document.getElementById('bw-whoami');
+    const nameEl = document.getElementById('bw-whoami-name');
+    if (!wrap || !nameEl) return;
+    const me = (typeof getDeviceUser === 'function') ? (getDeviceUser() || '').trim() : '';
+    const isEs = (typeof _lang !== 'undefined' && _lang === 'es');
+    if (!me) { wrap.style.display = 'none'; return; }
+    nameEl.textContent = (isEs ? 'Registrando como: ' : 'This check saves as: ') + me;
+    const btn = wrap.querySelector('button');
+    if (btn) btn.textContent = isEs ? '¿NO ERES TÚ? CAMBIA' : 'NOT YOU? SWITCH';
+    wrap.style.display = 'flex';
+  } catch (e) {}
+}
+try { window._bwWhoAmI = _bwWhoAmI; } catch (e) {}
+
 function bwInitFlow() {
+  _bwApplyPestDays();
+  _bwWhoAmI();
   const isEs = (typeof _lang !== 'undefined' && _lang === 'es');
   _BW_BLOCK_ORDER.forEach(name => {
     const card = _bwCard(name); if (!card) return;
@@ -2130,8 +2177,41 @@ async function submitBarnWalk() {
 
 // ── Morning Walk (Lead / WNO) ──
 var _mwFarm = '', _mwHouse = 0, _mwData = {};
-var _MW_FIELD_IDS = ['mw-employee','mw-ee-count','mw-water','mw-temp','mw-feed-meter','mw-bin-a','mw-bin-b','mw-notes'];
-var _MW_STATUS_IDS = ['mw-water-status','mw-temp-status','mw-feed-meter-status','mw-bin-a-status','mw-bin-b-status'];
+
+// Most recent PRIOR water-meter reading for a house (used to figure usage).
+function _mwPrevWaterReading(farm, house) {
+  try {
+    var list = (typeof _mwWalks !== 'undefined' && Array.isArray(_mwWalks)) ? _mwWalks
+             : (typeof _drMorningWalks !== 'undefined' && Array.isArray(_drMorningWalks)) ? _drMorningWalks : null;
+    if (!list) return null;
+    var today = (typeof LDATE === 'function') ? LDATE() : new Date().toISOString().slice(0, 10);
+    var mine = list.filter(function (w) {
+      return w && w.farm === farm && String(w.house) === String(house) && w.waterMeter != null && w.date !== today;
+    }).sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+    return mine.length ? Number(mine[0].waterMeter) : null;
+  } catch (e) { return null; }
+}
+// Live "used X gal" hint under the box.
+function mwWaterUsage() {
+  var inp = document.getElementById('mw-water-meter');
+  var out = document.getElementById('mw-water-meter-status');
+  if (!inp || !out) return;
+  var v = inp.value === '' ? null : Number(inp.value);
+  if (v == null || isNaN(v)) { out.textContent = ''; return; }
+  var prev = _mwPrevWaterReading(_mwFarm, _mwHouse);
+  var es = (typeof _lang !== 'undefined' && _lang === 'es');
+  if (prev == null) { out.style.color = '#6a90d9'; out.textContent = es ? 'Primera lectura de esta casa — mañana calculamos el uso.' : 'First reading for this house — usage starts tomorrow.'; return; }
+  if (v < prev) { out.style.color = '#f0a35a'; out.textContent = (es ? '⚠ Menor que la última lectura (' : '⚠ Lower than the last reading (') + prev.toLocaleString() + ') — ' + (es ? '¿medidor reemplazado?' : 'meter replaced?'); return; }
+  var used = Math.round(v - prev);
+  out.style.color = used === 0 ? '#e53e3e' : '#4ade80';
+  out.textContent = (used === 0 ? (es ? '⚠ El medidor no se movió — sin agua usada' : '⚠ Meter did not move — no water used')
+                                : (es ? '💧 ' + used.toLocaleString() + ' galones usados desde la última lectura' : '💧 ' + used.toLocaleString() + ' gallons used since last reading'));
+}
+try { window.mwWaterUsage = mwWaterUsage; window._mwPrevWaterReading = _mwPrevWaterReading; } catch (e) {}
+
+var _mwWalks = [];            // recent morningWalks for the open house (water-meter history)
+var _MW_FIELD_IDS = ['mw-employee','mw-ee-count','mw-water','mw-water-meter','mw-temp','mw-feed-meter','mw-bin-a','mw-bin-b','mw-notes'];
+var _MW_STATUS_IDS = ['mw-water-status','mw-water-meter-status','mw-temp-status','mw-feed-meter-status','mw-bin-a-status','mw-bin-b-status'];
 
 // ── Morning Walk Instructions (per-farm guide, EN/ES) ──
 function mwToggleInstructions() {
@@ -2305,6 +2385,8 @@ function openMorningWalk(farm, house) {
       .then(snap => {
         if (snap.empty) return;
         const docs = snap.docs.map(d => d.data()).sort((a,b) => (b.ts||0) - (a.ts||0));
+        _mwWalks = docs;                       // used by _mwPrevWaterReading()
+        try { mwWaterUsage(); } catch (e) {}   // show "x gal used" once we know the last reading
         const l = docs[0];
         const e = document.getElementById('mw-employee');
         if (e && !e.value) { e.value = l.employee || ''; checkMWReady(); }
@@ -2324,6 +2406,7 @@ function mwLoadRecord(rec) {
   setV('mw-employee', rec.employee);
   setV('mw-ee-count', rec.eeCount);
   setV('mw-water', rec.waterPSI);
+  setV('mw-water-meter', rec.waterMeter);
   setV('mw-temp', rec.temp);
   setV('mw-feed-meter', rec.feedMeterReading);
   setV('mw-bin-a', rec.binA);
@@ -2526,6 +2609,16 @@ async function submitMorningWalk() {
   if (_mwData.fans === 'no')           addFlag('Fan issue', 'Ventilation', 'high');
   if (_mwData.blowers === 'no')        addFlag('Blower issue', 'Ventilation', 'high');
 
+  // 💧 Water meter (gallons) + usage since the last reading for THIS house.
+  const _wmv = document.getElementById('mw-water-meter')?.value;
+  const waterMeter = (_wmv !== undefined && _wmv !== '') ? Number(_wmv) : null;
+  let waterUsedGal = null;
+  if (waterMeter !== null) {
+    const prev = _mwPrevWaterReading(_mwFarm, _mwHouse);
+    if (prev != null && waterMeter >= prev) waterUsedGal = Math.round(waterMeter - prev);
+  }
+  // Meter didn't move = the birds got no water. Unambiguous, so it's worth a WO.
+  if (waterUsedGal === 0) addFlag('Water meter did not move — no water used since last reading', 'Water', 'urgent');
   const feedMeterReading = document.getElementById('mw-feed-meter')?.value ? Number(document.getElementById('mw-feed-meter').value) : null;
   const binA = document.getElementById('mw-bin-a')?.value !== '' ? Number(document.getElementById('mw-bin-a').value) : null;
   const binB = document.getElementById('mw-bin-b')?.value !== '' ? Number(document.getElementById('mw-bin-b').value) : null;
@@ -2534,7 +2627,7 @@ async function submitMorningWalk() {
   const _mwDate = LDATE();
   const record = {
     farm: _mwFarm, house: String(_mwHouse), employee, notes, flags,
-    waterPSI, temp, eeCount, feedMeterReading, binA, binB,
+    waterPSI, waterMeter, waterUsedGal, temp, eeCount, feedMeterReading, binA, binB,
     feed: _mwData.feed, fans: _mwData.fans, blowers: _mwData.blowers,
     date: _mwDate,
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
@@ -2654,12 +2747,19 @@ async function openProdSummary() {
     const snap = await db.collection('morningWalks').where('date','==',today).get();
     mWalks = snap.docs.map(d => d.data());
   } catch(e) { console.error(e); }
-  renderProdSummary(walks, mWalks);
+  // Scope to THIS device's plant (crew feedback 2026-08-06: keep Danville's
+  // walks/checks separate from Hegins). Master/unknown location still sees both.
+  const _pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+  if (_pref === 'Hegins' || _pref === 'Danville') {
+    walks  = walks.filter(w => w.farm === _pref);
+    mWalks = mWalks.filter(w => w.farm === _pref);
+  }
+  renderProdSummary(walks, mWalks, _pref);
 }
 
-function renderProdSummary(walks, mWalks) {
+function renderProdSummary(walks, mWalks, prefFarm) {
   const dateStr = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-  const farms = {Hegins:8, Danville:5};
+  const farms = (prefFarm === 'Hegins') ? {Hegins:8} : (prefFarm === 'Danville') ? {Danville:5} : {Hegins:8, Danville:5};
   const totalMort  = walks.reduce((s,w) => s + (Number(w.mortCount)||0), 0);
   const totalLoose = walks.reduce((s,w) => s + (Number(w.looseCount)||0), 0);
   const totalFlags = walks.filter(w => w.flags && w.flags.length > 0).length;
@@ -2668,7 +2768,7 @@ function renderProdSummary(walks, mWalks) {
     <div style="font-size:11px;color:#5a5a3a;font-family:'IBM Plex Mono',monospace;margin-bottom:14px;">${dateStr}</div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;">
       <div style="background:#1a2a0a;border:1px solid #3a5a1a;border-radius:10px;padding:12px 6px;text-align:center;">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#a0c060;">${walks.length}/13</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:#a0c060;">${walks.length}/${Object.values(farms).reduce((a,b)=>a+b,0)}</div>
         <div style="font-size:9px;color:#5a6a3a;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px;">Checks</div>
       </div>
       <div style="background:${totalMort>0?'#2a0f0f':'#1a2a0a'};border:1px solid ${totalMort>0?'#5a2a2a':'#3a5a1a'};border-radius:10px;padding:12px 6px;text-align:center;">
@@ -3180,6 +3280,7 @@ function openWalkDetail(id) {
     <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;color:#4a7a4a;text-transform:uppercase;margin-bottom:8px;">Readings</div>
     <div style="background:#0a140a;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;">
       ${field('Water PSI', r.waterPSI != null ? r.waterPSI + ' PSI' : null)}
+      ${field('Water meter', r.waterMeter != null ? Number(r.waterMeter).toLocaleString() + ' gal' + (r.waterUsedGal != null ? ' (' + Number(r.waterUsedGal).toLocaleString() + ' used)' : '') : null)}
       ${field('House Temp', r.temp != null ? r.temp + '°F' : null)}
       ${field('Egg Count', r.eeCount != null ? r.eeCount : null)}
       ${field('Feed Bin', r.feedBinReading != null ? r.feedBinReading + ' lbs' : null)}
