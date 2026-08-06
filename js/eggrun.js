@@ -15,11 +15,22 @@ const EGGRUN_MACHINES = { Hegins: [1, 2], Danville: [1] };
 // Target finish ("all eggs done") time per plant. Any run time PAST this counts
 // as DOWNTIME (Joe, Hegins). "HH:MM" 24h. Add plants here as targets are set.
 const EGGRUN_TARGET_DONE = { Hegins: '11:48' };   // Joe 2026-07-29 (was 11:45)
+// DEFAULT START TIME per plant (Joe 2026-08-03: "make hegins start at 5:30").
+// Prefilled in the Start box so the crew usually never opens the time picker —
+// they only change it on an off-schedule day. Danville's shift starts at 7:00.
+const EGGRUN_START_DEFAULT = { Hegins: '05:30', Danville: '07:00' };
+function erStartDefault(farm) { return EGGRUN_START_DEFAULT[farm] || ''; }
 // HOW EGGS ARE COUNTED per plant (Joe 2026-07-30): Hegins packs by LANE off the
 // machine; Danville counts by HOUSE — the packer enters the total eggs for each
 // house (or the houses assigned to them). Machine total = the sum either way.
 const EGGRUN_BY_HOUSE = { Danville: true };
 function erByHouse(farm) { return !!EGGRUN_BY_HOUSE[farm]; }
+// LANES PER MACHINE (Joe 2026-08-03: "remove the lane 2 and only have one line").
+// Hegins runs ONE line per machine — lane 2 was always 0 in every record, which
+// confirmed it. One box = the machine's total eggs. Old lane-2 values still count
+// toward historical totals (the sum runs over the whole array).
+const EGGRUN_LANES = { Hegins: 1, Danville: 1 };
+function erLaneCount(farm) { var n = EGGRUN_LANES[farm]; return Math.max(1, Math.min(4, n == null ? 1 : n)); }
 function erActiveHouses(farm) {
   var out = [];
   try {
@@ -219,6 +230,21 @@ function erFmtClock(v) {
   var h = +m[1], ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12;
   return h + ':' + m[2] + ' ' + ap;
 }
+// ── Time-picker guards (v268) ──────────────────────────────────────────────
+var _erRenderOnBlur = false;
+function _erTimeFocused() {
+  try { var a = document.activeElement; return !!(a && a.tagName === 'INPUT' && a.type === 'time'); } catch (e) { return false; }
+}
+function erTimeBlur() {
+  // Give iOS a beat to finish dismissing its wheel before we repaint.
+  setTimeout(function () {
+    if (_erTimeFocused()) return;            // moved to the other time box — wait
+    if (!_erRenderOnBlur) return;
+    _erRenderOnBlur = false;
+    try { renderEggRun(); } catch (e) {}
+  }, 250);
+}
+
 // Save an actual start/stop time-of-day; run time (manualMin) is recomputed from the pair.
 async function eggRunSetClock(farm, m, which, val) {
   try {
@@ -234,7 +260,12 @@ async function eggRunSetClock(farm, m, which, val) {
     patch.manualBy = erBy();
     await _erSave(farm, m, patch);
     if (typeof toast === 'function') toast('⏱ ' + farm + ' M' + m + ' ' + (which === 'stop' ? erL('stop', 'fin') : erL('start', 'inicio')) + ' ' + erFmtClock(val));
-    renderEggRun();
+    // DON'T re-render while the crew is still in the time field (Joe 2026-08-03:
+    // "hard time picking time, window closes too fast"). Re-rendering replaced the
+    // <input> the native picker was attached to, which slammed the picker shut on
+    // the first digit. erTimeBlur() repaints once they're done.
+    _erRenderOnBlur = true;
+    if (!_erTimeFocused()) { _erRenderOnBlur = false; renderEggRun(); }
   } catch (e) { console.error('eggRunSetClock:', e); if (typeof toast === 'function') toast(erL('Could not save time', 'No se pudo guardar')); }
 }
 // Each machine = 1 packer running 2 lanes. Save the packer name (onchange/blur so
@@ -306,8 +337,8 @@ function _erStatusLine(farm, m, rec, multi) {
 function _erMachineDetail(farm, m, rec, multi) {
   var MONO = "font-family:'IBM Plex Mono',monospace;";
   var packer = (rec && rec.packer) ? rec.packer : '';
-  var lanes = (rec && rec.lanes != null) ? Number(rec.lanes) : 2;   // 2 lanes per machine
-  var nLanes = Math.max(1, Math.min(4, lanes || 2));
+  var nLanes = erLaneCount(farm);          // fixed per plant (Hegins = 1 line)
+  var lanes = nLanes;
   var laneEggs = (rec && Array.isArray(rec.laneEggs)) ? rec.laneEggs.slice() : [];
   var laneSum = laneEggs.reduce(function (s, v) { return s + (Number(v) || 0); }, 0);
   var byHouse = erByHouse(farm);
@@ -316,7 +347,9 @@ function _erMachineDetail(farm, m, rec, multi) {
   var eggs = byHouse
     ? (houseSum > 0 ? houseSum : (rec && rec.eggs != null ? Number(rec.eggs) : null))
     : (laneSum > 0 ? laneSum : (rec && rec.eggs != null ? Number(rec.eggs) : null));
-  var startC = (rec && rec.startClock) ? rec.startClock : '';
+  // Prefill the plant's normal start (Hegins 5:30) — saved only when the crew
+  // touches a field, so an untouched day never invents a run.
+  var startC = (rec && rec.startClock) ? rec.startClock : erStartDefault(farm);
   var stopC = (rec && rec.stopClock) ? rec.stopClock : '';
   var mins = _erMinFromClock(startC, stopC);
   if (mins == null && rec && rec.manualMin != null) mins = Number(rec.manualMin);  // legacy fallback
@@ -331,15 +364,13 @@ function _erMachineDetail(farm, m, rec, multi) {
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
       '<label style="' + MONO + 'font-size:12px;color:#9cc0f6;font-weight:700;min-width:135px;">👷 ' + erL('Packer', 'Empacador') + '</label>' +
       '<input list="staff-datalist" value="' + String(packer).replace(/"/g, '&quot;') + '" onchange="eggRunSetPacker(\'' + farm + '\',' + m + ',this.value)" placeholder="' + erL('name', 'nombre') + '" autocomplete="off" style="flex:2;min-width:120px;' + inp + '">' +
-      (byHouse ? '' :
-        ('<label style="' + MONO + 'font-size:12px;color:#9ab09a;">' + erL('Lanes', 'Carriles') + '</label>' +
-         '<input type="number" min="0" max="2" inputmode="numeric" value="' + lanes + '" onchange="eggRunSetLanes(\'' + farm + '\',' + m + ',this.value)" style="flex:0 0 56px;text-align:center;' + inp + '">')) +
+      /* Lanes box removed v268 — one line per machine, nothing to choose. */
     '</div>' +
     // Start + Stop time of day
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;">' +
       '<label style="' + MONO + 'font-size:12px;color:#9ad6a0;font-weight:700;min-width:135px;">⏱ ' + erL('Start / Stop time', 'Hora inicio / fin') + '</label>' +
-      '<input type="time" step="60" value="' + startC + '" onchange="eggRunSetClock(\'' + farm + '\',' + m + ',\'start\',this.value)" style="flex:1;min-width:96px;' + inp + '">' +
-      '<input type="time" step="60" value="' + stopC + '" onchange="eggRunSetClock(\'' + farm + '\',' + m + ',\'stop\',this.value)" style="flex:1;min-width:96px;' + inp + '">' +
+      '<input type="time" step="60" value="' + startC + '" onchange="eggRunSetClock(\'' + farm + '\',' + m + ',\'start\',this.value)" onblur="erTimeBlur()" style="flex:1;min-width:110px;' + inp + '">' +
+      '<input type="time" step="60" value="' + stopC + '" onchange="eggRunSetClock(\'' + farm + '\',' + m + ',\'stop\',this.value)" onblur="erTimeBlur()" style="flex:1;min-width:110px;' + inp + '">' +
       (mins != null ? '<span style="' + MONO + 'font-size:12px;color:#4ade80;font-weight:700;">= ' + erFmtDur(mins * 60000) + ' ' + erL('run', 'corrida') + '</span>' : '') +
     '</div>' +
     // Target done-time + downtime past it (Hegins target 11:45)
@@ -355,7 +386,8 @@ function _erMachineDetail(farm, m, rec, multi) {
     // Eggs BY LANE (2 lanes/machine) → machine total + eggs/min + eggs/hr
     '<div style="margin-top:10px;">' +
       '<label style="' + MONO + 'font-size:12px;color:#f0d68a;font-weight:700;display:block;margin-bottom:5px;">🥚 ' +
-        (byHouse ? erL('Eggs by house', 'Huevos por casa') : erL('Eggs by lane', 'Huevos por carril')) + '</label>' +
+        (byHouse ? erL('Eggs by house', 'Huevos por casa')
+                 : (nLanes === 1 ? erL('Total eggs', 'Total de huevos') : erL('Eggs by lane', 'Huevos por carril'))) + '</label>' +
       (byHouse
         ? (function () {
             // Danville: one box per active house — the packer enters that house's
@@ -378,7 +410,7 @@ function _erMachineDetail(farm, m, rec, multi) {
               for (var i = 0; i < nLanes; i++) {
                 var lv = (laneEggs[i] != null && laneEggs[i] !== '') ? laneEggs[i] : '';
                 out += '<div>' +
-                  '<div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">' + erL('Lane', 'Carril') + ' ' + (i + 1) + '</div>' +
+                  (nLanes > 1 ? ('<div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">' + erL('Lane', 'Carril') + ' ' + (i + 1) + '</div>') : '') +
                   '<input type="number" min="0" inputmode="numeric" value="' + lv + '" onchange="eggRunSetLaneEggs(\'' + farm + '\',' + m + ',' + i + ',this.value)" placeholder="0" style="width:100%;box-sizing:border-box;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:9px 10px;">' +
                 '</div>';
               }
@@ -386,7 +418,7 @@ function _erMachineDetail(farm, m, rec, multi) {
             })() +
           '</div>')) +
       '<div style="' + MONO + 'font-size:12px;color:#9ab09a;line-height:1.7;margin-top:7px;">' +
-        (eggs != null ? ('🥚 ' + erL('Machine total', 'Total máquina') + ': <b style="color:#f0d68a;">' + eggs.toLocaleString() + '</b> = ' + (Math.round(eggs / 12 * 10) / 10).toLocaleString() + ' dz') : (byHouse ? erL('Enter each house\'s eggs.', 'Ingresa los huevos de cada casa.') : erL('Enter each lane\'s eggs.', 'Ingresa los huevos de cada carril.'))) +
+        (eggs != null ? ('🥚 ' + erL('Machine total', 'Total máquina') + ': <b style="color:#f0d68a;">' + eggs.toLocaleString() + '</b> = ' + (Math.round(eggs / 12 * 10) / 10).toLocaleString() + ' dz') : (byHouse ? erL('Enter each house\'s eggs.', 'Ingresa los huevos de cada casa.') : (nLanes === 1 ? erL('Enter the machine\'s total eggs.', 'Ingresa el total de huevos de la máquina.') : erL('Enter each lane\'s eggs.', 'Ingresa los huevos de cada carril.')))) +
         (epm ? ('<br><b style="color:#4ade80;">' + epm.toLocaleString() + ' ' + erL('eggs/min', 'huevos/min') + '</b>') : '') +
         (eph ? (' <span style="color:#7ab07a;">· ' + eph.toLocaleString() + ' ' + erL('eggs/hr', 'huevos/hr') + '</span>') : '') +
       '</div>' +
@@ -466,7 +498,7 @@ function _erPackerTable(farm, t) {
       '<td style="padding:7px 6px;text-align:center;color:#9cc0f6;">' +
         (erByHouse(farm)
           ? (hKeys.length ? (erL('Houses ', 'Casas ') + hKeys.map(function (k) { return 'H' + k; }).join(' · ')) : erL('no houses yet', 'sin casas'))
-          : ('M' + m + ' · ' + lanes + ' ' + erL('lanes', 'carriles'))) + '</td>' +
+          : ('M' + m + ' · ' + erLaneCount(farm) + ' ' + (erLaneCount(farm) === 1 ? erL('line', 'línea') : erL('lanes', 'carriles')))) + '</td>' +
       '<td style="padding:7px 6px;text-align:center;color:#d6b36a;">' + (rec.startClock ? erFmtClock(rec.startClock) : '—') + ' → ' + (rec.stopClock ? erFmtClock(rec.stopClock) : '—') + '</td>' +
       '<td style="padding:7px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + (mins != null ? erFmtDur(mins * 60000) : '—') + '</td>' +
       '<td style="padding:7px 6px;text-align:center;color:#f0d68a;font-weight:700;">' + (eggs ? eggs.toLocaleString() : '—') + '</td>' +
@@ -721,6 +753,7 @@ if (typeof window !== 'undefined') {
   window.eggRunSetLaneEggs = eggRunSetLaneEggs;
   window.eggRunSetHouseEggs = eggRunSetHouseEggs;   // Danville: eggs by house
   window.eggRunSetClock = eggRunSetClock;
+  window.erTimeBlur = erTimeBlur;
   window.palTypeSet = palTypeSet;
   window.palToggleSel = palToggleSel;
   window.palAdd = palAdd;

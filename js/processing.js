@@ -75,7 +75,9 @@ function renderProcessing() {
   body.innerHTML =
     '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#5a8a5a;margin-bottom:14px;">🏭 ' + procL('Processing Plant', 'Planta de Procesamiento') + '</div>' +
     tile("procOpenMaint()", '#0d1f3a', '#3b82f6', '🔧', procL('Maintenance', 'Mantenimiento'), procL('Work orders · PM · Parts', 'Órdenes · PM · Piezas'), plantOpen + ' ' + procL('open work order' + (plantOpen !== 1 ? 's' : ''), 'orden' + (plantOpen !== 1 ? 'es' : '') + ' abierta' + (plantOpen !== 1 ? 's' : '')), '#9cc0f6') +
-    tile("procOpenPacking()", '#2a1f0a', '#d69e2e', '📦', procL('Packing Log', 'Registro de Empaque'), procL('Cases · Downtime · Breakage, by line', 'Cajas · Paro · Rotura, por línea'), procNum(casesToday) + ' ' + procL('cases today', 'cajas hoy'), '#d6b36a') +
+    // 📦 Packing Log tile REMOVED per Joe 2026-08-03 — the 🥚⏱ Daily Egg Run now
+    // captures packer, start/stop, eggs and downtime, so this was double entry.
+    // procOpenPacking() stays defined (old links/back-nav) but nothing points here.
     tile("procOpenPMs()", '#10241a', '#4ade80', '🛠', procL('Processing PMs', 'PM de Procesamiento'), procL('PM schedule for the plant', 'Calendario de PM de la planta'), '', '');
 }
 
