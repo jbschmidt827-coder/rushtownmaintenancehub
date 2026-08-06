@@ -108,9 +108,140 @@
           ' style="flex:0 0 72px;padding:9px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:15px;font-weight:700;text-align:center;">' +
         dirtyBtn +
         (running
-          ? '<button onclick="efStop(\'' + _esc(run._id) + '\')" style="flex:1;padding:11px;border-radius:9px;background:#3a1414;border:1.5px solid #e5533c;color:#ffb4a6;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">⏹ ' + efL('Stop', 'Detener') + '</button>'
+          ? '<button onclick="efStop(\'' + _esc(run._id) + '\')" style="flex:1;padding:11px;border-radius:9px;background:#3a1414;border:1.5px solid #e5533c;color:#ffb4a6;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">⏹ ' + (unit.isGroup ? efL('Stop group', 'Detener grupo') : efL('Stop', 'Detener')) + '</button>'
           : '<button onclick="efStart(\'' + _esc(farm) + '\',\'' + _esc(house) + '\')" style="flex:1;padding:11px;border-radius:9px;background:#14361c;border:1.5px solid #4ade80;color:#4ade80;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">▶ ' + efL('Start', 'Iniciar') + '</button>') +
       '</div>' +
+      // PER-HOUSE STOPS (Joe 2026-08-06, Hegins): the group starts together but
+      // each house's belt finishes at its own time — stop each one as it ends so
+      // we get a real run time per house, not just per group.
+      (running && unit.isGroup ? _houseStopRow(run, unit) : '') +
+      // ONE-A-DAY ENTRY (Joe 2026-08-06: "we will do daily entry 1 time a day").
+      // Hegins won't stopwatch a live run — so they type the day's times once,
+      // after the fact, and still get per-house run times.
+      (!running && unit.isGroup ? _dailyEntryBlock(farm, unit) : '') +
+    '</div>';
+  }
+
+  // Collapsed line → expanded form: speed, start clock, one stop clock per house.
+  var _efDailyOpen = {};
+  window.efDailyToggle = function (farm, key) {
+    var k = farm + '_' + key; _efDailyOpen[k] = !_efDailyOpen[k]; _draw();
+  };
+  function _clockOf(ts) { try { var d = new Date(ts); return (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); } catch (e) { return ''; } }
+  function _tsFromClock(dateStr, hhmm) {
+    var m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || '')); if (!m) return null;
+    var p = String(dateStr || _today()).split('-');
+    return new Date(+p[0], (+p[1]) - 1, +p[2], +m[1], +m[2], 0, 0).getTime();
+  }
+  function _dailyEntryBlock(farm, unit) {
+    var k = farm + '_' + unit.key, idb = k.replace(/[^a-zA-Z0-9]/g, '_');
+    var already = _efData.filter(function (r) {
+      return r.farm === farm && _efRunKey(r) === String(unit.key) && r.date === _today() && r.status === 'done';
+    })[0];
+    if (!_efDailyOpen[k]) {
+      return '<div style="margin-top:9px;padding-top:9px;border-top:1px dashed #2a4a2a;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+        (already
+          ? '<span style="' + MONO + 'font-size:10.5px;color:#4ade80;flex:1;min-width:120px;">✓ ' + efL('Logged today', 'Registrado hoy') + ' · ' + _dur((already.minutes || 0) * 60000) + '</span>'
+          : '<span style="' + MONO + 'font-size:10.5px;color:#7a9a7a;flex:1;min-width:120px;">' + efL('Not logged today', 'Sin registrar hoy') + '</span>') +
+        '<button onclick="efDailyToggle(\'' + _esc(farm) + '\',\'' + _esc(unit.key) + '\')" style="padding:9px 13px;border-radius:8px;background:#0d1f3a;border:1.5px solid #3b82f6;color:#9cc0f6;' + MONO + 'font-size:11.5px;font-weight:700;cursor:pointer;">✍️ ' +
+          (already ? efL("Edit today's times", 'Editar horas de hoy') : efL('Log today (1x/day)', 'Registrar hoy (1x/día)')) + '</button>' +
+      '</div>';
+    }
+    var inp = 'width:100%;box-sizing:border-box;padding:9px;border-radius:8px;border:1.5px solid #2a5a2a;background:#06120a;color:#e8f5ec;' + MONO + 'font-size:15px;font-weight:700;text-align:center;color-scheme:dark;';
+    var startDef = (already && already.startTs) ? _clockOf(already.startTs) : (farm === 'Hegins' ? '05:30' : '07:00');
+    var cells = (unit.houses || []).map(function (h) {
+      var v = '';
+      if (already && already.houseStops) {
+        var ts = already.houseStops[h] != null ? already.houseStops[h] : already.houseStops[String(h)];
+        if (ts) v = _clockOf(Number(ts));
+      }
+      return '<div style="flex:1;min-width:96px;">' +
+        '<div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">H' + _esc(h) + ' ' + efL('stopped', 'terminó') + '</div>' +
+        '<input id="ef-d-stop-' + idb + '-' + _esc(h) + '" type="time" step="60" value="' + v + '" style="' + inp + '">' +
+      '</div>';
+    }).join('');
+    return '<div style="margin-top:9px;padding-top:10px;border-top:1px dashed #2a4a2a;">' +
+      '<div style="' + MONO + 'font-size:10.5px;color:#9ad6a0;font-weight:700;margin-bottom:8px;">✍️ ' + efL("Today's run — type the times once", 'La corrida de hoy — escribe las horas una vez') + '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">' +
+        '<div style="flex:1;min-width:96px;"><div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">' + efL('Speed', 'Velocidad') + '</div>' +
+          '<input id="ef-d-speed-' + idb + '" type="number" inputmode="decimal" step="0.1" value="' + (already && already.speed != null ? _esc(already.speed) : '') + '" placeholder="—" style="' + inp + '"></div>' +
+        '<div style="flex:1;min-width:96px;"><div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">' + efL('Started', 'Inició') + '</div>' +
+          '<input id="ef-d-start-' + idb + '" type="time" step="60" value="' + startDef + '" style="' + inp + '"></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px;">' + cells + '</div>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<button onclick="efDailyToggle(\'' + _esc(farm) + '\',\'' + _esc(unit.key) + '\')" style="flex:0 0 auto;padding:11px 14px;border-radius:9px;background:#161616;border:1.5px solid #3a3a3a;color:#aaa;' + MONO + 'font-size:12px;font-weight:700;cursor:pointer;">' + efL('Cancel', 'Cancelar') + '</button>' +
+        '<button onclick="efSaveDaily(\'' + _esc(farm) + '\',\'' + _esc(unit.key) + '\')" style="flex:1;padding:11px;border-radius:9px;background:#14361c;border:1.5px solid #4ade80;color:#4ade80;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">✓ ' + efL("Save today's run", 'Guardar la corrida') + '</button>' +
+      '</div>' +
+      '<div style="' + MONO + 'font-size:9px;color:#4a6a4a;margin-top:6px;line-height:1.5;">' + efL("Leave a house blank if its belt did not run. Run time per house = start to that house's stop.", 'Deja una casa vacía si su banda no corrió. Tiempo por casa = inicio a su hora de fin.') + '</div>' +
+    '</div>';
+  }
+
+  // Save ONE record for today from typed clock times (per-house stops included).
+  window.efSaveDaily = function (farm, key) {
+    if (typeof db === 'undefined' || !db) return;
+    var unit = _efUnits(farm).filter(function (u) { return u.key === String(key); })[0];
+    if (!unit) return;
+    var idb = (farm + '_' + key).replace(/[^a-zA-Z0-9]/g, '_');
+    var sp = document.getElementById('ef-d-speed-' + idb);
+    var speed = sp && sp.value !== '' ? Number(sp.value) : null;
+    if (speed == null || isNaN(speed)) { if (typeof toast === 'function') toast(efL('Enter the speed', 'Pon la velocidad')); return; }
+    var st = document.getElementById('ef-d-start-' + idb);
+    var startTs = _tsFromClock(_today(), st ? st.value : '');
+    if (!startTs) { if (typeof toast === 'function') toast(efL('Enter the start time', 'Pon la hora de inicio')); return; }
+    var stops = {}, hmins = {}, last = 0, n = 0;
+    (unit.houses || []).forEach(function (h) {
+      var el = document.getElementById('ef-d-stop-' + idb + '-' + h);
+      var ts = el ? _tsFromClock(_today(), el.value) : null;
+      if (!ts) return;
+      if (ts < startTs) ts += 86400000;                  // ran past midnight
+      var mins = Math.round((ts - startTs) / 60000);
+      if (mins <= 0 || mins > _EF_STUCK_MIN) return;      // ignore impossible entries
+      stops[String(h)] = ts; hmins[String(h)] = mins; n++;
+      if (ts > last) last = ts;
+    });
+    if (!n) { if (typeof toast === 'function') toast(efL('Enter at least one house stop time', 'Pon al menos una hora de fin')); return; }
+    var existing = _efData.filter(function (r) {
+      return r.farm === farm && _efRunKey(r) === String(key) && r.date === _today();
+    })[0];
+    var rec = {
+      farm: farm, house: String(key), speed: speed, dirtyLine: !!_efDirty[farm + '_' + key],
+      group: unit.isGroup ? unit.key : null, groupLabel: unit.isGroup ? unit.label : null,
+      houses: unit.isGroup ? unit.houses.slice() : null,
+      startTs: startTs, stopTs: last, minutes: Math.round((last - startTs) / 60000),
+      houseStops: stops, houseMinutes: hmins, status: 'done',
+      date: _today(), by: _by(), entryMode: 'daily', ts: Date.now()
+    };
+    var pr = existing
+      ? db.collection('eggFlow').doc(existing._id).set(rec, { merge: true })
+      : db.collection('eggFlow').add(rec);
+    pr.then(function () {
+      _efDailyOpen[farm + '_' + key] = false;
+      delete _efDirty[farm + '_' + key];
+      if (typeof toast === 'function') toast('✓ ' + (unit.label || key) + ' — ' + n + ' ' + efL('house(s) logged', 'casa(s) registradas') + ' · ' + _dur(rec.minutes * 60000));
+      _draw();
+    }).catch(function (e) { console.error('efSaveDaily:', e); if (typeof toast === 'function') toast(efL('Could not save', 'No se pudo guardar')); });
+  };
+
+  // Row of "⏹ H1 / ⏹ H3 / ⏹ H4" buttons for an open group run; stopped houses
+  // show ✓ with their run length.
+  function _houseStopRow(run, unit) {
+    var stops = run.houseStops || {}, mins = run.houseMinutes || {};
+    var cells = (unit.houses || []).map(function (h) {
+      var done = stops[h] != null || stops[String(h)] != null;
+      var m = mins[h] != null ? mins[h] : mins[String(h)];
+      if (done) {
+        return '<div style="flex:1;min-width:74px;padding:8px 6px;border-radius:8px;background:#0d2a12;border:1.5px solid #2a7a3a;text-align:center;' + MONO + 'font-size:10.5px;color:#9ad6a0;">' +
+          '✓ H' + _esc(h) + '<br><b style="color:#4ade80;">' + (m != null ? _dur(Number(m) * 60000) : '—') + '</b></div>';
+      }
+      return '<button onclick="efStopHouse(\'' + _esc(run._id) + '\',\'' + _esc(h) + '\')" style="flex:1;min-width:74px;padding:9px 6px;border-radius:8px;background:#2a1a0a;border:1.5px solid #7a5a1a;color:#f0d68a;' + MONO + 'font-size:11px;font-weight:700;cursor:pointer;">⏹ H' + _esc(h) + '</button>';
+    }).join('');
+    var left = (unit.houses || []).filter(function (h) { return !(stops[h] != null || stops[String(h)] != null); }).length;
+    return '<div style="margin-top:9px;padding-top:9px;border-top:1px dashed #2a4a2a;">' +
+      '<div style="' + MONO + 'font-size:10px;color:#7a9a7a;margin-bottom:6px;">' +
+        efL('Stop each house as its belt finishes', 'Detén cada casa cuando su banda termina') +
+        (left ? (' · ' + left + ' ' + efL('left', 'faltan')) : (' · ' + efL('all stopped — tap Stop group to close the run', 'todas detenidas — toca Detener grupo para cerrar'))) + '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + cells + '</div>' +
     '</div>';
   }
 
@@ -119,14 +250,18 @@
     var list = _efData.filter(function (r) { return site === 'All' || r.farm === site; })
       .slice().sort(function (a, b) { return (b.startTs || b.ts || 0) - (a.startTs || a.ts || 0); });
     var rows = list.map(function (r) {
+      var _stuckRow = (r.status === 'done' && r.minutes != null && Number(r.minutes) > _EF_STUCK_MIN);
       var dur = r.status === 'open'
         ? '<span style="color:#4ade80;">● ' + _dur(Date.now() - (r.startTs || Date.now())) + '</span>'
-        : (r.minutes != null ? _dur(r.minutes * 60000) : '—');
+        : (r.minutes != null
+            ? (_dur(r.minutes * 60000) + (_stuckRow ? ('<br><span style="color:#e8c96a;font-size:9px;">⚠ ' + efL('forgot Stop — fix the time', 'olvidó Detener — corrige la hora') + '</span>') : ''))
+            : '—');
       var dateLbl = r.date ? r.date.slice(5).replace('-', '/') : '—';
       var dirty = r.dirtyLine ? '<span style="color:#f0d68a;">🥚 ' + efL('ON', 'SÍ') + '</span>' : '<span style="color:#4a6a4a;">—</span>';
       return '<tr style="border-bottom:1px solid #1a2a1a;">' +
         '<td style="padding:8px 6px;color:#f0ead8;">' + dateLbl + '</td>' +
-        '<td style="padding:8px 6px;color:#aaa;">' + (r.groupLabel ? (_esc(r.groupLabel) + '<span style="color:#5a7a7a;font-size:9px;"> ' + _esc((r.houses||[]).join('·')) + '</span>') : ('H' + _esc(r.house))) + '</td>' +
+        '<td style="padding:8px 6px;color:#aaa;">' + (r.groupLabel ? (_esc(r.groupLabel) + '<span style="color:#5a7a7a;font-size:9px;"> ' + _esc((r.houses||[]).join('·')) + '</span>') : ('H' + _esc(r.house))) +
+          (r.houseMinutes ? ('<div style="' + MONO + 'font-size:9px;color:#7a9a7a;margin-top:2px;">' + Object.keys(r.houseMinutes).sort(function(a,b){return a-b;}).map(function (h) { return 'H' + h + ' ' + _dur(Number(r.houseMinutes[h]) * 60000); }).join(' · ') + '</div>') : '') + '</td>' +
         '<td style="padding:8px 6px;color:#e8d36a;font-weight:700;text-align:center;">' + (r.speed != null && r.speed !== '' ? _esc(r.speed) : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;">' + dirty + '</td>' +
         '<td style="padding:8px 6px;color:#9ad6a0;">' + dur + '</td>' +
@@ -136,6 +271,10 @@
         // delete = confirm first. Both stamp who did it.
         '<td style="padding:8px 6px;text-align:right;white-space:nowrap;">' +
           '<button onclick="efEditRun(\'' + _esc(r._id) + '\')" title="' + efL('Fix house', 'Corregir casa') + '" style="padding:6px 9px;background:#0d1f3a;border:1px solid #2a4a7a;border-radius:7px;color:#9cc0f6;cursor:pointer;font-size:11px;">✎</button> ' +
+          // ⏱ set the REAL stop time / run length on any entry (Joe 2026-08-06:
+          // "add stops to each entry for hegins and danville") — fixes a run
+          // someone left open for hours and closed late.
+          '<button onclick="efFixTime(\'' + _esc(r._id) + '\')" title="' + efL('Set stop time / run length', 'Poner hora de fin / duración') + '" style="padding:6px 9px;background:' + (_stuckRow ? '#3a2a08' : '#0a2a1a') + ';border:1px solid ' + (_stuckRow ? '#7a5a1a' : '#2a5a3a') + ';border-radius:7px;color:' + (_stuckRow ? '#f0d68a' : '#9ad6a0') + ';cursor:pointer;font-size:11px;">⏱</button> ' +
           '<button onclick="efDeleteRun(\'' + _esc(r._id) + '\')" title="' + efL('Delete run', 'Borrar corrida') + '" style="padding:6px 9px;background:#1a0505;border:1px solid #5a1d1d;border-radius:7px;color:#e08a8a;cursor:pointer;font-size:11px;">🗑</button>' +
         '</td>' +
       '</tr>';
@@ -418,6 +557,7 @@
         efL('Set the speed, tap Start when the belts run, Stop when done. Times save automatically.', 'Pon la velocidad, toca Iniciar cuando corran las bandas, Detener al terminar. Los tiempos se guardan solos.') +
         (EF_GROUPS[site] ? ('<br>' + efL('This site runs in GROUPS — one Start/Stop covers the whole group.', 'Este sitio corre en GRUPOS — un Iniciar/Detener cubre todo el grupo.')) : '') +
       '</div>' +
+      _openRunBanner(site) +
       '<div style="display:grid;gap:9px;">' + cards + '</div>' +
       _drawSummary(site, units) +
       _drawLog(host, site);
@@ -455,6 +595,34 @@
       var k = farm + '_' + house; _efDirty[k] = !_efDirty[k]; _draw();
     }
   };
+  // ⏹ Stop ONE house inside an open group run (Hegins). When every house in the
+  // group has a stop, the run closes itself using the LAST house's stop.
+  window.efStopHouse = function (id, house) {
+    if (typeof db === 'undefined' || !db) return;
+    var run = _efData.filter(function (r) { return r._id === id; })[0];
+    if (!run) return;
+    var now = Date.now(), start = run.startTs || now;
+    var mins = Math.max(0, Math.round((now - start) / 60000));
+    var stops = Object.assign({}, run.houseStops || {});
+    var hmins = Object.assign({}, run.houseMinutes || {});
+    stops[String(house)] = now;
+    hmins[String(house)] = mins;
+    var all = (run.houses || []).every(function (h) { return stops[String(h)] != null; });
+    var patch = { houseStops: stops, houseMinutes: hmins, ts: now };
+    if (all) {
+      // run length = first Start → LAST house stop
+      var last = Object.keys(stops).reduce(function (mx, k) { return Math.max(mx, Number(stops[k]) || 0); }, 0);
+      patch.stopTs = last;
+      patch.minutes = Math.max(0, Math.round((last - start) / 60000));
+      patch.status = 'done';
+    }
+    db.collection('eggFlow').doc(id).set(patch, { merge: true })
+      .then(function () {
+        if (typeof toast === 'function') toast('⏹ H' + house + ' → ' + _dur(mins * 60000) + (all ? (' · ' + efL('group done', 'grupo terminado')) : ''));
+      })
+      .catch(function (e) { console.error('efStopHouse:', e); if (typeof toast === 'function') toast(efL('⚠ Could not stop', '⚠ No se pudo detener')); });
+  };
+
   window.efStop = function (id) {
     if (typeof db === 'undefined' || !db) return;
     var run = _efData.filter(function (r) { return r._id === id; })[0];
@@ -464,6 +632,69 @@
       .then(function () { if (typeof toast === 'function') toast(efL('⏹ Run logged', '⏹ Corrida registrada')); })
       .catch(function (e) { console.error('efStop:', e); if (typeof toast === 'function') toast(efL('⚠ Could not stop', '⚠ No se pudo detener')); });
   };
+  // ⏱ Correct a run's stop time or length. Accepts "11:48" (clock) or "127"
+  // (minutes) — whichever the crew has in front of them.
+  window.efFixTime = function (id) {
+    if (typeof db === 'undefined' || !db) return;
+    var run = _efData.filter(function (r) { return r._id === id; })[0];
+    if (!run) return;
+    var lbl = (run.groupLabel || ('H' + run.house)) + ' · ' + (run.date || '');
+    var startLbl = run.startTs ? _timeLbl(run.startTs) : '?';
+    var ask = efL('When did ' + lbl + ' actually STOP? Type a time (11:48) or minutes (127). Started ' + startLbl + '.',
+                  '¿A qué hora terminó realmente ' + lbl + '? Escribe la hora (11:48) o los minutos (127). Inició ' + startLbl + '.');
+    var go = function (val) {
+      val = String(val || '').trim(); if (!val) return;
+      var mins = null, stopTs = null;
+      var cm = /^(\d{1,2}):(\d{2})/.exec(val);
+      if (cm) {
+        var st = new Date(run.startTs || Date.now());
+        var d = new Date(st.getFullYear(), st.getMonth(), st.getDate(), +cm[1], +cm[2], 0, 0);
+        if (d.getTime() < (run.startTs || 0)) d.setDate(d.getDate() + 1);   // ran past midnight
+        stopTs = d.getTime();
+        mins = Math.max(0, Math.round((stopTs - (run.startTs || stopTs)) / 60000));
+      } else if (/^\d+$/.test(val)) {
+        mins = Math.max(0, parseInt(val, 10));
+        stopTs = (run.startTs || Date.now()) + mins * 60000;
+      } else {
+        if (typeof toast === 'function') toast(efL('Type a time like 11:48 or minutes like 127', 'Escribe una hora como 11:48 o minutos como 127'));
+        return;
+      }
+      if (mins > _EF_STUCK_MIN) {
+        if (typeof toast === 'function') toast(efL('That is still over 8 hours — check the time', 'Eso sigue siendo más de 8 horas — revisa la hora'));
+        return;
+      }
+      db.collection('eggFlow').doc(id).set({
+        stopTs: stopTs, minutes: mins, status: 'done',
+        timeFixedBy: (typeof getDeviceUser === 'function' ? getDeviceUser() : ''), timeFixedTs: Date.now(), ts: Date.now()
+      }, { merge: true }).then(function () {
+        if (typeof toast === 'function') toast('⏱ ' + lbl + ' → ' + _dur(mins * 60000));
+      }).catch(function () { if (typeof toast === 'function') toast(efL('Could not save', 'No se pudo guardar')); });
+    };
+    if (typeof promptInline === 'function') promptInline(ask, go);
+    else go(window.prompt(ask));
+  };
+
+  // 🔴 Runs still open past 4h — banner with a one-tap Stop, so a forgotten
+  // Stop gets caught the same day instead of becoming a 20-hour "run".
+  function _openRunBanner(site) {
+    var now = Date.now();
+    var open = _efData.filter(function (r) {
+      return (site === 'All' || r.farm === site) && r.status === 'open' && r.startTs && (now - r.startTs) > 4 * 3600000;
+    }).sort(function (a, b) { return (a.startTs || 0) - (b.startTs || 0); });
+    if (!open.length) return '';
+    return '<div style="background:#2a0d0d;border:2px solid #7f1d1d;border-radius:11px;padding:11px 13px;margin-bottom:11px;">' +
+      '<div style="' + MONO + 'font-size:11.5px;font-weight:700;color:#f0a0a0;margin-bottom:7px;">🔴 ' +
+        efL(open.length + ' run(s) still open — tap Stop or fix the time', open.length + ' corrida(s) abiertas — toca Detener o corrige la hora') + '</div>' +
+      open.map(function (r) {
+        var lbl = (r.groupLabel || ('H' + r.house));
+        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">' +
+          '<span style="' + MONO + 'font-size:11px;color:#e8dfc8;flex:1;">' + _esc(lbl) + ' · ' + _dur(now - r.startTs) + ' ' + efL('open', 'abierta') + '</span>' +
+          '<button onclick="efStop(\'' + _esc(r._id) + '\')" style="padding:7px 11px;background:#3a1414;border:1.5px solid #e5533c;border-radius:8px;color:#ffb4a6;' + MONO + 'font-size:11px;font-weight:700;cursor:pointer;">⏹ ' + efL('Stop now', 'Detener') + '</button>' +
+          '<button onclick="efFixTime(\'' + _esc(r._id) + '\')" style="padding:7px 11px;background:#3a2a08;border:1.5px solid #7a5a1a;border-radius:8px;color:#f0d68a;' + MONO + 'font-size:11px;font-weight:700;cursor:pointer;">⏱ ' + efL('Fix time', 'Corregir') + '</button>' +
+        '</div>';
+      }).join('') + '</div>';
+  }
+
   window.efSetSpeed = function (id, val) {
     if (typeof db === 'undefined' || !db) return;
     db.collection('eggFlow').doc(id).update({ speed: val !== '' ? Number(val) : null, ts: Date.now() }).catch(function (e) { console.error('efSetSpeed:', e); });
