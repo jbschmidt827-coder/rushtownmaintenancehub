@@ -89,6 +89,7 @@
   // status: 'g' green, 'y' yellow, 'r' red, '-' unknown/gray
   function _dot(s) { return ({ g: '#22c55e', y: '#f59e0b', r: '#ef4444' })[s] || '#5a7a5a'; }
 
+  function _esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function _tile(icon, title, status, value, sub, onclick) {
     var c = _dot(status), tap = !!onclick;
     return '<button ' + (tap ? 'onclick="' + onclick + '"' : 'disabled') + ' style="text-align:left;background:#0f1f0f;border:1.5px solid #1e3a1e;border-left:5px solid ' + c + ';border-radius:12px;padding:13px 14px;cursor:' + (tap ? 'pointer' : 'default') + ';display:flex;align-items:center;gap:12px;width:100%;">' +
@@ -417,6 +418,63 @@
       _dg(critParts ? '🟥' : '🔩', critParts + L(' parts at/below minimum', ' piezas en/bajo mínimo')) +
       (extUpdated ? _dg('📡', L('Farm records synced ', 'Registros sincronizados ') + extUpdated) : '');
 
+    // ── 🧠 IMPROVEMENT NOTES (auto) — for the tier walk (Joe 2026-08-03/06):
+    // reads the same data as the tiles and says WHAT to improve, in plain words,
+    // worst first. Site-scoped like everything else on this board.
+    var notes = [];
+    try {
+      // 1) Eggs not hitting target
+      if (rateTgt && rateWk != null && rateWk < rateTgt) {
+        var pctOf = Math.round(rateWk / rateTgt * 100);
+        notes.push({ sev: rateWk < rateTgt * 0.95 ? 'r' : 'y',
+          txt: '📦 ' + L('Cases/hr below target: ', 'Cajas/hr bajo la meta: ') + rateWk + ' vs ' + rateTgt + ' (' + pctOf + '%). ' +
+               L('Find the slowest day this week and ask what stopped the line.', 'Encuentra el día más lento de la semana y pregunta qué paró la línea.') });
+      }
+      // 2) Repeat WOs — same farm+house+problem 2+ times in 14 days
+      var _wo14 = Date.now() - 14 * 86400000, _grp = {};
+      WOs.forEach(function (w) {
+        if ((w.ts || 0) < _wo14) return;
+        if (S !== 'All' && w.farm !== S && !(S === 'Danville' && w.farm === 'Processing Plant')) return;
+        var k = (w.farm || '?') + '|' + (w.house || '—') + '|' + (w.problem || w.desc || '?');
+        (_grp[k] = _grp[k] || { farm: w.farm, house: w.house, problem: w.problem || w.desc, n: 0, open: 0 });
+        _grp[k].n++; if (w.status !== 'completed') _grp[k].open++;
+      });
+      Object.keys(_grp).map(function (k) { return _grp[k]; })
+        .filter(function (g) { return g.n >= 2; })
+        .sort(function (a, b) { return b.n - a.n; }).slice(0, 3)
+        .forEach(function (g) {
+          notes.push({ sev: g.open ? 'r' : 'y',
+            txt: '🔁 ' + _esc(g.problem) + ' — ' + g.farm + (g.house ? ' H' + g.house : '') + ' — ' + g.n + '× ' + L('in 14 days. Fix the CAUSE, assign one owner.', 'en 14 días. Arregla la CAUSA, asigna un dueño.') });
+        });
+      // 3) Houses flagged repeatedly this week
+      var _fh = {};
+      weekChecks.forEach(function (c) { if (c.flags && c.flags.length) { var k = (c.farm || '?') + ' H' + c.house; _fh[k] = (_fh[k] || 0) + c.flags.length; } });
+      Object.keys(_fh).filter(function (k) { return _fh[k] >= 3; }).sort(function (a, b) { return _fh[b] - _fh[a]; }).slice(0, 2)
+        .forEach(function (k) { notes.push({ sev: 'y', txt: '⚠ ' + k + ' — ' + _fh[k] + ' ' + L('flags this week. Walk that house today.', 'alertas esta semana. Camina esa casa hoy.') }); });
+      // 4) Low-producing houses (laying but under 85%)
+      Object.keys(ext).forEach(function (fm) {
+        if (S !== 'All' && fm !== S) return;
+        ((ext[fm] && ext[fm].houses) || []).forEach(function (h) {
+          var lay = (h.lay7d != null ? h.lay7d : h.layLatest);
+          if (lay != null && lay > 2) lay = lay / 100;
+          if (lay != null && lay >= 0.20 && lay < 0.85 && !/flock out|down/i.test(String(h.note || ''))) {
+            notes.push({ sev: 'y', txt: '🥚 ' + fm + ' ' + _esc(h.name || '?') + ' — ' + Math.round(lay * 1000) / 10 + '% ' + L('lay. Check feed, water and light before it slides further.', 'postura. Revisa alimento, agua y luz antes de que baje más.') });
+          }
+        });
+      });
+      // 5) Runs left open (forgot Stop)
+      var _stuck = (_t1cache.eggFlow || []).filter(function (f) {
+        return (S === 'All' || f.farm === S) && f.status !== 'done' && f.startTs && (Date.now() - f.startTs) > 8 * 3600000;
+      }).length;
+      if (_stuck) notes.push({ sev: 'y', txt: '⏱ ' + _stuck + ' ' + L('egg-flow run(s) left open >8h — coach the Stop tap at the huddle.', 'corrida(s) abiertas >8h — recuerda el botón Detener en la reunión.') });
+      // 6) Overdue PMs
+      if (pmOverdue > 3) notes.push({ sev: 'y', txt: '📋 ' + pmOverdue + ' ' + L('PMs overdue — 15 minutes of PM beats a 3-hour breakdown.', 'PM vencidos — 15 minutos de PM ganan a 3 horas de avería.') });
+    } catch (eN) { console.warn('t1 notes:', eN); }
+    notes.sort(function (a, b) { return (a.sev === 'r' ? 0 : 1) - (b.sev === 'r' ? 0 : 1); });
+    var notesHtml = notes.slice(0, 6).map(function (n) {
+      return '<div style="display:flex;gap:9px;padding:8px 2px;border-bottom:1px solid #16281680;' + MONO + 'font-size:12px;line-height:1.5;color:' + (n.sev === 'r' ? '#f0a0a0' : '#e8c96a') + ';"><span>' + (n.sev === 'r' ? '🟥' : '🟨') + '</span><span>' + n.txt + '</span></div>';
+    }).join('') || '<div style="' + MONO + 'font-size:12px;color:#4ade80;padding:8px 2px;">✅ ' + L('Nothing needs improving today — protect the streak.', 'Nada que mejorar hoy — protege la racha.') + '</div>';
+
     // ── Overall roll-up (today's status tiles that carry a real state) ──
     var states = [safeS, layS, prodS, mortS, qualS, feedS, millS, rateS, waterS, dtS, pmS, woS, partsS].filter(function (s) { return s !== '-'; });
     var reds = states.filter(function (s) { return s === 'r'; }).length;
@@ -428,14 +486,14 @@
     var dayNote = _todayHasData ? '' :
       '<div style="' + MONO + 'font-size:11px;color:#e8c96a;background:#231a08;border:1.5px solid #7a5a1a;border-radius:10px;padding:9px 12px;margin:2px 0 4px;">🕓 ' +
       L('Showing YESTERDAY (' + _yd.slice(5).replace('-', '/') + ') — nothing entered today yet', 'Mostrando AYER (' + _yd.slice(5).replace('-', '/') + ') — nada ingresado hoy aún') + '</div>';
-    o.innerHTML = _shell(null, tiles, overall, overallTxt, trends, digest, dayNote);
+    o.innerHTML = _shell(null, tiles, overall, overallTxt, trends, digest, dayNote, notesHtml);
   }
 
   function _sec(label) {
     return '<div style="' + MONO + 'font-size:11px;letter-spacing:1.5px;color:#6aa06a;text-transform:uppercase;margin:22px 2px 9px;font-weight:700;">' + label + '</div>';
   }
 
-  function _shell(loadingMsg, tiles, overall, overallTxt, trends, digest, dayNote) {
+  function _shell(loadingMsg, tiles, overall, overallTxt, trends, digest, dayNote, notesHtml) {
     var dot = overall ? _dot(overall) : '#5a7a5a';
     var dateStr = new Date().toLocaleDateString(_es() ? 'es-ES' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     var head = '<div style="max-width:820px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 26px) 14px 60px;">' +
@@ -458,6 +516,8 @@
       _sec(L('Now · tap a tile to open it', 'Ahora · toca para abrir')) +
       (dayNote || '') +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:9px;">' + tiles + '</div>' +
+      (notesHtml ? (_sec('🧠 ' + L('Improvement notes · auto, for the tier walk', 'Notas de mejora · auto, para el recorrido')) +
+        '<div style="background:#0c1a0c;border:1.5px solid #1e3a1e;border-radius:12px;padding:6px 14px;">' + notesHtml + '</div>') : '') +
       _sec(L('This week · trends', 'Esta semana · tendencias')) +
       '<div style="background:#0c1a0c;border:1.5px solid #1e3a1e;border-radius:12px;padding:6px 14px;">' + trends + '</div>' +
       _sec(L('This week · digest', 'Esta semana · resumen')) +

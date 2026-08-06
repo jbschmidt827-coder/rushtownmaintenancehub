@@ -1733,7 +1733,13 @@ function _bwArrangeCards() {
     var emp = container.querySelector('.bw-card[data-bw-block="employee"]');
     if (emp) {
       var who = (typeof getDeviceUser === 'function') ? (getDeviceUser() || '') : '';
-      emp.style.display = who ? 'none' : '';
+      // v270 debug fix: DON'T hide the whole card — the "This check saves as: X
+      // · NOT YOU? SWITCH" bar lives inside it and matters precisely when a user
+      // IS remembered (wrong-person guard). Hide only the typing field.
+      var inp = emp.querySelector('#bw-employee');
+      if (inp) inp.style.display = who ? 'none' : '';
+      emp.style.display = '';
+      try { if (typeof _bwWhoAmI === 'function') _bwWhoAmI(); } catch (e) {}
     }
     // Keep Submit at the very BOTTOM — the card reordering above appends cards
     // to the end of the container, which would otherwise leave the Submit button
