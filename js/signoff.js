@@ -79,7 +79,8 @@
   function _soReqs(s) {
     var reqs = [];
     _soSOPs().forEach(function (w) {
-      reqs.push({ key: String(w.wiId || w._fbId), title: String(w.title || w.wiId), kind: 'sop', wiKey: String(w.wiId || w._fbId) });
+      // upd = last edit — a signature OLDER than this needs a re-sign (v273).
+      reqs.push({ key: String(w.wiId || w._fbId), title: String(w.title || w.wiId), kind: 'sop', wiKey: String(w.wiId || w._fbId), upd: Number(w.updatedTs) || 0 });
     });
     _soCards(s).forEach(function (slug) {
       var t = SW_TITLES[slug] || [slug, slug];
@@ -98,10 +99,16 @@
     return list.filter(function (s) { return s && s.name && s.active !== false; });
   }
   function _signedSetFor(rows, name) {
+    // Keep the NEWEST signature per document (people can re-sign after edits).
     var n = String(name || '').trim().toLowerCase(), set = {};
-    rows.forEach(function (r) { if (String(r.employee || '').trim().toLowerCase() === n) set[String(r.sopId)] = r.date || '✓'; });
+    rows.forEach(function (r) {
+      if (String(r.employee || '').trim().toLowerCase() !== n) return;
+      var k = String(r.sopId), ts = Number(r.ts) || 0;
+      if (!set[k] || ts > set[k].ts) set[k] = { date: r.date || '✓', ts: ts };
+    });
     return set;
   }
+  function _soOk(sig, req) { return !!sig && (!req.upd || sig.ts >= req.upd); }
   function _allSignoffs() {
     return db.collection('sopSignoffs').get().then(function (snap) {
       var rows = []; snap.forEach(function (d) { rows.push(d.data()); }); return rows;
@@ -150,7 +157,7 @@
     if (!reqs.length) { host.innerHTML = soL('No documents found yet.', 'Aún no hay documentos.'); return; }
     _allSignoffs().then(function (rows) {
       var signed = _signedSetFor(rows, name);
-      var missing = reqs.filter(function (r) { return !signed[r.key]; }).length;
+      var missing = reqs.filter(function (r) { return !_soOk(signed[r.key], r); }).length;
       var head =
         '<div style="background:' + (missing ? '#231a08' : '#07240f') + ';border:1.5px solid ' + (missing ? '#7a5a1a' : '#1f7a3a') + ';border-radius:10px;padding:11px 13px;margin-bottom:11px;' + MONO + 'font-size:12.5px;color:' + (missing ? '#e8c96a' : '#4ade80') + ';font-weight:700;">' +
         (missing ? ('⚠ ' + _esc(name) + ' — ' + missing + ' ' + soL('document(s) left to read & sign', 'documento(s) por leer y firmar'))
@@ -158,15 +165,17 @@
         (st ? '' : ('<div style="font-size:10px;font-weight:400;color:#a08a4a;margin-top:4px;">' + soL('Name not on the roster — showing the base packet (all SOPs + barn crew).', 'Nombre fuera de la lista — mostrando el paquete base.') + '</div>')) +
         '</div>';
       var items = reqs.map(function (r) {
-        var done = signed[r.key];
+        var sig = signed[r.key];
+        var stale = sig && r.upd && sig.ts < r.upd;   // signed BEFORE the latest edit
+        var done = _soOk(sig, r);
         var openBtn = r.kind === 'sop'
           ? '<button onclick="closeMySignoffs();if(typeof openWIView===\'function\')openWIView(\'' + _esc(r.wiKey) + '\')" style="padding:9px 13px;background:#0d1f3a;border:1.5px solid #3b82f6;border-radius:8px;color:#9cc0f6;' + MONO + 'font-size:11px;font-weight:700;cursor:pointer;">📖 ' + soL('READ & SIGN', 'LEER Y FIRMAR') + '</button>'
           : '<button onclick="closeMySignoffs();if(typeof openTierSW===\'function\')openTierSW()" style="padding:9px 13px;background:#0d1f3a;border:1.5px solid #3b82f6;border-radius:8px;color:#9cc0f6;' + MONO + 'font-size:11px;font-weight:700;cursor:pointer;">📘 ' + soL('READ & SIGN', 'LEER Y FIRMAR') + '</button>';
         return '<div style="display:flex;align-items:center;gap:10px;background:#10190c;border:1.5px solid ' + (done ? '#1f7a3a' : '#5a4a2a') + ';border-radius:10px;padding:10px 12px;margin-bottom:7px;">' +
-          '<span style="font-size:17px;">' + (done ? '✅' : '🔴') + '</span>' +
+          '<span style="font-size:17px;">' + (done ? '✅' : stale ? '🔁' : '🔴') + '</span>' +
           '<div style="flex:1;min-width:0;">' +
             '<div style="' + MONO + 'font-size:12px;font-weight:700;color:#e8f5ec;line-height:1.35;">' + _esc(r.title) + '</div>' +
-            '<div style="' + MONO + 'font-size:9.5px;color:#5a8a5a;margin-top:2px;">' + (r.kind === 'sop' ? 'SOP' : soL('Job requirements', 'Requisitos del puesto')) + (done ? (' · ' + soL('signed', 'firmado') + ' ' + _esc(signed[r.key])) : '') + '</div>' +
+            '<div style="' + MONO + 'font-size:9.5px;color:' + (stale ? '#e8c96a' : '#5a8a5a') + ';margin-top:2px;">' + (r.kind === 'sop' ? 'SOP' : soL('Job requirements', 'Requisitos del puesto')) + (done ? (' · ' + soL('signed', 'firmado') + ' ' + _esc(sig.date)) : stale ? (' · ' + soL('UPDATED since you signed — read & sign again', 'ACTUALIZADO después de tu firma — lee y firma de nuevo')) : '') + '</div>' +
           '</div>' +
           (done ? '' : openBtn) +
         '</div>';
@@ -218,7 +227,8 @@
       var body = document.getElementById('sob-body'); if (!body) return;
       var people = _activeStaff().map(function (s) {
         var reqs = _soReqs(s), signed = _signedSetFor(rows, s.name);
-        var miss = reqs.filter(function (r) { return !signed[r.key]; });
+        var miss = reqs.filter(function (r) { return !_soOk(signed[r.key], r); })
+          .map(function (r) { var sig = signed[r.key]; return Object.assign({}, r, { stale: !!(sig && r.upd && sig.ts < r.upd) }); });
         return { s: s, reqs: reqs, miss: miss };
       }).sort(function (a, b) { return b.miss.length - a.miss.length || String(a.s.name).localeCompare(String(b.s.name)); });
       var total = 0, done = 0;
@@ -238,7 +248,7 @@
               '<span style="' + MONO + 'font-size:10px;color:#7a9a7a;">' + _esc(p.s.role || '') + (p.s.farm ? ' · ' + _esc(p.s.farm) : '') + '</span>' +
               '<span style="' + MONO + 'font-size:11px;font-weight:700;color:' + (ok ? '#4ade80' : '#f0a0a0') + ';">' + (p.reqs.length - p.miss.length) + '/' + p.reqs.length + '</span>' +
             '</div>' +
-            (ok ? '' : '<div style="' + MONO + 'font-size:10px;color:#d09090;margin-top:5px;line-height:1.6;">' + soL('Missing', 'Falta') + ': ' + p.miss.map(function (m) { return _esc(m.title); }).join(' · ') + '</div>') +
+            (ok ? '' : '<div style="' + MONO + 'font-size:10px;color:#d09090;margin-top:5px;line-height:1.6;">' + soL('Missing', 'Falta') + ': ' + p.miss.map(function (m) { return _esc(m.title) + (m.stale ? ' <span style=\"color:#e8c96a;\">(' + soL('re-sign — updated', 'refirmar — actualizado') + ')</span>' : ''); }).join(' · ') + '</div>') +
           '</div>';
         }).join('') +
         (fb.length ?
@@ -265,8 +275,8 @@
       var reqs = _soReqs(st || { role: '', farm: '' });
       if (!reqs.length) return;
       db.collection('sopSignoffs').where('employee', '==', me).get().then(function (snap) {
-        var set = {}; snap.forEach(function (d) { set[String(d.data().sopId)] = 1; });
-        var missing = reqs.filter(function (r) { return !set[r.key]; }).length;
+        var set = {}; snap.forEach(function (d) { var r = d.data(); var k = String(r.sopId), ts = Number(r.ts) || 0; if (!set[k] || ts > set[k]) set[k] = ts; });
+        var missing = reqs.filter(function (r) { return !set[r.key] || (r.upd && set[r.key] < r.upd); }).length;
         if (!missing) return;
         if (document.getElementById('so-nag')) return;
         var n = document.createElement('div');

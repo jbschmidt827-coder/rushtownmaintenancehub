@@ -7846,8 +7846,11 @@ function _sopLoadAcks(key, listElId) {
       const rows = []; snap.forEach(d => rows.push(d.data()));
       rows.sort((a, b) => (b.ts || 0) - (a.ts || 0));
       if (!rows.length) { el.innerHTML = '— ' + _sopLL('No sign-offs yet. Be the first.', 'Aún no hay firmas. Sé el primero.'); return; }
+      // Signatures older than the doc's last edit show ⚠ re-sign (v273).
+      var _wi = (typeof allWI !== 'undefined' ? allWI : []).find(function (x) { return _sopKey(x) === key; });
+      var _upd = Number(_wi && _wi.updatedTs) || 0;
       el.innerHTML = '<b style="color:#4ade80;">' + rows.length + '</b> ' + _sopLL('signed', 'firmaron') + ': ' +
-        rows.map(r => String(r.employee || '?').replace(/</g, '&lt;') + ' <span style="color:#4a6a4a;">(' + (r.date || '') + ')</span>').join(' · ');
+        rows.map(r => { var st = _upd && (Number(r.ts) || 0) < _upd; return String(r.employee || '?').replace(/</g, '&lt;') + ' <span style="color:' + (st ? '#e8c96a' : '#4a6a4a') + ';">(' + (r.date || '') + (st ? ' ⚠' : '') + ')</span>'; }).join(' · ');
     }).catch(() => {});
   } catch (e) {}
 }
@@ -7862,9 +7865,12 @@ async function sopAccept(key, opts) {
   const title = opts.title || wi.title || key;
   const idLabel = wi.wiId || key;
   try {
-    // One sign-off per person per document — a repeat tap just confirms it.
+    // One sign-off per person per document — UNLESS the document changed since
+    // their last signature (v273: re-sign on change). A repeat tap just confirms.
     const dup = await db.collection('sopSignoffs').where('sopId', '==', key).where('employee', '==', name).get();
-    if (!dup.empty) { if (typeof toast === 'function') toast('✅ ' + name + ' — ' + _sopLL('already signed', 'ya firmó')); _sopLoadAcks(key, opts.listId); return; }
+    let newestSig = 0; dup.forEach(d => { const t = Number(d.data().ts) || 0; if (t > newestSig) newestSig = t; });
+    const docUpd = Number(wi.updatedTs) || 0;
+    if (!dup.empty && newestSig >= docUpd) { if (typeof toast === 'function') toast('✅ ' + name + ' — ' + _sopLL('already signed', 'ya firmó')); _sopLoadAcks(key, opts.listId); return; }
     const date = (typeof LDATE === 'function') ? LDATE() : new Date().toISOString().slice(0, 10);
     await db.collection('sopSignoffs').add({
       sopId: key, title, employee: name, date, ts: Date.now(), accepted: true,

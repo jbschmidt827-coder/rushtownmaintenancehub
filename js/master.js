@@ -33,6 +33,8 @@
   function _dstr(offset) { return new Date(Date.now() - offset * 86400000).toISOString().slice(0, 10); }
   function _esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function _num(v) { return (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString(); }
+  // completedTs can be a Firestore Timestamp OBJECT (serverTimestamp) — coerce.
+  function _ms(v) { try { return (v && typeof v.toMillis === 'function') ? v.toMillis() : (Number(v) || 0); } catch (e) { return 0; } }
 
   function _sites() {
     var raw = null;
@@ -67,15 +69,19 @@
       db.collection('eggFlow').where('date', '>=', dFrom).get(),
       db.collection('tierExternal').get(),
       db.collection('workOrders').where('ts', '>=', tFrom).get(),
-      db.collection('barnWalks').where('date', '>=', dFrom).get().catch(function () { return null; })
+      db.collection('barnWalks').where('date', '>=', dFrom).get().catch(function () { return null; }),
+      db.collection('workOrders').where('status', '==', 'open').get().catch(function () { return null; }),
+      db.collection('workOrders').where('status', '==', 'in-progress').get().catch(function () { return null; })
     ]).then(function (r) {
-      var runs = [], flows = [], ext = {}, wos = [], walks = [];
+      var runs = [], flows = [], ext = {}, wos = [], walks = [], openWos = [];
       r[0].forEach(function (d) { runs.push(d.data()); });
       r[1].forEach(function (d) { flows.push(d.data()); });
       r[2].forEach(function (d) { try { ext[d.id] = JSON.parse((d.data() || {}).json || '{}'); } catch (e) {} });
       r[3].forEach(function (d) { wos.push(d.data()); });
       if (r[4]) r[4].forEach(function (d) { walks.push(d.data()); });
-      var D = { runs: runs, flows: flows, ext: ext, wos: wos, walks: walks };
+      if (r[5]) r[5].forEach(function (d) { openWos.push(d.data()); });
+      if (r[6]) r[6].forEach(function (d) { openWos.push(d.data()); });
+      var D = { runs: runs, flows: flows, ext: ext, wos: wos, walks: walks, openWos: openWos };
       _cache = { days: days, data: D };
       return D;
     });
@@ -115,7 +121,7 @@
     var farms = WO_FARMS[site] || [site];
     var hi = Date.now() - fromD * 86400000, lo = Date.now() - toD * 86400000;
     var opened = D.wos.filter(function (w) { return farms.indexOf(w.farm) >= 0 && (w.ts || 0) >= lo && (w.ts || 0) < hi; }).length;
-    var closed = D.wos.filter(function (w) { var t = w.completedTs || 0; return farms.indexOf(w.farm) >= 0 && w.status === 'completed' && t >= lo && t < hi; }).length;
+    var closed = D.wos.filter(function (w) { var t = _ms(w.completedTs); return farms.indexOf(w.farm) >= 0 && w.status === 'completed' && t >= lo && t < hi; }).length;
     return { rate: rate, hours: Math.round(mins / 60 * 10) / 10, cases: Math.round(eggs / EGGS_PER_CASE), mort: mort, opened: opened, closed: closed, days: Object.keys(daysRun).length };
   }
 
@@ -442,10 +448,51 @@
       var t7 = Date.now() - 7 * 86400000;
       var w7 = D.wos.filter(function (w) { return farms.indexOf(w.farm) >= 0 && (w.ts || 0) >= t7; });
       var opened = w7.length;
-      var closed = D.wos.filter(function (w) { return farms.indexOf(w.farm) >= 0 && w.status === 'completed' && (w.completedTs || w.ts || 0) >= t7; }).length;
+      var closed = D.wos.filter(function (w) { return farms.indexOf(w.farm) >= 0 && w.status === 'completed' && (_ms(w.completedTs) || w.ts || 0) >= t7; }).length;
       var openNow = D.wos.filter(function (w) { return farms.indexOf(w.farm) >= 0 && w.status !== 'completed'; });
       var reps = _repeats(D.wos, farms);
-      var woHtml = '<div style="' + MONO + 'font-size:12px;color:#cfc0e8;line-height:1.9;">' +
+      // WO AGING BY TECH (v273): every open WO regardless of age, by assignee.
+      var _tech = {};
+      (D.openWos || []).forEach(function (w) {
+        if (farms.indexOf(w.farm) < 0) return;
+        var who = String(w.assignedTo || '').trim() || '— unassigned —';
+        var g = (_tech[who] = _tech[who] || { open: 0, oldest: 0, urgent: 0 });
+        g.open++;
+        if (w.priority === 'urgent') g.urgent++;
+        var age = Math.floor((Date.now() - (w.ts || Date.now())) / 86400000);
+        if (age > g.oldest) g.oldest = age;
+      });
+      var _closes = {};
+      D.wos.forEach(function (w) {
+        if (farms.indexOf(w.farm) < 0 || w.status !== 'completed') return;
+        var who = String(w.completedBy || w.assignedTo || '').trim(); if (!who) return;
+        var g = (_closes[who] = _closes[who] || { n: 0, days: [] });
+        g.n++;
+        var ct = _ms(w.completedTs); if (ct && w.ts) g.days.push((ct - w.ts) / 86400000);
+      });
+      var _names = {}; Object.keys(_tech).forEach(function (k) { _names[k] = 1; }); Object.keys(_closes).forEach(function (k) { _names[k] = 1; });
+      var agingRows = Object.keys(_names).map(function (who) {
+        var o = _tech[who] || { open: 0, oldest: 0, urgent: 0 }, c = _closes[who] || { n: 0, days: [] };
+        var avg = c.days.length ? Math.round(c.days.reduce(function (a, b) { return a + b; }, 0) / c.days.length * 10) / 10 : null;
+        return { who: who, open: o.open, oldest: o.oldest, urgent: o.urgent, closed: c.n, avg: avg };
+      }).sort(function (a, b) { return b.open - a.open || b.oldest - a.oldest; });
+      var agingHtml = agingRows.length
+        ? '<div style="' + MONO + 'font-size:10px;font-weight:700;letter-spacing:1px;color:#9a7ae0;text-transform:uppercase;margin-bottom:6px;">' + 'By tech — open · oldest · closed' + '</div>' +
+          '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:11.5px;min-width:520px;">' +
+          '<thead><tr style="border-bottom:1px solid #3a2f55;color:#6a5a8a;"><th style="text-align:left;padding:5px 6px;">Tech</th><th style="padding:5px 6px;">Open</th><th style="padding:5px 6px;">Oldest</th><th style="padding:5px 6px;">Urgent</th><th style="padding:5px 6px;">Closed 14d</th><th style="padding:5px 6px;">Avg days to close</th></tr></thead><tbody>' +
+          agingRows.map(function (r) {
+            var oc = r.oldest >= 10 ? '#f0a0a0' : r.oldest >= 5 ? '#e8c96a' : '#cfc0e8';
+            return '<tr style="border-bottom:1px solid #241d3a;">' +
+              '<td style="padding:6px;color:#efe8fa;font-weight:700;">' + _esc(r.who) + '</td>' +
+              '<td style="padding:6px;text-align:center;color:' + (r.open ? '#e8c96a' : '#4ade80') + ';font-weight:700;">' + r.open + '</td>' +
+              '<td style="padding:6px;text-align:center;color:' + oc + ';">' + (r.open ? r.oldest + 'd' : '—') + '</td>' +
+              '<td style="padding:6px;text-align:center;color:' + (r.urgent ? '#f0a0a0' : '#6a5a8a') + ';">' + (r.urgent || '—') + '</td>' +
+              '<td style="padding:6px;text-align:center;color:#4ade80;">' + r.closed + '</td>' +
+              '<td style="padding:6px;text-align:center;color:#cfc0e8;">' + (r.avg != null ? r.avg + 'd' : '—') + '</td>' +
+            '</tr>';
+          }).join('') + '</tbody></table></div>'
+        : '';
+      var woHtml = agingHtml + '<div style="' + MONO + 'font-size:12px;color:#cfc0e8;line-height:1.9;margin-top:8px;">' +
         'Opened 7d: <b style="color:#efe8fa;">' + opened + '</b> · Closed 7d: <b style="color:#4ade80;">' + closed + '</b> · Open now: <b style="color:' + (openNow.length ? '#e8c96a' : '#4ade80') + ';">' + openNow.length + '</b>' +
         (reps.length ? ('<br>🔁 Repeat patterns (14d): ' + reps.slice(0, 5).map(function (r) { return '<b style="color:#f0a0a0;">' + _esc(r.problem) + ' ×' + r.n + '</b> (' + r.farm + (r.house ? ' H' + r.house : '') + ')'; }).join(' · ')) : '<br>🔁 No repeat patterns in 14 days. Clean.') +
         '</div>';
