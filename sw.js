@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v277-dailyentry';
+const CACHE_NAME = 'rushtown-v278-mwgridfix';
 
 const SHELL_FILES = [
   '/',

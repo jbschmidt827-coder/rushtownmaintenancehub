@@ -2528,6 +2528,12 @@ function openMorningWalk(farm, house) {
   });
   document.querySelectorAll('#morning-walk-modal .bw-yn-btn').forEach(b => b.className = 'bw-yn-btn');
   document.querySelectorAll('#morning-walk-modal .bw-yn-row').forEach(r => { r.style.outline = 'none'; });
+  // 💧 Build THIS house's meter grid on EVERY open (v278 fix — leader report:
+  // H1-4 showed 4 boxes instead of 6). It used to build only on a fresh form,
+  // so switching houses kept the PREVIOUS house's grid whenever a draft or
+  // done record short-circuited the open. Building first also lets a draft's
+  // per-meter values restore into real inputs (restore matches by element id).
+  try { _wmSetup('mw', farm, house, null); } catch (e) {}
   const ibox = document.getElementById('mw-instructions');
   if (ibox) ibox.style.display = 'none';
   document.getElementById('mw-submit-btn').disabled = true;
@@ -2547,7 +2553,13 @@ function openMorningWalk(farm, house) {
   var _mwDone = (typeof MORNING_STATUS !== 'undefined') && (MORNING_STATUS[farm + '-' + house] === 'done' || MORNING_STATUS[farm + '-' + house] === 'issue');
   if (_mwDone) {
     db.collection('morningWalks').doc(farm + '-' + house + '-' + _mwToday).get().then(function (doc) {
-      if (doc.exists) { mwLoadRecord(doc.data()); _mwShowSubmittedBanner(doc.data()); }
+      if (doc.exists) {
+        mwLoadRecord(doc.data()); _mwShowSubmittedBanner(doc.data());
+        // still on the same house? → prefill the meter grid from TODAY's record
+        if (_mwFarm === farm && String(_mwHouse) === String(house)) {
+          try { _wmSetup('mw', farm, house, doc.data()); } catch (e) {}
+        }
+      }
     }).catch(function () {});
     checkMWReady();
     return;
@@ -2560,7 +2572,6 @@ function openMorningWalk(farm, house) {
       : '📝 Draft restored — picking up where you left off');
   }
   if (!restored) {
-    try { _wmSetup('mw', farm, house, null); } catch (e) {}   // meter boxes appear immediately
     // Pre-populate employee — this device's remembered user first
     const _du = (typeof getDeviceUser === 'function') ? getDeviceUser() : '';
     if (_du) { const e = document.getElementById('mw-employee'); if (e && !e.value) { e.value = _du; } }
@@ -2570,8 +2581,17 @@ function openMorningWalk(farm, house) {
       .then(snap => {
         if (snap.empty) return;
         const docs = snap.docs.map(d => d.data()).sort((a,b) => (b.ts||0) - (a.ts||0));
+        if (_mwFarm !== farm || String(_mwHouse) !== String(house)) return;   // house changed while loading (stale async)
         _mwWalks = docs;                       // used by _mwPrevWaterReading()
-        try { _wmSetup('mw', farm, house, docs[0] || null); } catch (e) {}
+        // Prefill ONLY from a record saved TODAY (an edit). Yesterday's readings
+        // must never prefill — an unchanged save would read 0 gal used and fire
+        // a false "meter did not move" urgent WO.
+        var _todayRec = docs.find(function (d) { return d && d.date === _mwToday; });
+        var _gridEmpty = true;
+        document.querySelectorAll('[id^="mw-wm-"]').forEach(function (el) { if (el.value !== '') _gridEmpty = false; });
+        var _singleWM = document.getElementById('mw-water-meter');
+        if (_singleWM && _singleWM.value !== '') _gridEmpty = false;
+        if (_todayRec && _gridEmpty) { try { _wmSetup('mw', farm, house, _todayRec); } catch (e) {} }
         try { mwWaterUsage(); } catch (e) {}   // show "x gal used" once we know the last reading
         const l = docs[0];
         const e = document.getElementById('mw-employee');
