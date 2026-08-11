@@ -1102,8 +1102,21 @@ function bwBlockComplete(name) {
       // open inlets, so the required answer either blocked submit or got
       // mismarked. Question removed from the form; gate follows.
       return ['air','doors'].every(k => _bwData[k] !== undefined);
-    case 'feedwater':
-      return ['feed','waste','stand'].every(k => _bwData[k] !== undefined);
+    case 'feedwater': {
+      if (!['feed','waste','stand'].every(k => _bwData[k] !== undefined)) return false;
+      // 💧 DAILY WATER ENTRY (Joe 2026-08-07: "track water entry every day from
+      // Hegins"). Every meter in the house must have a number for the block to
+      // read complete — the same rule the leader already follows on the walk.
+      // Submit stays non-blocking; this only drives the % and the "Finish first"
+      // hint, so a house can still be turned in during a real problem.
+      try {
+        const n = (typeof waterMeterCount === 'function') ? waterMeterCount(_bwFarm, _bwHouse) : 1;
+        if (n > 1) {
+          for (let m = 1; m <= n; m++) if (!_bwHasVal('bw-wm-' + m)) return false;
+        } else if (!_bwHasVal('bw-water-meter')) return false;
+      } catch (e) {}
+      return true;
+    }
     case 'belts':
       return _bwData.eggbelt !== undefined;
     case 'pest': {
@@ -1968,7 +1981,7 @@ const _BW_BLOCK_LABELS_PAIR = {
   employee:['Your name','Tu nombre'], mortality:['Mortality','Mortalidad'],
   eggscollect:['Eggs collected','Huevos recolectados'],
   equipment:['Equipment','Equipo'], air:['Air quality','Calidad del aire'],
-  feedwater:['Feed & water','Alimento y agua'], belts:['Egg belts','Bandas de huevo'],
+  feedwater:['Feed & water (read every meter)','Alimento y agua (lee cada medidor)'], belts:['Egg belts','Bandas de huevo'],
   pest:['Pest','Plagas'], checklist:['Checklist','Lista de tareas'],
   weekly:['Weekly review','Revisión semanal'], cageclean:['Cage cleaning','Limpieza de jaulas'],
   notes:['Notes','Notas']

@@ -368,11 +368,43 @@
     var galDrop = (galAvg && galToday > 0) ? Math.round((galToday - galAvg) / galAvg * 100) : null;
     if (galToday > 0 && galDrop != null && galDrop <= -25) waterS = 'r';
     else if (galToday > 0 && galDrop != null && galDrop <= -10 && waterS === 'g') waterS = 'y';
+    // ── Daily-entry COVERAGE (Joe 2026-08-07: "track water entry every day from
+    // Hegins and total gallons captured for the Tier 1 meeting"). A read house =
+    // any house with a meter reading TODAY (morning walk or EE check). Missing
+    // houses are the point — a total means nothing if 3 barns never got read.
+    var _expHouses = {};
+    try {
+      var _sites = (S === 'All') ? ['Hegins', 'Danville'] : [S];
+      _sites.forEach(function (fm) {
+        var arr = (typeof FARM_HOUSES !== 'undefined' && FARM_HOUSES[fm]) ? FARM_HOUSES[fm] : [];
+        arr.forEach(function (h) {
+          var n = String(h).replace(/^\s*house\s*/i, '').trim();
+          if (typeof isHouseDown === 'function' && isHouseDown(fm, n)) return;
+          _expHouses[fm + '-' + n] = 1;
+        });
+      });
+    } catch (eH) {}
+    var waterExp = Object.keys(_expHouses).length;
+    var _readSet = {}, _meterSeen = 0;
+    _todayReads.forEach(function (w) {
+      if (w.waterMeter == null && !w.waterMeters) return;
+      _readSet[w.farm + '-' + w.house] = 1; _meterSeen++;
+    });
+    var waterRead = Object.keys(_readSet).length;
+    // colour also reflects COVERAGE: a day with houses unread can't be green.
+    if (waterExp && waterRead < waterExp) {
+      var _missFrac = (waterExp - waterRead) / waterExp;
+      if (_missFrac >= 0.5 && waterS !== 'r') waterS = 'r';
+      else if (waterS === 'g') waterS = 'y';
+    }
     var waterVal = galToday > 0 ? (_num(galToday) + ' gal')
-                 : (waterBad === 0 ? L('OK', 'OK') : waterBad + ' ' + L('issues', 'problemas'));
-    var waterSub = galToday > 0
-      ? (galHouses + ' ' + L('houses', 'casas') + (galAvg ? (' · ' + L('7d avg ', 'prom 7d ') + _num(galAvg) + (galDrop != null ? (' · ' + (galDrop >= 0 ? '▲' : '▼') + Math.abs(galDrop) + '%') : '')) : ''))
-      : (waterBad ? L('PSI / flags', 'PSI / alertas') : L('no meter reading yet', 'sin lectura del medidor'));
+                 : (waterRead ? L('no usage yet', 'sin uso aún')
+                 : (waterBad === 0 ? L('OK', 'OK') : waterBad + ' ' + L('issues', 'problemas')));
+    var waterCov = waterExp ? (waterRead + '/' + waterExp + ' ' + L('houses read', 'casas leídas')) : '';
+    var waterSub = (waterCov ? waterCov : (galHouses + ' ' + L('houses', 'casas'))) +
+      (galAvg ? (' · ' + L('7d avg ', 'prom 7d ') + _num(galAvg) + (galDrop != null ? (' · ' + (galDrop >= 0 ? '▲' : '▼') + Math.abs(galDrop) + '%') : '')) : '') +
+      (!waterRead && waterBad ? (' · ' + L('PSI / flags', 'PSI / alertas')) : '') +
+      (!waterRead && !waterBad ? (' · ' + L('no meter reading yet', 'sin lectura del medidor')) : '');
     // Feed tons on hand = NEWEST bin reading per house today (A + B), morning
     // walk or EE check, whichever was entered last.
     var _tons = {}, _tonsTs = {};
@@ -439,13 +471,16 @@
     var dtWk = weekPack.reduce(function (s, r) { return s + (Number(r.downtimeMin) || 0); }, 0);
     var chkWk = Object.keys(chkMap).reduce(function (s, k) { return s + chkMap[k]; }, 0);
     var flagsWk = weekChecks.reduce(function (s, c) { return s + ((c.flags && c.flags.length) || 0); }, 0);
+    var galWk = Object.keys(_byDayGal).reduce(function (a, d) { return a + _byDayGal[d]; }, 0);
     var flagHouses = {}; weekChecks.forEach(function (c) { if (c.flags && c.flags.length) flagHouses[c.farm + '-' + c.house] = 1; });
 
     var trends =
       _trendRow('🥚', L('Eggs processed', 'Huevos procesados'), _num(eggWk), L('this week', 'esta semana'), _series(eggMap), '#eab308') +
       _trendRow('💀', L('Mortality', 'Mortalidad'), _num(mortWk), L('birds this week', 'aves esta semana'), _series(mortMap), '#ef4444') +
       _trendRow('🐔', L('Checks completed', 'Revisiones'), String(chkWk), L('this week', 'esta semana'), _series(chkMap), '#22c55e') +
-      _trendRow('⏱', L('Packing downtime', 'Paro empaque'), _num(dtWk), L('min this week', 'min esta semana'), _series(dtMap), '#f59e0b');
+      _trendRow('⏱', L('Packing downtime', 'Paro empaque'), _num(dtWk), L('min this week', 'min esta semana'), _series(dtMap), '#f59e0b') +
+      // 💧 TOTAL GALLONS captured per day — the Tier 1 water number (v279).
+      _trendRow('💧', L('Water captured', 'Agua registrada'), _num(galWk), L('gal this week', 'gal esta semana'), _series(_byDayGal), '#38bdf8');
 
     // ── WEEK digest (what happened / open risks) ──
     function _dg(icon, txt) { return '<div style="display:flex;gap:9px;padding:8px 2px;border-bottom:1px solid #16281680;' + MONO + 'font-size:12px;color:#cbe0cb;"><span>' + icon + '</span><span>' + txt + '</span></div>'; }
@@ -459,6 +494,7 @@
       _dg('🥚', _num(eggWk) + L(' eggs processed', ' huevos procesados')) +
       _dg('⚠️', flagsWk + L(' flags across ', ' alertas en ') + Object.keys(flagHouses).length + L(' houses', ' casas')) +
       _dg('⏱', _num(dtWk) + L(' min packing downtime', ' min de paro en empaque')) +
+      _dg('💧', _num(galWk) + L(' gallons of water captured · ', ' galones de agua registrados · ') + waterRead + '/' + waterExp + L(' houses read today', ' casas leídas hoy')) +
       _dg('🔧', woOpenedWk + L(' work orders opened · ', ' OT abiertas · ') + openWO.length + L(' still open', ' aún abiertas')) +
       _dg('📋', weekPM.length + L(' PMs completed · ', ' PM completados · ') + pmOverdue + L(' overdue now', ' vencidos ahora')) +
       _dg(critParts ? '🟥' : '🔩', critParts + L(' parts at/below minimum', ' piezas en/bajo mínimo')) +
@@ -508,6 +544,12 @@
           }
         });
       });
+      // 4b) Water not entered everywhere today — the daily-entry discipline note.
+      if (waterExp && waterRead < waterExp) {
+        var _missN = waterExp - waterRead;
+        notes.push({ sev: (_missN / waterExp) >= 0.5 ? 'r' : 'y',
+          txt: '💧 ' + L('Water meters not read in ', 'Medidores de agua sin leer en ') + _missN + L(' of ', ' de ') + waterExp + L(' houses today — no reading means no usage number and no early warning if birds stop drinking.', ' casas hoy — sin lectura no hay número de uso ni aviso temprano si las aves dejan de beber.') });
+      }
       // 5) Runs left open (forgot Stop)
       var _stuck = (_t1cache.eggFlow || []).filter(function (f) {
         return (S === 'All' || f.farm === S) && f.status !== 'done' && f.startTs && (Date.now() - f.startTs) > 8 * 3600000;
