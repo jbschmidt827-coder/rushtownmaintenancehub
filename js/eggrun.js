@@ -230,6 +230,70 @@ function erFmtClock(v) {
   var h = +m[1], ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12;
   return h + ':' + m[2] + ' ' + ap;
 }
+// ── ✎ Edit a PAST day's row (v280) ─────────────────────────────────────────
+// Accepts "05:30-11:48" (clock range), a single "11:48" (stop, keeping the saved
+// start), or plain minutes "372". Writes manualMin so eggs/hr recomputes, and
+// stamps who fixed it. Also fixes that day's eggs on request.
+async function erEditRow(farm, m, date, what) {
+  try {
+    if (typeof db === 'undefined' || !db || !date) return;
+    var rec = _erDocs.find(function (r) { return r.farm === farm && Number(r.machine || 1) === Number(m) && r.date === date; }) || {};
+    var lbl = farm + ' M' + m + ' · ' + date;
+    var save = function (patch) {
+      patch.editedBy = erBy(); patch.editedTs = Date.now(); patch.ts = Date.now();
+      return db.collection('eggDailyRun').doc(erKey(farm, m, date))
+        .set(Object.assign({ farm: farm, machine: Number(m), date: date }, patch), { merge: true })
+        .then(function () { if (typeof toast === 'function') toast('✎ ' + lbl + ' ' + erL('updated', 'actualizado')); renderEggRun(); })
+        .catch(function (e) { console.error('erEditRow save:', e); if (typeof toast === 'function') toast(erL('Could not save', 'No se pudo guardar')); });
+    };
+    if (what === 'eggs') {
+      var askE = erL('Total eggs for ' + lbl + '?', '¿Total de huevos para ' + lbl + '?');
+      var goE = function (v) {
+        v = String(v == null ? '' : v).replace(/[, ]/g, '').trim(); if (!v) return;
+        if (!/^\d+$/.test(v)) { if (typeof toast === 'function') toast(erL('Numbers only', 'Solo números')); return; }
+        save({ eggs: parseInt(v, 10), eggsBy: erBy() });
+      };
+      if (typeof promptInline === 'function') promptInline(askE, goE); else goE(window.prompt(askE, rec.eggs != null ? rec.eggs : ''));
+      return;
+    }
+    var cur = (rec.startClock && rec.stopClock) ? (rec.startClock + '-' + rec.stopClock)
+            : (rec.manualMin != null ? String(rec.manualMin) : '');
+    var askT = erL('Run time for ' + lbl + '? Type 05:30-11:48, or just minutes (372).',
+                   '¿Tiempo de ' + lbl + '? Escribe 05:30-11:48, o solo minutos (372).');
+    var goT = function (v) {
+      v = String(v == null ? '' : v).trim(); if (!v) return;
+      var mins = null, patch = {};
+      var rng = /^(\d{1,2}):(\d{2})\s*[-–to]+\s*(\d{1,2}):(\d{2})$/i.exec(v);
+      var one = /^(\d{1,2}):(\d{2})$/.exec(v);
+      if (rng) {
+        var a = (+rng[1]) * 60 + (+rng[2]), b = (+rng[3]) * 60 + (+rng[4]);
+        if (b <= a) b += 1440;                       // ran past midnight
+        mins = b - a;
+        patch.startClock = ('0' + rng[1]).slice(-2) + ':' + rng[2];
+        patch.stopClock  = ('0' + rng[3]).slice(-2) + ':' + rng[4];
+      } else if (one) {
+        var st = rec.startClock || (typeof erStartDefault === 'function' ? erStartDefault(farm) : '');
+        var sm = /^(\d{1,2}):(\d{2})$/.exec(st || '');
+        if (!sm) { if (typeof toast === 'function') toast(erL('No start time saved — type the range 05:30-11:48', 'Sin hora de inicio — escribe el rango 05:30-11:48')); return; }
+        var s1 = (+sm[1]) * 60 + (+sm[2]), s2 = (+one[1]) * 60 + (+one[2]);
+        if (s2 <= s1) s2 += 1440;
+        mins = s2 - s1;
+        patch.startClock = ('0' + sm[1]).slice(-2) + ':' + sm[2];
+        patch.stopClock  = ('0' + one[1]).slice(-2) + ':' + one[2];
+      } else if (/^\d+$/.test(v)) {
+        mins = parseInt(v, 10);
+      } else {
+        if (typeof toast === 'function') toast(erL('Type 05:30-11:48 or minutes like 372', 'Escribe 05:30-11:48 o minutos como 372'));
+        return;
+      }
+      if (!(mins > 0) || mins > 960) { if (typeof toast === 'function') toast(erL('That run time looks wrong — check it', 'Ese tiempo no cuadra — revísalo')); return; }
+      patch.manualMin = mins; patch.manualBy = erBy();
+      save(patch);
+    };
+    if (typeof promptInline === 'function') promptInline(askT, goT); else goT(window.prompt(askT, cur));
+  } catch (e) { console.error('erEditRow:', e); }
+}
+
 // ── Time-picker guards (v268) ──────────────────────────────────────────────
 var _erRenderOnBlur = false;
 function _erTimeFocused() {
@@ -712,6 +776,13 @@ function renderEggRun() {
         '<td style="padding:8px 6px;color:#f0ead8;">' + (e2 != null ? e2.toLocaleString() : '—') + '</td>' +
         '<td style="padding:8px 6px;color:' + (eph2 ? '#4ade80' : '#555') + ';">' + (eph2 ? eph2.toLocaleString() : '—') + '</td>' +
         '<td style="padding:8px 6px;color:#5a8a5a;font-size:11px;">' + (r.manualBy || r.eggsBy || (erRuns(r)[0] || {}).by || r.by || '—') + '</td>' +
+        // ✎ Fix a past day (Joe 2026-08-11: "be able to edit this to add run
+        // times later"). Rows entered without Start/Stop show "—" — this adds
+        // the run time (or corrects eggs) days later without re-opening the day.
+        '<td style="padding:8px 6px;text-align:right;white-space:nowrap;">' +
+          '<button onclick="erEditRow(\'' + _esc(r.farm) + '\',' + (r.machine || 1) + ',\'' + _esc(r.date || '') + '\',\'time\')" title="' + erL('Add / fix run time', 'Agregar / corregir tiempo') + '" style="padding:6px 9px;background:' + (ms ? '#0a2a1a' : '#3a2a08') + ';border:1px solid ' + (ms ? '#2a5a3a' : '#7a5a1a') + ';border-radius:7px;color:' + (ms ? '#9ad6a0' : '#f0d68a') + ';cursor:pointer;font-size:11px;">⏱</button> ' +
+          '<button onclick="erEditRow(\'' + _esc(r.farm) + '\',' + (r.machine || 1) + ',\'' + _esc(r.date || '') + '\',\'eggs\')" title="' + erL('Fix eggs', 'Corregir huevos') + '" style="padding:6px 9px;background:#0d1f3a;border:1px solid #2a4a7a;border-radius:7px;color:#9cc0f6;cursor:pointer;font-size:11px;">🥚</button>' +
+        '</td>' +
       '</tr>';
     }).join('');
     html += '<div style="' + MONO + 'font-size:12px;font-weight:700;color:#7ab07a;margin:16px 0 8px;">📋 ' + erL('Last 14 days', 'Últimos 14 días') + '</div>' +
@@ -724,7 +795,11 @@ function renderEggRun() {
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + erL('Eggs', 'Huevos') + '</th>' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + erL('Eggs/hr', 'Huevos/hr') + '</th>' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + erL('By', 'Por') + '</th>' +
-      '</tr></thead><tbody>' + hrows + '</tbody></table></div>';
+        '<th style="padding:8px 6px;color:#5a8a5a;text-align:right;">' + erL('Fix', 'Corregir') + '</th>' +
+      '</tr></thead><tbody>' + hrows + '</tbody></table></div>' +
+      '<div style="' + MONO + 'font-size:9.5px;color:#4a6a4a;margin-top:6px;line-height:1.6;">' +
+        erL('⏱ add or fix a run time on any past day (type 05:30-11:48, or just the minutes). 🥚 fix that day\'s eggs. Edits are stamped with your name.',
+            '⏱ agrega o corrige el tiempo de cualquier día (escribe 05:30-11:48, o solo los minutos). 🥚 corrige los huevos. Las ediciones quedan con tu nombre.') + '</div>';
   }
 
   el.innerHTML = html;
@@ -754,6 +829,7 @@ if (typeof window !== 'undefined') {
   window.eggRunSetHouseEggs = eggRunSetHouseEggs;   // Danville: eggs by house
   window.eggRunSetClock = eggRunSetClock;
   window.erTimeBlur = erTimeBlur;
+  window.erEditRow = erEditRow;
   window.palTypeSet = palTypeSet;
   window.palToggleSel = palToggleSel;
   window.palAdd = palAdd;

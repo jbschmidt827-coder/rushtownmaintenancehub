@@ -1199,14 +1199,39 @@ function _wmPrev(list, m) {
   return null;
 }
 // Build the per-meter grid for a form ('bw' or 'mw') and prefill saved values.
-function _wmSetup(prefix, farm, house, saved) {
+function _wmSetup(prefix, farm, house, saved, hist) {
   try {
     var single = document.getElementById(prefix + '-water-meter');
     if (!single) return;
     var n = waterMeterCount(farm, house);
     var wrapId = prefix + '-water-meters';
     var wrap = document.getElementById(wrapId);
-    if (n <= 1) { if (wrap) wrap.remove(); single.style.display = ''; return; }
+    var es = (typeof _lang !== 'undefined' && _lang === 'es');
+    // LAST reading per meter, shown right on the box so the crew (and Joe) can
+    // see the subtraction: today − yesterday = gallons (Joe 2026-08-11).
+    var prevOf = function (m) {
+      try { var v = _wmPrev(hist || [], m); if (v == null) v = _wmPrev(hist || [], String(m)); return v; } catch (e) { return null; }
+    };
+    if (n <= 1) {
+      if (wrap) wrap.remove();
+      single.style.display = '';
+      var p1 = null;
+      try {
+        var h = hist || [];
+        for (var i = 0; i < h.length; i++) { if (h[i] && h[i].meter != null) { p1 = Number(h[i].meter); break; } }
+      } catch (e) {}
+      var lbl1 = document.getElementById(prefix + '-wm-prev');
+      if (p1 != null) {
+        if (!lbl1) {
+          lbl1 = document.createElement('div');
+          lbl1.id = prefix + '-wm-prev';
+          lbl1.style.cssText = "font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6a90d9;margin-top:3px;";
+          single.parentNode.insertBefore(lbl1, single.nextSibling);
+        }
+        lbl1.textContent = (es ? 'ayer: ' : 'yesterday: ') + p1.toLocaleString();
+      } else if (lbl1) { lbl1.remove(); }
+      return;
+    }
     single.style.display = 'none';                       // total is computed, not typed
     if (!wrap) {
       wrap = document.createElement('div');
@@ -1214,19 +1239,70 @@ function _wmSetup(prefix, farm, house, saved) {
       single.parentNode.insertBefore(wrap, single);
     }
     var vals = (saved && saved.waterMeters) || {};
-    var es = (typeof _lang !== 'undefined' && _lang === 'es');
     var cols = n >= 6 ? 3 : 2;
     var html = '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:8px;">';
     for (var m = 1; m <= n; m++) {
       var v = vals[m] != null ? String(vals[m]) : (vals[String(m)] != null ? String(vals[String(m)]) : '');
+      var pv = prevOf(m);
       html += '<div>' +
         '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:#6a90d9;margin-bottom:3px;">' + (es ? 'Medidor ' : 'Meter ') + m + '</div>' +
-        '<input type="number" id="' + prefix + '-wm-' + m + '" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="0" min="0" step="1" inputmode="numeric" onchange="' + (prefix === 'bw' ? 'bwWaterUsage()' : 'mwWaterUsage()') + '" oninput="' + (prefix === 'bw' ? 'bwSaveDraft()' : '') + '" value="' + v.replace(/"/g, '&quot;') + '">' +
+        '<input type="number" id="' + prefix + '-wm-' + m + '" class="bw-input" style="border-color:#1e3a6a;background:#091529;" placeholder="0" min="0" step="1" inputmode="numeric" onchange="' + (prefix === 'bw' ? 'bwWaterUsage()' : 'mwWaterUsage()') + '" oninput="' + (prefix === 'bw' ? 'bwWaterLive();bwSaveDraft()' : 'mwWaterLive()') + '" value="' + v.replace(/"/g, '&quot;') + '">' +
+        '<div id="' + prefix + '-wmp-' + m + '" style="font-family:\'IBM Plex Mono\',monospace;font-size:9.5px;color:' + (pv == null ? '#4a6a8a' : '#6a90d9') + ';margin-top:2px;min-height:12px;">' +
+          (pv == null ? (es ? 'sin lectura previa' : 'no prior reading') : ((es ? 'ayer ' : 'yest ') + pv.toLocaleString())) +
+        '</div>' +
       '</div>';
     }
     wrap.innerHTML = html + '</div>';
+    // live per-meter math on whatever is already typed
+    try { if (prefix === 'bw') bwWaterLive(); else mwWaterLive(); } catch (e) {}
   } catch (e) { console.warn('_wmSetup:', e); }
 }
+
+// Live subtraction under each meter box: "yest 118,400 → +1,600 gal".
+// Shared by both forms; reads the same history the save path uses.
+function _wmLive(prefix, farm, house, hist) {
+  try {
+    var es = (typeof _lang !== 'undefined' && _lang === 'es');
+    var n = waterMeterCount(farm, house);
+    if (n <= 1) return;
+    var total = 0, any = false;
+    for (var m = 1; m <= n; m++) {
+      var inp = document.getElementById(prefix + '-wm-' + m);
+      var lbl = document.getElementById(prefix + '-wmp-' + m);
+      if (!inp || !lbl) continue;
+      var prev = _wmPrev(hist || [], m); if (prev == null) prev = _wmPrev(hist || [], String(m));
+      var cur = inp.value === '' ? null : Number(inp.value);
+      if (prev == null) { lbl.style.color = '#4a6a8a'; lbl.textContent = es ? 'sin lectura previa' : 'no prior reading'; continue; }
+      if (cur == null || isNaN(cur)) { lbl.style.color = '#6a90d9'; lbl.textContent = (es ? 'ayer ' : 'yest ') + prev.toLocaleString(); continue; }
+      if (cur < prev) { lbl.style.color = '#f0a35a'; lbl.textContent = (es ? '⚠ menor que ' : '⚠ under ') + prev.toLocaleString(); continue; }
+      var used = Math.round(cur - prev);
+      total += used; any = true;
+      lbl.style.color = used === 0 ? '#e53e3e' : '#4ade80';
+      lbl.textContent = (es ? 'ayer ' : 'yest ') + prev.toLocaleString() + ' → ' + (used === 0 ? (es ? 'sin movimiento' : 'no movement') : ('+' + used.toLocaleString() + ' gal'));
+    }
+    // house total line under the grid
+    var tid = prefix + '-wm-total';
+    var tl = document.getElementById(tid);
+    var wrap = document.getElementById(prefix + '-water-meters');
+    if (!tl && wrap) {
+      tl = document.createElement('div');
+      tl.id = tid;
+      tl.style.cssText = "font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:#4ade80;margin-top:7px;";
+      wrap.appendChild(tl);
+    }
+    if (tl) tl.textContent = any ? ('💧 ' + (es ? 'TOTAL de esta casa: ' : 'HOUSE TOTAL: ') + total.toLocaleString() + ' gal') : '';
+  } catch (e) {}
+}
+function bwWaterLive() { _wmLive('bw', _bwFarm, _bwHouse, _bwWaterHist || []); }
+function mwWaterLive() {
+  var today = (typeof LDATE === 'function') ? LDATE() : '';
+  var list = (typeof _mwWalks !== 'undefined' && Array.isArray(_mwWalks)) ? _mwWalks : [];
+  var hist = list.filter(function (w) { return w && w.date !== today && (w.waterMeter != null || w.waterMeters); })
+    .sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); })
+    .map(function (w) { return { meter: w.waterMeter != null ? Number(w.waterMeter) : null, meters: w.waterMeters || null, ts: w.ts || 0, date: w.date }; });
+  _wmLive('mw', _mwFarm, _mwHouse, hist);
+}
+try { window.bwWaterLive = bwWaterLive; window.mwWaterLive = mwWaterLive; window._wmLive = _wmLive; } catch (e) {}
 // Read the grid (or single box) → { meters, total, entered } for a form.
 function _wmRead(prefix, farm, house) {
   var n = waterMeterCount(farm, house);
@@ -1302,7 +1378,9 @@ async function bwWaterUsage() {
   if (_bwWaterHist === null) {
     out.style.color = '#6a90d9'; out.textContent = es ? 'Buscando la última lectura…' : 'Looking up the last reading…';
     _bwWaterHist = await _bwFetchWaterHist(_bwFarm, _bwHouse);
+    try { _wmSetup('bw', _bwFarm, _bwHouse, null, _bwWaterHist); } catch (e) {}
   }
+  try { bwWaterLive(); } catch (e) {}
   var u = _wmUsage(read, _bwWaterHist);
   var entered = read.meters ? Object.keys(read.meters).length : 1;
   var head = (n > 1) ? (entered + '/' + n + (es ? ' medidores · ' : ' meters · ')) : '';
@@ -1340,7 +1418,20 @@ try { window._bwWhoAmI = _bwWhoAmI; } catch (e) {}
 
 function bwInitFlow() {
   _bwWaterHist = null;   // fresh house → fresh water-meter history
-  try { _wmSetup('bw', _bwFarm, _bwHouse, (typeof _bwData !== 'undefined' ? _bwData : null)); } catch (e) {}
+  try { _wmSetup('bw', _bwFarm, _bwHouse, (typeof _bwData !== 'undefined' ? _bwData : null), null); } catch (e) {}
+  // Pull this house's last readings, then REBUILD the grid so every meter box
+  // shows yesterday's number and the live subtraction (Joe 2026-08-11).
+  (function () {
+    var _f = _bwFarm, _h = _bwHouse;
+    try {
+      _bwFetchWaterHist(_f, _h).then(function (hist) {
+        if (_bwFarm !== _f || String(_bwHouse) !== String(_h)) return;   // house switched
+        _bwWaterHist = hist;
+        try { _wmSetup('bw', _f, _h, (typeof _bwData !== 'undefined' ? _bwData : null), hist); } catch (e) {}
+        try { bwWaterUsage(); } catch (e) {}
+      }).catch(function () {});
+    } catch (e) {}
+  })();
   _bwApplyPestDays();
   _bwWhoAmI();
   const isEs = (typeof _lang !== 'undefined' && _lang === 'es');
@@ -2376,6 +2467,7 @@ function _mwPrevWaterReading(farm, house) {
 function mwWaterUsage() {
   var out = document.getElementById('mw-water-meter-status');
   if (!out) return;
+  try { mwWaterLive(); } catch (e) {}
   var es = (typeof _lang !== 'undefined' && _lang === 'es');
   var n = waterMeterCount(_mwFarm, _mwHouse);
   var read = _wmRead('mw', _mwFarm, _mwHouse);
@@ -2546,7 +2638,7 @@ function openMorningWalk(farm, house) {
   // so switching houses kept the PREVIOUS house's grid whenever a draft or
   // done record short-circuited the open. Building first also lets a draft's
   // per-meter values restore into real inputs (restore matches by element id).
-  try { _wmSetup('mw', farm, house, null); } catch (e) {}
+  try { _wmSetup('mw', farm, house, null, null); } catch (e) {}
   const ibox = document.getElementById('mw-instructions');
   if (ibox) ibox.style.display = 'none';
   document.getElementById('mw-submit-btn').disabled = true;
@@ -2570,7 +2662,7 @@ function openMorningWalk(farm, house) {
         mwLoadRecord(doc.data()); _mwShowSubmittedBanner(doc.data());
         // still on the same house? → prefill the meter grid from TODAY's record
         if (_mwFarm === farm && String(_mwHouse) === String(house)) {
-          try { _wmSetup('mw', farm, house, doc.data()); } catch (e) {}
+          try { _wmSetup('mw', farm, house, doc.data(), null); } catch (e) {}
         }
       }
     }).catch(function () {});
@@ -2604,7 +2696,11 @@ function openMorningWalk(farm, house) {
         document.querySelectorAll('[id^="mw-wm-"]').forEach(function (el) { if (el.value !== '') _gridEmpty = false; });
         var _singleWM = document.getElementById('mw-water-meter');
         if (_singleWM && _singleWM.value !== '') _gridEmpty = false;
-        if (_todayRec && _gridEmpty) { try { _wmSetup('mw', farm, house, _todayRec); } catch (e) {} }
+        // history for the subtraction labels = prior-day readings, newest first
+        var _hist = docs.filter(function (w) { return w && w.date !== _mwToday && (w.waterMeter != null || w.waterMeters); })
+          .sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); })
+          .map(function (w) { return { meter: w.waterMeter != null ? Number(w.waterMeter) : null, meters: w.waterMeters || null, ts: w.ts || 0, date: w.date }; });
+        try { _wmSetup('mw', farm, house, (_todayRec && _gridEmpty) ? _todayRec : null, _hist); } catch (e) {}
         try { mwWaterUsage(); } catch (e) {}   // show "x gal used" once we know the last reading
         const l = docs[0];
         const e = document.getElementById('mw-employee');
