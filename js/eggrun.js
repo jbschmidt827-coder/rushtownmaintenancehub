@@ -412,6 +412,79 @@ function _erStatusLine(farm, m, rec, multi) {
     ? '<div style="' + MONO + 'font-size:12px;color:#7a8f7a;background:#0f1a0f;border:1px solid #2a4a2a;border-radius:8px;padding:7px 10px;margin:5px 0;">' + tag + '— ' + erL('not started yet today', 'aún no ha iniciado hoy') + '</div>'
     : '';
 }
+// 📉 Downtime by day, per plant. Downtime = minutes each machine finished PAST
+// the plant's target time (Hegins 11:48) + any stopped minutes logged. Shows the
+// day's run time, eggs, cases and lb so a bad day is obvious at a glance.
+function _erDowntimeByDay(farms) {
+  var MONO2 = "font-family:'IBM Plex Mono',monospace;";
+  var byDay = {};
+  _erDocs.forEach(function (r) {
+    if (farms.indexOf(r.farm) === -1 || !r.date) return;
+    var k = r.farm + '|' + r.date;
+    var g = byDay[k] || (byDay[k] = { farm: r.farm, date: r.date, mins: 0, eggs: 0, dt: 0, lbs: 0, machines: 0, late: [] });
+    var mins = _erMinFromClock(r.startClock, r.stopClock);
+    if (mins == null && r.manualMin != null) mins = Number(r.manualMin) || 0;
+    g.mins += (mins || 0);
+    g.eggs += Number(r.eggs) || 0;
+    g.machines++;
+    if (r.caseWt != null && r.eggs) g.lbs += (Number(r.eggs) / ER_EGGS_PER_CASE) * Number(r.caseWt);
+    // past-target downtime for this machine
+    var tgt = _erMinOfDay(erTargetDone(r.farm)), stopM = _erMinOfDay(r.stopClock);
+    var late = (tgt != null && stopM != null) ? Math.max(0, stopM - tgt) : (Number(r.downtimeMin) || 0);
+    if (late > 0) { g.dt += late; g.late.push('M' + (r.machine || 1) + ' +' + _erDurShort(late * 60000)); }
+    if (r.offMin != null) g.dt += Number(r.offMin) || 0;
+  });
+  var rows = Object.keys(byDay).map(function (k) { return byDay[k]; })
+    .sort(function (a, b) { return (b.date > a.date ? 1 : b.date < a.date ? -1 : 0) || (a.farm > b.farm ? 1 : -1); });
+  if (!rows.length) return '';
+  var tDt = 0, tMin = 0, tEggs = 0, dtDays = 0;
+  rows.forEach(function (r) { tDt += r.dt; tMin += r.mins; tEggs += r.eggs; if (r.dt > 0) dtDays++; });
+  var body = rows.map(function (r) {
+    var cases = r.eggs ? Math.round(r.eggs / ER_EGGS_PER_CASE) : 0;
+    var cph = (r.mins > 5 && cases) ? Math.round(cases / (r.mins / 60) * 10) / 10 : null;
+    var dc = r.dt === 0 ? '#4ade80' : r.dt <= 30 ? '#e8c96a' : '#f87171';
+    return '<tr style="border-bottom:1px solid #1a2a1a;">' +
+      '<td style="padding:8px 6px;color:#f0ead8;">' + (r.date || '').slice(5).replace('-', '/') + '</td>' +
+      '<td style="padding:8px 6px;color:#7ab07a;">' + r.farm + '</td>' +
+      '<td style="padding:8px 6px;text-align:center;color:#9ad6a0;">' + (r.mins ? erFmtDur(r.mins * 60000) : '—') + '</td>' +
+      '<td style="padding:8px 6px;text-align:center;font-weight:700;color:' + dc + ';">' +
+        (r.dt ? _erDurShort(r.dt * 60000) : '0m') +
+        (r.late.length ? ('<div style="' + MONO2 + 'font-size:9px;color:#a08a6a;font-weight:400;margin-top:2px;">' + r.late.join(' · ') + '</div>') : '') + '</td>' +
+      '<td style="padding:8px 6px;text-align:center;color:#f0d68a;">' + (r.eggs ? r.eggs.toLocaleString() : '—') + '</td>' +
+      '<td style="padding:8px 6px;text-align:center;color:#cfe0a0;">' + (cases ? cases.toLocaleString() : '—') + '</td>' +
+      '<td style="padding:8px 6px;text-align:center;color:#4ade80;font-weight:700;">' + (cph != null ? cph : '—') + '</td>' +
+      '<td style="padding:8px 6px;text-align:center;color:#f0d68a;">' + (r.lbs ? Math.round(r.lbs).toLocaleString() : '—') + '</td>' +
+    '</tr>';
+  }).join('');
+  return '<div style="' + MONO2 + 'font-size:12px;font-weight:700;color:#f0a35a;margin:18px 0 6px;">📉 ' +
+      erL('Downtime by day', 'Paro por día') + '</div>' +
+    '<div style="' + MONO2 + 'font-size:10px;color:#7a9a7a;margin-bottom:7px;">' +
+      erL('Downtime = minutes finished PAST the target time (' + (erTargetDone(farms[0]) ? erFmtClock(erTargetDone(farms[0])) : 'target') + ') + any stopped minutes logged.',
+          'Paro = minutos terminados DESPUÉS de la meta + minutos parados registrados.') + '</div>' +
+    '<div style="background:#1a1208;border:1.5px solid #5a4a1a;border-radius:10px;padding:10px 12px;margin-bottom:9px;' + MONO2 + 'font-size:12px;color:#f0d68a;">' +
+      '⏱ ' + _erDurShort(tDt * 60000) + ' ' + erL('total downtime', 'paro total') + ' · ' + dtDays + '/' + rows.length + ' ' + erL('days with downtime', 'días con paro') +
+      ' · ' + erL('run time ', 'tiempo ') + erFmtDur(tMin * 60000) + ' · ' + _erNum(Math.round(tEggs / ER_EGGS_PER_CASE)) + ' ' + erL('cases', 'cajas') +
+    '</div>' +
+    '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO2 + 'font-size:12px;min-width:620px;">' +
+    '<thead><tr style="border-bottom:1px solid #2a4a2a;">' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + erL('Date', 'Fecha') + '</th>' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + erL('Farm', 'Granja') + '</th>' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:center;">' + erL('Run time', 'Tiempo') + '</th>' +
+      '<th style="padding:8px 6px;color:#f0a35a;text-align:center;">' + erL('Downtime', 'Paro') + '</th>' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:center;">' + erL('Eggs', 'Huevos') + '</th>' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:center;">' + erL('Cases', 'Cajas') + '</th>' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:center;">' + erL('Cases/hr', 'Cajas/hr') + '</th>' +
+      '<th style="padding:8px 6px;color:#5a8a5a;text-align:center;">' + erL('Total lb', 'Total lb') + '</th>' +
+    '</tr></thead><tbody>' + body + '</tbody></table></div>';
+}
+function _erNum(n) { try { return Number(n || 0).toLocaleString(); } catch (e) { return String(n || 0); } }
+// "7m" reads better than "0h 07m" for small downtime numbers.
+function _erDurShort(ms) {
+  var m = Math.max(0, Math.round(ms / 60000));
+  if (m < 60) return m + 'm';
+  return Math.floor(m / 60) + 'h ' + (m % 60 < 10 ? '0' : '') + (m % 60) + 'm';
+}
+
 // Per-machine MANUAL entry: run time (min) + total eggs, computed eggs/hr.
 function _erMachineDetail(farm, m, rec, multi) {
   var MONO = "font-family:'IBM Plex Mono',monospace;";
@@ -787,6 +860,9 @@ function renderEggRun() {
 
   // ── Packed pallets — inventory & shipping ──
   html += _erInventoryHtml(farms, t);
+
+  // ── 📉 DOWNTIME BY DAY (per plant) ──
+  html += _erDowntimeByDay(farms);
 
   // ── 14-day history (tracking log) ──
   var hist = _erDocs.slice()
