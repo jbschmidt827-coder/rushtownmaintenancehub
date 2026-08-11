@@ -169,6 +169,15 @@
           '<input id="ef-d-start-' + idb + '" type="time" step="60" value="' + startDef + '" style="' + inp + '"></div>' +
       '</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px;">' + cells + '</div>' +
+      // STOPS + OFF TIME (Joe 2026-08-11: "total stops by house or group and how
+      // long it ran on and off"). ON = span minus OFF, so the day splits into
+      // real running time vs stopped time.
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px;">' +
+        '<div style="flex:1;min-width:96px;"><div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">' + efL('Stops', 'Paros') + '</div>' +
+          '<input id="ef-d-stops-' + idb + '" type="number" min="0" step="1" inputmode="numeric" value="' + (already && already.stops != null ? _esc(already.stops) : '') + '" placeholder="0" style="' + inp + '"></div>' +
+        '<div style="flex:1;min-width:96px;"><div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">' + efL('Min stopped', 'Min parado') + '</div>' +
+          '<input id="ef-d-off-' + idb + '" type="number" min="0" step="1" inputmode="numeric" value="' + (already && already.offMin != null ? _esc(already.offMin) : '') + '" placeholder="0" style="' + inp + '"></div>' +
+      '</div>' +
       '<div style="display:flex;gap:8px;">' +
         '<button onclick="efDailyToggle(\'' + _esc(farm) + '\',\'' + _esc(unit.key) + '\')" style="flex:0 0 auto;padding:11px 14px;border-radius:9px;background:#161616;border:1.5px solid #3a3a3a;color:#aaa;' + MONO + 'font-size:12px;font-weight:700;cursor:pointer;">' + efL('Cancel', 'Cancelar') + '</button>' +
         '<button onclick="efSaveDaily(\'' + _esc(farm) + '\',\'' + _esc(unit.key) + '\')" style="flex:1;padding:11px;border-radius:9px;background:#14361c;border:1.5px solid #4ade80;color:#4ade80;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">✓ ' + efL("Save today's run", 'Guardar la corrida') + '</button>' +
@@ -204,11 +213,18 @@
     var existing = _efData.filter(function (r) {
       return r.farm === farm && _efRunKey(r) === String(key) && r.date === _today();
     })[0];
+    var _spEl = document.getElementById('ef-d-stops-' + idb);
+    var _offEl = document.getElementById('ef-d-off-' + idb);
+    var _stops = (_spEl && _spEl.value !== '') ? Math.max(0, parseInt(_spEl.value, 10) || 0) : null;
+    var _off = (_offEl && _offEl.value !== '') ? Math.max(0, parseInt(_offEl.value, 10) || 0) : null;
+    var _span = Math.round((last - startTs) / 60000);
+    var _on = (_off != null) ? Math.max(0, _span - _off) : null;
     var rec = {
       farm: farm, house: String(key), speed: speed, dirtyLine: !!_efDirty[farm + '_' + key],
       group: unit.isGroup ? unit.key : null, groupLabel: unit.isGroup ? unit.label : null,
       houses: unit.isGroup ? unit.houses.slice() : null,
-      startTs: startTs, stopTs: last, minutes: Math.round((last - startTs) / 60000),
+      startTs: startTs, stopTs: last, minutes: _span,
+      stops: _stops, offMin: _off, onMin: _on,
       houseStops: stops, houseMinutes: hmins, status: 'done',
       date: _today(), by: _by(), entryMode: 'daily', ts: Date.now()
     };
@@ -264,7 +280,13 @@
           (r.houseMinutes ? ('<div style="' + MONO + 'font-size:9px;color:#7a9a7a;margin-top:2px;">' + Object.keys(r.houseMinutes).sort(function(a,b){return a-b;}).map(function (h) { return 'H' + h + ' ' + _dur(Number(r.houseMinutes[h]) * 60000); }).join(' · ') + '</div>') : '') + '</td>' +
         '<td style="padding:8px 6px;color:#e8d36a;font-weight:700;text-align:center;">' + (r.speed != null && r.speed !== '' ? _esc(r.speed) : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;">' + dirty + '</td>' +
-        '<td style="padding:8px 6px;color:#9ad6a0;">' + dur + '</td>' +
+        '<td style="padding:8px 6px;color:#9ad6a0;">' + dur +
+          ((r.onMin != null || r.offMin != null)
+            ? ('<div style="' + MONO + 'font-size:9px;color:#7a9a7a;margin-top:2px;">' +
+                (r.onMin != null ? ('ON ' + _dur(r.onMin * 60000)) : '') +
+                (r.offMin ? (' / <span style="color:#f0a0a0;">OFF ' + _dur(r.offMin * 60000) + '</span>') : '') + '</div>')
+            : '') + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:' + (r.stops ? '#f0d68a' : '#4a6a4a') + ';font-weight:700;">' + (r.stops != null ? r.stops : '-') + '</td>' +
         '<td style="padding:8px 6px;color:#7ab07a;">' + _timeLbl(r.startTs) + (r.by ? ' · ' + _esc(r.by) : '') + '</td>' +
         // ✎/🗑 — crew feedback 2026-08-06 ("Tiff entered house 5 as house 1 and we
         // couldn't fix it"). Edit = move the run to the right house/group;
@@ -279,7 +301,7 @@
         '</td>' +
       '</tr>';
     }).join('');
-    if (!rows) rows = '<tr><td colspan="7" style="padding:18px;text-align:center;color:#888;">' + efL('No runs logged yet.', 'Sin corridas registradas.') + '</td></tr>';
+    if (!rows) rows = '<tr><td colspan="8" style="padding:18px;text-align:center;color:#888;">' + efL('No runs logged yet.', 'Sin corridas registradas.') + '</td></tr>';
     return '<div style="' + MONO + 'font-size:10px;color:#4a6a4a;margin:14px 0 6px;">' + efL('speed = the setting you ran · dirty = dirty line on · duration = how long the belts ran', 'velocidad = el ajuste · sucia = línea sucia encendida · duración = cuánto corrieron') + '</div>' +
       '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:12px;min-width:460px;">' +
       '<thead><tr style="border-bottom:1px solid #2a4a2a;">' +
@@ -287,7 +309,8 @@
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + efL('House', 'Casa') + '</th>' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:center;">' + efL('Speed', 'Velocidad') + '</th>' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:center;">' + efL('Dirty line', 'Línea sucia') + '</th>' +
-        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + efL('Duration', 'Duración') + '</th>' +
+        '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + efL('Duration / on-off', 'Duración / on-off') + '</th>' +
+        '<th style="padding:8px 6px;color:#5a8a5a;text-align:center;">' + efL('Stops', 'Paros') + '</th>' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:left;">' + efL('Started', 'Inició') + '</th>' +
         '<th style="padding:8px 6px;color:#5a8a5a;text-align:right;">' + efL('Fix', 'Corregir') + '</th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
@@ -401,7 +424,8 @@
     var out = {};
     var unitOf = {};
     units.forEach(function (u) {
-      out[u.key] = { runs: 0, min: 0, speed: [], eggs: 0, eggDays: 0, stuck: 0, houses: u.houses };
+      out[u.key] = { runs: 0, min: 0, speed: [], eggs: 0, eggDays: 0, stuck: 0, houses: u.houses,
+                     stopsTot: 0, stopDays: 0, offTot: 0, offDays: 0 };
       u.houses.forEach(function (h) { unitOf[h] = u.key; });   // house → its unit
     });
     _efData.forEach(function (r) {
@@ -412,6 +436,8 @@
       var m = Number(r.minutes) || 0;
       if (m > _EF_STUCK_MIN) { out[k].stuck++; return; }   // don't let a forgotten Stop skew it
       out[k].runs++; out[k].min += m;
+      if (r.stops != null) { out[k].stopsTot += Number(r.stops) || 0; out[k].stopDays++; }
+      if (r.offMin != null) { out[k].offTot += Number(r.offMin) || 0; out[k].offDays++; }
       if (r.speed != null && r.speed !== '') out[k].speed.push(Number(r.speed));
     });
     _efWalks.forEach(function (w) {
@@ -432,6 +458,9 @@
         var fe = (s.houses || [h]).reduce(function (sum, hh) { return sum + (farmEggs[hh] || 0); }, 0);
         if (fe > 0) { s.avgEggs = fe; s.eggsFromFarm = true; }
       }
+      s.avgStops = s.stopDays ? Math.round(s.stopsTot / s.stopDays * 10) / 10 : null;
+      s.avgOff = s.offDays ? Math.round(s.offTot / s.offDays) : null;
+      s.avgOn = (s.avgMin != null && s.avgOff != null) ? Math.max(0, s.avgMin - s.avgOff) : null;
       s.eggsPerHr = (s.avgEggs && s.avgMin) ? Math.round(s.avgEggs / (s.avgMin / 60)) : null;
       s.dzPerHr = s.eggsPerHr ? Math.round(s.eggsPerHr / EGGS_PER_DZ) : null;
       s.casesPerHr = s.eggsPerHr ? Math.round(s.eggsPerHr / EGGS_PER_CASE * 10) / 10 : null;
@@ -476,6 +505,10 @@
         '<td style="padding:8px 6px;text-align:center;">' + cell(a.avgMin, 'min') + vs(a.avgMin, t.avgMin, true) + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#7a9a7a;font-size:10px;">' + (t.avgMin != null ? (t.avgMin + ' min') : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;">' + cell(a.avgSpeed) + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;color:' + (a.avgStops ? '#f0d68a' : '#4a6a4a') + ';">' + (a.avgStops != null ? a.avgStops : '-') + '</td>' +
+        '<td style="padding:8px 6px;text-align:center;' + MONO + 'font-size:10.5px;color:#cfe0a0;">' +
+          (a.avgOn != null ? ('ON' + Math.round(a.avgOn) + 'm') : '-') +
+          (a.avgOff != null ? (' <span style="color:#f0a0a0;">OFF' + a.avgOff + 'm</span>') : '') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;">' + cell(a.avgEggs) + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#cfe0a0;">' + (a.dzPerDay != null ? _num(a.dzPerDay) : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#cfe0a0;">' + (a.casesPerDay != null ? _num(a.casesPerDay) : '—') + '</td>' +
@@ -488,11 +521,12 @@
 
     // Site totals — eggs use each house's avg/day (farm records), not just the
     // hand-typed ones, so the TOTAL row can't read 0 while the rows show numbers.
-    var tRuns = 0, tMin = 0, tEggs = 0;
+    var tRuns = 0, tMin = 0, tEggs = 0, tStops = 0, tOff = 0;
     houses.forEach(function (h) {
       if (!wk[h]) return;
       tRuns += wk[h].runs; tMin += wk[h].min;
       tEggs += (wk[h].avgEggs || 0);
+      tStops += wk[h].stopsTot || 0; tOff += wk[h].offTot || 0;
     });
     var tAvgMin = 0, nH = 0;
     houses.forEach(function (h) { if (wk[h] && wk[h].avgMin) { tAvgMin += wk[h].avgMin; nH++; } });
@@ -515,6 +549,8 @@
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Avg run', 'Prom corrida') + '</th>' +
         '<th style="padding:7px 6px;color:#7a9a7a;text-align:center;font-size:9px;">🎯 ' + efL('target', 'meta') + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Avg speed', 'Prom vel') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Stops/day', 'Paros/día') + '</th>' +
+        '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('On / Off', 'On / Off') + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Eggs/day', 'Huevos/día') + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Dz/day', 'Dz/día') + '</th>' +
         '<th style="padding:7px 6px;color:#5a8a5a;text-align:center;">' + efL('Cases/day', 'Cajas/día') + '</th>' +
@@ -526,7 +562,9 @@
       '<tfoot><tr style="border-top:1.5px solid #2a4a2a;">' +
         '<td style="padding:8px 6px;color:#9ad6a0;font-weight:700;">' + efL('TOTAL', 'TOTAL') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + tRuns + '</td>' +
-        '<td colspan="3" style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + _dur(tMin * 60000) + ' ' + efL('total run time', 'tiempo total') + '</td>' +
+        '<td colspan="5" style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + _dur(tMin * 60000) + ' ' + efL('total run time', 'tiempo total') +
+          (tStops ? (' / ' + tStops + ' ' + efL('stops', 'paros')) : '') +
+          (tOff ? (' / ' + _dur(tOff * 60000) + ' ' + efL('stopped', 'parado')) : '') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#9ad6a0;font-weight:700;">' + _num(tEggs) + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#cfe0a0;font-weight:700;">' + (_dz(tEggs) != null ? _num(_dz(tEggs)) : '—') + '</td>' +
         '<td style="padding:8px 6px;text-align:center;color:#cfe0a0;font-weight:700;">' + (_cases(tEggs) != null ? _num(_cases(tEggs)) : '—') + '</td>' +

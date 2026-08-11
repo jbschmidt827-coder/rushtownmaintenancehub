@@ -346,6 +346,21 @@ async function eggRunSetLanes(farm, m, val) {
     renderEggRun();
   } catch (e) { console.error('eggRunSetLanes:', e); }
 }
+// CASE WEIGHT (Joe 2026-08-11) — avg lb per case for that machine/day. Gives
+// total lbs packed + lb/hr, and a trend that reveals egg size drifting.
+async function eggRunSetCaseWt(farm, m, val) {
+  try {
+    var v = (val === '' || val == null) ? null : Number(val);
+    if (v != null && (isNaN(v) || v <= 0 || v > 120)) {
+      if (typeof toast === 'function') toast(erL('Case weight looks wrong', 'El peso de caja no cuadra'));
+      return;
+    }
+    await _erSave(farm, m, { caseWt: v, caseWtBy: erBy() });
+    if (typeof toast === 'function' && v != null) toast('CASE WT ' + farm + ' M' + m + ': ' + v + ' lb');
+    renderEggRun();
+  } catch (e) { console.error('eggRunSetCaseWt:', e); }
+}
+
 // Eggs entered PER HOUSE (Danville). Machine total = sum of the houses, so
 // eggs/min, the packer table and the daily summary all still work off one number.
 async function eggRunSetHouseEggs(farm, m, house, val) {
@@ -481,6 +496,19 @@ function _erMachineDetail(farm, m, rec, multi) {
               return out;
             })() +
           '</div>')) +
+      '<div style="display:flex;align-items:center;gap:9px;margin-top:10px;flex-wrap:wrap;">' +
+        '<label style="' + MONO + 'font-size:12px;color:#9ad6a0;font-weight:700;min-width:135px;">' + erL('Case weight (lb)', 'Peso caja (lb)') + '</label>' +
+        '<input type="number" min="0" step="0.1" inputmode="decimal" value="' + (rec && rec.caseWt != null ? String(rec.caseWt) : '') + '" onchange="eggRunSetCaseWt(\'' + farm + '\',' + m + ',this.value)" placeholder="' + erL('lb / case', 'lb / caja') + '" style="flex:0 0 110px;text-align:center;' + inp + '">' +
+        (function () {
+          var w = (rec && rec.caseWt != null) ? Number(rec.caseWt) : null;
+          var cs = (eggs != null) ? (eggs / 360) : null;
+          if (!w || !cs) return '<span style="' + MONO + 'font-size:11px;color:#5a7a5a;">' + erL('total lbs appear here', 'las libras aparecen aquí') + '</span>';
+          var lbs = Math.round(cs * w);
+          var lph = (mins > 0) ? Math.round(lbs / (mins / 60)) : null;
+          return '<span style="' + MONO + 'font-size:12.5px;color:#f0d68a;font-weight:700;">' + lbs.toLocaleString() + ' lb</span>' +
+                 (lph ? ('<span style="' + MONO + 'font-size:11px;color:#7ab07a;"> · ' + lph.toLocaleString() + ' lb/hr</span>') : '');
+        })() +
+      '</div>' +
       '<div style="' + MONO + 'font-size:12px;color:#9ab09a;line-height:1.7;margin-top:7px;">' +
         (eggs != null ? ('🥚 ' + erL('Machine total', 'Total máquina') + ': <b style="color:#f0d68a;">' + eggs.toLocaleString() + '</b> = ' + (Math.round(eggs / 12 * 10) / 10).toLocaleString() + ' dz') : (byHouse ? erL('Enter each house\'s eggs.', 'Ingresa los huevos de cada casa.') : (nLanes === 1 ? erL('Enter the machine\'s total eggs.', 'Ingresa el total de huevos de la máquina.') : erL('Enter each lane\'s eggs.', 'Ingresa los huevos de cada carril.')))) +
         (epm ? ('<br><b style="color:#4ade80;">' + epm.toLocaleString() + ' ' + erL('eggs/min', 'huevos/min') + '</b>') : '') +
@@ -571,6 +599,9 @@ function _erPackerTable(farm, t) {
       '<td style="padding:7px 6px;text-align:center;color:#4ade80;">' + (eph ? eph.toLocaleString() : '—') + '</td>' +
       '<td style="padding:7px 6px;text-align:center;color:#e8d36a;">' + (dzh ? dzh.toLocaleString() : '—') + '</td>' +
       '<td style="padding:7px 6px;text-align:center;color:#4ade80;font-weight:700;">' + (csh ? csh.toLocaleString() : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#f0d68a;">' + (rec.caseWt != null ? Number(rec.caseWt) : '—') + '</td>' +
+      '<td style="padding:7px 6px;text-align:center;color:#f0d68a;font-weight:700;">' +
+        ((rec.caseWt != null && eggs) ? Math.round((eggs / ER_EGGS_PER_CASE) * Number(rec.caseWt)).toLocaleString() : '—') + '</td>' +
       '<td style="padding:7px 6px;text-align:center;">' + onTime + '</td>' +
     '</tr>';
   }).join('');
@@ -591,6 +622,8 @@ function _erPackerTable(farm, t) {
       '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('Eggs/hr', 'Huevos/hr') + '</th>' +
       '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('Dz/hr', 'Dz/hr') + '</th>' +
       '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('Cases/hr', 'Cajas/hr') + '</th>' +
+      '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('lb/case', 'lb/caja') + '</th>' +
+      '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('Total lb', 'Total lb') + '</th>' +
       '<th style="padding:6px;color:#5a8a5a;text-align:center;">' + erL('vs target', 'vs meta') + '</th>' +
     '</tr></thead><tbody>' + rows + '</tbody>' +
     '<tfoot><tr style="border-top:1.5px solid #2a5a2a;">' +
@@ -828,6 +861,7 @@ if (typeof window !== 'undefined') {
   window.eggRunSetLaneEggs = eggRunSetLaneEggs;
   window.eggRunSetHouseEggs = eggRunSetHouseEggs;   // Danville: eggs by house
   window.eggRunSetClock = eggRunSetClock;
+  window.eggRunSetCaseWt = eggRunSetCaseWt;
   window.erTimeBlur = erTimeBlur;
   window.erEditRow = erEditRow;
   window.palTypeSet = palTypeSet;
