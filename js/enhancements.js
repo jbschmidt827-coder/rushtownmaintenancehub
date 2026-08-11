@@ -122,6 +122,36 @@
     ['👀 CELIA STANDARD 👀',        'Celia\'s barns are so clean the eggs check themselves in. That\'s the standard.'],
     ['🤝 DREAM TEAM 🤝',            'Joe plans it, Nate builds it, the leads run it, the crew wins it. Rushtown.'],
     ['🐔 BOSS APPROVED 🐔',         'Leadership walked the barns and the chickens gave a standing ovation.'],
+    // ── NATHAN WOLFE + ALLISON & THE DOG (v284, per Joe) ──
+    ['🐺 WOLFE AT THE DOOR 🐺',     'Nathan Wolfe showed up and the belt started running right. Coincidence? Third time this week.'],
+    ['🔧 WOLFE FIXED IT 🔧',        'Nathan Wolfe fixed it, wiped his hands, said nothing, and walked off. Legend behavior.'],
+    ['🐺 LONE WOLFE 🐺',            'Nathan Wolfe works alone. Well — him and 600,000 chickens.'],
+    ['🎯 WOLFE INSTINCT 🎯',        'Nathan Wolfe heard a bearing go bad from two houses away. The hens report him for showing off.'],
+    ['🐺 HOWLING GOOD 🐺',          'Nathan Wolfe finished before lunch. The roosters are crowing his name.'],
+    ['🐕 ALLISON\'S DOG 🐕',        'Allison brought the dog again. Productivity down 10%, morale up 400%. Worth it.'],
+    ['🐾 CHIEF MORALE OFFICER 🐾',  'Allison\'s dog inspected every barn today. Signed off on all of them. Very thorough.'],
+    ['🐕 THE REAL BOSS 🐕',         'Allison runs the office. Allison\'s dog runs Allison. Chain of command is clear.'],
+    ['🌟 ALLISON ON IT 🌟',         'Allison had the answer before anyone finished asking the question. Again.'],
+    ['🐾 DOG APPROVED 🐾',          'Allison\'s dog wagged at the egg room. Highest quality rating we offer.'],
+    ['🐕 GUARD DOG 🐕',             'A hen tried to walk into the office. Allison\'s dog escorted her out. Professionally.'],
+    ['🐺🐕 WOLFE MEETS DOG 🐕🐺',    'Nathan Wolfe met Allison\'s dog. Mutual respect. The chickens took notes.'],
+    // ── A-DAWG (v284, per Joe: "whats up A DAWG") ──
+    ['🐕 WHAT UP A-DAWG 🐕',        'What\'s up A-Dawg! Allison rolls in and the whole office levels up.'],
+    ['🎤 A-DAWG IN THE HOUSE 🎤',   'A-Dawg in the building. Egg room got 40% cooler instantly.'],
+    ['🐾 A-DAWG SAID SO 🐾',        'A-Dawg said it\'s handled. It\'s handled. Next question.'],
+    ['🧢 A-DAWG & THE DAWG 🧢',     'A-Dawg brought the actual dawg. Two dawgs, one office, zero problems.'],
+    ['🔥 A-DAWG ENERGY 🔥',         'A-Dawg walked past Barn 4 and the hens started laying on beat.'],
+    ['🐔 HENS LOVE A-DAWG 🐔',      'The flock voted: A-Dawg for president. She declined — too busy working.'],
+    ['💯 A-DAWG DELIVERS 💯',       'A-Dawg said "already did it" before anybody finished asking. Certified.'],
+    // ── MANAGEMENT TEAM, general (v284) ──
+    ['👔 MANAGEMENT MEETING 👔',    'The whole management team in one room. Somewhere, a chicken filed a work order out of spite.'],
+    ['📋 TIER 1 TIME 📋',           'Management gathered around the Tier 1 board. Nine lights green. Somebody take a picture.'],
+    ['🤝 THE LEADERSHIP TEAM 🤝',   'Joe plans it, Nate builds it, Brad backs it, the leads run it, the crew wins it. That is Rushtown.'],
+    ['☕ MANAGEMENT COFFEE ☕',      'Management drank all the coffee "planning." The chickens have started their own pot.'],
+    ['🐔 CHICKENS UNIONIZED 🐔',    'The flock elected a representative to management. She lays 6 days a week and demands respect.'],
+    ['📊 THE BOARD SAYS 📊',        'Management asked the app how the day went. The app answered honestly. Bold move by both.'],
+    ['🏆 BEST CREW IN THE STATE 🏆','Management agrees on one thing: best flock in the state, best crew in the state. No debate.'],
+    ['🎖 LEADERS WALK IT 🎖',       'Every leader walked their barns today. The hens noticed. The hens always notice.'],
     // ── SUMMER PACK (v265, per Joe) — away days, kickball & thank-yous ──
     ['🏖 BOSSES AWAY 🏖',           'Joe and Brad are both away. The chickens are in charge now. First order of business: more corn.'],
     ['📵 QUIET UP TOP 📵',          'Joe and Brad out at the same time? The hens already planned the party. Nate found out. Party moved.'],
@@ -197,6 +227,79 @@
     _featherStorm,
     _roosterAlarm,
   ];
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 👋 SIGN-IN GREETING (v284, per Joe: "make the jokes be about them when they
+  // sign in"). Called by login.js right after a successful PIN login. Picks a
+  // line written FOR that person when we have one, else a warm generic. Shown
+  // as a toast so it never blocks the crew getting to work.
+  // ═══════════════════════════════════════════════════════════════════════
+  var HELLO_BY_PERSON = {
+    'nathan wolfe': [
+      '🐺 The Wolfe is in the building. Belts just started behaving.',
+      '🔧 Nathan Wolfe signed in. Somewhere a bearing decided to hold on another week.',
+      '🐺 Morning, Wolfe. The hens heard you pull in.'
+    ],
+    'allison': [
+      '🐕 What\'s up A-Dawg! The office just got its energy back.',
+      '🎤 A-Dawg in the building. Hens laying on beat already.',
+      '🐕 Allison is here — and so is the real boss. Tails up.',
+      '🌟 Morning, Allison. You already know what today needs, don\'t you.',
+      '🐾 Allison signed in. The dog is reviewing the schedule.'
+    ],
+    'joseph schmidt': [
+      '👑 Morning, Joe. The board is loaded and the chickens are pretending to work.',
+      '🚀 Joe is in. Somebody hide the version number.',
+      '🐔 Morning boss. 1.3 million hens punched in before you.'
+    ],
+    'nathan piestrak': [
+      '🧭 Director Nate signed in. Three problems just fixed themselves preemptively.',
+      '🛠 Nate is here. "I got it" energy detected.'
+    ],
+    'brad martin': [
+      '👑 Brad signed in. The budget just sat up straight.',
+      '👔 Morning, Brad. That nod is still legally binding.'
+    ],
+    'natalie barr': [
+      '📋 Natalie signed in — the packer times are already right, aren\'t they.',
+      '🥚 Morning, Natalie. 11:48 has entered the building.'
+    ],
+    'celia davenport': [
+      '👀 Celia signed in. Every dirty egg in three barns just got nervous.',
+      '📋 Morning, Celia. The clipboard remembers everything.'
+    ],
+    'mike': [
+      '🌟 Mike signed in. The whole farm exhaled.',
+      '🏆 Morning, Mike. The hens voted you favorite human again.'
+    ]
+  };
+  var HELLO_GENERIC = [
+    '🐔 {name} is on the clock. The flock says good morning.',
+    '🌅 Morning, {name}. The hens have been up for hours — showoffs.',
+    '💪 {name} signed in. Let\'s make it a good one.',
+    '🥚 Welcome back, {name}. Eggs do not collect themselves.',
+    '🙌 {name} is here. That is half the battle.',
+    '🐓 The rooster clocked in right behind you, {name}.',
+    '❤️ Good to see you, {name}. Thanks for showing up for the birds.'
+  ];
+  window.helloJoke = function (name) {
+    try {
+      var raw = String(name || '').trim();
+      if (!raw) return;
+      var key = raw.toLowerCase();
+      var pack = HELLO_BY_PERSON[key];
+      if (!pack) {                                   // match on first name too
+        var first = key.split(/\s+/)[0];
+        Object.keys(HELLO_BY_PERSON).forEach(function (k) {
+          if (!pack && (k === first || k.split(/\s+/)[0] === first)) pack = HELLO_BY_PERSON[k];
+        });
+      }
+      var line = pack
+        ? pack[Math.floor(Math.random() * pack.length)]
+        : HELLO_GENERIC[Math.floor(Math.random() * HELLO_GENERIC.length)].replace(/\{name\}/g, raw.split(/\s+/)[0]);
+      if (typeof toast === 'function') toast(line, true);
+    } catch (e) {}
+  };
 
   // ── Public entry point ──────────────────────────────────────
   window.chickenClick = function(e) {

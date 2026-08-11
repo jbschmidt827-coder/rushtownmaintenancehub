@@ -47,6 +47,8 @@
   function _loginToday() { try { return (typeof LDATE === 'function') ? LDATE() : new Date().toISOString().slice(0, 10); } catch (e) { return new Date().toISOString().slice(0, 10); } }
   window.setDeviceUser = function (name) {
     try { localStorage.setItem(LKEY, String(name || '').trim()); localStorage.setItem(VKEY, '1'); localStorage.setItem('bwLoginDate', _loginToday()); } catch (e) {}
+    // 👋 Personal hello (v284) — a line written for THEM when we have one.
+    try { if (typeof helloJoke === 'function') setTimeout(function () { helloJoke(name); }, 700); } catch (e) {}
     try { _stampNameFields(); } catch (e) {}
     try { if (typeof renderLoginChip === 'function') renderLoginChip(); } catch (e) {}
     try { if (typeof applyAccessPicker === 'function') applyAccessPicker(); } catch (e) {}
