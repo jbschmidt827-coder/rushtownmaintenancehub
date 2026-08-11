@@ -589,6 +589,7 @@
         '<div style="display:flex;gap:8px;">' +
           '<button onclick="closeTier1()" style="padding:11px 16px;background:#0f1a0f;border:1.5px solid #2a5a2a;border-radius:50px;color:#9ad6a0;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">← ' + L('Back', 'Atrás') + '</button>' +
           '<button onclick="typeof openTierSW===\'function\'&&openTierSW()" style="padding:11px 14px;background:#1a1408;border:1.5px solid #7a5a1a;border-radius:50px;color:#e8c96a;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">📘 SW</button>' +
+          '<button onclick="typeof openTargets===\'function\'&&openTargets()" style="padding:11px 14px;background:#0f1a12;border:1.5px solid #2a7a4a;border-radius:50px;color:#9ad6a0;' + MONO + 'font-size:13px;font-weight:700;cursor:pointer;">🎯 ' + L('Targets','Metas') + '</button>' +
         '</div>' +
         '<div style="text-align:right;">' +
           '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:28px;letter-spacing:2px;line-height:1;color:#f0ead8;">📊 ' + L('TIER 1 BOARD', 'TABLERO TIER 1') + (_t1Site && _t1Site !== 'All' ? ' · ' + _t1Site.toUpperCase() : '') + '</div>' +

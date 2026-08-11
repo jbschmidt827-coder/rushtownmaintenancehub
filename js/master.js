@@ -403,6 +403,7 @@
             (tb === '7d' ? '📅 7-DAY + ALERTS' : tb === 'weekly' ? '📈 WEEKLY TRENDS' : '💰 8-HOUR PLAN') + '</button>';
         }).join('') +
       '</div>' +
+      '<button onclick="typeof openTargets===\'function\'&&openTargets()" style="width:100%;padding:12px;margin-bottom:12px;border-radius:10px;cursor:pointer;' + MONO + 'font-size:12px;font-weight:700;background:#0f1a12;border:1.5px solid #2a7a4a;color:#9ad6a0;">🎯 SITE TARGETS &amp; ATTAINMENT →</button>' +
       '<div id="master-body" style="' + MONO + 'font-size:12px;color:#9a8ac0;">Loading…</div>' +
     '</div>';
     o.style.display = 'block';
