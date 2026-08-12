@@ -2498,7 +2498,7 @@ function mwWaterUsage() {
 try { window.mwWaterUsage = mwWaterUsage; window._mwPrevWaterReading = _mwPrevWaterReading; } catch (e) {}
 
 var _mwWalks = [];            // recent morningWalks for the open house (water-meter history)
-var _MW_FIELD_IDS = ['mw-employee','mw-ee-count','mw-water','mw-water-meter','mw-temp','mw-feed-meter','mw-bin-a','mw-bin-b','mw-notes'];
+var _MW_FIELD_IDS = ['mw-employee','mw-ee-count','mw-water','mw-water-meter','mw-temp','mw-temp-high','mw-temp-low','mw-temp-out','mw-feed-meter','mw-bin-a','mw-bin-b','mw-notes'];
 var _MW_STATUS_IDS = ['mw-water-status','mw-water-meter-status','mw-temp-status','mw-feed-meter-status','mw-bin-a-status','mw-bin-b-status'];
 
 // ── Morning Walk Instructions (per-farm guide, EN/ES) ──
@@ -2665,12 +2665,19 @@ function openMorningWalk(farm, house) {
           try { _wmSetup('mw', farm, house, doc.data(), null); } catch (e) {}
         }
       }
+      try { mwTempLive(); } catch (e) {}
     }).catch(function () {});
+    try { mwPrefillOutside(farm, house); } catch (e) {}
     checkMWReady();
     return;
   }
   _mwCleanOldDrafts();
   const restored = mwRestoreDraft();
+  // Outside temp is farm-wide, so it prefills whether this is a fresh form or a
+  // restored draft. Runs unconditionally (v278: a prefill inside a conditional
+  // open-path goes stale the moment the crew switches houses).
+  try { mwPrefillOutside(farm, house); } catch (e) {}
+  try { mwTempLive(); } catch (e) {}
   if (restored && typeof toast === 'function') {
     toast((typeof _lang !== 'undefined' && _lang === 'es')
       ? '📝 Borrador restaurado — continúa donde quedaste'
@@ -2723,6 +2730,9 @@ function mwLoadRecord(rec) {
   setV('mw-water', rec.waterPSI);
   setV('mw-water-meter', rec.waterMeter);
   setV('mw-temp', rec.temp);
+  setV('mw-temp-high', rec.tempHigh);
+  setV('mw-temp-low',  rec.tempLow);
+  setV('mw-temp-out',  rec.tempOut);
   setV('mw-feed-meter', rec.feedMeterReading);
   setV('mw-bin-a', rec.binA);
   setV('mw-bin-b', rec.binB);
@@ -2801,6 +2811,65 @@ function mwSet(key, val) {
   if (sel) sel.className = 'bw-yn-btn ' + (badge[key]?.[val] || 'bw-sel');
   mwSaveDraft();
   checkMWReady();
+}
+
+// 🌡 v288 — live high/low/outside readout. ADVISORY ONLY: this never creates a
+// work order (Joe killed the doors-open auto-WO for exactly this reason — a
+// reading the crew can't act on right then shouldn't spawn paperwork). It tells
+// them what the numbers mean while they're standing in the house.
+function mwTempLive() {
+  var _isEs = (typeof _lang !== 'undefined' && _lang === 'es');
+  var out = document.getElementById('mw-temp-diff'); if (!out) return;
+  var g = function (id) { var e = document.getElementById(id); var v = e ? parseFloat(e.value) : NaN; return isNaN(v) ? null : v; };
+  var hi = g('mw-temp-high'), lo = g('mw-temp-low'), os = g('mw-temp-out');
+  var bits = [];
+  if (hi != null && lo != null) {
+    if (lo > hi) {
+      out.style.color = '#f87171';
+      out.textContent = _isEs ? '⚠ La baja es mayor que la alta — revisa los números' : '⚠ Low is higher than high — check the numbers';
+      return;
+    }
+    var sw = Math.round((hi - lo) * 10) / 10;
+    var swCol = sw >= 15 ? '#f87171' : sw >= 10 ? '#f0a35a' : '#4ade80';
+    bits.push('<span style="color:' + swCol + ';font-weight:700;">' + (_isEs ? 'Variación ' : 'Swing ') + sw + '°F</span>' +
+      (sw >= 15 ? (_isEs ? ' — muy amplia, revisa ventilación' : ' — wide, check ventilation') : ''));
+  }
+  if (hi != null && os != null) {
+    var d = Math.round((hi - os) * 10) / 10;
+    var dCol = d >= 15 ? '#f87171' : d >= 10 ? '#f0a35a' : '#9ad6a0';
+    bits.push('<span style="color:' + dCol + ';font-weight:700;">' + (d >= 0 ? '+' : '') + d + '°F ' +
+      (_isEs ? 'sobre el exterior' : 'over outside') + '</span>' +
+      (d >= 15 ? (_isEs ? ' — la casa no está botando el calor' : ' — house is not shedding heat') : ''));
+  }
+  if (!bits.length) { out.textContent = ''; return; }
+  out.style.color = '#6a90d9';
+  out.innerHTML = bits.join(' · ');
+}
+
+// Outside temp is ONE number for the whole farm that day. The first walk enters
+// it; every later walk prefills from it so nobody types it eight times (and so
+// eight houses can't disagree about the weather).
+function mwPrefillOutside(farm, house) {
+  try {
+    var today = (typeof LDATE === 'function') ? LDATE() : new Date().toISOString().slice(0, 10);
+    // _mwWalks only ever holds THIS house's walks, so the farm-wide reading has
+    // to be its own query.
+    db.collection('morningWalks').where('farm', '==', farm).where('date', '==', today).limit(20).get()
+      .then(function (snap) {
+        // House switched while this was in flight? Drop it — the v278 lesson:
+        // an async prefill that lands on the wrong house is worse than no prefill.
+        if (_mwFarm !== farm || String(_mwHouse) !== String(house)) return;
+        var el = document.getElementById('mw-temp-out');
+        if (!el || (el.value != null && el.value !== '')) return;   // crew already typed one
+        var hit = snap.docs.map(function (d) { return d.data(); })
+          .filter(function (w) { return w && w.tempOut != null; })
+          .sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); })[0];
+        if (hit) {
+          el.value = hit.tempOut;
+          try { mwTempLive(); } catch (e) {}
+        }
+      }).catch(function () {});
+  } catch (e) {}
 }
 
 // Live reading feedback — water PSI mirrors the submit-time flag range (10–60),
@@ -2948,9 +3017,28 @@ async function submitMorningWalk() {
   if (binA !== null && binA < 1)   addFlag('Bin A critically low (' + binA + ' tons)', 'Feed', 'high');
   if (binB !== null && binB < 1)   addFlag('Bin B critically low (' + binB + ' tons)', 'Feed', 'high');
   const _mwDate = LDATE();
+  // 🌡 Day high / low + outside (v288). tempSwing = how far the house moved;
+  // tempVsOut = how far above outside it sat. A wide swing or a big gap over
+  // outside is a ventilation problem, and a bird-health problem before it's
+  // anything else. Blank = null so an unanswered box never reads as 0°F.
+  const _thv = document.getElementById('mw-temp-high')?.value;
+  const _tlv = document.getElementById('mw-temp-low')?.value;
+  const _tov = document.getElementById('mw-temp-out')?.value;
+  const tempHigh = (_thv != null && _thv !== '') ? Number(_thv) : null;
+  const tempLow  = (_tlv != null && _tlv !== '') ? Number(_tlv) : null;
+  const tempOut  = (_tov != null && _tov !== '') ? Number(_tov) : null;
+  const tempSwing = (tempHigh != null && tempLow != null) ? Math.round((tempHigh - tempLow) * 10) / 10 : null;
+  const tempVsOut = (tempHigh != null && tempOut != null) ? Math.round((tempHigh - tempOut) * 10) / 10 : null;
+  // Backwards compatible: everything that already reads `temp` (Tier 1, the
+  // completion board, the walk history line) keeps working. If the crew only
+  // filled high/low, fall back to the midpoint rather than saving nothing.
+  const _tempOut2 = (temp != null) ? temp
+                  : (tempHigh != null && tempLow != null) ? Math.round((tempHigh + tempLow) / 2 * 10) / 10
+                  : (tempHigh != null ? tempHigh : null);
   const record = {
     farm: _mwFarm, house: String(_mwHouse), employee, notes, flags,
-    waterPSI, waterMeter, waterMeters, waterUsedGal, waterFlatMeters, temp, eeCount, feedMeterReading, binA, binB,
+    tempHigh, tempLow, tempOut, tempSwing, tempVsOut,
+    waterPSI, waterMeter, waterMeters, waterUsedGal, waterFlatMeters, temp: _tempOut2, eeCount, feedMeterReading, binA, binB,
     feed: _mwData.feed, fans: _mwData.fans, blowers: _mwData.blowers,
     date: _mwDate,
     time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),

@@ -31,8 +31,18 @@
   function _n(v) { return (v == null || isNaN(v)) ? '—' : Math.round(Number(v)).toLocaleString(); }
   function _n1(v) { return (v == null || isNaN(v)) ? '—' : (Math.round(Number(v) * 10) / 10).toLocaleString(); }
   function _hrs(h) { return (h == null || isNaN(h)) ? '—' : (Math.floor(h) + 'h ' + String(Math.round((h % 1) * 60)).padStart(2, '0') + 'm'); }
-  function _dstr(o) { return new Date(Date.now() - o * 86400000).toISOString().slice(0, 10); }
   function _today() { try { return (typeof LDATE === 'function') ? LDATE() : new Date().toISOString().slice(0, 10); } catch (e) { return new Date().toISOString().slice(0, 10); } }
+  // v287 fix: this used to count back from Date.now() in UTC while _week() read the
+  // date from LDATE() (the app's LOCAL date). After ~8pm Eastern the two disagreed
+  // by a day, which shifted the week boundary and silently dropped a day of
+  // production out of "week to date". Everything now counts back from LOCAL today.
+  // Noon anchor keeps DST from moving the date.
+  function _dstr(o) {
+    var d = new Date(_today() + 'T12:00:00');
+    if (isNaN(d.getTime())) d = new Date();
+    d.setDate(d.getDate() - o);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
   function _me() { try { return (typeof getDeviceUser === 'function') ? String(getDeviceUser() || '') : ''; } catch (e) { return ''; } }
   function _canEdit() {
     try {

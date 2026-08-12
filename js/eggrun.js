@@ -46,6 +46,10 @@ function erTargetDone(farm) { return EGGRUN_TARGET_DONE[farm] || null; }
 function _erMinOfDay(hhmm) { var m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '')); return m ? (+m[1]) * 60 + (+m[2]) : null; }
 
 function erL(en, es) { try { return (typeof _lang !== 'undefined' && _lang === 'es') ? es : en; } catch (e) { return en; } }
+// v287: this file used to borrow _esc() from maintenance.js. If maintenance.js
+// ever moves, is renamed, or fails to parse, the whole 14-day history table
+// silently disappears. Own helper = no cross-file dependency.
+function _erEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
 let _erDocs = [];          // last ~14 days of eggDailyRun docs (live)
 let _poDocs = [];          // last ~14 days of opsPacking docs (eggs packed out, live)
@@ -59,10 +63,68 @@ function erKey(farm, m, date) { return farm + '__M' + m + '__' + date; }
 function erRec(farm, m, date) {
   return _erDocs.find(function (r) { return r.farm === farm && Number(r.machine || 1) === Number(m) && r.date === date; });
 }
+// v287 — WHICH PLANTS CAN THIS PERSON ENTER? Joe's complaint was that the Danville
+// card never appeared: the screen used to render ONLY getPreferredFarm(), so a
+// tablet (or a Director) parked on Hegins could never reach Danville's by-house
+// boxes. Now anyone whose staff record says 'Both' (Directors, Leads, floaters)
+// gets both plants, with sticky chips to narrow it down. Fail-open: an unknown
+// name sees both rather than being locked out of entry.
+function erAllowedFarms() {
+  var all = Object.keys(EGGRUN_MACHINES);
+  try {
+    var me = erBy();
+    if (!me) return all;
+    var s = (typeof staffList !== 'undefined' ? staffList : []).find(function (x) {
+      return x && String(x.name || '').toLowerCase() === String(me).toLowerCase();
+    });
+    if (!s || !s.farm || s.farm === 'Both') return all;
+    return EGGRUN_MACHINES[s.farm] ? [s.farm] : all;
+  } catch (e) { return all; }
+}
+function erPlantsSel() {
+  var allow = erAllowedFarms();
+  var saved;
+  try { saved = JSON.parse(localStorage.getItem('erPlants') || 'null'); } catch (e) { saved = null; }
+  if (!Array.isArray(saved)) {
+    // First visit: show the plant this device normally works, plus every other
+    // plant this person is allowed to enter — nothing is hidden by default.
+    return allow;
+  }
+  var keep = saved.filter(function (f) { return allow.indexOf(f) !== -1; });
+  return keep.length ? keep : allow;
+}
+function erTogglePlant(farm) {
+  var allow = erAllowedFarms();
+  if (allow.indexOf(farm) === -1) return;
+  var sel = erPlantsSel().slice();
+  var i = sel.indexOf(farm);
+  if (i >= 0) { if (sel.length > 1) sel.splice(i, 1); }        // never leave zero plants
+  else sel.push(farm);
+  try { localStorage.setItem('erPlants', JSON.stringify(sel)); } catch (e) {}
+  renderEggRun();
+}
+function _erPlantChips() {
+  var allow = erAllowedFarms();
+  if (allow.length < 2) return '';
+  var sel = erPlantsSel();
+  var MONO = "font-family:'IBM Plex Mono',monospace;";
+  return '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">' +
+    allow.map(function (f) {
+      var on = sel.indexOf(f) !== -1;
+      return '<button onclick="erTogglePlant(\'' + f + '\')" style="flex:1;min-width:120px;padding:11px 14px;border-radius:50px;cursor:pointer;' + MONO +
+        'font-size:12.5px;font-weight:700;background:' + (on ? '#14361c' : '#0d1a0d') + ';border:1.5px solid ' + (on ? '#4ade80' : '#2a4a2a') +
+        ';color:' + (on ? '#9ad6a0' : '#5a7a5a') + ';">' + (on ? '✓ ' : '') + f.toUpperCase() +
+        (erByHouse(f) ? ('<span style="font-size:9.5px;font-weight:400;display:block;color:' + (on ? '#7ab07a' : '#4a6a4a') + ';">' + erL('by house', 'por casa') + '</span>') : '') +
+      '</button>';
+    }).join('') + '</div>';
+}
 function erFarmsInScope() {
-  var f = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
-  if (EGGRUN_MACHINES[f]) return [f];
-  return Object.keys(EGGRUN_MACHINES);   // Master / Processing / unknown → all plants
+  var sel = erPlantsSel();
+  var pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+  // Keep this device's own plant first so the crew's card is always on top.
+  return sel.slice().sort(function (a, b) {
+    return (a === pref ? -1 : 0) - (b === pref ? -1 : 0);
+  });
 }
 function erMachines(farm) { return EGGRUN_MACHINES[farm] || [1]; }
 function erRuns(rec) { return (rec && Array.isArray(rec.runs)) ? rec.runs : []; }
@@ -865,6 +927,9 @@ function renderEggRun() {
         'Una vez al día, escribe el <b style="color:#9ad6a0;">tiempo total en minutos</b> de la máquina (del medidor) y el <b style="color:#f0d68a;">total de huevos</b> del día. Huevos/hr se calcula solo. Todo registra quién y cuándo, en vivo en cada equipo.') +
   '</div>';
 
+  // ── Plant chips (Hegins / Danville) ──
+  html += _erPlantChips();
+
   // ── Report-style daily summary at the top ──
   html += _erDailySummary(farms, t);
 
@@ -915,8 +980,8 @@ function renderEggRun() {
         // times later"). Rows entered without Start/Stop show "—" — this adds
         // the run time (or corrects eggs) days later without re-opening the day.
         '<td style="padding:8px 6px;text-align:right;white-space:nowrap;">' +
-          '<button onclick="erEditRow(\'' + _esc(r.farm) + '\',' + (r.machine || 1) + ',\'' + _esc(r.date || '') + '\',\'time\')" title="' + erL('Add / fix run time', 'Agregar / corregir tiempo') + '" style="padding:6px 9px;background:' + (ms ? '#0a2a1a' : '#3a2a08') + ';border:1px solid ' + (ms ? '#2a5a3a' : '#7a5a1a') + ';border-radius:7px;color:' + (ms ? '#9ad6a0' : '#f0d68a') + ';cursor:pointer;font-size:11px;">⏱</button> ' +
-          '<button onclick="erEditRow(\'' + _esc(r.farm) + '\',' + (r.machine || 1) + ',\'' + _esc(r.date || '') + '\',\'eggs\')" title="' + erL('Fix eggs', 'Corregir huevos') + '" style="padding:6px 9px;background:#0d1f3a;border:1px solid #2a4a7a;border-radius:7px;color:#9cc0f6;cursor:pointer;font-size:11px;">🥚</button>' +
+          '<button onclick="erEditRow(\'' + _erEsc(r.farm) + '\',' + (r.machine || 1) + ',\'' + _erEsc(r.date || '') + '\',\'time\')" title="' + erL('Add / fix run time', 'Agregar / corregir tiempo') + '" style="padding:6px 9px;background:' + (ms ? '#0a2a1a' : '#3a2a08') + ';border:1px solid ' + (ms ? '#2a5a3a' : '#7a5a1a') + ';border-radius:7px;color:' + (ms ? '#9ad6a0' : '#f0d68a') + ';cursor:pointer;font-size:11px;">⏱</button> ' +
+          '<button onclick="erEditRow(\'' + _erEsc(r.farm) + '\',' + (r.machine || 1) + ',\'' + _erEsc(r.date || '') + '\',\'eggs\')" title="' + erL('Fix eggs', 'Corregir huevos') + '" style="padding:6px 9px;background:#0d1f3a;border:1px solid #2a4a7a;border-radius:7px;color:#9cc0f6;cursor:pointer;font-size:11px;">🥚</button>' +
         '</td>' +
       '</tr>';
     }).join('');

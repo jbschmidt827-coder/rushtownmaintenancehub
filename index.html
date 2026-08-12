@@ -3236,6 +3236,29 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
         <div id="mw-temp-status" style="font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:4px;min-height:14px;"></div>
       </div>
     </div>
+    <!-- 🌡 HIGH / LOW / OUTSIDE (Joe 2026-08-12: "check high low for that day,
+         check difference compared to outside"). The single spot reading told us
+         nothing about how far a house SWUNG or how hard ventilation was working.
+         Outside temp is one number for the whole farm — the first walk of the day
+         fills it and every later walk prefills from it. -->
+    <div style="margin-top:12px;background:#091529;border:1px solid #1e3a6a;border-radius:12px;padding:12px;">
+      <div style="font-size:11px;color:#6a90d9;margin-bottom:8px;">🌡 <b>Day high / low</b> (off the controller) + outside</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div>
+          <div style="font-size:10px;color:#f0a35a;margin-bottom:4px;">HIGH °F</div>
+          <input type="number" id="mw-temp-high" class="bw-input" style="border-color:#5a3a1a;background:#1a1208;" placeholder="high" inputmode="decimal" oninput="mwTempLive()">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#7ab8f0;margin-bottom:4px;">LOW °F</div>
+          <input type="number" id="mw-temp-low" class="bw-input" style="border-color:#1a3a5a;background:#08121f;" placeholder="low" inputmode="decimal" oninput="mwTempLive()">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#9ad6a0;margin-bottom:4px;">OUTSIDE °F</div>
+          <input type="number" id="mw-temp-out" class="bw-input" style="border-color:#1e4a2a;background:#08170d;" placeholder="outside" inputmode="decimal" oninput="mwTempLive()">
+        </div>
+      </div>
+      <div id="mw-temp-diff" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6a90d9;margin-top:8px;min-height:16px;"></div>
+    </div>
     <!-- 💧 Water meter — manual entry (Joe 2026-08-03). Volume was the last
          untracked utility: PSI told us the line had pressure, never how much the
          birds actually drank. Usage is figured from the previous reading. -->
@@ -5386,12 +5409,12 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/labor-punch.js?v=20260720-v234"></script>
 <script defer src="js/tier1.js?v=20260811-v286"></script>
 <script defer src="js/tier2.js?v=20260730-v258"></script>
-<script defer src="js/tier-sw.js?v=20260803-v264"></script><script defer src="js/signoff.js?v=20260806-v273"></script><script defer src="js/usage.js?v=20260803-v267"></script><script defer src="js/master.js?v=20260806-v274"></script><script defer src="js/targets.js?v=20260811-v286"></script>
+<script defer src="js/tier-sw.js?v=20260803-v264"></script><script defer src="js/signoff.js?v=20260806-v273"></script><script defer src="js/usage.js?v=20260803-v267"></script><script defer src="js/master.js?v=20260806-v274"></script><script defer src="js/targets.js?v=20260812-v287"></script><script defer src="js/birdhealth.js?v=20260812-v288"></script>
 <script defer src="js/maint-schedule.js?v=20260729-v257"></script>
 <script defer src="js/egg-flow.js?v=20260811-v281"></script><script defer src="js/maint-projects.js?v=20260715-v211"></script>
 <script defer src="js/trending-wo.js?v=20260803-v261"></script>
 <script defer src="js/packaging.js?v=20260715-v211"></script>
-<script defer src="js/eggrun.js?v=20260811-v283"></script>
+<script defer src="js/eggrun.js?v=20260812-v287"></script>
 <script defer src="js/processing.js?v=20260803-v268"></script>
 <script defer src="js/manure.js?v=20260803-v266"></script>
 <script defer src="js/completion.js?v=20260724-v247"></script>
@@ -5404,7 +5427,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/livemonitor.js?v=20260803-v266"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260715-v211"></script>
-<script defer src="js/production.js?v=20260811-v280"></script>
+<script defer src="js/production.js?v=20260812-v288"></script>
 <script defer src="js/scorecard.js?v=20260803-v266"></script>
 <script defer src="js/help.js?v=20260716-v217"></script>
 <script defer src="js/time-blocks.js?v=20260727-v250"></script>
