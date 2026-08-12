@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v288-birdhealth';
+const CACHE_NAME = 'rushtown-v289-oneplant';
 
 const SHELL_FILES = [
   '/',

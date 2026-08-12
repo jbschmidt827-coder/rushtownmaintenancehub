@@ -81,26 +81,28 @@ function erAllowedFarms() {
     return EGGRUN_MACHINES[s.farm] ? [s.farm] : all;
   } catch (e) { return all; }
 }
+// ONE PLANT AT A TIME. Joe, 2026-08-12: "I ONLY WANT DANVILLE FOR DANVILLE AND
+// HEGINS FOR HEGINS." The first cut of this defaulted to showing BOTH plants
+// stacked, which meant a Danville tablet displayed a Hegins card it had no
+// business touching (and the daily summary double-counted both plants at the
+// top of the screen). Default = THIS DEVICE's plant, and the chips pick one.
 function erPlantsSel() {
   var allow = erAllowedFarms();
+  var pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+  var dflt = (pref && allow.indexOf(pref) !== -1) ? pref : allow[0];
   var saved;
-  try { saved = JSON.parse(localStorage.getItem('erPlants') || 'null'); } catch (e) { saved = null; }
-  if (!Array.isArray(saved)) {
-    // First visit: show the plant this device normally works, plus every other
-    // plant this person is allowed to enter — nothing is hidden by default.
-    return allow;
+  try { saved = localStorage.getItem('erPlants'); } catch (e) { saved = null; }
+  // v287 briefly stored a JSON array here. Collapse any old value to one plant.
+  if (saved && saved.charAt(0) === '[') {
+    try { var a = JSON.parse(saved); saved = (Array.isArray(a) && a.length === 1) ? a[0] : null; } catch (e) { saved = null; }
   }
-  var keep = saved.filter(function (f) { return allow.indexOf(f) !== -1; });
-  return keep.length ? keep : allow;
+  if (!saved || allow.indexOf(saved) === -1) return [dflt];
+  return [saved];
 }
 function erTogglePlant(farm) {
   var allow = erAllowedFarms();
   if (allow.indexOf(farm) === -1) return;
-  var sel = erPlantsSel().slice();
-  var i = sel.indexOf(farm);
-  if (i >= 0) { if (sel.length > 1) sel.splice(i, 1); }        // never leave zero plants
-  else sel.push(farm);
-  try { localStorage.setItem('erPlants', JSON.stringify(sel)); } catch (e) {}
+  try { localStorage.setItem('erPlants', farm); } catch (e) {}
   renderEggRun();
 }
 function _erPlantChips() {
@@ -108,7 +110,8 @@ function _erPlantChips() {
   if (allow.length < 2) return '';
   var sel = erPlantsSel();
   var MONO = "font-family:'IBM Plex Mono',monospace;";
-  return '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">' +
+  return '<div style="' + MONO + 'font-size:10px;letter-spacing:1.5px;color:#5a8a5a;text-transform:uppercase;font-weight:700;margin-bottom:6px;">' + erL('Entering for', 'Registrando para') + '</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">' +
     allow.map(function (f) {
       var on = sel.indexOf(f) !== -1;
       return '<button onclick="erTogglePlant(\'' + f + '\')" style="flex:1;min-width:120px;padding:11px 14px;border-radius:50px;cursor:pointer;' + MONO +
@@ -118,14 +121,7 @@ function _erPlantChips() {
       '</button>';
     }).join('') + '</div>';
 }
-function erFarmsInScope() {
-  var sel = erPlantsSel();
-  var pref = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
-  // Keep this device's own plant first so the crew's card is always on top.
-  return sel.slice().sort(function (a, b) {
-    return (a === pref ? -1 : 0) - (b === pref ? -1 : 0);
-  });
-}
+function erFarmsInScope() { return erPlantsSel(); }   // exactly one plant
 function erMachines(farm) { return EGGRUN_MACHINES[farm] || [1]; }
 function erRuns(rec) { return (rec && Array.isArray(rec.runs)) ? rec.runs : []; }
 function erRunning(rec) {
