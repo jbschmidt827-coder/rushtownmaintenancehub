@@ -7465,18 +7465,21 @@ function _openWIForm(wiId, clTaskId, prefillTitle, prefillDept) {
     $set('wif-time',     wi.time     || '');
     $set('wif-ppe',      wi.ppe      || '');
     $set('wif-warnings', wi.warnings || '');
+    $set('wif-video',    wi.videoUrl || '');
     $set('wif-author',   wi.author   || '');
     (wi.steps || []).forEach(step => wiAddStep(step));
     _wiExistingPhotos = [...(wi.photos || [])];
     renderWIPhotoPreviews();
+    try { wiVideoCheck(); } catch (e) {}
   } else {
     $txt('wi-form-title', 'Add Work Instruction');
-    ['wif-title','wif-time','wif-ppe','wif-warnings','wif-author'].forEach(id => $set(id, ''));
+    ['wif-title','wif-time','wif-ppe','wif-warnings','wif-author','wif-video'].forEach(id => $set(id, ''));
     $set('wif-type',   'onboarding');
     $set('wif-dept',   prefillDept || '');
     $set('wif-system', '');
     if (prefillTitle) $set('wif-title', prefillTitle);
     wiAddStep(); wiAddStep(); wiAddStep(); // start with 3 blank steps
+    try { wiVideoCheck(); } catch (e) {}
   }
   modal.classList.add('open');
 }
@@ -7513,6 +7516,47 @@ function wiCollectSteps() {
   return steps;
 }
 
+// ── 🎬 TRAINING VIDEO LINKS (v291) ─────────────────────────────────────────
+// A link, never an upload: Firestore's 1 MB doc cap makes inline video impossible
+// and Storage would bill per view. Accepts the hosts Rushtown actually uses and
+// rejects a pasted file path, which is the mistake that WILL get made ("copy link"
+// vs right-click-copy on a mapped drive — the second one works on nobody's iPad).
+// ORDER MATTERS — most specific host first. `-my.sharepoint.com` is OneDrive for
+// Business, so it has to be tested BEFORE the general sharepoint.com rule or every
+// personal OneDrive link gets mislabelled "SharePoint".
+var WI_VIDEO_HOSTS = [
+  { re: /-my\.sharepoint\.com|onedrive\.live\.com|1drv\.ms/i, name: 'OneDrive' },
+  { re: /sharepoint\.com/i,                 name: 'SharePoint' },
+  { re: /youtube\.com|youtu\.be/i,          name: 'YouTube' },
+  { re: /vimeo\.com/i,                      name: 'Vimeo' },
+  { re: /(microsoftstream|web\.microsoftstream)\.com/i, name: 'Stream' },
+  { re: /teams\.microsoft\.com/i,           name: 'Teams' },
+  { re: /drive\.google\.com/i,              name: 'Google Drive' }
+];
+function wiVideoInfo(url) {
+  var u = String(url || '').trim();
+  if (!u) return { ok: true, empty: true };
+  // A local/network path can never play on a tablet.
+  if (/^[a-z]:\\/i.test(u) || /^\\\\/.test(u) || /^file:/i.test(u)) {
+    return { ok: false, why: 'That is a file path on a computer, not a share link. Open the file in SharePoint or OneDrive and use Share → Copy link.' };
+  }
+  if (!/^https?:\/\//i.test(u)) return { ok: false, why: 'Needs to start with https://' };
+  var hit = WI_VIDEO_HOSTS.find(function (h) { return h.re.test(u); });
+  if (!hit) return { ok: true, warn: true, host: 'Other', why: 'Not a host we recognise — make sure the crew can open it without signing in as you.' };
+  return { ok: true, host: hit.name };
+}
+function wiVideoCheck() {
+  var el = document.getElementById('wif-video'), s = document.getElementById('wif-video-status');
+  if (!el || !s) return;
+  var r = wiVideoInfo(el.value);
+  if (r.empty) { s.textContent = ''; return; }
+  if (!r.ok)      { s.style.color = '#e53e3e'; s.textContent = '🔴 ' + r.why; return; }
+  if (r.warn)     { s.style.color = '#d69e2e'; s.textContent = '🟡 ' + r.why; return; }
+  s.style.color = '#16a34a'; s.textContent = '🟢 ' + r.host + ' link looks good';
+}
+window.wiVideoCheck = wiVideoCheck;
+window.wiVideoInfo  = wiVideoInfo;
+
 async function saveWI() {
   const title    = document.getElementById('wif-title').value.trim();
   const type     = document.getElementById('wif-type').value;
@@ -7522,9 +7566,14 @@ async function saveWI() {
   const ppe      = document.getElementById('wif-ppe').value.trim();
   const warnings = document.getElementById('wif-warnings').value.trim();
   const author   = document.getElementById('wif-author').value.trim();
+  const videoUrl = (document.getElementById('wif-video')?.value || '').trim();
   const steps    = wiCollectSteps();
 
   if (!title) return alert('Please enter a title.');
+  // Block only a link that can never play (file path / not https). A warn-level
+  // host still saves — Joe should not be stopped by a host allowlist.
+  const _vchk = wiVideoInfo(videoUrl);
+  if (!_vchk.ok) return alert('Video link problem:\n\n' + _vchk.why);
   if (!type)  return alert('Please select a type.');
   if (!steps.length) return alert('Please add at least one step.');
 
@@ -7577,7 +7626,7 @@ async function saveWI() {
           ? (editingWIId && !editingWIId.startsWith(fbId.slice(0,6)) ? editingWIId : ('WI-' + fbId.slice(0,8).toUpperCase()))
           : null;
         await db.collection('workInstructions').doc(fbId).update({
-          title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, photos: photoUrls, updatedTs: Date.now(),
+          title, type, dept, system, time: parseInt(time)||0, ppe, warnings, author, steps, photos: photoUrls, videoUrl: videoUrl || null, updatedTs: Date.now(),
           ...(needsWiId ? { wiId: healWiId } : {}),
           ...(clTaskId ? { clTaskId } : {})
         });
@@ -7613,7 +7662,7 @@ async function saveWI() {
       const clTaskId = (document.getElementById('wif-cl-task-id')?.value || '').trim();
       await db.collection('workInstructions').add({
         wiId, title, type, dept, system, time: parseInt(time)||0,
-        ppe, warnings, author, steps, date, photos: photoUrls, ts: Date.now(),
+        ppe, warnings, author, steps, date, photos: photoUrls, videoUrl: videoUrl || null, ts: Date.now(),
         ...(clTaskId ? { clTaskId } : {})
       });
       // activityLog is non-blocking — never let it prevent the WI from saving
@@ -7755,6 +7804,15 @@ function openWIView(wiId) {
   ).join('');
 
   // Photos (if present)
+  // 🎬 v291 — the video sits ABOVE the steps: if there is a film of the job, the
+  // crew should watch it before reading nine bullet points.
+  const videoHtml = (wi.videoUrl && /^https?:\/\//i.test(String(wi.videoUrl)))
+    ? `<a href="${String(wi.videoUrl).replace(/"/g,'&quot;')}" target="_blank" rel="noopener"
+          style="display:flex;align-items:center;justify-content:center;gap:10px;margin:12px 0;padding:14px;
+                 background:#2a0d0d;border:1.5px solid #b03a3a;border-radius:10px;color:#f0a0a0;
+                 font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;text-decoration:none;letter-spacing:1px;">
+          ▶ WATCH THE VIDEO</a>`
+    : '';
   const photosHtml = (wi.photos && Array.isArray(wi.photos) && wi.photos.length)
     ? `<div style="margin-top:14px;">
          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7a9a7a;margin-bottom:8px;">📷 Reference Photos</div>
@@ -7795,6 +7853,7 @@ function openWIView(wiId) {
         ${strip('🦺 PPE & Tools Required',    wi.ppe,          '#d69e2e','#1a1200')}
         ${strip('🔧 Tools & Materials',       wi.tools,        '#3b82f6','#0d1f3a')}
         ${strip('⚠️ Warnings & Cautions',     wi.warnings,     '#e53e3e','#1a0505')}
+        ${videoHtml}
         ${steps.length ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#7a9a7a;letter-spacing:1px;text-transform:uppercase;margin:14px 0 6px;">Steps</div>${stepsHtml}` : ''}
         ${strip('✅ What Good Looks Like',     wi.verification, '#9b59b6','#1a0a2a')}
         ${photosHtml}

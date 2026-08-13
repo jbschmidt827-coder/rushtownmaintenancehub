@@ -4688,6 +4688,21 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
       <input type="text" id="wif-author" placeholder="Your name" list="staff-datalist" autocomplete="off">
     </div>
 
+    <!-- 🎬 Training video (v291 per Joe: "can we attach videos if needed")
+         A LINK, not an upload. Firestore caps a document at 1 MB and a 30-second
+         phone video is 40–60 MB, so the file has to live where it already streams
+         well. Rushtown is on M365, so SharePoint/OneDrive keeps the file company-owned
+         with nothing new to sign up for and no per-view cost. -->
+    <div class="modal-field" style="margin-top:12px;">
+      <label>🎬 Training Video Link (optional)</label>
+      <input type="url" id="wif-video" placeholder="Paste a SharePoint / OneDrive share link" oninput="wiVideoCheck()" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div id="wif-video-status" style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;margin-top:5px;min-height:15px;"></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px;line-height:1.5;">
+        Record on your phone → drop it in the Training Videos folder on SharePoint → Share → Copy link → paste it here.
+        The crew gets a ▶ WATCH button on this instruction and on their training plan.
+      </div>
+    </div>
+
     <!-- Photos -->
     <div class="modal-field" style="margin-top:12px;">
       <label>📷 Reference Photos (optional)</label>
@@ -5406,11 +5421,11 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/core.js?v=20260803-v261"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260803-v261"></script>
-<script defer src="js/maintenance.js?v=20260806-v273"></script>
+<script defer src="js/maintenance.js?v=20260813-v291"></script>
 <script defer src="js/labor-punch.js?v=20260720-v234"></script>
 <script defer src="js/tier1.js?v=20260811-v286"></script>
 <script defer src="js/tier2.js?v=20260730-v258"></script>
-<script defer src="js/tier-sw.js?v=20260803-v264"></script><script defer src="js/signoff.js?v=20260806-v273"></script><script defer src="js/usage.js?v=20260803-v267"></script><script defer src="js/master.js?v=20260806-v274"></script><script defer src="js/targets.js?v=20260812-v287"></script><script defer src="js/birdhealth.js?v=20260812-v288"></script><script defer src="js/training.js?v=20260812-v290"></script>
+<script defer src="js/tier-sw.js?v=20260803-v264"></script><script defer src="js/signoff.js?v=20260806-v273"></script><script defer src="js/usage.js?v=20260803-v267"></script><script defer src="js/master.js?v=20260806-v274"></script><script defer src="js/targets.js?v=20260812-v287"></script><script defer src="js/birdhealth.js?v=20260812-v288"></script><script defer src="js/training.js?v=20260813-v291"></script>
 <script defer src="js/maint-schedule.js?v=20260729-v257"></script>
 <script defer src="js/egg-flow.js?v=20260811-v281"></script><script defer src="js/maint-projects.js?v=20260715-v211"></script>
 <script defer src="js/trending-wo.js?v=20260803-v261"></script>

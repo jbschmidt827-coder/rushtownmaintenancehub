@@ -158,7 +158,11 @@
   function _lvlWis(lvl) {
     return lvl.wis.map(function (t) {
       var w = _T.wi[_trKey(t)];
-      return { title: t, wi: w || null, missing: !w, time: w ? (Number(w.time) || null) : null, steps: w ? (w.steps || []).length : 0, system: w ? (w.system || '') : '' };
+      return { title: t, wi: w || null, missing: !w, time: w ? (Number(w.time) || null) : null,
+               steps: w ? (w.steps || []).length : 0, system: w ? (w.system || '') : '',
+               // 🎬 v291 — a filmed job is worth flagging: the crew would rather
+               // watch two minutes than read nine steps, especially in Spanish.
+               video: (w && w.videoUrl && /^https?:\/\//i.test(String(w.videoUrl))) ? String(w.videoUrl) : null };
     });
   }
   function _lvlProgress(person, lvl) {
@@ -252,6 +256,12 @@
     var body = (w.steps || []).map(function (s, i) { return (i + 1) + '. ' + s; }).join('\n');
     if (typeof toast === 'function') toast(w.title + ' — ' + (w.steps || []).length + ' ' + trL('steps', 'pasos'));
     console.log(w.title + '\n' + body);
+  };
+  window.trWatch = function (title) {
+    var w = _T.wi[_trKey(title)];
+    var u = w && w.videoUrl;
+    if (!u) { if (typeof toast === 'function') toast(trL('No video on this one yet', 'Aún no hay video')); return; }
+    try { window.open(u, '_blank', 'noopener'); } catch (e) { location.href = u; }
   };
   window.trPick = function (name) { _who = name; _view = 'me'; window.openTraining(); };
   window.trView = function (v) { _view = v; window.openTraining(); };
@@ -434,6 +444,8 @@
               (L.safety ? '<span style="' + MONO + 'font-size:9.5px;color:#f87171;font-weight:700;">⚠ ' + trL('SAFETY', 'SEGURIDAD') + '</span>' : '') +
               (p.complete ? '<span style="' + MONO + 'font-size:11px;color:#4ade80;font-weight:700;">✅ ' + trL('cleared', 'completo') + '</span>' : '') +
               (lk ? '<span style="' + MONO + 'font-size:10.5px;color:#f0a35a;font-weight:700;">🔒 ' + trL('finish Level ', 'termina el nivel ') + lk.by.id + '</span>' : '') +
+              (function () { var nv = live.filter(function (x) { return x.video; }).length;
+                 return nv ? ('<span style="' + MONO + 'font-size:10px;color:#f0a0a0;">🎬 ' + nv + '</span>') : ''; })() +
               '<span style="margin-left:auto;' + MONO + 'font-size:11px;color:#8aa0c0;">' + p.signed + '/' + p.n + ' · ' + mins + 'm</span>' +
             '</div>' +
             '<div style="' + MONO + 'font-size:10.5px;color:#5a7aa0;margin-top:5px;">' + trL(L.when, L.whenEs) + ' — ' + trL(L.why, L.whyEs) + '</div>' +
@@ -462,9 +474,11 @@
               '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
                 '<span style="' + MONO + 'font-size:12px;color:' + (sg ? '#9ad6a0' : '#e8f0fa') + ';font-weight:700;">' + (sg ? '✅ ' : '') + _trEsc(i.title) + '</span>' +
                 '<span style="' + MONO + 'font-size:9.5px;color:#5a7aa0;">' + (i.system ? _trEsc(i.system) + ' · ' : '') + i.steps + ' ' + trL('steps', 'pasos') + (i.time ? ' · ' + i.time + 'm' : '') + '</span>' +
+                (i.video ? '<span style="' + MONO + 'font-size:9.5px;color:#f0a0a0;font-weight:700;">🎬 ' + trL('video', 'video') + '</span>' : '') +
               '</div>' +
               '<div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;align-items:center;">' +
                 '<button onclick="trOpenWI(\'' + esc + '\')" style="padding:6px 10px;background:#0d1a2a;border:1.5px solid #2a4a7a;border-radius:7px;color:#9cc0f6;' + MONO + 'font-size:10.5px;font-weight:700;cursor:pointer;">📖 ' + trL('Open', 'Abrir') + '</button>' +
+                (i.video ? ('<button onclick="trWatch(\'' + esc + '\')" style="padding:6px 10px;background:#2a0d0d;border:1.5px solid #b03a3a;border-radius:7px;color:#f0a0a0;' + MONO + 'font-size:10.5px;font-weight:700;cursor:pointer;">▶ ' + trL('Watch', 'Ver') + '</button>') : '') +
                 btn('read', !!r, trL('Read it', 'Leído'), !lk && (isMe || lead)) +
                 btn('did', !!dd, trL('Did it watched', 'Hecho observado'), !lk && !!r && (isMe || lead)) +
                 btn('signed', !!sg, trL('Lead signs', 'Líder firma'), !lk && !!dd && lead && !isMe) +
@@ -485,7 +499,13 @@
         trL('This plan is built from the maintenance work instructions already in the app — ' + Object.keys(_T.wi).length + ' unique ones. ' +
             (dups > 0 ? (dups + ' duplicate copies are ignored so nobody reads the same job twice. ') : '') +
             (missing > 0 ? (missing + ' job(s) in the ladder have no work instruction written yet and are marked ⚠. ') : '') +
-            'A tech marks Read and Did-it-watched; only a Lead or Director can sign the third box, and never on their own row.',
+            'A tech marks Read and Did-it-watched; only a Lead or Director can sign the third box, and never on their own row. ' +
+            (function () {
+              var live = 0, vid = 0;
+              LEVELS.forEach(function (L) { _lvlWis(L).forEach(function (i) { if (!i.missing) { live++; if (i.video) vid++; } }); });
+              return vid ? (vid + ' of ' + live + ' jobs have a training video attached.')
+                         : 'No training videos are attached yet — add a SharePoint link on any work instruction and a ▶ WATCH button appears here.';
+            })(),
             'Este plan usa las instrucciones ya en la app (' + Object.keys(_T.wi).length + ' únicas). Solo un Líder o Director firma la tercera casilla, y nunca la propia.') + '</div>';
 
       body.innerHTML = html;
