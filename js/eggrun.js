@@ -450,6 +450,73 @@ async function eggRunSetLaneEggs(farm, m, idx, val) {
   } catch (e) { console.error('eggRunSetLaneEggs:', e); if (typeof toast === 'function') toast(erL('Could not save', 'No se pudo guardar')); }
 }
 
+// ── ✓ SUBMIT (v292, per Joe: "we need a submit button") ─────────────────────
+// Every field here already autosaved on blur, which is invisible — the crew had
+// no way to know their numbers landed, and a value still focused when they walked
+// away never fired its change event at all. Submit reads the boxes STRAIGHT FROM
+// THE DOM and writes them in ONE record, then says so on screen.
+// NON-BLOCKING on purpose (same rule as the Daily Check): a missing stop time or
+// a house they did not run must never stop the rest of the entry from saving.
+async function eggRunSubmit(farm, m) {
+  try {
+    var g = function (id) { var e = document.getElementById(id); return e ? String(e.value).trim() : ''; };
+    var num = function (v) { if (v === '') return null; var n = Number(String(v).replace(/[, ]/g, '')); return isNaN(n) ? null : n; };
+    var patch = { farm: farm, machine: Number(m), date: erToday(), ts: Date.now() };
+
+    var packer = g('er-packer-' + farm + '-' + m);
+    if (packer) { patch.packer = packer; }
+
+    var st = g('er-start-' + farm + '-' + m), sp = g('er-stop-' + farm + '-' + m);
+    if (st) patch.startClock = st;
+    if (sp) patch.stopClock = sp;
+    var mins = _erMinFromClock(st, sp);
+    // A stop before the start = a typo, not a 20-hour run. Save the clocks but
+    // refuse to publish a run time from them.
+    if (mins != null && mins > 0 && mins <= 960) patch.manualMin = mins;
+
+    // Eggs — by house at Danville, one total at Hegins.
+    var eggs = null;
+    if (erByHouse(farm)) {
+      var map = {}, any = false;
+      erActiveHouses(farm).forEach(function (h) {
+        var v = num(g('er-he-' + farm + '-' + m + '-' + h));
+        if (v != null && v > 0) { map[String(h)] = Math.round(v); any = true; }
+      });
+      if (any) { patch.houseEggs = map; eggs = Object.keys(map).reduce(function (s, k) { return s + map[k]; }, 0); }
+    } else {
+      var arr = [], tot = 0, seen = false;
+      for (var i = 0; i < erLaneCount(farm); i++) {
+        var v2 = num(g('er-lane-' + farm + '-' + m + '-' + i));
+        arr.push(v2 != null ? Math.round(v2) : 0);
+        if (v2 != null && v2 > 0) { tot += Math.round(v2); seen = true; }
+      }
+      if (seen) { patch.laneEggs = arr; eggs = tot; }
+    }
+    if (eggs != null) { patch.eggs = eggs; patch.eggsBy = erBy(); }
+
+    var cw = num(g('er-cw-' + farm + '-' + m));
+    if (cw != null && cw > 0 && cw < 200) patch.caseWt = cw;
+
+    patch.submittedBy = erBy();
+    patch.submittedTs = Date.now();
+
+    await db.collection('eggDailyRun').doc(erKey(farm, m, erToday())).set(patch, { merge: true });
+
+    // Tell them exactly what landed — a silent save is what caused this request.
+    var bits = [];
+    if (eggs != null) bits.push(eggs.toLocaleString() + ' ' + erL('eggs', 'huevos'));
+    if (mins != null && mins > 0 && mins <= 960) bits.push(erFmtDur(mins * 60000));
+    if (typeof toast === 'function') {
+      toast('✅ ' + farm + (erMachines(farm).length > 1 ? ' M' + m : '') + ' ' +
+        erL('submitted', 'enviado') + (bits.length ? ' — ' + bits.join(' · ') : ''));
+    }
+    renderEggRun();
+  } catch (e) {
+    console.error('eggRunSubmit:', e);
+    if (typeof toast === 'function') toast(erL('Could not submit — your entries are still saved on this device', 'No se pudo enviar — tus datos siguen guardados aquí'));
+  }
+}
+
 // ── Render ──────────────────────────────────────────────────────────────────
 // Per-machine status line ("M1 🟢 running since 6:05 · Joe · 2h 10m").
 function _erStatusLine(farm, m, rec, multi) {
@@ -599,14 +666,14 @@ function _erMachineDetail(farm, m, rec, multi) {
     // Packer + lanes
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
       '<label style="' + MONO + 'font-size:12px;color:#9cc0f6;font-weight:700;min-width:135px;">👷 ' + erL('Packer', 'Empacador') + '</label>' +
-      '<input list="staff-datalist" value="' + String(packer).replace(/"/g, '&quot;') + '" onchange="eggRunSetPacker(\'' + farm + '\',' + m + ',this.value)" placeholder="' + erL('name', 'nombre') + '" autocomplete="off" style="flex:2;min-width:120px;' + inp + '">' +
+      '<input id="er-packer-' + farm + '-' + m + '" list="staff-datalist" value="' + String(packer).replace(/"/g, '&quot;') + '" onchange="eggRunSetPacker(\'' + farm + '\',' + m + ',this.value)" placeholder="' + erL('name', 'nombre') + '" autocomplete="off" style="flex:2;min-width:120px;' + inp + '">' +
       /* Lanes box removed v268 — one line per machine, nothing to choose. */
     '</div>' +
     // Start + Stop time of day
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;">' +
       '<label style="' + MONO + 'font-size:12px;color:#9ad6a0;font-weight:700;min-width:135px;">⏱ ' + erL('Start / Stop time', 'Hora inicio / fin') + '</label>' +
-      '<input type="time" step="60" value="' + startC + '" onchange="eggRunSetClock(\'' + farm + '\',' + m + ',\'start\',this.value)" onblur="erTimeBlur()" style="flex:1;min-width:110px;' + inp + '">' +
-      '<input type="time" step="60" value="' + stopC + '" onchange="eggRunSetClock(\'' + farm + '\',' + m + ',\'stop\',this.value)" onblur="erTimeBlur()" style="flex:1;min-width:110px;' + inp + '">' +
+      '<input id="er-start-' + farm + '-' + m + '" type="time" step="60" value="' + startC + '" onchange="eggRunSetClock(\'' + farm + '\',' + m + ',\'start\',this.value)" onblur="erTimeBlur()" style="flex:1;min-width:110px;' + inp + '">' +
+      '<input id="er-stop-' + farm + '-' + m + '" type="time" step="60" value="' + stopC + '" onchange="eggRunSetClock(\'' + farm + '\',' + m + ',\'stop\',this.value)" onblur="erTimeBlur()" style="flex:1;min-width:110px;' + inp + '">' +
       (mins != null ? '<span style="' + MONO + 'font-size:12px;color:#4ade80;font-weight:700;">= ' + erFmtDur(mins * 60000) + ' ' + erL('run', 'corrida') + '</span>' : '') +
     '</div>' +
     // Target done-time + downtime past it (Hegins target 11:45)
@@ -635,7 +702,7 @@ function _erMachineDetail(farm, m, rec, multi) {
               var hv = (houseEggs[h] != null && houseEggs[h] !== '') ? houseEggs[h] : '';
               out += '<div>' +
                 '<div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">' + erL('House', 'Casa') + ' ' + h + '</div>' +
-                '<input type="number" min="0" inputmode="numeric" value="' + hv + '" onchange="eggRunSetHouseEggs(\'' + farm + '\',' + m + ',\'' + h + '\',this.value)" placeholder="0" style="width:100%;box-sizing:border-box;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:9px 10px;">' +
+                '<input id="er-he-' + farm + '-' + m + '-' + h + '" type="number" min="0" inputmode="numeric" value="' + hv + '" onchange="eggRunSetHouseEggs(\'' + farm + '\',' + m + ',\'' + h + '\',this.value)" placeholder="0" style="width:100%;box-sizing:border-box;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:9px 10px;">' +
               '</div>';
             });
             return out + '</div>';
@@ -647,7 +714,7 @@ function _erMachineDetail(farm, m, rec, multi) {
                 var lv = (laneEggs[i] != null && laneEggs[i] !== '') ? laneEggs[i] : '';
                 out += '<div>' +
                   (nLanes > 1 ? ('<div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">' + erL('Lane', 'Carril') + ' ' + (i + 1) + '</div>') : '') +
-                  '<input type="number" min="0" inputmode="numeric" value="' + lv + '" onchange="eggRunSetLaneEggs(\'' + farm + '\',' + m + ',' + i + ',this.value)" placeholder="0" style="width:100%;box-sizing:border-box;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:9px 10px;">' +
+                  '<input id="er-lane-' + farm + '-' + m + '-' + i + '" type="number" min="0" inputmode="numeric" value="' + lv + '" onchange="eggRunSetLaneEggs(\'' + farm + '\',' + m + ',' + i + ',this.value)" placeholder="0" style="width:100%;box-sizing:border-box;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:9px 10px;">' +
                 '</div>';
               }
               return out;
@@ -655,7 +722,7 @@ function _erMachineDetail(farm, m, rec, multi) {
           '</div>')) +
       '<div style="display:flex;align-items:center;gap:9px;margin-top:10px;flex-wrap:wrap;">' +
         '<label style="' + MONO + 'font-size:12px;color:#9ad6a0;font-weight:700;min-width:135px;">' + erL('Case weight (lb)', 'Peso caja (lb)') + '</label>' +
-        '<input type="number" min="0" step="0.1" inputmode="decimal" value="' + (rec && rec.caseWt != null ? String(rec.caseWt) : '') + '" onchange="eggRunSetCaseWt(\'' + farm + '\',' + m + ',this.value)" placeholder="' + erL('lb / case', 'lb / caja') + '" style="flex:0 0 110px;text-align:center;' + inp + '">' +
+        '<input id="er-cw-' + farm + '-' + m + '" type="number" min="0" step="0.1" inputmode="decimal" value="' + (rec && rec.caseWt != null ? String(rec.caseWt) : '') + '" onchange="eggRunSetCaseWt(\'' + farm + '\',' + m + ',this.value)" placeholder="' + erL('lb / case', 'lb / caja') + '" style="flex:0 0 110px;text-align:center;' + inp + '">' +
         (function () {
           var w = (rec && rec.caseWt != null) ? Number(rec.caseWt) : null;
           var cs = (eggs != null) ? (eggs / 360) : null;
@@ -673,6 +740,17 @@ function _erMachineDetail(farm, m, rec, multi) {
       '</div>' +
     '</div>' +
     (by ? '<div style="' + MONO + 'font-size:10px;color:#5a8a5a;margin-top:7px;">' + erL('Last entry by ', 'Última entrada por ') + by + '</div>' : '') +
+    // ✓ SUBMIT — the visible confirmation the crew was missing.
+    '<button onclick="eggRunSubmit(\'' + farm + '\',' + m + ')" style="width:100%;margin-top:12px;padding:15px;background:#14361c;border:2px solid #4ade80;border-radius:12px;color:#9ad6a0;' + MONO + 'font-size:15px;font-weight:700;letter-spacing:1px;cursor:pointer;">✓ ' + erL('SUBMIT', 'ENVIAR') + (multi ? ' M' + m : '') + '</button>' +
+    (function () {
+      // Only today's submission counts — yesterday's stamp must not read as done.
+      if (!rec || !rec.submittedTs || rec.date !== erToday()) {
+        return '<div style="' + MONO + 'font-size:10px;color:#7a8f7a;margin-top:6px;text-align:center;">' + erL('Not submitted yet today', 'Aún no enviado hoy') + '</div>';
+      }
+      return '<div style="' + MONO + 'font-size:10.5px;color:#4ade80;margin-top:6px;text-align:center;font-weight:700;">✅ ' +
+        erL('Submitted ', 'Enviado ') + erFmtTime(rec.submittedTs) +
+        (rec.submittedBy ? (' · ' + rec.submittedBy) : '') + '</div>';
+    })() +
   '</div>';
 }
 
