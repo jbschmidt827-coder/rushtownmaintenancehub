@@ -832,6 +832,10 @@ async function clSeedBuiltinWIsToInventory(taskIds) {
       const byTaskId = await db.collection('workInstructions')
         .where('clTaskId', '==', taskId).limit(1).get();
       if (!byTaskId.empty) { skipped++; continue; }
+      // v293: and skip if ANY work instruction already has this title, whatever
+      // its wiId. Guarding on wiId alone is what created 197 duplicate copies —
+      // and made a deleted duplicate come straight back on the next app open.
+      if (typeof wiTitleExists === 'function' && await wiTitleExists(builtin.title || taskId)) { skipped++; continue; }
       await db.collection('workInstructions').add({
         wiId: SEED_WI_ID,
         title: builtin.title || taskId,

@@ -4794,6 +4794,8 @@ async function seedMortalityCompostingWI() {
 
   try {
     for (const wi of instructions) {
+      // v293: title guard, not wiId — see wiTitleExists()
+      if (await wiTitleExists(wi.title)) continue;
       await db.collection('workInstructions').add(wi);
     }
     console.log('✅ Rushtown Poultry mortality composting instructions seeded.');
@@ -4802,12 +4804,43 @@ async function seedMortalityCompostingWI() {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡 DUPLICATE GUARD FOR EVERY WI SEEDER (v293, 2026-08-13)
+//
+// ROOT CAUSE OF THE 197 DUPLICATE WORK INSTRUCTIONS: every seeder guarded on its
+// OWN `wiId`. The same procedure got seeded from more than one path over time
+// (e.g. "Cleaning Under Cages" existed as WI-MOENI849 AND WI-CL-UNDERCAGE), and
+// each guard only ever protected its own id — so each boot happily re-added a
+// copy it did not recognise. With ~8 devices booting daily that compounds fast.
+// It also meant that DELETING a duplicate made the seeder recreate it on the
+// next app open, which is exactly what Joe saw minutes after the cleanup.
+//
+// Guard on the TITLE instead. A title that already exists is never re-added,
+// no matter which wiId or which code path it came from.
+// ═══════════════════════════════════════════════════════════════════════════
+function _wiTitleKey(t) { return String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+async function wiTitleExists(title) {
+  const k = _wiTitleKey(title);
+  if (!k) return true;                       // no title = never seed it
+  try {
+    // allWI is already live via startWIListener — use it when it is populated,
+    // it costs nothing and reflects deletions immediately.
+    if (typeof allWI !== 'undefined' && Array.isArray(allWI) && allWI.length) {
+      if (allWI.some(w => _wiTitleKey(w && w.title) === k)) return true;
+    }
+    const snap = await db.collection('workInstructions').where('title', '==', title).limit(1).get();
+    if (!snap.empty) return true;
+    return false;
+  } catch (e) {
+    // Cannot verify → assume it exists. Seeding blind is what caused this mess.
+    console.warn('wiTitleExists check failed, skipping seed:', e);
+    return true;
+  }
+}
+
 async function seedWaterRegulatorWI() {
   const SEED_ID = 'WI-WATER-REG-H5-8';
-  try {
-    const check = await db.collection('workInstructions').where('wiId','==', SEED_ID).get();
-    if (!check.empty) return;
-  } catch(e) { return; }
+  if (await wiTitleExists('Water Regulator Replacement — Houses 5–8')) return;
 
   const today = LDATE();
   await db.collection('workInstructions').add({
@@ -4839,10 +4872,7 @@ async function seedWaterRegulatorWI() {
 
 async function seedAugerRollerWI() {
   const SEED_ID = 'WI-AUGER-ROLLER-CLEAN-REPLACE';
-  try {
-    const check = await db.collection('workInstructions').where('wiId','==', SEED_ID).get();
-    if (!check.empty) return;
-  } catch(e) { return; }
+  if (await wiTitleExists('Auger Roller — Cleaning, Replacement & Preventive Maintenance')) return;
 
   const today = LDATE();
   await db.collection('workInstructions').add({
@@ -4881,10 +4911,7 @@ async function seedAugerRollerWI() {
 
 async function seedCounterCardWI() {
   const SEED_ID = 'WI-COUNTER-CARD-H5-8-PMSI';
-  try {
-    const check = await db.collection('workInstructions').where('wiId','==', SEED_ID).get();
-    if (!check.empty) return;
-  } catch(e) { return; }
+  if (await wiTitleExists('Counter Card Reset — Houses 5–8 (PMSI Controls)')) return;
 
   const today = LDATE();
   await db.collection('workInstructions').add({
@@ -6973,7 +7000,8 @@ async function seedRushtownOpsWI() {
   try {
     let added = 0;
     for (const wi of instructions) {
-      if (existingIds.has(wi.wiId)) continue; // skip already-seeded
+      // v293: title guard, not wiId — see wiTitleExists()
+      if (await wiTitleExists(wi.title)) continue;
       await db.collection('workInstructions').add(wi);
       added++;
     }
@@ -7574,6 +7602,21 @@ async function saveWI() {
   // host still saves — Joe should not be stopped by a host allowlist.
   const _vchk = wiVideoInfo(videoUrl);
   if (!_vchk.ok) return alert('Video link problem:\n\n' + _vchk.why);
+
+  // v293: stop a PERSON creating a second copy of a title that already exists.
+  // The seeders were one source of the 197 duplicates; hand-entry is the other.
+  // Only on CREATE — editing an existing one must never be blocked by its own title.
+  if (!editingWIId) {
+    try {
+      const _dupe = (typeof allWI !== 'undefined' ? allWI : []).find(function (w) {
+        return w && _wiTitleKey(w.title) === _wiTitleKey(title);
+      });
+      if (_dupe) {
+        toast('⚠ "' + title + '" already exists — open that one and edit it instead of adding a second copy.');
+        return;
+      }
+    } catch (e) { /* never block a save on the check itself failing */ }
+  }
   if (!type)  return alert('Please select a type.');
   if (!steps.length) return alert('Please add at least one step.');
 
