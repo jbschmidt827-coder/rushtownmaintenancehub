@@ -1592,6 +1592,11 @@ function bwSetCheck(key, val, btn) {
 }
 
 function openBarnWalk(farm, house) {
+  // v294: stamp WHICH DAY this form belongs to. A form left open overnight on a
+  // never-reloaded PWA still holds yesterday's answers — the day-rollover
+  // watchdog in core.js uses this stamp to close it before anyone submits
+  // yesterday's data under today's date.
+  window._bwOpenDate = LDATE();
   _bwFarm = farm; _bwHouse = house; _bwData = {}; _bwDocId = null; _bwBlockBy = {};
   _bwProgressLoaded = false;   // block progress writes until the shared draft loads
   try { if (typeof _bwArrangeCards === 'function') _bwArrangeCards(); } catch (e) {}
@@ -2621,6 +2626,7 @@ function mwRestoreDraft() {
 }
 
 function openMorningWalk(farm, house) {
+  window._mwOpenDate = LDATE();   // v294 — see openBarnWalk / core.js day watchdog
   _mwFarm = farm; _mwHouse = house; _mwData = {};
   const _t = (typeof t === 'function') ? t : (k => k);
   document.getElementById('mw-title').textContent = farm + ' — ' + _t('prod.barn') + ' ' + house;

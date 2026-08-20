@@ -792,7 +792,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v293 · Aug 13 2026';
+var APP_VERSION = 'v294 · Aug 14 2026';
 
 // LOCAL calendar day "YYYY-MM-DD". Everything that means "today" must use this,
 // NOT new Date().toISOString().slice(0,10) — toISOString is UTC, so on Eastern
@@ -804,6 +804,83 @@ function LDATE(d) {
   return y + '-' + m + '-' + dd;
 }
 if (typeof window !== 'undefined') window.LDATE = LDATE;
+
+// ═══════════════════════════════════════════
+// 📅 DAY-ROLLOVER WATCHDOG (v294, per Joe 2026-08-14: "the data is from
+// yesterday after a new day. why is the app not refreshing daily")
+//
+// The farm iPads run this app as an installed PWA that is NEVER closed, so
+// nothing here can assume a nightly reload. Before this watchdog, midnight
+// changed nothing:
+//   • BARN_STATUS / MORNING_STATUS kept yesterday's 'done' entries, so at
+//     5:30am every house opened in "already submitted" mode (fixed in
+//     loadTodayStatus, which now resets before refilling — and gets re-run
+//     from here).
+//   • A Daily Check / Morning Walk left OPEN on screen overnight still held
+//     yesterday's answers; submitting it stamped them with TODAY's date.
+// The interval matters more than the event hooks: a wall-mounted tablet that
+// stays awake never fires visibilitychange.
+// ═══════════════════════════════════════════
+var _appDay = LDATE();
+function _dayRollover() {
+  try {
+    var today = LDATE();
+    if (today === _appDay) return;
+    var was = _appDay;
+    _appDay = today;
+    console.log('📅 Day rollover ' + was + ' → ' + today);
+
+    // 1 — drop per-day drafts and block state from previous days so nothing
+    //     stale can be restored. Today's keys are untouched.
+    try {
+      var kill = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i) || '';
+        if ((/^bwDraft-|^bwBlocks-|^mwDraft-/).test(k) && k.slice(-10) !== today) kill.push(k);
+      }
+      kill.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) {}
+
+    // 2 — close any per-day form still open from yesterday. Its in-memory
+    //     answers belong to the old day; letting it submit would write
+    //     yesterday's data under today's date. (Nobody is mid-entry at
+    //     midnight — Hegins starts 05:30, Danville 07:00.)
+    try {
+      var bwm = document.getElementById('barn-walk-modal');
+      if (bwm && bwm.style.display !== 'none' && bwm.style.display !== '' &&
+          window._bwOpenDate && window._bwOpenDate !== today &&
+          typeof closeBarnWalk === 'function') closeBarnWalk();
+    } catch (e) {}
+    try {
+      var mwm = document.getElementById('morning-walk-modal');
+      if (mwm && mwm.style.display !== 'none' && mwm.style.display !== '' &&
+          window._mwOpenDate && window._mwOpenDate !== today &&
+          typeof closeMorningWalk === 'function') closeMorningWalk();
+    } catch (e) {}
+
+    // 3 — rebuild today's status from Firestore (loadTodayStatus resets the
+    //     maps first as of v294, then re-renders the prod panel itself) and
+    //     repaint the date-scoped views that are cheap to refresh.
+    try { if (typeof loadTodayStatus === 'function') loadTodayStatus(); } catch (e) {}
+    try { if (typeof renderProdCheck === 'function') renderProdCheck(); } catch (e) {}
+    try { if (typeof renderTodayPanel === 'function') renderTodayPanel(); } catch (e) {}
+    try { if (typeof renderEggRun === 'function') renderEggRun(); } catch (e) {}
+
+    try {
+      if (typeof toast === 'function') {
+        var es = (typeof _lang !== 'undefined' && _lang === 'es');
+        toast(es ? '📅 Nuevo día — los chequeos diarios se reiniciaron'
+                 : '📅 New day — daily checks have reset');
+      }
+    } catch (e) {}
+  } catch (e) { console.warn('dayRollover:', e); }
+}
+try {
+  setInterval(_dayRollover, 60000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) _dayRollover(); });
+  window.addEventListener('focus', _dayRollover);
+  window.addEventListener('online', _dayRollover);
+} catch (e) {}
 
 // ── Device heartbeat + fleet tracker (v166) ─────────────────────────────────
 // Every device reports {who, version, site, last seen} shortly after boot.

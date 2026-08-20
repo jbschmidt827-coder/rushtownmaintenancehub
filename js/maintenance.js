@@ -4234,6 +4234,14 @@ var _todayMortTotal = 0;
 
 async function loadTodayStatus() {
   var today = LDATE();
+  // v294 — RESET before refill. This map only ever ACCUMULATED: on a wall-mounted
+  // iPad that never reloads, yesterday's 'done' entries survived midnight, so at
+  // 5:30am openBarnWalk() took the "already submitted" branch for every house and
+  // the crew saw yesterday's data on a new day (Joe, 2026-08-14). Resetting here
+  // also makes the function safe for the day-rollover watchdog to re-call.
+  BARN_STATUS = {};
+  MORNING_STATUS = {};
+  _todayMortTotal = 0;
   try {
     var bSnap = await db.collection('barnWalks').where('date','==',today).get();
     bSnap.forEach(function(d) {
