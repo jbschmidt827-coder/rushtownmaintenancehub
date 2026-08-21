@@ -223,14 +223,23 @@ function woCardHtml(wo) {
   const _wm = Number(wo.workMin) || 0;
   const _running = wo.timerStart ? Math.max(0, Math.round((Date.now() - wo.timerStart) / 60000)) : null;
   const _fmtM = (m) => m < 60 ? (m + 'm') : (Math.floor(m / 60) + 'h ' + (m % 60) + 'm');
+  // v295 — actual vs estimate, the number that makes this data worth collecting
+  const _estH = Number(wo.estHours) || 0;
+  const _vsEst = (_estH > 0 && _wm > 0)
+    ? (function () {
+        var estM = _estH * 60, pct = Math.round(_wm / estM * 100);
+        var col = pct <= 110 ? '#86efac' : pct <= 150 ? '#f0c674' : '#ffb4a6';
+        return '<span style="color:' + col + ';"> · est ' + _fmtM(Math.round(estM)) + ' (' + pct + '%)</span>';
+      })()
+    : '';
   const workedLine = (_wm > 0 || _running != null)
-    ? `<div style="margin-top:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:${_running != null ? '#4ade80' : '#7ab0f6'};">⏱ ${_running != null ? ('WORKING NOW · ' + _fmtM(_running) + (_wm > 0 ? (' (total ' + _fmtM(_wm + _running) + ')') : '')) : ('Labor time: ' + _fmtM(_wm))}</div>`
+    ? `<div style="margin-top:6px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:${_running != null ? '#4ade80' : '#7ab0f6'};">⏱ ${_running != null ? ('⏱ CLOCKED IN' + (wo.timerBy ? (' · ' + wo.timerBy) : '') + ' · ' + _fmtM(_running) + (_wm > 0 ? (' (total ' + _fmtM(_wm + _running) + ')') : '')) : ('Labor time: ' + _fmtM(_wm) + _vsEst)}</div>`
     : '';
   let timerBtn = '';
   if (wo.status !== 'completed' && !wo._pending) {
     timerBtn = wo.timerStart
-      ? `<button onclick="event.stopPropagation();woTimerStop('${wo._fbId}')" style="flex:1;padding:9px;background:#3a1414;border:1px solid #e5533c;border-radius:8px;color:#ffb4a6;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">⏹ Stop work</button>`
-      : `<button onclick="event.stopPropagation();woTimerStart('${wo._fbId}')" style="flex:1;padding:9px;background:#0d2a12;border:1px solid #2a7a3a;border-radius:8px;color:#86efac;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">▶ Start work</button>`;
+      ? `<button onclick="event.stopPropagation();woTimerStop('${wo._fbId}')" style="flex:1;padding:9px;background:#3a1414;border:1px solid #e5533c;border-radius:8px;color:#ffb4a6;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">⏹ CLOCK OUT</button>`
+      : `<button onclick="event.stopPropagation();woTimerStart('${wo._fbId}')" style="flex:1;padding:9px;background:#0d2a12;border:1px solid #2a7a3a;border-radius:8px;color:#86efac;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">▶ CLOCK IN</button>`;
   }
 
   const completionPhotoStrip = (wo.completionPhotos && wo.completionPhotos.length)
@@ -705,11 +714,18 @@ async function woTimerStart(fbId) {
   }
   setSyncDot('live');
 }
-async function woTimerStop(fbId) {
+// v295 — a single clock-in segment can never exceed this. Techs forget to clock
+// out (the same way egg-flow runs were left open for 1,000+ minutes), and one
+// forgotten timer would otherwise poison every average we build off this data.
+const WO_MAX_SEGMENT_MIN = 720;   // 12 hours
+
+async function woTimerStop(fbId, opts) {
   const wo = workOrders.find(w => w._fbId === fbId);
   if (!wo || !wo.timerStart) return;
   const now = Date.now();
-  const mins = Math.max(0, Math.round((now - wo.timerStart) / 60000));
+  let mins = Math.max(0, Math.round((now - wo.timerStart) / 60000));
+  let capped = false;
+  if (mins > WO_MAX_SEGMENT_MIN) { mins = WO_MAX_SEGMENT_MIN; capped = true; }
   const startedAt = wo.timerStart, startedBy = wo.timerBy || '';
   wo.workMin = (Number(wo.workMin) || 0) + mins; wo.timerStart = null; wo.timerBy = null;   // optimistic
   renderWO();
@@ -718,9 +734,17 @@ async function woTimerStop(fbId) {
   try {
     await db.collection('workOrders').doc(fbId).update({
       workMin: wo.workMin, timerStart: null, timerBy: null,
-      workLog: firebase.firestore.FieldValue.arrayUnion({ by: startedBy, min: mins, start: startedAt, stop: now })
+      workLog: firebase.firestore.FieldValue.arrayUnion({
+        by: startedBy, min: mins, start: startedAt, stop: now,
+        capped: capped || false, auto: (opts && opts.auto) || false
+      })
     });
-    if (typeof toast === 'function') toast('⏹ Logged ' + (mins < 60 ? mins + 'm' : (Math.floor(mins/60) + 'h ' + (mins%60) + 'm')) + ' to this WO');
+    if (typeof toast === 'function') {
+      var _lbl = (mins < 60 ? mins + 'm' : (Math.floor(mins/60) + 'h ' + (mins%60) + 'm'));
+      toast(capped
+        ? ('⚠ Clocked out at the 12h cap (' + _lbl + ') — timer was left running. Fix the time on the job if needed.')
+        : ('⏹ Clocked out — ' + _lbl + ' on this work order'));
+    }
   } catch (e) {
     console.error('woTimerStop:', e);
     alert('Could not stop timer: ' + e.message);
@@ -2527,6 +2551,13 @@ async function confirmCloseout() {
   }
 
   const savedFbId = wo._fbId;
+  // v295 — AUTO CLOCK OUT on completion. Before this, closing a work order with
+  // the timer still running silently threw the whole segment away: the tech's
+  // time was never logged and workMin stayed at 0. This is why 0 of 56 work
+  // orders had any labour time on them.
+  if (wo.timerStart) {
+    try { await woTimerStop(savedFbId, { auto: true }); } catch (e) { console.warn('auto clock-out:', e); }
+  }
   const completedDate = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const completionPhotos = pendingCloseoutPhotos.filter(Boolean);
 
