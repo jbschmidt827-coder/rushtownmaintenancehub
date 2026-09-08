@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v296-flowplan';
+const CACHE_NAME = 'rushtown-v299-photos';
 
 const SHELL_FILES = [
   '/',
@@ -69,6 +69,7 @@ const SHELL_FILES = [
   '/js/training.js',
   '/js/wotime.js',
   '/js/flowplan.js',
+  '/js/barnhist.js',
   '/js/maint-schedule.js',
   '/js/egg-flow.js',
   '/js/maint-projects.js',

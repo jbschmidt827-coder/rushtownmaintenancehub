@@ -792,7 +792,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v296 · Aug 21 2026';
+var APP_VERSION = 'v299 · Sep 8 2026';
 
 // LOCAL calendar day "YYYY-MM-DD". Everything that means "today" must use this,
 // NOT new Date().toISOString().slice(0,10) — toISOString is UTC, so on Eastern
@@ -1291,6 +1291,52 @@ function promptInline(msg, onOk, opts) {
 if (typeof window !== 'undefined') { window.confirmInline = confirmInline; window.promptInline = promptInline; }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// WO PHOTOS SIDE COLLECTION (v299)
+// ───────────────────────────────────────────────────────────────────────────
+// Photos used to be saved base64 INSIDE the workOrders doc (up to 800KB per
+// order). With 1,591 orders the collection hit 46 MB — 40 MB of it photos —
+// and every tablet paid for all of it at boot, which is what broke work-order
+// submission in the first place. Photos now live in woPhotos/{workOrder doc id}
+// and are fetched only when someone taps to view them. The order card carries
+// photoCount / completionPhotoCount so the 📷 badge costs nothing.
+//
+// Old orders keep rendering their inline photos until the one-time migration
+// clears them — every reader below checks inline FIRST, side collection second.
+// ═══════════════════════════════════════════════════════════════════════════
+async function saveWoPhotos(fbId, wo, patch) {
+  // patch = { photos: [...] } and/or { completionPhotos: [...] }
+  const arrs = Object.values(patch || {}).filter(a => Array.isArray(a) && a.length);
+  if (!fbId || !arrs.length) return true;
+  try {
+    await db.collection('woPhotos').doc(fbId).set({
+      woId: (wo && wo.id) || '', farm: (wo && wo.farm) || '', house: (wo && wo.house) || '',
+      ...patch, ts: Date.now()
+    }, { merge: true });
+    return true;
+  } catch (e) {
+    // NEVER lose a photo: fall back to the old inline storage on the WO doc.
+    console.warn('woPhotos write failed — falling back to inline:', e);
+    try { await db.collection('workOrders').doc(fbId).update(patch); return true; }
+    catch (e2) { console.warn('inline photo fallback failed too:', e2); return false; }
+  }
+}
+const _woPhotoCache = {};
+async function fetchWoPhotos(fbId) {
+  if (_woPhotoCache[fbId]) return _woPhotoCache[fbId];
+  let out = { photos: [], completionPhotos: [] };
+  try {
+    const snap = await db.collection('woPhotos').doc(fbId).get();
+    if (snap.exists) {
+      const d = snap.data() || {};
+      out.photos = Array.isArray(d.photos) ? d.photos : [];
+      out.completionPhotos = Array.isArray(d.completionPhotos) ? d.completionPhotos : [];
+    }
+    _woPhotoCache[fbId] = out;   // cache only successful reads
+  } catch (e) { console.warn('fetchWoPhotos failed:', e); }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // OFFLINE WORK ORDER QUEUE
 // ───────────────────────────────────────────────────────────────────────────
 // Lets staff fill out and "submit" a work order with no signal. The order is
@@ -1375,13 +1421,18 @@ async function flushOfflineWOs() {
           down: item.down || 'no',
           status: 'open',
           notes: item.notes || '',
-          photos: item.photos || [],
+          // v299: photos go to woPhotos/{fbId} after the add, never inline.
+          photos: [],
+          photoCount: (item.photos || []).length,
           submitted: item.submitted,
           ts: item._queuedAt || Date.now(),
           _localId: item._localId,   // dedupe key carried into Firestore
           queuedOffline: true
         };
-        await db.collection('workOrders').add(wo);
+        const woRef = await db.collection('workOrders').add(wo);
+        if (item.photos && item.photos.length) {
+          try { await saveWoPhotos(woRef.id, wo, { photos: item.photos }); } catch (e) {}
+        }
         try {
           await db.collection('activityLog').add({
             type: 'wo', id: wo.id,
@@ -1455,6 +1506,13 @@ if (typeof window !== 'undefined') {
     setSyncDot('offline');
     updateOfflineBanner();
   });
+  // ⚠ v298: the queue used to flush ONLY on the 'online' event, at boot, or
+  // after the NEXT successful submit. A wall tablet that never fully drops
+  // offline — it just times out on a congested pipe — parked the work order
+  // until the next app reload, which on an always-open tablet never comes
+  // (the v294 lesson). Retry every 2 minutes: flushOfflineWOs is lock-guarded
+  // and returns instantly when the queue is empty, so this costs nothing.
+  setInterval(() => { try { flushOfflineWOs(); } catch (e) {} }, 120000);
 }
 
 // ═══════════════════════════════════════════
@@ -2530,15 +2588,45 @@ async function initApp() {
     const today = new Date().toISOString().slice(0,10);
 
     // ── Core listeners: one round-trip each, no duplicate .get() ──
-    db.collection('workOrders').orderBy('ts','desc').onSnapshot(snap => {
-      workOrders = [];
-      snap.forEach(d => workOrders.push({...d.data(), _fbId: d.id}));
+    // ⚠ v298: this used to be ONE unbounded listener on the whole collection.
+    // After the two sites consolidated into one database the collection hit
+    // 1,591 docs / ~46 MB (photos are stored inline on the doc), so every boot
+    // tried to stream 46 MB to every tablet on farm WiFi. That starved the
+    // WO-number transaction on submit, parked crew submissions in the offline
+    // queue, and read as "no work order can go in".
+    //
+    // Now TWO bounded listeners feed the same `workOrders` array:
+    //   A. every non-completed WO   (tiny — open work must NEVER be capped)
+    //   B. the newest 250 by ts     (history for the log, dup-catcher, counter)
+    // Merged + deduped by _fbId. Anything older and completed is not needed at
+    // boot — report screens (Job Time, Barn History, dashboards) run their own
+    // bounded queries.
+    const _woBuf = { open: null, recent: null };   // null = listener hasn't fired yet
+    const _woMerge = () => {
+      const seen = new Set();
+      const merged = [];
+      [ ...(_woBuf.open || []), ...(_woBuf.recent || []) ].forEach(w => {
+        if (!w || seen.has(w._fbId)) return;
+        seen.add(w._fbId);
+        merged.push(w);
+      });
+      merged.sort((a, b) => {
+        const ta = (a.ts && a.ts.toMillis) ? a.ts.toMillis() : (Number(a.ts) || 0);
+        const tb = (b.ts && b.ts.toMillis) ? b.ts.toMillis() : (Number(b.ts) || 0);
+        return tb - ta;
+      });
+      workOrders = merged;
       // Re-add any work orders still parked on this device (offline, not yet
       // synced) so they keep showing in the list across snapshot rebuilds.
       injectPendingWOs();
       if (workOrders.length > 0) {
         const nums = workOrders.map(w => parseInt((w.id||'').replace('WO-',''))).filter(n => !isNaN(n));
-        woCounter = nums.length ? nums.reduce((m,n) => Math.max(m,n), 0) + 1 : 1;
+        // Never let the counter DROP: the two listeners fire independently, so a
+        // partial view (e.g. only the open listener, ids missing) must not reset
+        // the bootstrap to 1 — mintWoId falls back to this if settings/woCounter
+        // ever disappears, and a reset would mint duplicate WO-001s.
+        const seen = nums.length ? nums.reduce((m,n) => Math.max(m,n), 0) + 1 : 1;
+        woCounter = Math.max((typeof woCounter === 'number' && woCounter > 0) ? woCounter : 1, seen);
       }
       setSyncDot('live');
       // First fire → app is interactive. Subsequent fires just refresh.
@@ -2548,10 +2636,27 @@ async function initApp() {
       } else {
         refreshCurrentPanel();
       }
-    }, err => {
+    };
+    const _woErr = err => {
       console.error('workOrders listener error:', err);
       _hideLoadingScreen();
-    });
+    };
+    // A. open / in-progress / on-hold — no orderBy so no composite index needed.
+    db.collection('workOrders').where('status', 'in', ['open','in-progress','on-hold'])
+      .onSnapshot(snap => {
+        const arr = [];
+        snap.forEach(d => arr.push({...d.data(), _fbId: d.id}));
+        _woBuf.open = arr;
+        _woMerge();
+      }, _woErr);
+    // B. newest 250 — bounded history.
+    db.collection('workOrders').orderBy('ts','desc').limit(250)
+      .onSnapshot(snap => {
+        const arr = [];
+        snap.forEach(d => arr.push({...d.data(), _fbId: d.id}));
+        _woBuf.recent = arr;
+        _woMerge();
+      }, _woErr);
 
     db.collection('pmCompletions').onSnapshot(snap => {
       pmComps = {};

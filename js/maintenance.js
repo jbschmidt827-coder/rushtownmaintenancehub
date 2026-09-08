@@ -196,9 +196,15 @@ function woCardHtml(wo) {
     (wo.priority === 'high'   && ageDays >= 3)
   );
   const slaBreach = woSlaBreached(wo);
-  const photoStrip = (wo.photos && wo.photos.length)
-    ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">${wo.photos.map(p=>`<img src="${p}" style="height:60px;border-radius:6px;border:1px solid var(--border);cursor:zoom-in;" onclick="event.stopPropagation();openPhotoViewer('${wo._fbId}')">`).join('')}</div>`
-    : '';
+  // v299: legacy orders still carry photos inline — render them directly.
+  // New/migrated orders carry only photoCount; show a badge that fetches from
+  // woPhotos on tap so the list never pays for photo bytes.
+  const _inlinePhotos = (wo.photos && wo.photos.length) ? wo.photos : (wo._loadedPhotos || []);
+  const photoStrip = _inlinePhotos.length
+    ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">${_inlinePhotos.map(p=>`<img src="${p}" style="height:60px;border-radius:6px;border:1px solid var(--border);cursor:zoom-in;" onclick="event.stopPropagation();openPhotoViewer('${wo._fbId}')">`).join('')}</div>`
+    : ((wo.photoCount > 0)
+      ? `<div style="margin-top:7px;"><button onclick="event.stopPropagation();openPhotoViewer('${wo._fbId}')" style="padding:7px 12px;background:#15202b;border:1px solid #2a4a6a;border-radius:8px;color:#7ab0f6;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">📷 ${wo.photoCount} ${(typeof _lang!=='undefined'&&_lang==='es')?'foto(s) — toca para ver':'photo(s) — tap to view'}</button></div>`
+      : '');
 
   // Build status action buttons based on current status
   let actionBtns = '';
@@ -242,9 +248,12 @@ function woCardHtml(wo) {
       : `<button onclick="event.stopPropagation();woTimerStart('${wo._fbId}')" style="flex:1;padding:9px;background:#0d2a12;border:1px solid #2a7a3a;border-radius:8px;color:#86efac;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">▶ CLOCK IN</button>`;
   }
 
-  const completionPhotoStrip = (wo.completionPhotos && wo.completionPhotos.length)
-    ? `<div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;">${wo.completionPhotos.map(p=>`<img src="${p}" style="height:55px;border-radius:6px;border:1px solid #2a5a2a;cursor:zoom-in;" onclick="event.stopPropagation();openCompletionPhotoViewer('${wo._fbId}')">`).join('')}</div>`
-    : '';
+  const _inlineComp = (wo.completionPhotos && wo.completionPhotos.length) ? wo.completionPhotos : (wo._loadedCompletionPhotos || []);
+  const completionPhotoStrip = _inlineComp.length
+    ? `<div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;">${_inlineComp.map(p=>`<img src="${p}" style="height:55px;border-radius:6px;border:1px solid #2a5a2a;cursor:zoom-in;" onclick="event.stopPropagation();openCompletionPhotoViewer('${wo._fbId}')">`).join('')}</div>`
+    : ((wo.completionPhotoCount > 0)
+      ? `<div style="margin-top:5px;"><button onclick="event.stopPropagation();openCompletionPhotoViewer('${wo._fbId}')" style="padding:6px 11px;background:#0d2a12;border:1px solid #2a5a2a;border-radius:8px;color:#86efac;font-size:11.5px;font-weight:700;cursor:pointer;font-family:'IBM Plex Mono',monospace;">📷 ${wo.completionPhotoCount} ${(typeof _lang!=='undefined'&&_lang==='es')?'foto(s) de reparación':'after-repair photo(s)'}</button></div>`
+      : '');
   let timeToClose = '';
   if (wo.status === 'completed' && ts) {
     const closedTs = wo.completedTs?.toMillis ? wo.completedTs.toMillis() : (wo.completedTs || 0);
@@ -568,10 +577,26 @@ function openMeetingAgenda() {
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 }
 
-// Lightbox viewer for WO photos
+// Lightbox viewer for WO photos.
+// v299: photos may live inline (legacy docs) or in woPhotos/{fbId} — if only a
+// count is present, fetch once, cache on the order, and reopen.
 function openPhotoViewer(fbId) {
   const wo = workOrders.find(w => w._fbId === fbId);
-  if (!wo || !wo.photos || !wo.photos.length) return;
+  if (!wo) return;
+  const phs = (wo.photos && wo.photos.length) ? wo.photos : (wo._loadedPhotos || []);
+  if (!phs.length) {
+    if (wo.photoCount > 0 && !wo._photosFetching && typeof fetchWoPhotos === 'function') {
+      wo._photosFetching = true;
+      if (typeof toast === 'function') toast((typeof _lang!=='undefined'&&_lang==='es')?'📷 Cargando fotos…':'📷 Loading photos…');
+      fetchWoPhotos(fbId).then(r => {
+        wo._photosFetching = false;
+        wo._loadedPhotos = (r && r.photos) || [];
+        if (wo._loadedPhotos.length) openPhotoViewer(fbId);
+        else if (typeof toast === 'function') toast((typeof _lang!=='undefined'&&_lang==='es')?'⚠ No se encontraron fotos':'⚠ No photos found');
+      }).catch(() => { wo._photosFetching = false; });
+    }
+    return;
+  }
   let idx = 0;
   const overlay = document.createElement('div');
   overlay.id = 'photo-lightbox';
@@ -579,17 +604,17 @@ function openPhotoViewer(fbId) {
   const renderLB = () => {
     overlay.innerHTML = `
       <div style="position:relative;max-width:90vw;max-height:80vh;">
-        <img src="${wo.photos[idx]}" style="max-width:90vw;max-height:75vh;border-radius:10px;display:block;">
-        <div style="text-align:center;color:#ccc;font-size:13px;margin-top:8px;">${idx+1} / ${wo.photos.length} · ${wo.id} · ${wo.farm} · ${wo.house}</div>
+        <img src="${phs[idx]}" style="max-width:90vw;max-height:75vh;border-radius:10px;display:block;">
+        <div style="text-align:center;color:#ccc;font-size:13px;margin-top:8px;">${idx+1} / ${phs.length} · ${wo.id} · ${wo.farm} · ${wo.house}</div>
       </div>
       <div style="display:flex;gap:16px;margin-top:14px;">
-        ${wo.photos.length > 1 ? `<button onclick="event.stopPropagation();window._lbPrev()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">${t('wo.photo.prev')}</button>` : ''}
-        ${wo.photos.length > 1 ? `<button onclick="event.stopPropagation();window._lbNext()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">${t('wo.photo.next')}</button>` : ''}
+        ${phs.length > 1 ? `<button onclick="event.stopPropagation();window._lbPrev()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">${t('wo.photo.prev')}</button>` : ''}
+        ${phs.length > 1 ? `<button onclick="event.stopPropagation();window._lbNext()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">${t('wo.photo.next')}</button>` : ''}
         <button onclick="document.getElementById('photo-lightbox').remove()" style="padding:10px 20px;background:#c0392b;border:none;color:white;border-radius:8px;cursor:pointer;font-size:14px;">${t('wo.photo.close')}</button>
       </div>`;
   };
-  window._lbPrev = () => { idx = (idx - 1 + wo.photos.length) % wo.photos.length; renderLB(); };
-  window._lbNext = () => { idx = (idx + 1) % wo.photos.length; renderLB(); };
+  window._lbPrev = () => { idx = (idx - 1 + phs.length) % phs.length; renderLB(); };
+  window._lbNext = () => { idx = (idx + 1) % phs.length; renderLB(); };
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   renderLB();
   document.body.appendChild(overlay);
@@ -597,7 +622,22 @@ function openPhotoViewer(fbId) {
 
 function openCompletionPhotoViewer(fbId) {
   const wo = workOrders.find(w => w._fbId === fbId);
-  if (!wo || !wo.completionPhotos || !wo.completionPhotos.length) return;
+  if (!wo) return;
+  const phs = (wo.completionPhotos && wo.completionPhotos.length) ? wo.completionPhotos : (wo._loadedCompletionPhotos || []);
+  if (!phs.length) {
+    // v299: fetch after-repair photos from woPhotos/{fbId} on first open.
+    if (wo.completionPhotoCount > 0 && !wo._compPhotosFetching && typeof fetchWoPhotos === 'function') {
+      wo._compPhotosFetching = true;
+      if (typeof toast === 'function') toast((typeof _lang!=='undefined'&&_lang==='es')?'📷 Cargando fotos…':'📷 Loading photos…');
+      fetchWoPhotos(fbId).then(r => {
+        wo._compPhotosFetching = false;
+        wo._loadedCompletionPhotos = (r && r.completionPhotos) || [];
+        if (wo._loadedCompletionPhotos.length) openCompletionPhotoViewer(fbId);
+        else if (typeof toast === 'function') toast((typeof _lang!=='undefined'&&_lang==='es')?'⚠ No se encontraron fotos':'⚠ No photos found');
+      }).catch(() => { wo._compPhotosFetching = false; });
+    }
+    return;
+  }
   let idx = 0;
   const overlay = document.createElement('div');
   overlay.id = 'photo-lightbox';
@@ -606,17 +646,17 @@ function openCompletionPhotoViewer(fbId) {
     overlay.innerHTML = `
       <div style="text-align:center;color:#4caf50;font-size:11px;font-family:'IBM Plex Mono',monospace;margin-bottom:8px;">✓ AFTER REPAIR — ${wo.id}</div>
       <div style="position:relative;max-width:90vw;max-height:80vh;">
-        <img src="${wo.completionPhotos[idx]}" style="max-width:90vw;max-height:72vh;border-radius:10px;display:block;">
-        <div style="text-align:center;color:#ccc;font-size:13px;margin-top:8px;">${idx+1} / ${wo.completionPhotos.length} · ${wo.farm} · ${wo.house}</div>
+        <img src="${phs[idx]}" style="max-width:90vw;max-height:72vh;border-radius:10px;display:block;">
+        <div style="text-align:center;color:#ccc;font-size:13px;margin-top:8px;">${idx+1} / ${phs.length} · ${wo.farm} · ${wo.house}</div>
       </div>
       <div style="display:flex;gap:16px;margin-top:14px;">
-        ${wo.completionPhotos.length > 1 ? `<button onclick="event.stopPropagation();window._lbPrev()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">◀ Prev</button>` : ''}
-        ${wo.completionPhotos.length > 1 ? `<button onclick="event.stopPropagation();window._lbNext()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">Next ▶</button>` : ''}
+        ${phs.length > 1 ? `<button onclick="event.stopPropagation();window._lbPrev()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">◀ Prev</button>` : ''}
+        ${phs.length > 1 ? `<button onclick="event.stopPropagation();window._lbNext()" style="padding:10px 20px;background:#333;border:1px solid #555;color:white;border-radius:8px;cursor:pointer;font-size:14px;">Next ▶</button>` : ''}
         <button onclick="document.getElementById('photo-lightbox').remove()" style="padding:10px 20px;background:#c0392b;border:none;color:white;border-radius:8px;cursor:pointer;font-size:14px;">✕ Close</button>
       </div>`;
   };
-  window._lbPrev = () => { idx = (idx - 1 + wo.completionPhotos.length) % wo.completionPhotos.length; renderLB(); };
-  window._lbNext = () => { idx = (idx + 1) % wo.completionPhotos.length; renderLB(); };
+  window._lbPrev = () => { idx = (idx - 1 + phs.length) % phs.length; renderLB(); };
+  window._lbNext = () => { idx = (idx + 1) % phs.length; renderLB(); };
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   renderLB();
   document.body.appendChild(overlay);
@@ -1064,11 +1104,18 @@ async function submitWO() {
     if (navigator.onLine) {
       try {
         const newWoId = await mintWoId();
-        const wo = { id: newWoId, ...formData, ts: Date.now() };
+        // v299: photos ride in woPhotos/{fbId}, NOT inside the WO doc — inline
+        // base64 photos are what bloated the collection to 46 MB and broke
+        // submission. formData keeps them for the offline queue path below.
+        const wo = { id: newWoId, ...formData, photos: [], photoCount: safePhotos.length, ts: Date.now() };
 
         setSyncDot('saving');
         const ref = await db.collection('workOrders').add(wo);
         wo._fbId = ref.id;
+        if (safePhotos.length) {
+          await saveWoPhotos(ref.id, wo, { photos: safePhotos });
+          wo._loadedPhotos = safePhotos;   // show instantly on this device, no refetch
+        }
         workOrders.unshift(wo);
         renderWO();
 
@@ -2578,10 +2625,14 @@ async function confirmCloseout() {
       completedBy: tech,
       completedNotes: notes,
       completedDate,
-      ...(completionPhotos.length ? {completionPhotos} : {}),
+      // v299: after-repair photos go to woPhotos/{fbId}; the doc keeps a count.
+      ...(completionPhotos.length ? {completionPhotoCount: completionPhotos.length} : {}),
       partsUsed,
       completedTs: firebase.firestore.FieldValue.serverTimestamp()
     });
+    if (completionPhotos.length) {
+      try { await saveWoPhotos(savedFbId, wo, { completionPhotos }); } catch (e) {}
+    }
 
     // Decrement parts inventory
     for (const {partId, qty} of partsUsed) {

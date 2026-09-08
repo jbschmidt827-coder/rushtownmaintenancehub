@@ -42,8 +42,36 @@
   var _range = 30;   // days
   window.wtRange = function (d) { _range = d; window.openWOTime(); };
 
+  // v298: the boot listener is now capped (all open WOs + the newest 250), so
+  // the global array reaches back ~5 weeks. The 90-day view fetches its own
+  // window once and caches it — otherwise it would silently under-count, and a
+  // report that under-counts is worse than no report.
+  var _deep = null, _deepAt = 0;
+  function _need90() { return _range > 35; }
+  function _fetch90() {
+    var cut = _wtDays(_range);
+    return db.collection('workOrders').where('ts', '>=', cut).get().then(function (snap) {
+      var arr = [];
+      snap.forEach(function (d) { var o = d.data() || {}; o._fbId = d.id; arr.push(o); });
+      _deep = arr; _deepAt = Date.now();
+      return arr;
+    });
+  }
+  // Kick off the deep fetch when the 90-day range needs it; re-render on arrival.
+  function _rowsSource() {
+    var live = (typeof workOrders !== 'undefined' && Array.isArray(workOrders)) ? workOrders : [];
+    if (!_need90()) return live;
+    if (_deep && (Date.now() - _deepAt) < 10 * 60000) return _deep.concat(
+      live.filter(function (w) { return w && w._pending; }));
+    try {
+      _fetch90().then(function () { try { window.openWOTime(); } catch (e) {} })
+                .catch(function (e) { console.warn('wotime deep fetch failed:', e); });
+    } catch (e) {}
+    return live;   // render what we have now; the refetch repaints when it lands
+  }
+
   function _rows() {
-    var all = (typeof workOrders !== 'undefined' && Array.isArray(workOrders)) ? workOrders : [];
+    var all = _rowsSource();
     var from = _wtDays(_range);
     return all.filter(function (w) {
       if (!w) return false;
