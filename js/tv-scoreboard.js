@@ -968,7 +968,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // ═══════════════════════════════════════════
 // Large-button tap targets already exist; add keyboard shortcuts
 document.addEventListener('keydown', function(e) {
-  if (document.getElementById('tv-mode-overlay').style.display !== 'none') {
+  // v300: the tv-mode-overlay element no longer exists in index.html, so this
+  // threw on EVERY keystroke since v211 (killing the shortcuts below). Guard it.
+  const _tvOv = document.getElementById('tv-mode-overlay');
+  if (_tvOv && _tvOv.style.display !== 'none') {
     if (e.key === 'Escape') closeTVMode();
     return;
   }
