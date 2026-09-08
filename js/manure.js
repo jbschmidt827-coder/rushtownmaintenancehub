@@ -58,6 +58,7 @@ let _manureLog = [];
 let _manureWeekly = [];
 let _manureSubmit = [];
 let _manureStart = [];   // per-house "belts started" stamps (who + when), live
+let _manureRerun = [];   // v302: rerun exceptions — a house's belts run AGAIN same day, with a reason
 let _manureListening = false;
 let _manurePushed = {}; // dedupe PM-tracker pushes per farm+period this session
 let _manureExpanded = {}; // submitted houses the user re-opened for editing
@@ -230,6 +231,10 @@ function manStartListener() {
       _manureStart = snap.docs.map(function (d) { return Object.assign({}, d.data(), { _id: d.id }); });
       _manureRerender();
     }, function (err) { console.error('manureStart listener:', err); });
+    db.collection('manureRerun').orderBy('ts', 'desc').limit(400).onSnapshot(function (snap) {
+      _manureRerun = snap.docs.map(function (d) { return Object.assign({}, d.data(), { _id: d.id }); });
+      _manureRerender();
+    }, function (err) { console.error('manureRerun listener:', err); });
     // Belt-run schedule (settings/manureBeltSchedule) — rarely changes, live so
     // an edit on one tablet shows on all of them.
     db.collection('settings').doc('manureBeltSchedule').onSnapshot(function (doc) {
@@ -510,12 +515,27 @@ function renderManure() {
               (issueCount > 0 ? ' <span style="font-size:11px;font-weight:700;color:#f2705a;">· ⚠ ' + issueCount + ' ' + ML('issue', 'problema') + (issueCount > 1 ? ML('s', 's') : '') + '</span>' : '') +
             '</div>' +
             '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
-              (srec ? '' : '<button onclick="manureStartRun(\'' + farm + '\',' + house + ')" style="padding:7px 11px;background:#14361c;border:1.5px solid #4ade80;border-radius:8px;color:#4ade80;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">▶ ' + ML('Start belt run', 'Iniciar banda') + '</button>') +
+              (srec
+                ? '<button onclick="manureRerunAdd(\'' + farm + '\',' + house + ')" style="padding:7px 11px;background:#2a1f0a;border:1.5px solid #b08f5a;border-radius:8px;color:#e8c98a;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">↻ ' + ML('Rerun', 'Repetir') + '</button>'
+                : '<button onclick="manureStartRun(\'' + farm + '\',' + house + ')" style="padding:7px 11px;background:#14361c;border:1.5px solid #4ade80;border-radius:8px;color:#4ade80;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">▶ ' + ML('Start belt run', 'Iniciar banda') + '</button>') +
               '<button onclick="manureSetAll(\'' + farm + '\',' + house + ',100)" style="padding:7px 11px;background:#14532d;border:1px solid #2a7a3a;border-radius:8px;color:#86efac;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">' + ML('All 100%', 'Todo 100%') + '</button>' +
               '<button onclick="manureAllChecks(\'' + farm + '\',' + house + ')" style="padding:7px 11px;background:#1c2e14;border:1px solid #3a6a2a;border-radius:8px;color:#a7e08a;font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✓ ' + ML('All checks', 'Todo') + '</button>' +
             '</div>' +
           '</div>' +
           (srec ? '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;font-weight:700;color:#4ade80;background:#0d2a12;border:1px solid #2a7a3a;border-radius:8px;padding:6px 10px;margin-bottom:9px;">▶ ' + ML('Belts started', 'Banda iniciada') + ' ' + startLbl + '</div>' : '') +
+          (function () {
+            // v302: rerun exceptions on the card — every rerun today, with why.
+            var rr = manRerunsToday(farm, house);
+            if (!rr.length) return '';
+            return '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#e8c98a;background:#221805;border:1px solid #b08f5a;border-radius:8px;padding:6px 10px;margin-bottom:9px;line-height:1.6;">↻ <b>' +
+              ML('RERUN ×' + rr.length + ' today', 'REPETIDA ×' + rr.length + ' hoy') + '</b>' +
+              rr.slice().reverse().map(function (r) {
+                var when = '';
+                try { when = new Date(r.ts).toLocaleTimeString(_mlang() === 'es' ? 'es-ES' : 'en-US', { hour: 'numeric', minute: '2-digit' }); } catch (e) {}
+                return '<div style="color:#d8b478;">· ' + String(r.reason || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') +
+                  ' <span style="color:#8a6a45;">— ' + when + (r.by ? ' · ' + String(r.by).replace(/</g,'&lt;') : '') + '</span></div>';
+              }).join('') + '</div>';
+          })() +
           manBeltBadge(farm, house) + rows + '</div>';
       });
     });
@@ -560,6 +580,44 @@ async function manureStartRun(farm, house, silent) {
     if (typeof setSyncDot === 'function') setSyncDot('live');
   }
 }
+// ── v302: RERUN EXCEPTION ───────────────────────────────────────────────────
+// The daily record is ONE run per collector per day, so running a house's
+// belts a SECOND time (too wet, didn't clear, belt trouble) used to be
+// invisible — it just merged into the same doc. A rerun is an EXCEPTION worth
+// its own record: it costs belt hours and usually means something upstream is
+// wrong. Each rerun saves who / when / why, shows on the house card, and the
+// history stays queryable per house.
+function manRerunsToday(farm, house) {
+  var t = manToday();
+  return _manureRerun.filter(function (r) {
+    return r && r.farm === farm && String(r.house) === String(house) && r.date === t;
+  });
+}
+function manureRerunAdd(farm, house) {
+  var ask = ML('Why is House ' + house + ' being RE-RUN? (too wet / didn\'t clear / belt trouble…)',
+               '¿Por qué se vuelve a correr la Casa ' + house + '? (muy húmedo / no limpió / problema de banda…)');
+  var save = async function (reason) {
+    reason = String(reason || '').trim();
+    if (!reason) { if (typeof toast === 'function') toast(ML('⚠ A rerun needs a reason', '⚠ La repetición necesita un motivo')); return; }
+    try {
+      if (typeof setSyncDot === 'function') setSyncDot('saving');
+      var now = Date.now();
+      await db.collection('manureRerun').doc(farm + '__H' + house + '__' + manToday() + '__' + now).set({
+        farm: farm, house: house, date: manToday(), reason: reason, by: _manBy(), ts: now
+      });
+      if (typeof setSyncDot === 'function') setSyncDot('live');
+      if (typeof toast === 'function') toast(ML('↻ House ' + house + ' rerun logged — ' + reason, '↻ Casa ' + house + ' repetición registrada — ' + reason));
+    } catch (e) {
+      console.error('manureRerunAdd:', e);
+      if (typeof toast === 'function') toast(ML('Could not save: ', 'No se pudo guardar: ') + (e && e.message ? e.message : e));
+      if (typeof setSyncDot === 'function') setSyncDot('live');
+    }
+  };
+  // Native prompt() no-ops in the installed PWA — use the in-app version.
+  if (typeof promptInline === 'function') promptInline(ask, save, { value: '' });
+  else { var r = null; try { r = window.prompt(ask, ''); } catch (e) {} if (r != null) save(r); }
+}
+
 // "6:12 AM · Maria" — start time + who, for the house card / collapsed bar.
 function manStartLabel(rec) {
   if (!rec || !rec.startedAt) return '';
