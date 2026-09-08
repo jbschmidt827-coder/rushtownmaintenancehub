@@ -176,10 +176,18 @@ function _erVisible() {
   var el = document.getElementById('pkg-dailyrun');
   return el && el.style.display !== 'none' && el.offsetParent !== null;
 }
+var _erRetryT = null;
 function _erRerender() {
   if (!_erVisible()) return;
   var ae = document.activeElement;   // don't clobber an eggs field mid-typing
-  if (ae && /^(INPUT|TEXTAREA)$/.test(ae.tagName) && document.getElementById('pkg-dailyrun') && document.getElementById('pkg-dailyrun').contains(ae)) return;
+  if (ae && /^(INPUT|TEXTAREA)$/.test(ae.tagName) && document.getElementById('pkg-dailyrun') && document.getElementById('pkg-dailyrun').contains(ae)) {
+    // v301: don't drop the update forever — retry after they stop typing.
+    // Before this, fresh numbers arriving while a field had focus were lost
+    // until the page was closed and reopened.
+    if (_erRetryT) clearTimeout(_erRetryT);
+    _erRetryT = setTimeout(function () { _erRetryT = null; _erRerender(); }, 2500);
+    return;
+  }
   try { renderEggRun(); } catch (e) { console.error('eggrun rerender:', e); }
 }
 
@@ -1112,3 +1120,18 @@ if (typeof window !== 'undefined') {
   window.palShip = palShip;
   window.openProcessing = openProcessing;
 }
+
+// ── v301: start the data feed at BOOT, not on first page open ───────────────
+// The listener used to start inside renderEggRun(), so the FIRST open always
+// drew the downtime table and 14-day history from an empty list, and the
+// repaint when data arrived a second later was skipped if the person had
+// already tapped into a field. Result: "open the page twice to get all the
+// numbers." Start it as soon as Firestore exists so the data is waiting
+// before the page is ever opened. (Polls because script order can put this
+// before Firebase init; erStartListener is idempotent via _erListening.)
+(function _erBootStart(n) {
+  try {
+    if (typeof db !== 'undefined' && db) { erStartListener(); return; }
+  } catch (e) {}
+  if (n < 30) setTimeout(function () { _erBootStart(n + 1); }, 1000);
+})(0);
