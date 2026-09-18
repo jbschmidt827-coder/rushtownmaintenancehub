@@ -894,6 +894,8 @@ function bwSaveDraft() {
   });
   // per-meter boxes (Hegins) — drafted so a half-read house isn't lost
   document.querySelectorAll('[id^="bw-wm-"]').forEach(el => { fields[el.id] = el.value; });
+  // v304: per-collector mortality boxes (Danville)
+  document.querySelectorAll('[id^="bw-mc-"]').forEach(el => { fields[el.id] = el.value; });
   const clNotes = {};
   document.querySelectorAll('#bw-checklist-items input[id^="bw-cl-note-"]').forEach(el => {
     clNotes[el.id.replace('bw-cl-note-', '')] = el.value;
@@ -1051,6 +1053,8 @@ function bwRecordToDraft(rec) {
       'bw-bin-a':               rec.binA              != null ? String(rec.binA)              : '',
       'bw-bin-b':               rec.binB              != null ? String(rec.binB)              : '',
       'bw-eggs-collected':      rec.eggsCollected     != null ? String(rec.eggsCollected)     : '',
+      // v304: collector split restores into the six boxes
+      ...(function () { const o = {}; const s = rec.mortByCollector || {}; for (let i = 1; i <= 6; i++) o['bw-mc-' + i] = s[String(i)] != null ? String(s[String(i)]) : ''; return o; })(),
     },
     bwData: {
       mort: rec.mort, feather: rec.feather, air: rec.air, feed: rec.feed,
@@ -1611,10 +1615,12 @@ function openBarnWalk(farm, house) {
     const e = document.getElementById('bw-employee');
     if (_du && e && !e.value) { e.value = _du; if (typeof bwFlowRefresh === 'function') bwFlowRefresh(false); else if (typeof checkBWReady === 'function') checkBWReady(); }
   }, 50);
-  ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count','bw-eggs-collected'].forEach(id => {
+  ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count','bw-eggs-collected',
+   'bw-mc-1','bw-mc-2','bw-mc-3','bw-mc-4','bw-mc-5','bw-mc-6'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('bw-mort-count-row').style.display    = 'none';
+  { const r = document.getElementById('bw-mort-coll-row'); if (r) r.style.display = 'none'; const h = document.getElementById('bw-mort-coll-hint'); if (h) h.textContent = ''; }
   document.getElementById('bw-loose-count-row').style.display   = 'none';
   document.getElementById('bw-rodent-count-row').style.display  = 'none';
   document.getElementById('bw-fly-count-row').style.display     = 'none';
@@ -1843,6 +1849,52 @@ async function clOpenTaskWI(taskId, taskLabel) {
   }, 100);
 }
 
+// ── v304: MORTALITY BY COLLECTOR (Danville — 6 collectors per house) ────────
+// Joe: "can we add mortality by collector. there are 6 collectors in each house
+// for danville". A dead bird's ROW says where the problem is (a water line, a
+// feed run, a fan) in a way a house total never can. Danville only — every
+// Danville house is the same 6-collector layout. Optional, never blocks Submit:
+// filling the six boxes auto-totals the count; leaving them blank works as before.
+const BW_MORT_COLLECTORS = 6;
+function bwMortCollShow() {
+  const row = document.getElementById('bw-mort-coll-row');
+  if (!row) return;
+  const on = (_bwFarm === 'Danville') && (_bwData.mort === 'yes');
+  row.style.display = on ? 'block' : 'none';
+  const lbl = document.getElementById('bw-mort-coll-label');
+  if (lbl) lbl.textContent = (typeof _lang !== 'undefined' && _lang === 'es')
+    ? 'Por colector — C1 a C6 (opcional, suma el total)'
+    : 'By collector — C1 to C6 (optional, adds up the total)';
+  if (on) bwMortCollSum(true);
+}
+function _bwMortColl() {
+  const out = {}; let any = false;
+  for (let i = 1; i <= BW_MORT_COLLECTORS; i++) {
+    const el = document.getElementById('bw-mc-' + i);
+    const n = el && el.value !== '' ? Number(el.value) : 0;
+    if (n > 0) { out[String(i)] = n; any = true; }
+  }
+  return any ? out : null;
+}
+function bwMortCollSum(quiet) {
+  const split = _bwMortColl();
+  const hint = document.getElementById('bw-mort-coll-hint');
+  const tot = document.getElementById('bw-mort-count');
+  if (!split) { if (hint) hint.textContent = ''; return; }
+  const sum = Object.values(split).reduce((a, b) => a + b, 0);
+  if (tot) {
+    tot.value = String(sum);   // the collectors ARE the count
+    if (!quiet) { try { tot.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {} }
+  }
+  if (hint) {
+    const es = (typeof _lang !== 'undefined' && _lang === 'es');
+    hint.textContent = (es ? 'Total ' : 'Total ') + sum + ' = ' +
+      Object.entries(split).map(([c, n]) => 'C' + c + ' ' + n).join(' + ');
+  }
+  if (!quiet && typeof bwSaveDraft === 'function') { try { bwSaveDraft(); } catch (e) {} }
+  if (!quiet && typeof bwFlowRefresh === 'function') { try { bwFlowRefresh(false); } catch (e) {} }
+}
+
 function bwSet(key, val) {
   _bwData[key] = val;
   const badge = {
@@ -1866,7 +1918,7 @@ function bwSet(key, val) {
   document.querySelectorAll(`#barn-walk-modal .bw-yn-btn[id^="bw-${key}-"]`).forEach(b => b.className = 'bw-yn-btn');
   const sel = document.getElementById(`bw-${key}-${val}`);
   if (sel) sel.className = 'bw-yn-btn ' + (badge[key]?.[val] || 'bw-sel');
-  if (key === 'mort')  document.getElementById('bw-mort-count-row').style.display  = val==='yes' ? 'block' : 'none';
+  if (key === 'mort')  { document.getElementById('bw-mort-count-row').style.display  = val==='yes' ? 'block' : 'none'; bwMortCollShow(); }
   if (key === 'loose')   document.getElementById('bw-loose-count-row').style.display   = val==='yes'  ? 'block' : 'none';
   if (key === 'rodent')  document.getElementById('bw-rodent-count-row').style.display  = val==='yes'  ? 'block' : 'none';
   if (key === 'fly')     document.getElementById('bw-fly-count-row').style.display     = val==='yes'  ? 'block' : 'none';
@@ -2136,6 +2188,8 @@ async function submitBarnWalk() {
   const waterPSI   = null; // field removed from Daily Employee Check
   const temp       = null; // field removed from Daily Employee Check
   const mortCount  = document.getElementById('bw-mort-count').value ? Number(document.getElementById('bw-mort-count').value) : null;
+  // v304: per-collector split (Danville). null when the boxes are blank.
+  const mortByCollector = (_bwFarm === 'Danville' && _bwData.mort === 'yes') ? _bwMortColl() : null;
   const looseCount  = document.getElementById('bw-loose-count').value  ? Number(document.getElementById('bw-loose-count').value)  : null;
   const rodentCount = document.getElementById('bw-rodent-count').value ? Number(document.getElementById('bw-rodent-count').value) : null;
   const flyCount    = document.getElementById('bw-fly-count').value    ? Number(document.getElementById('bw-fly-count').value)    : null;
@@ -2179,7 +2233,7 @@ async function submitBarnWalk() {
 
   const record = {
     farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
-    waterPSI, temp, mortCount, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading, eggsCollected,
+    waterPSI, temp, mortCount, mortByCollector, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading, eggsCollected,
     waterMeter, waterMeters, waterUsedGal, waterFlatMeters, binA, binB,
     naFields: _bwData._na || {},
     weeklyAck: !!_bwData._weeklyAck,
@@ -2288,6 +2342,7 @@ async function submitBarnWalk() {
       time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
       type: 'mortality',
       mortCount: mortCount || 0,
+      mortByCollector: mortByCollector,          // v304: {'1':n,…,'6':n} or null
       mortrem: _bwData.mortrem || 'yes',
       notes: notes || '',
       ts: Date.now()
@@ -3398,7 +3453,8 @@ function _bwHistDetailHtml(w) {
   const es = (typeof _lang !== 'undefined' && _lang === 'es');
   const V = v => (v == null || v === '') ? '—' : String(v);
   const rows = [
-    [es?'Mortalidad':'Mortality',      (w.mort==='yes' ? (w.mortCount!=null?w.mortCount:'yes') : 'no') + (w.mort==='yes' ? (w.mortrem==='yes' ? (es?' · retiradas ✓':' · removed ✓') : (es?' · NO retiradas ⚠':' · NOT removed ⚠')) : '')],
+    [es?'Mortalidad':'Mortality',      (w.mort==='yes' ? (w.mortCount!=null?w.mortCount:'yes') : 'no') + (w.mort==='yes' ? (w.mortrem==='yes' ? (es?' · retiradas ✓':' · removed ✓') : (es?' · NO retiradas ⚠':' · NOT removed ⚠')) : '')
+      + ((w.mort==='yes' && w.mortByCollector && Object.keys(w.mortByCollector).length) ? ((es?' · por colector: ':' · by collector: ') + Object.entries(w.mortByCollector).map(([c,n]) => 'C'+c+' '+n).join(', ')) : '')],
     [es?'Aves sueltas':'Loose birds',  w.loose==='yes' ? V(w.looseCount) : 'no'],
     [es?'Secadores':'Manure dryers',   V(w.dryers)],
     [es?'Plumaje':'Feathering',        V(w.feather)],

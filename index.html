@@ -2765,6 +2765,20 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
     <div id="bw-mort-count-row" style="display:none;">
       <div class="bw-row-label">How many?</div>
       <input type="number" id="bw-mort-count" class="bw-input" placeholder="Enter count" min="1">
+      <!-- v304: Danville only — split the count by collector (6 per house). Filling
+           these auto-totals the count above. Optional; never blocks Submit. -->
+      <div id="bw-mort-coll-row" style="display:none;margin-top:9px;">
+        <div class="bw-row-label" id="bw-mort-coll-label">By collector — C1 to C6</div>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;">
+          <input type="number" id="bw-mc-1" class="bw-input" placeholder="C1" min="0" inputmode="numeric" oninput="bwMortCollSum()" style="text-align:center;padding:10px 4px;">
+          <input type="number" id="bw-mc-2" class="bw-input" placeholder="C2" min="0" inputmode="numeric" oninput="bwMortCollSum()" style="text-align:center;padding:10px 4px;">
+          <input type="number" id="bw-mc-3" class="bw-input" placeholder="C3" min="0" inputmode="numeric" oninput="bwMortCollSum()" style="text-align:center;padding:10px 4px;">
+          <input type="number" id="bw-mc-4" class="bw-input" placeholder="C4" min="0" inputmode="numeric" oninput="bwMortCollSum()" style="text-align:center;padding:10px 4px;">
+          <input type="number" id="bw-mc-5" class="bw-input" placeholder="C5" min="0" inputmode="numeric" oninput="bwMortCollSum()" style="text-align:center;padding:10px 4px;">
+          <input type="number" id="bw-mc-6" class="bw-input" placeholder="C6" min="0" inputmode="numeric" oninput="bwMortCollSum()" style="text-align:center;padding:10px 4px;">
+        </div>
+        <div id="bw-mort-coll-hint" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8fae8f;margin-top:5px;min-height:14px;"></div>
+      </div>
     </div>
     <div style="margin-top:12px;">
       <div class="bw-row-label">All mortality removed?</div>
@@ -5421,14 +5435,14 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20260908-v303"></script>
+<script defer src="js/core.js?v=20260918-v304"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260803-v261"></script>
 <script defer src="js/maintenance.js?v=20260908-v299"></script>
 <script defer src="js/labor-punch.js?v=20260720-v234"></script>
 <script defer src="js/tier1.js?v=20260811-v286"></script>
 <script defer src="js/tier2.js?v=20260730-v258"></script>
-<script defer src="js/tier-sw.js?v=20260803-v264"></script><script defer src="js/signoff.js?v=20260806-v273"></script><script defer src="js/usage.js?v=20260803-v267"></script><script defer src="js/master.js?v=20260806-v274"></script><script defer src="js/targets.js?v=20260812-v287"></script><script defer src="js/birdhealth.js?v=20260812-v288"></script><script defer src="js/training.js?v=20260813-v291"></script><script defer src="js/wotime.js?v=20260908-v298"></script><script defer src="js/flowplan.js?v=20260821-v296"></script><script defer src="js/barnhist.js?v=20260908-v298"></script>
+<script defer src="js/tier-sw.js?v=20260803-v264"></script><script defer src="js/signoff.js?v=20260806-v273"></script><script defer src="js/usage.js?v=20260803-v267"></script><script defer src="js/master.js?v=20260806-v274"></script><script defer src="js/targets.js?v=20260812-v287"></script><script defer src="js/birdhealth.js?v=20260918-v304"></script><script defer src="js/training.js?v=20260813-v291"></script><script defer src="js/wotime.js?v=20260908-v298"></script><script defer src="js/flowplan.js?v=20260821-v296"></script><script defer src="js/barnhist.js?v=20260908-v298"></script>
 <script defer src="js/maint-schedule.js?v=20260729-v257"></script>
 <script defer src="js/egg-flow.js?v=20260811-v281"></script><script defer src="js/maint-projects.js?v=20260715-v211"></script>
 <script defer src="js/trending-wo.js?v=20260803-v261"></script>
@@ -5446,7 +5460,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/livemonitor.js?v=20260803-v266"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260715-v211"></script>
-<script defer src="js/production.js?v=20260814-v294"></script>
+<script defer src="js/production.js?v=20260918-v304"></script>
 <script defer src="js/scorecard.js?v=20260803-v266"></script>
 <script defer src="js/help.js?v=20260716-v217"></script>
 <script defer src="js/time-blocks.js?v=20260727-v250"></script>

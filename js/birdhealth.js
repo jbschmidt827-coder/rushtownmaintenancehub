@@ -218,6 +218,65 @@
   function _sec(t) { return '<div style="' + MONO + 'font-size:11px;letter-spacing:1.5px;color:#c99a5a;text-transform:uppercase;margin:20px 2px 8px;font-weight:700;">' + t + '</div>'; }
   function _box(inner, border) { return '<div style="background:#1c150e;border:1.5px solid ' + (border || '#3a2a18') + ';border-radius:12px;padding:12px 14px;margin-bottom:10px;">' + inner + '</div>'; }
 
+  // ── v304: MORTALITY BY COLLECTOR ─────────────────────────────────────────
+  // Sums the crew's per-collector splits (mortalityLog.mortByCollector) per
+  // house over a window. A collector is "hot" when it carries more than a third
+  // of its house's split deaths with at least 5 birds — that's 2x the fair
+  // share of 1/6, and enough birds to mean something.
+  var COLLECTORS = 6, HOT_SHARE = 1 / 3, HOT_MIN = 5;
+  function _collGrid(site, days) {
+    var from = _bhDstr(days);
+    var houses = {};          // h -> {c:{1..6}, split:n, total:n}
+    var entries = 0, total = 0;
+    (_B.logs || []).forEach(function (l) {
+      if (!l || l.farm !== site || l.type !== 'mortality') return;
+      if (String(l.date || '') < from) return;
+      var h = _hnum(l.house);
+      var H = houses[h] || (houses[h] = { c: {}, split: 0, total: 0 });
+      total++;
+      H.total += Number(l.mortCount) || 0;
+      var s = l.mortByCollector;
+      if (!s || typeof s !== 'object') return;
+      var any = false;
+      Object.keys(s).forEach(function (k) {
+        var n = Number(s[k]) || 0; if (n <= 0) return;
+        H.c[k] = (H.c[k] || 0) + n; H.split += n; any = true;
+      });
+      if (any) entries++;
+    });
+    var rows = Object.keys(houses).sort(function (a, b) { return Number(a) - Number(b); }).map(function (h) {
+      var H = houses[h], hot = [];
+      for (var c = 1; c <= COLLECTORS; c++) {
+        var n = H.c[String(c)] || 0;
+        if (H.split >= HOT_MIN && n >= HOT_MIN && n / H.split > HOT_SHARE) hot.push(c);
+      }
+      return { house: h, c: H.c, split: H.split, total: H.total, hot: hot };
+    }).filter(function (r) { return r.split > 0; });
+    return { days: days, rows: rows, entries: entries, total: total };
+  }
+  function _collGridHtml(G, title) {
+    if (!G.rows.length) return '<div style="' + MONO + 'font-size:11px;color:#8a6a45;margin:4px 0 8px;">' + _bhEsc(title) + ' — ' + bhL('no splits', 'sin conteos') + '</div>';
+    var out = '<div style="' + MONO + 'font-size:10.5px;color:#c99a5a;font-weight:700;letter-spacing:1px;margin:6px 0 4px;">' + _bhEsc(title) + '</div>';
+    out += '<div style="display:grid;grid-template-columns:52px repeat(' + COLLECTORS + ',1fr) 56px;gap:4px;align-items:stretch;">';
+    out += '<div></div>';
+    for (var c = 1; c <= COLLECTORS; c++) out += '<div style="' + MONO + 'font-size:10px;color:#8a6a45;text-align:center;">C' + c + '</div>';
+    out += '<div style="' + MONO + 'font-size:10px;color:#8a6a45;text-align:center;">' + bhL('total', 'total') + '</div>';
+    G.rows.forEach(function (r) {
+      out += '<div style="' + MONO + 'font-size:12px;font-weight:700;color:#f5ecdc;align-self:center;">H' + _bhEsc(r.house) + '</div>';
+      for (var c = 1; c <= COLLECTORS; c++) {
+        var n = r.c[String(c)] || 0, share = r.split ? n / r.split : 0, isHot = r.hot.indexOf(c) !== -1;
+        // shade by share of the house: 0 → dark, fair share → amber-ish, hot → red
+        var bg = n === 0 ? '#161009' : isHot ? '#5a1c14' : share > 1 / 6 ? '#3a2a12' : '#22301a';
+        var bd = isHot ? '#f87171' : n === 0 ? '#2a1f12' : '#4a3a1a';
+        out += '<div title="' + Math.round(share * 100) + '%" style="background:' + bg + ';border:1px solid ' + bd + ';border-radius:6px;padding:7px 2px;text-align:center;' + MONO + 'font-size:12.5px;font-weight:700;color:' + (isHot ? '#fca5a5' : n ? '#e8c98a' : '#3a2f22') + ';">' +
+          (n || '·') + (isHot ? '<div style="font-size:9px;color:#f87171;">🔥 ' + Math.round(share * 100) + '%</div>' : (n ? '<div style="font-size:9px;color:#8a6a45;">' + Math.round(share * 100) + '%</div>' : '')) + '</div>';
+      }
+      out += '<div style="' + MONO + 'font-size:12px;color:#c9a97a;text-align:center;align-self:center;">' + r.split + (r.total > r.split ? '<div style="font-size:9px;color:#6a5335;">' + bhL('of ', 'de ') + r.total + '</div>' : '') + '</div>';
+    });
+    out += '</div>';
+    return out;
+  }
+
   // Tiny inline bar chart of the daily counts — no library, no canvas.
   function _spark(nums, w, h) {
     if (!nums || !nums.length) return '';
@@ -390,6 +449,24 @@
           '<div style="' + MONO + 'font-size:10px;color:#c9a97a;margin-top:8px;padding-top:8px;border-top:1px dashed #3a2a18;line-height:1.6;">' +
             bhL('One of these two numbers is wrong. Mortality is the figure the vet, the flock supervisor and the insurer all work from, so it is worth knowing which. Shown only when the gap is 5+ birds AND 20%+.',
                 'Uno de los dos números está mal. Se muestra solo si la diferencia es 5+ aves y 20%+.') + '</div>', '#5a4a1a');
+      }
+
+      // ── MORTALITY BY COLLECTOR (v304 — Danville, 6 collectors per house) ──
+      var CG = _collGrid(_site, 7), CG28 = _collGrid(_site, 28);
+      if (CG.entries || CG28.entries || _site === 'Danville') {
+        html += _sec('🧭 ' + bhL('Mortality by collector · which row the birds are dying in', 'Mortalidad por colector · en qué fila mueren'));
+        if (!CG28.entries) {
+          html += _box('<div style="' + MONO + 'font-size:12px;color:#c9a97a;line-height:1.6;">' +
+            bhL('No collector splits entered yet. On the Daily EE Check, when mortality is YES, the crew can type the count per collector (C1–C6) — the total adds itself. Once they do, this shows which row the deaths are in.',
+                'Aún no hay conteos por colector. En el Chequeo Diario, con mortalidad SÍ, el equipo puede escribir el conteo por colector (C1–C6).') + '</div>');
+        } else {
+          html += _box(_collGridHtml(CG, bhL('Last 7 days', 'Últimos 7 días')) + _collGridHtml(CG28, bhL('Last 28 days', 'Últimos 28 días')) +
+            '<div style="' + MONO + 'font-size:10px;color:#c9a97a;margin-top:8px;padding-top:8px;border-top:1px dashed #3a2a18;line-height:1.6;">' +
+              bhL('Fair share is 1 in 6 (17%) per collector. 🔥 = one collector carrying over a third of the house\'s deaths with 5+ birds — look at that row\'s water line, feeder run and fan before anything else. Coverage: ' +
+                    CG28.entries + ' of ' + CG28.total + ' mortality entries in 28 days had a collector split — the rest are house totals only.',
+                  'Lo justo es 1 de 6 (17%) por colector. 🔥 = un colector con más de un tercio de las muertes de la casa y 5+ aves — revisa su línea de agua, comedero y ventilador primero. Cobertura: ' +
+                    CG28.entries + ' de ' + CG28.total + ' entradas en 28 días con conteo por colector.') + '</div>', '#3a4a1a');
+        }
       }
 
       // ── LOOSE BIRDS ──
