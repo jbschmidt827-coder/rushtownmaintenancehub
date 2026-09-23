@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', event => {
 // Returns cached asset INSTANTLY, then refreshes
 // in the background for the next visit.
 // ═══════════════════════════════════════════
-const CACHE_NAME = 'rushtown-v305-shiftboard';
+const CACHE_NAME = 'rushtown-v306-runsheet';
 
 const SHELL_FILES = [
   '/',

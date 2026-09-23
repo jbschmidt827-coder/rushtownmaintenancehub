@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// shiftboard.js — 🕐 DANVILLE SHIFT BOARD (v305, per Joe 2026-09-22)
+// shiftboard.js — 🕐 DANVILLE SHIFT BOARD (v305–v306, per Joe 2026-09-22)
+// v306: shift subtotal rows on the hour-by-hour board, itemized run sheet
+// (time · event · hours · CPH · cases · pallets), movable downtime clock.
 //
 // "i will make this our hour by hour board" — the 24-hour Danville plan, hour by
 // hour, with the day's ACTUAL pallets pulled straight off the 🥚⏱ Daily Run entry
@@ -15,7 +17,9 @@
 //   • 1 case = 30 dz = 360 eggs. 1 pallet = 30 cases = 10,800 eggs.
 //   • Downtime is placed at 10 AM on the board for planning. Rule of thumb:
 //     30 min down = −76 cases on 1st shift, barns done 30 min later, −95 cases
-//     (≈3 pallets) of outside eggs. The barn eggs always get run.
+//     (≈3 pallets) of outside eggs ONLY once the day runs out of belt time — outside
+//     eggs are a supply the board is told (pallets/day), not a filler (Joe 9/22: closing
+//     a barn must make the target go DOWN, not up).
 //
 // DATA (all live, all Firestore):
 //   eggDailyRun  Danville__M1__<date> {houseEggs:{'1':n,…,'outside':n}, houseEggsTs:{key:ms}, eggs, ts}
@@ -24,7 +28,7 @@
 //                plan day (2nd shift ends at 2 AM) — that is what houseEggsTs is for.
 //   eggFlow      today's belt runs → which barns are running / done right now.
 //   settings/shiftBoard {off:{'3':true}, cases:{'2':238}}   — standing settings.
-//   shiftBoard/<date>   {down:1.5}                           — that day's downtime.
+//   shiftBoard/<date>   {down:1.5, downAt:'10:00', outsideP:40} — that day's downtime, where it sits, outside pallets.
 //
 // ⚠ H2's default is 238 cases (82.9% lay, 7,141 dz off Joe's Tier 2 chart). The
 // farm-record feed (tierExternal) showed 110k eggs = lay over 100% on 9/17–9/21
@@ -37,6 +41,7 @@
   var EGGS_CASE = 360, CPP = 30, EGGS_PALLET = EGGS_CASE * CPP;   // 10,800
   var RATE_BARN = 152, RATE_OUT = 190;                              // cases/hr (settings can override)
   var CHANGEOVER = 30;                                              // minutes
+  var DEFAULT_OUTSIDE_P = 40;                                       // pallets of outside eggs on a normal day (settings.outsideP / day doc outsideP override)
   // Barn order and default cases/day. H3 = H4 per Joe ("house 3 will match house 4").
   var BARNS = [ { id: '5', cases: 353 }, { id: '4', cases: 461 }, { id: '3', cases: 461 }, { id: '2', cases: 238 }, { id: '1', cases: 186 } ];
   var DAY0 = 360, DAY1 = 360 + 1440;          // plan day = 6:00 AM → 6:00 AM, in minutes
@@ -49,7 +54,7 @@
   var DOWN_STEPS = [0, 0.5, 1, 1.5, 2, 2.5, 3];
   var HIST_DAYS = 30;
   var COL = { '5': '#4f93c7', '4': '#3fae8c', '3': '#7f9bd6', '2': '#57bcbc', '1': '#8fb457',
-              outside: '#e7a03a', pause: '#3a4753', down: '#e0574c', change: '#a8875a', clean: '#9a7fc9', idle: '#1a2a1a' };
+              outside: '#e7a03a', pause: '#3a4753', down: '#e0574c', change: '#a8875a', clean: '#9a7fc9', idle: '#1a2a1a', spare: '#243b31' };
 
   function sbL(en, es) { try { return (typeof _lang !== 'undefined' && _lang === 'es') ? es : en; } catch (e) { return en; } }
   function _esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -84,12 +89,19 @@
   function _casesOf(b, cases) { var c = cases && Number(cases[b.id]); return c > 0 ? c : b.cases; }
   function _barns(off, cases) { return BARNS.filter(function (b) { return !(off || {})[b.id]; }).map(function (b) { return { id: b.id, cases: _casesOf(b, cases) }; }); }
   function _downFor(key) { var d = _dayDocs[key]; var n = d ? Number(d.down) : NaN; return isNaN(n) ? 0 : n; }
+  // Where the downtime block sits on the board ("HH:MM" on the day doc; default 10:00).
+  // Times after midnight (00:00–05:59) belong to the tail of the plan day.
+  function _hhmmToMin(v) { var m = /^(\d{1,2}):(\d{2})$/.exec(String(v || '')); if (!m) return null; var t = (+m[1]) * 60 + (+m[2]); if (t < DAY0) t += 1440; return Math.min(Math.max(t, DAY0), SHIFT2_END - 1); }
+  function _downAtFor(key) { var d = _dayDocs[key]; var t = d ? _hhmmToMin(d.downAt) : null; return t == null ? DOWN_AT : t; }
+  // Outside eggs expected for the day, in CASES (pallets typed on the board × 30).
+  function _outsideFor(key) { var d = _dayDocs[key], p = d ? Number(d.outsideP) : NaN; if (isNaN(p) || p < 0) { p = Number(_cfg.outsideP); if (isNaN(p) || p < 0) p = DEFAULT_OUTSIDE_P; } return p * CPP; }
+  function _minToHHMM(t) { t = ((t % 1440) + 1440) % 1440; return _pad(Math.floor(t / 60)) + ':' + _pad(t % 60); }
 
   // ── the plan: minute-by-minute simulation of one 24-hour day ────────────
-  function _simulate(downHrs, off, cases) {
-    var H = _barns(off, cases), r1 = _rateBarn() / 60, r2 = _rateOut() / 60;
-    var segs = [], downLeft = Math.round((downHrs || 0) * 60), hi = 0, left = H.length ? H[0].cases : 0, change = CHANGEOVER;
-    var out = { barns: H, shift1: 0, shift2barn: 0, outside: 0, byBarn: {}, minutes: { barn: 0, outside: 0, change: 0, down: 0, pause: 0, clean: 0, idle: 0 }, barnsDone: H.length ? null : DAY0, barnDone: {} };
+  function _simulate(downHrs, off, cases, downAt, outsideCases) {
+    var H = _barns(off, cases), r1 = _rateBarn() / 60, r2 = _rateOut() / 60, dAt = downAt || DOWN_AT, outLeft = (outsideCases == null) ? DEFAULT_OUTSIDE_P * CPP : outsideCases;
+    var segs = [], downLeft = Math.round((downHrs || 0) * 60), hi = 0, left = H.length ? H[0].cases : 0, change = CHANGEOVER, carry = 0, lastId = null;
+    var out = { barns: H, shift1: 0, shift2barn: 0, outside: 0, outsideSupply: outLeft, byBarn: {}, minutes: { barn: 0, outside: 0, change: 0, down: 0, pause: 0, clean: 0, idle: 0, spare: 0 }, barnsDone: H.length ? null : DAY0, barnDone: {} };
     H.forEach(function (b) { out.byBarn[b.id] = { shift1: 0, shift2: 0 }; });
     function push(t, type, lbl, cases) {
       var last = segs[segs.length - 1];
@@ -99,23 +111,27 @@
     for (var t = DAY0; t < DAY1; t++) {
       var f = _fixedAt(t);
       if (f) { push(t, f[2], sbL(f[3], f[4]), 0); out.minutes[f[2]]++; continue; }
-      if (t >= DOWN_AT && downLeft > 0) { downLeft--; push(t, 'down', sbL('Downtime', 'Paro'), 0); out.minutes.down++; continue; }
+      if (t >= dAt && downLeft > 0) { downLeft--; push(t, 'down', sbL('Downtime', 'Paro'), 0); out.minutes.down++; continue; }
       if (hi < H.length) {
-        var id = H[hi].id, sh = (t < SHIFT1_END) ? 'shift1' : 'shift2', rem = r1;
+        var id = H[hi].id, sh = (t < SHIFT1_END) ? 'shift1' : 'shift2', rem = r1, mine = 0;
         while (rem > 0 && hi < H.length) {
           var take = Math.min(rem, left); left -= take; rem -= take;
           out.byBarn[H[hi].id][sh] += take;
+          if (H[hi].id === id) mine += take; else carry += take;   // the tail of a minute belongs to the next barn
           if (left <= 0.0001) { out.barnDone[H[hi].id] = t + 1; hi++; if (hi < H.length) left = H[hi].cases; else out.barnsDone = t + 1; }
         }
         var c = r1 - rem;
         if (sh === 'shift1') out.shift1 += c; else out.shift2barn += c;
-        push(t, id, 'H' + id, c); out.minutes.barn++; continue;
+        var owed = (id !== lastId) ? carry : 0; if (id !== lastId) carry = 0; lastId = id;
+        push(t, id, 'H' + id, mine + owed); out.minutes.barn++; continue;
       }
-      if (change > 0) { change--; push(t, 'change', sbL('Changeover', 'Cambio'), 0); out.minutes.change++; continue; }
-      if (t < SHIFT2_END) { push(t, 'outside', sbL('Outside eggs', 'Huevos externos'), r2); out.outside += r2; out.minutes.outside++; continue; }
+      if (outLeft > 0.0001 && change > 0) { change--; push(t, 'change', sbL('Changeover', 'Cambio'), 0); out.minutes.change++; continue; }
+      if (t < SHIFT2_END && outLeft > 0.0001) { var oc = Math.min(r2, outLeft); outLeft -= oc; push(t, 'outside', sbL('Outside eggs', 'Huevos externos'), oc); out.outside += oc; out.minutes.outside++; continue; }
+      if (t < SHIFT2_END) { push(t, 'spare', sbL('Open belt time', 'Tiempo libre'), 0); out.minutes.spare++; continue; }   // nothing left to run
       push(t, 'idle', '', 0); out.minutes.idle++;
     }
     out.segs = segs; out.barn = out.shift1 + out.shift2barn; out.day = out.barn + out.outside;
+    out.outsideLeft = Math.max(0, outLeft);   // outside eggs that did not fit in the day
     return out;
   }
   function _planBy(sim, t) {            // cases the plan expects by minute t
@@ -131,7 +147,7 @@
   function _beltAfter(sim, t) {          // planned belt minutes still ahead
     var m = 0; sim.segs.forEach(function (s) { if (s.cases <= 0) return; var a = Math.max(s.start, t); if (s.end > a) m += s.end - a; }); return m;
   }
-  function _sim(key) { return _simulate(_downFor(key), _cfg.off, _cfg.cases); }
+  function _sim(key) { return _simulate(_downFor(key), _cfg.off, _cfg.cases, _downAtFor(key), _outsideFor(key)); }
 
   // ── actuals off the Daily Run entry ──────────────────────────────────────
   // Each house box is attributed to a PLAN day by the moment it was typed
@@ -216,6 +232,8 @@
 
   // ── actions ──────────────────────────────────────────────────────────────
   window.sbDown = function (h) { _saveDay({ down: Number(h) || 0 }); };
+  window.sbDownAt = function (v) { if (_hhmmToMin(v) == null) return; _saveDay({ downAt: String(v) }); };
+  window.sbOutside = function (v) { var n = parseFloat(v); if (!(n >= 0)) return; _saveDay({ outsideP: Math.round(n * 2) / 2 }); };
   window.sbToggleBarn = function (id) {
     var off = _clone(_cfg.off || {}); if (off[id]) delete off[id]; else off[id] = true;
     _saveCfg({ off: off });
@@ -264,9 +282,9 @@
   function _render() {
     if (!_open) return;
     var body = document.getElementById('sb-body'); if (!body) return;
-    var key = _key, sim = _sim(key), act = _actual(key), belts = _belts(key), down = _downFor(key);
+    var key = _key, sim = _sim(key), act = _actual(key), belts = _belts(key), down = _downFor(key), downAt = _downAtFor(key);
     var now = _planMin(key), inDay = now >= DAY0 && now < DAY1;
-    var targetP = sim.day / CPP, gotP = act.pallets, remain = targetP - gotP;
+    var targetC = sim.barn + sim.outsideSupply, targetP = targetC / CPP, gotP = act.pallets, remain = targetP - gotP, carryP = sim.outsideLeft / CPP;   // target = demand; sim.day = what fits by 2 AM
     var planNow = _planBy(sim, inDay ? now : DAY1), planP = planNow.total / CPP, diff = gotP - planP;
     var beltMin = inDay ? _beltAfter(sim, now) : 0;
     var need = (remain > 0 && beltMin > 0) ? (remain * CPP) / (beltMin / 60) : null;
@@ -279,12 +297,23 @@
       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
         '<span style="' + MONO + 'font-size:12px;color:#d6b36a;font-weight:700;min-width:130px;">⏸ ' + sbL('Downtime today', 'Paro de hoy') + '</span>' +
         DOWN_STEPS.map(function (d) { return _chip(d === 0 ? sbL('None', 'Nada') : d + ' h', d === down, 'sbDown(' + d + ')', d === 0 ? null : '#7f1d1d'); }).join('') +
+        '<span style="' + MONO + 'font-size:12px;color:#9ab09a;margin-left:6px;">' + sbL('at', 'a las') + '</span>' +
+        '<input id="sb-downat" type="time" step="900" value="' + _minToHHMM(downAt) + '" onchange="sbDownAt(this.value)" style="background:#0a1408;border:1.5px solid ' + (down ? '#7f1d1d' : '#2a4a2a') + ';border-radius:8px;color:#f0ead8;' + MONO + 'font-size:13px;font-weight:700;padding:6px 9px;color-scheme:dark;">' +
       '</div>' +
-      '<div style="' + MONO + 'font-size:10px;color:#5a8a5a;margin-top:6px;">' + sbL('Every 30 min down = barns done 30 min later, 3 fewer pallets of outside eggs. The barn eggs always get run.', 'Cada 30 min de paro = casas terminan 30 min más tarde, 3 pallets menos de huevos externos.') + '</div>' +
+      '<div style="' + MONO + 'font-size:10px;color:#5a8a5a;margin-top:6px;">' + sbL('Downtime never changes the target — it pushes everything later and eats open belt time first; once the day runs out of time the board shows outside pallets carrying to tomorrow. Set the clock to where the downtime really happened.', 'El paro no cambia la meta — corre todo y consume primero el tiempo libre; si el día se queda sin tiempo, el tablero muestra los pallets externos que pasan a mañana. Pon la hora donde realmente ocurrió el paro.') + '</div>' +
       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;">' +
         '<span style="' + MONO + 'font-size:12px;color:#9cc0f6;font-weight:700;min-width:130px;">🏠 ' + sbL('Barns running', 'Casas activas') + '</span>' +
         BARNS.map(function (b) { var on = !(_cfg.off || {})[b.id]; return _chip('H' + b.id + ' <span style="opacity:.75;font-weight:500;">' + (on ? _casesOf(b, _cfg.cases) + ' cs' : 'OFF') + '</span>', on, 'sbToggleBarn(\'' + b.id + '\')', COL[b.id]); }).join('') +
         _chip(_editCases ? sbL('Done', 'Listo') : '✎ ' + sbL('Edit cases/day', 'Editar cajas/día'), false, 'sbEditCases()') +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;">' +
+        '<span style="' + MONO + 'font-size:12px;color:#f0c674;font-weight:700;min-width:130px;">📦 ' + sbL('Outside eggs today', 'Huevos externos hoy') + '</span>' +
+        '<input id="sb-outp" type="number" inputmode="decimal" min="0" step="0.5" value="' + (sim.outsideSupply / CPP) + '" onchange="sbOutside(this.value)" style="width:90px;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:7px 10px;color-scheme:dark;">' +
+        '<span style="' + MONO + 'font-size:12px;color:#9ab09a;">' + sbL('pallets', 'pallets') + ' · ' + _n(sim.outsideSupply) + ' ' + sbL('cases', 'cajas') + '</span>' +
+        '<span style="' + MONO + 'font-size:10.5px;color:' + (sim.outsideLeft > 15 ? '#f87171' : '#7ab07a') + ';flex-basis:100%;">' +
+          (sim.outsideLeft > 15 ? '⚠ ' + _p(sim.outsideLeft) + ' ' + sbL('pallets of outside eggs will not fit today — they carry to tomorrow.', 'pallets de huevos externos no caben hoy — pasan a mañana.') + ' ' : '') +
+          (sim.minutes.spare > 3 ? _h(sim.minutes.spare) + ' ' + sbL('of open belt time left in the day — room for', 'de banda libre en el día — espacio para') + ' ' + _p(sim.minutes.spare / 60 * _rateOut()) + ' ' + sbL('more pallets at', 'pallets más a') + ' ' + _rateOut() + '/hr.' : (sim.outsideLeft > 15 ? '' : sbL('The day is full.', 'El día está lleno.'))) +
+        '</span>' +
       '</div>' +
       (_editCases
         ? ('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:10px;padding-top:10px;border-top:1px dashed #2a5a2a;">' +
@@ -300,12 +329,12 @@
     var vsTxt = !inDay ? (now < DAY0 ? sbL('not started', 'no iniciado') : sbL('day closed', 'día cerrado')) : (diff >= 0 ? '+' + _pp(diff) + ' ' + sbL('ahead', 'adelante') : _pp(diff) + ' ' + sbL('behind', 'atrás'));
     html += _sec('📦 ' + sbL('Pallets in the cooler · from the Daily Run entry', 'Pallets en el cuarto frío · de la entrada diaria'));
     html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">' +
-      _tile(sbL('Target today', 'Meta de hoy'), _pp(targetP) + ' <span style="font-size:18px;">' + sbL('pallets', 'pallets') + '</span>', _n(sim.day) + ' ' + sbL('cases', 'cajas') + ' · ' + sbL('barn', 'casas') + ' ' + _p(sim.barn) + ' + ' + sbL('outside', 'ext.') + ' ' + _p(sim.outside)) +
+      _tile(sbL('Target today', 'Meta de hoy'), _pp(targetP) + ' <span style="font-size:18px;">' + sbL('pallets', 'pallets') + '</span>', _n(targetC) + ' ' + sbL('cases', 'cajas') + ' · ' + sbL('barn', 'casas') + ' ' + _p(sim.barn) + ' + ' + sbL('outside', 'ext.') + ' ' + _p(sim.outsideSupply) + (carryP > 0.5 ? ' · ' + sbL('only', 'solo') + ' ' + _p(sim.day) + ' ' + sbL('fit by 2 AM', 'caben a las 2 AM') + ', ' + _pp(carryP) + ' ' + sbL('carry over', 'pasan') : ''), carryP > 0.5 ? '#f87171' : null) +
       _tile(sbL('In the cooler', 'En el cuarto frío'), _pp(gotP) + ' <span style="font-size:18px;">' + sbL('pallets', 'pallets') + '</span>', _n(act.eggs) + ' ' + sbL('eggs entered', 'huevos ingresados') + (act.last ? ' · ' + sbL('last', 'último') + ' ' + _time(act.last) : ''), '#9ad6a0') +
       _tile(remain >= 0 ? sbL('Still to build', 'Falta construir') : sbL('Over target', 'Sobre la meta'), _pp(Math.abs(remain)) + ' <span style="font-size:18px;">' + sbL('pallets', 'pallets') + '</span>', need != null ? sbL('need ', 'requiere ') + Math.round(need) + ' ' + sbL('cases/hr over the', 'cajas/hr en las') + ' ' + _h(beltMin) + ' ' + sbL('of belts left', 'de bandas restantes') : (remain <= 0 ? sbL('target met', 'meta cumplida') : '—'), remain <= 0 ? '#4ade80' : '#d6b36a') +
       _tile(sbL('Vs plan right now', 'Vs plan ahora'), vsTxt, inDay ? sbL('plan says ', 'el plan dice ') + _pp(planP) + ' ' + sbL('by', 'a las') + ' ' + _clock(Math.floor(now)) : '—', vsCol) +
     '</div>';
-    var pct = targetP > 0 ? Math.min(100, gotP / targetP * 100) : 0, mp = (inDay && targetP > 0) ? Math.min(100, planP / targetP * 100) : null;
+    var pct = targetP > 0 ? Math.min(100, gotP / targetP * 100) : 0, mp = (inDay && targetP > 0) ? Math.min(100, planP / targetP * 100) : null;   // plan marker = what the schedule fits by now
     html += _box(
       '<div style="height:16px;background:#0a1a0a;border-radius:50px;overflow:hidden;position:relative;">' +
         '<div style="height:100%;width:' + pct + '%;background:' + (gotP > targetP ? COL.outside : '#3fae8c') + ';"></div>' +
@@ -313,7 +342,7 @@
       '</div>' +
       '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;">' +
         _meter(sbL('Barn eggs', 'Huevos de casas') + ' · <b style="color:#e8f5ec;">' + _p((act.eggs - act.outside) / EGGS_CASE) + '</b> ' + sbL('of', 'de') + ' ' + _p(sim.barn) + ' ' + sbL('pallets', 'pallets'), act.eggs - act.outside, sim.barn * EGGS_CASE, '#3fae8c') +
-        _meter(sbL('Outside eggs', 'Huevos externos') + ' · <b style="color:#e8f5ec;">' + _p(act.outside / EGGS_CASE) + '</b> ' + sbL('of', 'de') + ' ' + _p(sim.outside) + ' ' + sbL('pallets', 'pallets'), act.outside, sim.outside * EGGS_CASE, COL.outside) +
+        _meter(sbL('Outside eggs', 'Huevos externos') + ' · <b style="color:#e8f5ec;">' + _p(act.outside / EGGS_CASE) + '</b> ' + sbL('of', 'de') + ' ' + _p(sim.outsideSupply) + ' ' + sbL('pallets', 'pallets'), act.outside, sim.outsideSupply * EGGS_CASE, COL.outside) +
       '</div>' +
       '<div style="' + MONO + 'font-size:10px;color:#5a8a5a;margin-top:10px;line-height:1.6;">' +
         (act.entries ? (act.entries + ' ' + sbL('house boxes entered on the 🥚⏱ Daily Run today.', 'casillas ingresadas hoy en 🥚⏱ Corrida Diaria.')) : sbL('Nothing entered on the 🥚⏱ Daily Run yet today — the pallets here come straight from those house boxes (eggs ÷ 10,800 = pallets).', 'Aún no hay entradas en 🥚⏱ Corrida Diaria — los pallets salen de esas casillas (huevos ÷ 10,800).')) +
@@ -349,19 +378,19 @@
         '<td style="padding:7px 6px;' + MONO + 'font-size:11px;color:#5a8a5a;">' + (sim.barnsDone != null ? sbL('after', 'después de') + ' ' + _clock(sim.barnsDone + CHANGEOVER) : '—') + '</td>' +
       '</tr>' +
       '</table></div>' +
-      (offB.length ? '<div style="' + MONO + 'font-size:10px;color:#d6b36a;margin-top:8px;">' + sbL('Closed out:', 'Cerradas:') + ' H' + offB.map(function (b) { return b.id; }).join(', H') + ' — ' + sbL('that belt time goes to outside eggs.', 'ese tiempo pasa a huevos externos.') + '</div>' : '')
+      (offB.length ? '<div style="' + MONO + 'font-size:10px;color:#d6b36a;margin-top:8px;">' + sbL('Closed out:', 'Cerradas:') + ' H' + offB.map(function (b) { return b.id; }).join(', H') + ' — ' + sbL('those pallets come off the target; the belt time becomes open time.', 'esos pallets salen de la meta; el tiempo de banda queda libre.') + '</div>' : '')
     );
 
     // ── plan tiles ──
-    var base = _simulate(0, _cfg.off, _cfg.cases);
+    var base = _simulate(0, _cfg.off, _cfg.cases, null, _outsideFor(key));
     var doneCol = sim.barnsDone == null ? '#f87171' : (sim.barnsDone <= 1200 ? '#4ade80' : (sim.barnsDone <= 1320 ? '#d6b36a' : '#f87171'));
     html += _sec('🎯 ' + sbL('Plan for the day', 'Plan del día'));
     html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">' +
       _tile(sbL('1st shift · 6 AM–4 PM', '1er turno · 6 AM–4 PM'), _n(sim.shift1) + ' <span style="font-size:18px;">' + sbL('cases', 'cajas') + '</span>', _p(sim.shift1) + ' ' + sbL('pallets', 'pallets') + ' · ' + _stops(sim)) +
       _tile(sbL('Barns done', 'Casas listas'), sim.barnsDone == null ? sbL('not today', 'hoy no') : _clock(sim.barnsDone), sbL('target', 'meta') + ' ' + _clock(base.barnsDone) + ' · ' + _n(sim.barn) + ' ' + sbL('cases', 'cajas') + ' / ' + _p(sim.barn) + ' ' + sbL('pallets', 'pallets'), doneCol) +
       _tile(sbL('2nd shift · barn eggs', '2º turno · casas'), _n(sim.shift2barn) + ' <span style="font-size:18px;">' + sbL('cases', 'cajas') + '</span>', _p(sim.shift2barn) + ' ' + sbL('pallets at', 'pallets a') + ' ' + _rateBarn() + '/hr') +
-      _tile(sbL('2nd shift · outside eggs', '2º turno · externos'), _n(sim.outside) + ' <span style="font-size:18px;">' + sbL('cases', 'cajas') + '</span>', _p(sim.outside) + ' ' + sbL('pallets', 'pallets') + ' · ' + _h(sim.minutes.outside) + ' ' + sbL('at', 'a') + ' ' + _rateOut() + '/hr', COL.outside) +
-      _tile(sbL('Day total', 'Total del día'), _n(sim.day) + ' <span style="font-size:18px;">' + sbL('cases', 'cajas') + '</span>', _p(sim.day) + ' ' + sbL('pallets', 'pallets')) +
+      _tile(sbL('2nd shift · outside eggs', '2º turno · externos'), _n(sim.outside) + ' <span style="font-size:18px;">' + sbL('cases', 'cajas') + '</span>', _p(sim.outside) + ' ' + sbL('of', 'de') + ' ' + _p(sim.outsideSupply) + ' ' + sbL('pallets', 'pallets') + ' · ' + _h(sim.minutes.outside) + ' ' + sbL('at', 'a') + ' ' + _rateOut() + '/hr' + (sim.outsideLeft > 15 ? ' · ' + _p(sim.outsideLeft) + ' ' + sbL('carry over', 'pasan') : ''), sim.outsideLeft > 15 ? '#f87171' : COL.outside) +
+      _tile(carryP > 0.5 ? sbL('Fits by 2 AM', 'Cabe a las 2 AM') : sbL('Day total', 'Total del día'), _n(sim.day) + ' <span style="font-size:18px;">' + sbL('cases', 'cajas') + '</span>', _p(sim.day) + ' ' + sbL('pallets', 'pallets') + (carryP > 0.5 ? ' ' + sbL('of', 'de') + ' ' + _pp(targetP) + ' ' + sbL('target', 'meta') + ' · ' + _pp(carryP) + ' ' + sbL('carry over', 'pasan') : ''), carryP > 0.5 ? '#f87171' : null) +
     '</div>';
 
     // ── hour by hour ──
@@ -372,8 +401,8 @@
       for (var i = 0; i < sim.segs.length; i++) {
         var s = sim.segs[i], a = Math.max(s.start, h), b = Math.min(s.end, h + 60); if (b <= a) continue;
         var frac = (b - a) / 60, lbl = s.lbl; if (s.type === 'clean' && h === 1740) lbl = sbL('Cleaning · 1st shift in 5:30', 'Limpieza · 1er turno 5:30');
-        var bg = COL[s.type] || COL.idle, fg = (s.type === 'outside' || s.type === 'change') ? '#1a1206' : (s.type === 'pause' ? '#d8e0e7' : (s.type === 'idle' ? '#3a5a3a' : '#fff'));
-        var striped = (s.type === 'down' || s.type === 'change') ? 'background:repeating-linear-gradient(135deg,' + bg + ' 0 8px,rgba(0,0,0,.35) 8px 12px);' : 'background:' + bg + ';';
+        var bg = COL[s.type] || COL.idle, fg = (s.type === 'outside' || s.type === 'change') ? '#1a1206' : (s.type === 'pause' ? '#d8e0e7' : (s.type === 'idle' ? '#3a5a3a' : (s.type === 'spare' ? '#8fb4a0' : '#fff')));
+        var striped = (s.type === 'down' || s.type === 'change') ? 'background:repeating-linear-gradient(135deg,' + bg + ' 0 8px,rgba(0,0,0,.35) 8px 12px);' : (s.type === 'spare' ? 'background:repeating-linear-gradient(135deg,' + bg + ' 0 6px,transparent 6px 10px);' : 'background:' + bg + ';');
         parts += '<div title="' + _esc(lbl) + ' ' + _clock(a) + '–' + _clock(b) + '" style="flex:0 0 ' + (frac * 100).toFixed(2) + '%;' + striped + 'color:' + fg + ';display:flex;align-items:center;padding:0 ' + (frac < 0.2 ? 0 : 7) + 'px;font-size:' + (frac < 0.2 ? 0 : 11) + 'px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">' + _esc(lbl) + '</div>';
         if (s.cases > 0) cases += s.cases * (b - a) / (s.end - s.start);
         if (lbl && labels.indexOf(lbl) < 0) labels.push(lbl);
@@ -385,10 +414,18 @@
         '<div style="display:flex;height:30px;border-radius:5px;overflow:hidden;background:' + COL.idle + ';' + MONO + '">' + parts + '</div>' +
         '<div style="text-align:right;' + MONO + 'font-size:11px;color:#7ab07a;">' + (cases > 0.5 ? '<b style="color:#e8f5ec;font-size:14px;">' + Math.round(cases) + '</b> ' + sbL('cs', 'cj') + ' · ' + _p(cases) + ' pal' : _esc(labels.join(' · ') || '—')) + '</div>' +
       '</div>';
+      // Shift subtotals — what each shift is expected to put in the cooler (Joe 9/22).
+      if (h === 900) board += _sumRow(sbL('1st shift · 6 AM–4 PM', '1er turno · 6 AM–4 PM'), sim.shift1, _stops(sim));
+      if (h === 1500) board += _sumRow(sbL('2nd shift · 4 PM–2 AM', '2º turno · 4 PM–2 AM'), sim.shift2barn + sim.outside, sbL('barn', 'casas') + ' ' + _p(sim.shift2barn) + ' + ' + sbL('outside', 'ext.') + ' ' + _p(sim.outside) + ' ' + sbL('pallets', 'pallets'));
+      if (h === 1740) board += _sumRow(sbL('Day total', 'Total del día'), sim.day, _p(sim.barn) + ' ' + sbL('barn', 'casas') + ' + ' + _p(sim.outside) + ' ' + sbL('outside pallets', 'pallets ext.'));
     }
-    var legend = [['5', 'H5'], ['4', 'H4'], ['3', 'H3'], ['2', 'H2'], ['1', 'H1'], ['outside', sbL('Outside eggs', 'Huevos ext.')], ['change', sbL('Changeover', 'Cambio')], ['down', sbL('Downtime', 'Paro')], ['pause', sbL('Break · Tier 1 · Lunch', 'Descanso · Tier 1 · Almuerzo')], ['clean', sbL('Cleaning crew', 'Limpieza')]];
+    var legend = [['5', 'H5'], ['4', 'H4'], ['3', 'H3'], ['2', 'H2'], ['1', 'H1'], ['outside', sbL('Outside eggs', 'Huevos ext.')], ['change', sbL('Changeover', 'Cambio')], ['down', sbL('Downtime', 'Paro')], ['pause', sbL('Break · Tier 1 · Lunch', 'Descanso · Tier 1 · Almuerzo')], ['clean', sbL('Cleaning crew', 'Limpieza')], ['spare', sbL('Open belt time', 'Banda libre')]];
     html += _box(board + '<div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;' + MONO + 'font-size:10.5px;color:#9ab09a;">' +
       legend.map(function (l) { return '<span><i style="display:inline-block;width:11px;height:11px;border-radius:3px;background:' + COL[l[0]] + ';vertical-align:-1px;margin-right:5px;"></i>' + l[1] + '</span>'; }).join('') + '</div>');
+
+    // ── itemized run sheet ──
+    html += _sec('📋 ' + sbL('Run sheet · every event of the day', 'Hoja de corrida · cada evento del día'));
+    html += _box(_runSheet(sim));
 
     // ── where the hours go + targets by downtime ──
     var m = sim.minutes;
@@ -398,15 +435,15 @@
       '<div>' + _sec('⏳ ' + sbL('Where the 24 hours go', 'A dónde van las 24 horas')) + _box('<table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:12px;">' +
         '<tr><th ' + th.replace('right', 'left') + '>' + sbL('Block', 'Bloque') + '</th><th ' + th + '>' + sbL('Hours', 'Horas') + '</th><th ' + th + '>' + sbL('Cases', 'Cajas') + '</th><th ' + th + '>' + sbL('Pallets', 'Pallets') + '</th></tr>' +
         trow(sbL('Barn eggs @ ', 'Huevos de casas @ ') + _rateBarn(), m.barn, sim.barn) + trow(sbL('Outside eggs @ ', 'Huevos externos @ ') + _rateOut(), m.outside, sim.outside) +
-        trow(sbL('Changeover', 'Cambio'), m.change) + trow(sbL('Downtime', 'Paro'), m.down) + trow(sbL('Breaks · Tier 1 · lunches', 'Descansos · Tier 1 · almuerzos'), m.pause) + trow(sbL('Cleaning crew', 'Limpieza'), m.clean) + (m.idle ? trow(sbL('Not running', 'Sin correr'), m.idle) : '') +
+        trow(sbL('Changeover', 'Cambio'), m.change) + trow(sbL('Downtime', 'Paro'), m.down) + trow(sbL('Breaks · Tier 1 · lunches', 'Descansos · Tier 1 · almuerzos'), m.pause) + (m.spare ? trow(sbL('Open belt time (nothing left to run)', 'Banda libre (nada que correr)'), m.spare) : '') + trow(sbL('Cleaning crew', 'Limpieza'), m.clean) + (m.idle ? trow(sbL('Not running', 'Sin correr'), m.idle) : '') +
         '<tr style="border-top:2px solid #4a7a5a;font-weight:700;"><td style="padding:6px;color:#e8f5ec;">' + sbL('Total', 'Total') + '</td><td style="padding:6px;text-align:right;color:#e8f5ec;">24.0</td><td style="padding:6px;text-align:right;color:#e8f5ec;">' + _n(sim.day) + '</td><td style="padding:6px;text-align:right;color:#e8f5ec;">' + _p(sim.day) + '</td></tr></table>') + '</div>' +
       '<div>' + _sec('📉 ' + sbL('Targets by downtime', 'Metas según el paro')) + _box('<table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:12px;">' +
-        '<tr><th ' + th.replace('right', 'left') + '>' + sbL('Down', 'Paro') + '</th><th ' + th + '>' + sbL('1st shift', '1er turno') + '</th><th ' + th + '>' + sbL('Barns done', 'Casas') + '</th><th ' + th + '>' + sbL('Outside', 'Ext.') + '</th><th ' + th + '>' + sbL('Day pal', 'Pal día') + '</th></tr>' +
+        '<tr><th ' + th.replace('right', 'left') + '>' + sbL('Down', 'Paro') + '</th><th ' + th + '>' + sbL('1st shift', '1er turno') + '</th><th ' + th + '>' + sbL('Barns done', 'Casas') + '</th><th ' + th + '>' + sbL('Outside', 'Ext.') + '</th><th ' + th + '>' + sbL('Fits by 2 AM', 'Cabe 2 AM') + '</th></tr>' +
         DOWN_STEPS.map(function (d) {
-          var x = _simulate(d, _cfg.off, _cfg.cases), sel = d === down;
-          return '<tr style="border-top:1px solid #1e3a2a;' + (sel ? 'background:rgba(240,198,116,.12);font-weight:700;' : '') + '"><td style="padding:6px;color:#e8f5ec;">' + (d === 0 ? sbL('None', 'Nada') : d + ' h') + '</td><td style="padding:6px;text-align:right;color:#e8f5ec;">' + _n(x.shift1) + ' <span style="color:#5a8a5a;">/ ' + _p(x.shift1) + '</span></td><td style="padding:6px;text-align:right;color:#e8f5ec;">' + (x.barnsDone == null ? '—' : _clock(x.barnsDone)) + '</td><td style="padding:6px;text-align:right;color:#e8f5ec;">' + _n(x.outside) + ' <span style="color:#5a8a5a;">/ ' + _p(x.outside) + '</span></td><td style="padding:6px;text-align:right;color:#e8f5ec;">' + _p(x.day) + '</td></tr>';
+          var x = _simulate(d, _cfg.off, _cfg.cases, downAt, _outsideFor(key)), sel = d === down;
+          return '<tr style="border-top:1px solid #1e3a2a;' + (sel ? 'background:rgba(240,198,116,.12);font-weight:700;' : '') + '"><td style="padding:6px;color:#e8f5ec;">' + (d === 0 ? sbL('None', 'Nada') : d + ' h') + '</td><td style="padding:6px;text-align:right;color:#e8f5ec;">' + _n(x.shift1) + ' <span style="color:#5a8a5a;">/ ' + _p(x.shift1) + '</span></td><td style="padding:6px;text-align:right;color:#e8f5ec;">' + (x.barnsDone == null ? '—' : _clock(x.barnsDone)) + '</td><td style="padding:6px;text-align:right;color:#e8f5ec;">' + _n(x.outside) + ' <span style="color:#5a8a5a;">/ ' + _p(x.outside) + '</span></td><td style="padding:6px;text-align:right;color:#e8f5ec;">' + _p(x.day) + (x.outsideLeft > 15 ? ' <span style="color:#f87171;">+' + _p(x.outsideLeft) + ' ' + sbL('carry', 'pasan') + '</span>' : '') + '</td></tr>';
         }).join('') + '</table>' +
-        '<div style="' + MONO + 'font-size:10px;color:#d6b36a;margin-top:8px;line-height:1.6;">' + sbL('Rule of thumb: 30 min of 1st-shift downtime = −76 cases on 1st shift, barns done 30 min later, −95 cases (≈3 pallets) of outside eggs.', 'Regla: 30 min de paro en 1er turno = −76 cajas, casas 30 min más tarde, −95 cajas (≈3 pallets) de huevos externos.') + '</div>') + '</div>' +
+        '<div style="' + MONO + 'font-size:10px;color:#d6b36a;margin-top:8px;line-height:1.6;">' + sbL('The target = barns running + the outside eggs you enter for the day, and only those two things move it: closing a barn takes its pallets off, more outside eggs add. Downtime never changes the target — it decides how much of it FITS by 2 AM; what does not fit carries to tomorrow.', 'La meta = casas activas + huevos externos del día; solo eso la mueve. El paro no cambia la meta — decide cuánto CABE antes de las 2 AM; lo que no cabe pasa a mañana.') + '</div>') + '</div>' +
     '</div>';
 
     // ── history ──
@@ -424,7 +461,7 @@
     html += _box('<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:12px;">' +
       '<tr><th ' + th.replace('right', 'left') + '>' + sbL('Day', 'Día') + '</th><th ' + th + '>' + sbL('Down', 'Paro') + '</th><th ' + th + '>' + sbL('Eggs', 'Huevos') + '</th><th ' + th + '>' + sbL('Pallets', 'Pallets') + '</th><th ' + th + '>' + sbL('Target', 'Meta') + '</th><th ' + th + '>' + sbL('Diff', 'Dif.') + '</th></tr>' +
       list.map(function (d) {
-        var a = _actual(d), x = _sim(d), t = x.day / CPP, g = a.pallets, df = g - t, dn = _downFor(d), isT = d === key;
+        var a = _actual(d), x = _sim(d), t = (x.barn + x.outsideSupply) / CPP, g = a.pallets, df = g - t, dn = _downFor(d), isT = d === key;
         sumT += t; sumG += g;
         return '<tr style="border-top:1px solid #1e3a2a;' + (isT ? 'background:rgba(240,198,116,.12);' : '') + '"><td style="padding:6px;color:#e8f5ec;">' + _shortDay(d) + (isT ? ' <span style="color:#5a8a5a;">(' + sbL('today', 'hoy') + ')</span>' : '') + '</td><td style="padding:6px;text-align:right;color:#9ab09a;">' + (dn ? dn + ' h' : '—') + '</td><td style="padding:6px;text-align:right;color:#9ab09a;">' + (a.eggs ? _n(a.eggs) : '—') + '</td><td style="padding:6px;text-align:right;color:#e8f5ec;font-weight:700;">' + _pp(g) + '</td><td style="padding:6px;text-align:right;color:#9ab09a;">' + _pp(t) + '</td><td style="padding:6px;text-align:right;font-weight:700;color:' + (df >= -0.05 ? '#4ade80' : '#f87171') + ';">' + (df >= 0 ? '+' : '') + _pp(df) + '</td></tr>';
       }).join('') +
@@ -434,11 +471,58 @@
 
     // ── honest notes ──
     html += '<div style="' + MONO + 'font-size:9.5px;color:#4a6a4a;margin-top:14px;line-height:1.7;">' +
-      sbL('How this works: barns run 5 → 4 → 3 → 2 → 1 at ' + _rateBarn() + ' cases/hr; when the last barn is done there is a ' + CHANGEOVER + '-min changeover and then outside eggs at ' + _rateOut() + ' cases/hr until 2 AM. 1st shift 6 AM–4 PM, 2nd shift 4 PM–2 AM (same breaks), cleaning crew 2–6 AM, 1st shift in at 5:30. 1 case = 30 dz = 360 eggs; 1 pallet = 30 cases = 10,800 eggs. Default barn cases: H5 353 · H4 461 · H3 461 (set equal to H4) · H2 238 (82.9% lay, 7,141 dz) · H1 186. Crew belt logs average ~166 cases/hr, so ' + _rateBarn() + ' is a safe target, not a stretch. Downtime sits at 10 AM on the board for planning; where it actually lands changes the picture, not the totals.',
+      sbL('How this works: barns run 5 → 4 → 3 → 2 → 1 at ' + _rateBarn() + ' cases/hr; when the last barn is done there is a ' + CHANGEOVER + '-min changeover and then outside eggs at ' + _rateOut() + ' cases/hr until 2 AM. 1st shift 6 AM–4 PM, 2nd shift 4 PM–2 AM (same breaks), cleaning crew 2–6 AM, 1st shift in at 5:30. 1 case = 30 dz = 360 eggs; 1 pallet = 30 cases = 10,800 eggs. Default barn cases: H5 353 · H4 461 · H3 461 (set equal to H4) · H2 238 (82.9% lay, 7,141 dz) · H1 186. Crew belt logs average ~166 cases/hr, so ' + _rateBarn() + ' is a safe target, not a stretch. Downtime sits at ' + _clock(downAt) + ' on the board (change the clock next to the downtime chips); where it lands changes the picture, not the totals.',
           'Las casas corren 5 → 4 → 3 → 2 → 1 a ' + _rateBarn() + ' cajas/hr; al terminar la última hay un cambio de ' + CHANGEOVER + ' min y luego huevos externos a ' + _rateOut() + ' cajas/hr hasta las 2 AM. 1 caja = 30 dz = 360 huevos; 1 pallet = 30 cajas = 10,800 huevos.') +
     '</div>';
 
     body.innerHTML = html;
+  }
+  function _sumRow(lbl, cases, note) {
+    return '<div style="display:grid;grid-template-columns:58px 1fr 105px;gap:8px;align-items:center;padding:8px 4px;margin:2px 0;border-top:2px solid #4a7a5a;border-bottom:2px solid #4a7a5a;background:rgba(74,222,128,.07);border-radius:6px;">' +
+      '<div style="' + MONO + 'font-size:13px;font-weight:700;color:#e8f5ec;line-height:1.1;"><span style="display:block;font-size:9px;letter-spacing:1px;color:#5a8a5a;text-transform:uppercase;">' + sbL('Total', 'Total') + '</span>Σ</div>' +
+      '<div style="' + MONO + 'padding-left:6px;"><div style="font-size:13px;font-weight:700;color:#e8f5ec;">' + lbl + '</div><div style="font-size:10.5px;color:#7ab07a;">' + note + '</div></div>' +
+      '<div style="text-align:right;' + MONO + 'font-size:11px;color:#7ab07a;"><b style="color:#4ade80;font-size:17px;">' + _p(cases) + ' pal</b><br>' + _n(cases) + ' ' + sbL('cases', 'cajas') + '</div>' +
+    '</div>';
+  }
+  // Itemized run sheet: every event of the day with its hours, rate, cases and pallets.
+  function _runSheet(sim) {
+    var r1 = _rateBarn(), r2 = _rateOut(), cum = 0, rows = '', shiftCases = 0;
+    var th = 'style="padding:5px 6px;text-align:right;color:#5a8a5a;font-size:10px;letter-spacing:1px;text-transform:uppercase;"';
+    function td(v, right, col, bold) { return '<td style="padding:6px;' + (right ? 'text-align:right;' : '') + 'color:' + (col || '#e8f5ec') + ';' + (bold ? 'font-weight:700;' : '') + 'white-space:nowrap;">' + v + '</td>'; }
+    function sub(lbl, cases) {
+      return '<tr style="border-top:2px solid #4a7a5a;border-bottom:2px solid #4a7a5a;background:rgba(74,222,128,.07);">' + td('', false) + td('<b>' + lbl + '</b>', false, '#e8f5ec') + td('', true) + td('', true) + td('<b>' + _n(cases) + '</b>', true, '#4ade80') + td('<b>' + _p(cases) + '</b>', true, '#4ade80') + td('<b>' + _p(cum) + '</b>', true, '#e8f5ec') + '</tr>';
+    }
+    // Split any block that straddles a shift change so each shift's subtotal is exact.
+    var segs = [];
+    sim.segs.forEach(function (s) {
+      var cuts = [SHIFT1_END, SHIFT2_END].filter(function (c) { return s.start < c && c < s.end; }), a = s.start;
+      cuts.concat([s.end]).forEach(function (c) { segs.push({ start: a, end: c, type: s.type, lbl: s.lbl, cases: s.cases * (c - a) / (s.end - s.start) }); a = c; });
+    });
+    segs.forEach(function (s, i) {
+      var min = s.end - s.start, isRun = s.cases > 0.5;
+      var rate = s.type === 'outside' ? r2 : (isRun ? r1 : null);
+      var lbl = /^\d$/.test(s.type) ? sbL('Barn', 'Casa') + ' H' + s.type : s.lbl;
+      if (s.type === 'clean' && s.end === CLEAN_END) lbl += ' · ' + sbL('1st shift in 5:30', '1er turno 5:30');
+      cum += s.cases; shiftCases += s.cases;
+      var col = COL[s.type] || COL.idle;
+      rows += '<tr style="border-top:1px solid #1e3a2a;">' +
+        td(_clock(s.start) + ' – ' + _clock(s.end), false, '#9ab09a') +
+        td('<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' + col + ';margin-right:6px;vertical-align:-1px;"></span>' + _esc(lbl), false, isRun ? '#e8f5ec' : '#9ab09a') +
+        td(_h(min), true, '#9ab09a') +
+        td(rate ? rate : '—', true, rate ? '#e8f5ec' : '#3a5a3a') +
+        td(isRun ? _n(s.cases) : '—', true, isRun ? '#e8f5ec' : '#3a5a3a', isRun) +
+        td(isRun ? _p(s.cases) : '—', true, isRun ? '#e8f5ec' : '#3a5a3a', isRun) +
+        td(isRun ? _p(cum) : '', true, '#7ab07a') +
+      '</tr>';
+      // Subtotals use the plan's exact shift figures (a block that straddles 4 PM is split by time above, which can drift a case or two).
+      if (s.end === SHIFT1_END) { cum = sim.shift1; rows += sub(sbL('1st shift total · 6 AM–4 PM', '1er turno · 6 AM–4 PM'), sim.shift1); shiftCases = 0; }
+      if (s.end === SHIFT2_END) { cum = sim.day; rows += sub(sbL('2nd shift total · 4 PM–2 AM', '2º turno · 4 PM–2 AM'), sim.shift2barn + sim.outside); shiftCases = 0; }
+    });
+    cum = sim.day; rows += sub(sbL('Day total', 'Total del día'), sim.day);
+    return '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;' + MONO + 'font-size:12px;">' +
+      '<tr><th ' + th.replace('right', 'left') + '>' + sbL('Time', 'Hora') + '</th><th ' + th.replace('right', 'left') + '>' + sbL('Event', 'Evento') + '</th><th ' + th + '>' + sbL('Hours', 'Horas') + '</th><th ' + th + '>' + sbL('CPH', 'CPH') + '</th><th ' + th + '>' + sbL('Cases', 'Cajas') + '</th><th ' + th + '>' + sbL('Pallets', 'Pallets') + '</th><th ' + th + '>' + sbL('Running pal', 'Pal acum.') + '</th></tr>' +
+      rows + '</table></div>' +
+      '<div style="' + MONO + 'font-size:10px;color:#5a8a5a;margin-top:8px;">' + sbL('CPH = cases per hour the line runs in that block. A barn that straddles a break shows as two lines. Running pallets = the plan\'s cumulative count for the day.', 'CPH = cajas por hora en ese bloque. Pallets acumulados = conteo acumulado del plan.') + '</div>';
   }
   function _stops(sim) {
     for (var i = 0; i < sim.barns.length; i++) { var b = sim.barns[i], s1 = sim.byBarn[b.id].shift1; if (s1 < b.cases - 0.5) return s1 < 0.5 ? sbL('stops before H', 'para antes de H') + b.id : sbL('stops at H', 'para en H') + b.id + ', ' + Math.round(s1) + ' ' + sbL('of', 'de') + ' ' + b.cases; }
