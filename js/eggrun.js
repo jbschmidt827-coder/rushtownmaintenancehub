@@ -436,8 +436,13 @@ async function eggRunSetHouseEggs(farm, m, house, val) {
     var n = Math.max(0, Math.round(Number(val) || 0));
     if (n > 0) map[String(house)] = n; else delete map[String(house)];
     var total = Object.keys(map).reduce(function (s, k) { return s + (Number(map[k]) || 0); }, 0);
-    await _erSave(farm, m, { houseEggs: map, eggs: total, eggsBy: erBy() });
-    if (typeof toast === 'function') toast('🥚 ' + farm + ' H' + house + ': ' + n.toLocaleString());
+    // v305: stamp WHEN this box was typed. The 🕐 Shift Board's day runs 6 AM → 6 AM
+    // (2nd shift ends at 2 AM), so a box typed after midnight belongs to the day that
+    // just ended — only a per-box timestamp can tell it that.
+    var stamps = Object.assign({}, rec.houseEggsTs || {});
+    if (n > 0) stamps[String(house)] = Date.now(); else delete stamps[String(house)];
+    await _erSave(farm, m, { houseEggs: map, houseEggsTs: stamps, eggs: total, eggsBy: erBy() });
+    if (typeof toast === 'function') toast('🥚 ' + farm + ' ' + (String(house) === 'outside' ? erL('Outside eggs', 'Huevos externos') : ('H' + house)) + ': ' + n.toLocaleString());
     renderEggRun();
   } catch (e) { console.error('eggRunSetHouseEggs:', e); if (typeof toast === 'function') toast(erL('Could not save', 'No se pudo guardar')); }
 }
@@ -703,13 +708,13 @@ function _erMachineDetail(farm, m, rec, multi) {
         ? (function () {
             // Danville: one box per active house — the packer enters that house's
             // total eggs. Machine total = the sum of the houses they ran.
-            var hs = erActiveHouses(farm);
+            var hs = erActiveHouses(farm).concat(['outside']);   // v305: + outside eggs (2nd shift)
             var cols = Math.min(4, Math.max(2, hs.length));
             var out = '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:8px;">';
             hs.forEach(function (h) {
               var hv = (houseEggs[h] != null && houseEggs[h] !== '') ? houseEggs[h] : '';
               out += '<div>' +
-                '<div style="' + MONO + 'font-size:10px;color:#9cc0f6;margin-bottom:3px;">' + erL('House', 'Casa') + ' ' + h + '</div>' +
+                '<div style="' + MONO + 'font-size:10px;color:' + (h === 'outside' ? '#f0c674' : '#9cc0f6') + ';margin-bottom:3px;">' + (h === 'outside' ? erL('Outside eggs', 'Huevos externos') : (erL('House', 'Casa') + ' ' + h)) + '</div>' +
                 '<input id="er-he-' + farm + '-' + m + '-' + h + '" type="number" min="0" inputmode="numeric" value="' + hv + '" onchange="eggRunSetHouseEggs(\'' + farm + '\',' + m + ',\'' + h + '\',this.value)" placeholder="0" style="width:100%;box-sizing:border-box;background:#0a1408;border:1.5px solid #5a4a2a;border-radius:8px;color:#f0ead8;' + MONO + 'font-size:16px;font-weight:700;padding:9px 10px;">' +
               '</div>';
             });
