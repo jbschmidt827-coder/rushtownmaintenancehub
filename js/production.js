@@ -881,6 +881,29 @@ function bwUpdateTimeBadge() {
   }
 }
 
+// ── v308: one mortalityLog entry per house per day, updated on every submit ──
+// Reuses today's existing entry for this farm/house/type if one exists (whatever
+// its id — the old code used random ids), otherwise writes a deterministic id so
+// two devices submitting the same house can never make two entries. Never
+// throws, never awaited by Submit.
+function _bwUpsertLog(type, entry) {
+  try {
+    if (typeof db === 'undefined' || !db) return;
+    const detId = type + '__' + String(entry.farm) + '__H' + String(entry.house) + '__' + String(entry.date);
+    const coll = db.collection('mortalityLog');
+    coll.where('farm', '==', entry.farm).where('house', '==', String(entry.house))
+        .where('date', '==', entry.date).where('type', '==', type).limit(1).get()
+      .then(function (snap) {
+        const id = (snap && !snap.empty) ? snap.docs[0].id : detId;
+        return coll.doc(id).set(entry, { merge: true });
+      })
+      .catch(function () {
+        // Query needs an index it may not have → fall back to the deterministic id.
+        return coll.doc(detId).set(entry, { merge: true }).catch(function (e) { console.warn('mortalityLog upsert failed:', e); });
+      });
+  } catch (e) { console.warn('mortalityLog upsert failed:', e); }
+}
+
 // ── Barn Walk Draft Persistence ──
 function bwSaveDraft() {
   if (!_bwFarm) return;
@@ -1620,7 +1643,7 @@ function openBarnWalk(farm, house) {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('bw-mort-count-row').style.display    = 'none';
-  { const r = document.getElementById('bw-mort-coll-row'); if (r) r.style.display = 'none'; const h = document.getElementById('bw-mort-coll-hint'); if (h) h.textContent = ''; }
+  { const r = document.getElementById('bw-mort-coll-row'); if (r) r.style.display = 'none'; const h = document.getElementById('bw-mort-coll-hint'); if (h) h.textContent = ''; _bwMortAutoTotal = null; }
   document.getElementById('bw-loose-count-row').style.display   = 'none';
   document.getElementById('bw-rodent-count-row').style.display  = 'none';
   document.getElementById('bw-fly-count-row').style.display     = 'none';
@@ -1876,20 +1899,39 @@ function _bwMortColl() {
   }
   return any ? out : null;
 }
+// v308 — THE BUG JOE HIT ("the mortality does not stay saved"): v304 made the
+// boxes THE count, so a crew member who typed the house total (60) and then noted
+// "9 of them were in collector 3" watched the total collapse to 9. A partial
+// split is normal on a farm. Rule now: a total the crew typed by hand can only
+// ever go UP from the boxes, never down. The boxes drive the total only while
+// the total is blank or is the number the boxes themselves last produced.
+let _bwMortAutoTotal = null;   // the last total we set FROM the boxes
 function bwMortCollSum(quiet) {
   const split = _bwMortColl();
   const hint = document.getElementById('bw-mort-coll-hint');
   const tot = document.getElementById('bw-mort-count');
-  if (!split) { if (hint) hint.textContent = ''; return; }
+  const es = (typeof _lang !== 'undefined' && _lang === 'es');
+  if (!split) { if (hint) hint.textContent = ''; _bwMortAutoTotal = null; return; }
   const sum = Object.values(split).reduce((a, b) => a + b, 0);
-  if (tot) {
-    tot.value = String(sum);   // the collectors ARE the count
+  const cur = (tot && tot.value !== '') ? Number(tot.value) : null;
+  const boxesOwnTotal = (cur == null) || (_bwMortAutoTotal != null && cur === _bwMortAutoTotal);
+  let newTotal = cur;
+  if (boxesOwnTotal) newTotal = sum;                 // no hand-typed total → boxes are the count
+  else if (sum > cur) newTotal = sum;                // boxes exceed the typed total → raise it, never lose birds
+  if (tot && newTotal != null && String(newTotal) !== tot.value) {
+    tot.value = String(newTotal);
     if (!quiet) { try { tot.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {} }
   }
+  if (boxesOwnTotal || (newTotal != null && sum >= newTotal)) _bwMortAutoTotal = sum; else _bwMortAutoTotal = null;
   if (hint) {
-    const es = (typeof _lang !== 'undefined' && _lang === 'es');
-    hint.textContent = (es ? 'Total ' : 'Total ') + sum + ' = ' +
-      Object.entries(split).map(([c, n]) => 'C' + c + ' ' + n).join(' + ');
+    const parts = Object.entries(split).map(([c, n]) => 'C' + c + ' ' + n).join(' + ');
+    const left = (newTotal != null) ? newTotal - sum : 0;
+    if (left > 0) {
+      hint.textContent = parts + ' = ' + sum + (es ? ' · ' + left + ' sin colector (total ' + newTotal + ')'
+                                                    : ' · ' + left + ' not assigned to a collector (total ' + newTotal + ')');
+    } else {
+      hint.textContent = (es ? 'Total ' : 'Total ') + sum + ' = ' + parts;
+    }
   }
   if (!quiet && typeof bwSaveDraft === 'function') { try { bwSaveDraft(); } catch (e) {} }
   if (!quiet && typeof bwFlowRefresh === 'function') { try { bwFlowRefresh(false); } catch (e) {} }
@@ -2331,11 +2373,14 @@ async function submitBarnWalk() {
   } catch(e) { console.warn('activityLog write failed:', e); }
 
   // ── Mortality Log ──
-  // Always log mortality — never creates a WO
-  // Gated on isFirstSubmit so re-submitting (Tap to Update) does not duplicate
-  // the mortality entry. If the operator forgot to enter mortality on the first
-  // submit, a separate mortality-log entry path is available outside the walk.
-  if (isFirstSubmit && _bwData.mort === 'yes') {
+  // Always log mortality — never creates a WO.
+  // v308: was gated on isFirstSubmit to avoid duplicates, which meant mortality
+  // (or a collector split) entered AFTER an earlier partial submit of the same
+  // house NEVER reached the log — and the Bird Health board reads the log. Now
+  // ONE log entry per house per day is UPSERTED on every submit: reuse today's
+  // existing entry if there is one (any id), else a deterministic id. Fire-and-
+  // forget so the crew's Submit never waits on it.
+  if (_bwData.mort === 'yes') {
     const mortEntry = {
       farm: _bwFarm, house: String(_bwHouse), employee,
       date: LDATE(),
@@ -2343,15 +2388,16 @@ async function submitBarnWalk() {
       type: 'mortality',
       mortCount: mortCount || 0,
       mortByCollector: mortByCollector,          // v304: {'1':n,…,'6':n} or null
+      mortUnassigned: (mortByCollector && mortCount) ? Math.max(0, mortCount - Object.values(mortByCollector).reduce((a, b) => a + (Number(b) || 0), 0)) : null,
       mortrem: _bwData.mortrem || 'yes',
       notes: notes || '',
       ts: Date.now()
     };
-    try { db.collection('mortalityLog').add(mortEntry).catch(function(e){ console.warn('mortalityLog write failed:', e); }); } catch(e) { console.error('mortalityLog write failed:', e); }
+    _bwUpsertLog('mortality', mortEntry);
   }
 
-  // Log loose birds — never creates a WO. Gated on isFirstSubmit (see mortality above).
-  if (isFirstSubmit && _bwData.loose === 'yes') {
+  // Log loose birds — never creates a WO. v308: same upsert as mortality.
+  if (_bwData.loose === 'yes') {
     const looseEntry = {
       farm: _bwFarm, house: String(_bwHouse), employee,
       date: LDATE(),
@@ -2361,7 +2407,7 @@ async function submitBarnWalk() {
       notes: notes || '',
       ts: Date.now()
     };
-    try { db.collection('mortalityLog').add(looseEntry).catch(function(e){ console.warn('looseLog write failed:', e); }); } catch(e) { console.error('looseLog write failed:', e); }
+    _bwUpsertLog('loose', looseEntry);
   }
 
   // ── Pest Log ──
