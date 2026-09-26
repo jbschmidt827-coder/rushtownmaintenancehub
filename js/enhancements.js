@@ -203,6 +203,56 @@
     ['🧺 PICNIC LEGENDS 🧺',        'That picnic was COOL. Best crew, best food, happiest chickens in the state. Let\'s run it back.'],
     ['❤️ THANK YOU CREW ❤️',        'Thank you for all the help with this app — every tap, every check, every idea makes it better.'],
     ['🏆 RUSHTOWN = YOU 🏆',        'Straight from Joe: Rushtown would not exist without this team. Every single one of you. Thank you.'],
+    // ── FALL PACK (v309, per Joe: "now write some new jokes") — all true stories, lightly seasoned ──
+    ['📸 THE PHOTO DIET 📸',        'The app was carrying 40 MB of photos of the same broken belt. It has been to the gym. It feels great.'],
+    ['📬 DELIVERED 📬',             'For three weeks the work orders were stuck in the mailbox. They have all been delivered. Sorry for the wait. — The Chickens'],
+    ['🙈 SHY NUMBERS 🙈',           'You used to open the Egg Run page twice to see the numbers. The numbers were shy. We had a talk.'],
+    ['🔁 RERUN? PRE-RUN. 🔁',       'Joe typed "rerun." He meant "pre-run." The manure belts got inspected either way. Everyone wins.'],
+    ['🔢 VERSION 308 🔢',           'Version three hundred and eight. Joe says the app is "basically done." He said that at v90.'],
+    ['🐕 THE WATCHDOG 🐕',          'Something checks the whole app at 5 AM every day and only barks when it should. Allison\'s dog is jealous.'],
+    ['🏚 HOUSE 4, EMPLOYEE 🏚',     'House 4 closed 23 work orders this quarter. House 4 is a building. Sign in as yourself — the hens want to know who to thank.'],
+    ['⏱ 23-HOUR BELT ⏱',           'House 1\'s belt timer ran for 23 hours. The belt did not. Somebody stop the clock — the hens are tired just reading it.'],
+    ['🕐 HOUR BY HOUR 🕐',          'The hour-by-hour board knows what 2 PM is supposed to look like. 2 PM has been warned.'],
+    ['📦 152 AN HOUR 📦',           '152 cases an hour is the plan. The chickens did their part by 6 AM. Your move.'],
+    ['🧊 OUTSIDE EGGS 🧊',          'Forty pallets of outside eggs showed up asking for directions. They\'re in the cooler now. They think they\'re locals.'],
+    ['📉 M2 MENTORSHIP 📉',         'M2 finishes late 20 days out of 28. M2 has been offered a mentor. M1 politely declined the position.'],
+    ['🌾 FEED, AGAIN 🌾',           'Feed is the number one breakdown on both farms. The hens would like it known they are not the ones breaking it. (They are.)'],
+    ['🐣 HOUSE 3 IS BACK 🐣',       'House 3 has a brand-new flock and the app still thinks it\'s empty. The pullets are offended. Somebody flip the switch.'],
+    ['🎓 CERTIFIED NOAH 🎓',        'Noah is now signed off on all ten manure jobs. Congratulations, Noah. That is a sentence with two feelings in it.'],
+    ['📤 SHARE THE BARNS 📤',       'Barn History can be texted to the plant manager now. The barns asked for an opt-out. Denied.'],
+    ['🏆 CELIA, 171 🏆',            'Celia closed 171 work orders in 90 days. The work orders have formed a support group.'],
+    ['🛢 JOSHUA, 407 🛢',           'Joshua did 407 PMs in eight weeks. The grease gun has requested a vacation.'],
+    ['🐺 WOLFE, BOTH SIDES 🐺',     'Nathan Wolfe: 141 work orders AND 184 PMs. The wolf does not hibernate.'],
+    ['📋 NATALIE\'S PACKERS 📋',    'Natalie logged both packers, the eggs and the downtime before Machine 2 finished. Machine 2 is still finishing.'],
+    ['✅ GERRIT WAS RIGHT ✅',       'Gerrit typed the right number. The app tried to change it. Gerrit won. The app has been corrected and apologizes.'],
+    ['🖐 MILAGROS × 5 🖐',          'Milagros checked all five houses in one morning. House 5 asked if it could go first next time.'],
+    ['☕ ERIK\'S HOUSE 5 ☕',        'Erik logged House 5 before the coffee cooled. The hens in 5 have started brewing their own.'],
+    ['📝 ARACELY\'S NOTES 📝',      'Aracely\'s House 4 notes are so clean the auditor got a little emotional.'],
+    ['🎩 FULL-NAME ENERGY 🎩',      'Harry Steven Leisey: three names, 41 closed work orders, zero complaints. Full-name energy.'],
+    ['⏱ RANDY MATH ⏱',             'Randy closed 47 work orders. Every one of them took "two minutes." Math is not the point.'],
+    ['🐓 CAIN, FASTER 🐓',          'Cain fixed it before the hen finished complaining. The hen is filing a follow-up.'],
+    ['6️⃣ SIX BOXES 6️⃣',            'Tiffany filled in all six collector boxes before anybody else knew they existed. Overachiever. Certified.'],
+    ['💧 WHICH METER? 💧',          'The Hegins water meters have no labels. "Meter 3" is whichever one you\'re pointing at. Label them and the hens will hydrate with confidence.'],
+    ['🗄 ONE BIG DATABASE 🗄',      'Two farms, one database, 1,600 work orders, 87 people, one app. The app would like a nap.'],
+    ['🥚 EGGS ON THE HONOR SYSTEM 🥚','Danville\'s egg run went five days without an entry. The eggs showed up anyway. They would like credit.'],
+    ['🌅 NATALIE\'S WALK 🌅',       'Every Hegins morning walk this month was Natalie. When Natalie\'s off, the barns walk themselves. They do not.'],
+    ['🔍 FOUR TAPS 🔍',             'Four taps before the belts start: clear, belt good, plows in, pit clear. The manure has never felt so seen.'],
+    ['🌾 HOUSE 1 REGULAR 🌾',       'Danville House 1\'s feed line has 36 work orders this quarter. It is not shy. It is a regular.'],
+    ['📵 HISTORIC 📵',              'Joe walked into the COO meeting without a phone or a laptop. Nobody had ever seen him without a phone. Historic.'],
+    ['🐔 BILLABLE TAPS 🐔',         'You tapped the chicken three times for this? The chicken is flattered. The chicken is also billing you.'],
+    ['📷 WE KNOW THE FAN 📷',       'You can attach a photo to a work order. Please stop attaching the same fan. We know the fan. The fan knows us.'],
+    ['🔄 SELF-UPDATING 🔄',         'The tablets update themselves now. The chickens are still waiting on that feature.'],
+    ['🕐 ON THE RECORD 🕐',         'Clock in, clock out, the job time writes itself. Randy\'s "two minutes" are finally on the record.'],
+    ['🧾 THE SIXTH QUESTION 🧾',    'Six questions from the COO. Five answered. The sixth is "what did it cost," and the answer is "ask the receipt."'],
+    ['📚 EGG HOMEWORK 📚',          'Leftover outside eggs carry over to tomorrow. Like homework, but with shells.'],
+    ['🧠 THE BELT REMEMBERS 🧠',    'The 14-day history shows every run. Every run. Including the 1,376-minute one. The belt remembers.'],
+    ['🤫 DISCREET 🤫',              'Bird Health shows mortality as a percent, never a count. The hens appreciate the discretion.'],
+    ['👀 180 DAYS 👀',              'Barn History remembers 180 days. The barns remember longer. They have seen things.'],
+    ['🚨 URGENT IS A VIBE 🚨',      'Thirteen urgent work orders older than a week. "Urgent" has become more of a vibe.'],
+    ['🔧 PRE-RUN, POST-JOE 🔧',     'Joe asked for the belt check BEFORE the run. Nate asked why we ever did it after. Nobody had an answer.'],
+    ['🐔 THE APP LEARNED 🐔',       'The app now refuses to lower a number a person typed. It learned that from the hens, who also refuse to be corrected.'],
+    ['🥇 {name}, LOGGED IT 🥇',     '{name} logged the whole house before the app finished loading. The app is embarrassed.'],
+    ['🌟 {name} CAME THROUGH 🌟',   'Whatever it was today, {name} handled it. The hens are clucking the highlight reel.'],
   ];
 
   // ── Per-facility packs — appended to COMMON for the active site ──
@@ -221,6 +271,13 @@
       ['📋 JOSH ON IT 📋',         'Josh closed 3 work orders and opened a snack. Balance.'],
       ['🥚 HEGINS RECORD 🥚',      'Hegins logged every barn before coffee. Mike pretended not to be impressed.'],
       ['🔧 HEGINS CREW 🔧',        'Josh, Steve & Carlos fixed it, broke it, then fixed it better. Probably.'],
+      // v309 fall pack
+      ['📋 NATALIE, DAILY 📋',     'Natalie enters the Hegins egg run every single day. The one day it was missed, the whole app noticed. Natalie did not.'],
+      ['🛢 JOSHUA\'S GREASE GUN 🛢','Joshua did 407 PMs in eight weeks. The Hegins grease gun has filed for overtime.'],
+      ['🔧 CARLOS, WALKED IT 🔧',  'Carlos walked the barns and logged them before the roosters agreed on a time. Roosters are still arguing.'],
+      ['💧 METER 3 💧',            'Hegins water meter 3 is "the one by the door." Which door? Exactly. Label them, please.'],
+      ['📉 M2, BUDDY 📉',          'M2 ran past 11:48 again. Twenty days out of twenty-eight. M2, buddy. We need to talk.'],
+      ['🏚 HOUSE 7 SOLO 🏚',       'House 7 flagged doors and only doors, twelve times. House 7 has one hobby and it is doors.'],
     ],
     'Danville': [
       ['🏭 DANVILLE DRIVE 🏭',     'Celia runs Danville so smooth the chickens filed for vacation.'],
@@ -231,6 +288,16 @@
       ['🥚 NOAH\'S ARK 🥚',        'Noah loaded two of every tool and still couldn\'t find the 9/16.'],
       ['🐓 CAIN ABLE 🐓',          'Cain was able. Then a chicken got involved.'],
       ['📋 DANVILLE CLEAN 📋',     'Celia\'s clipboard has seen things. It does not forgive.'],
+      // v309 fall pack
+      ['6️⃣ TIFFANY\'S SIX 6️⃣',     'Tiffany filled in all six collector boxes on day one. The boxes had no idea they were that important.'],
+      ['🖐 MILAGROS, ALL FIVE 🖐', 'Milagros did all five houses before lunch. The houses are considering a thank-you card.'],
+      ['✅ GERRIT KNOWS ✅',        'Gerrit typed 60. The app said 9. Gerrit said 60. Gerrit was right. The app has been humbled.'],
+      ['☕ ERIK, EARLY ☕',         'Erik had House 5 logged before Danville\'s 7 AM start. The hens thought it was still yesterday.'],
+      ['📝 ARACELY\'S HOUSE 4 📝', 'Aracely\'s House 4 checks are so thorough the ventilation started behaving out of embarrassment.'],
+      ['⏱ HOUSE 1, STOP THE CLOCK ⏱','House 1\'s belt timer ran overnight six times this month. The belt was asleep. The clock was not. Stop the clock.'],
+      ['🐣 WELCOME, HOUSE 3 🐣',   'House 3\'s new flock arrived. The app still says the house is empty. The pullets are drafting a complaint.'],
+      ['🌾 HOUSE 1 FEED, AGAIN 🌾','House 1\'s feed line: 36 work orders in 90 days. At this point it\'s not a breakdown, it\'s a relationship.'],
+      ['🔍 PRE-RUN CHECK 🔍',      'Belts clear, belt good, plows in, pit clear. Four taps and the manure feels respected.'],
     ],
     'Processing Plant': [
       ['📦 PROCESSING POWER 📦',   'The packers ran all shift. {wo} open WOs said "later."'],
@@ -239,6 +306,12 @@
       ['🐔 CLEANUP CREW 🐔',       'Cleanup finished spotless. Then a hen strolled through. Again.'],
       ['⚙️ CONVEYOR LIFE ⚙️',     'The conveyor never stops. Neither does the chicken riding it.'],
       ['📦 SHIP IT 📦',            'Processing shipped it. The chickens waved goodbye to the eggs.'],
+      // v309 fall pack
+      ['🕐 THE BOARD KNOWS 🕐',    'The hour-by-hour board planned the whole day at 6 AM. The day has been asked to comply.'],
+      ['📦 152 OR BUST 📦',        '152 cases an hour. The belts said "sure." The eggs said "we\'ll see."'],
+      ['🧊 OUTSIDE EGGS, INSIDE 🧊','Forty pallets of outside eggs in the cooler, acting like they own the place. Tomorrow they get carried over. Like homework.'],
+      ['📉 M2, LATE AGAIN 📉',     'M2 finished an hour late. M2 carries two-thirds of the eggs, so that hour is everyone\'s hour.'],
+      ['🔧 BARN 5 FIRST 🔧',       'Barns run 5 → 4 → 3 → 2 → 1. Barn 5 is very proud. Barn 1 is used to waiting.'],
     ],
   };
 
@@ -310,6 +383,55 @@
     'mike': [
       '🌟 Mike signed in. The whole farm exhaled.',
       '🏆 Morning, Mike. The hens voted you favorite human again.'
+    ],
+    // ── v309 fall pack — the names that show up in the data every single day ──
+    'tiffany': [
+      '6️⃣ Tiffany signed in. All six collector boxes just sat up straight.',
+      '📋 Morning, Tiffany. House 2 has been waiting for you specifically.'
+    ],
+    'milagros': [
+      '🖐 Milagros signed in. All five houses, one morning — the usual.',
+      '🌅 Morning, Milagros. The houses lined up in order already.'
+    ],
+    'gerrit': [
+      '✅ Gerrit signed in. The app promises not to change your numbers again.',
+      '🐔 Morning, Gerrit. Type it once — it stays this time.'
+    ],
+    'erik': [
+      '☕ Erik signed in before the coffee. House 5 is ready when you are.',
+      '🐔 Morning, Erik. The hens in 5 heard the truck.'
+    ],
+    'aracely': [
+      '📝 Aracely signed in. House 4 just got nervous in a good way.',
+      '🌟 Morning, Aracely. The auditor still talks about your notes.'
+    ],
+    'harry': [
+      '🎩 Harry Steven Leisey signed in. Full-name energy. Zero complaints.',
+      '🔧 Morning, Harry. 41 closed and counting.'
+    ],
+    'noah': [
+      '🎓 Noah signed in. Fully certified on all ten manure jobs. Congratulations. Sort of.',
+      '🛠 Morning, Noah. The belts know you\'re qualified now. Act accordingly.'
+    ],
+    'joshua': [
+      '🛢 Joshua signed in. The grease gun is hiding.',
+      '📋 Morning, Joshua. 407 PMs and the program still runs on your back. Thank you.'
+    ],
+    'randy': [
+      '⏱ Randy signed in. Two minutes starts now.',
+      '🔧 Morning, Randy. 47 closed — every one of them "two minutes." Respect.'
+    ],
+    'cain': [
+      '🐓 Cain signed in. The hens are already complaining faster, just to keep up.',
+      '🔧 Morning, Cain. Fix it before the complaint finishes — the usual.'
+    ],
+    'carlos': [
+      '🔧 Carlos signed in. The barns are logged before the roosters agree on a time.',
+      '🌅 Morning, Carlos. The zip ties are ready.'
+    ],
+    'thomas': [
+      '🛠 Thomas signed in. The barns just got a little more honest.',
+      '🌅 Morning, Thomas. The hens saved you a spot.'
     ]
   };
   var HELLO_GENERIC = [
