@@ -3156,10 +3156,11 @@ async function submitMorningWalk() {
   // SAME daily entry, not a new one each time. isFirstSubmit gates the auto-WOs
   // (below) so re-edits don't spawn duplicates; contributors[] tracks who worked it.
   let isFirstSubmit = true;
+  let _mwPrev = null;   // v311: hoisted — the auto-WO ledger below needs the prior record
   try {
     const _ref = db.collection('morningWalks').doc(_mwFarm + '-' + _mwHouse + '-' + _mwDate);
     let _prev = null;
-    try { const _ex = await _ref.get(); if (_ex.exists) { isFirstSubmit = false; _prev = _ex.data(); } } catch (e) {}
+    try { const _ex = await _ref.get(); if (_ex.exists) { isFirstSubmit = false; _prev = _ex.data(); _mwPrev = _prev; } } catch (e) {}
     const _contrib = (_prev && Array.isArray(_prev.contributors)) ? _prev.contributors.slice() : [];
     if (employee && _contrib.indexOf(employee) === -1) _contrib.push(employee);
     record.contributors = _contrib;
@@ -3207,12 +3208,46 @@ async function submitMorningWalk() {
   MORNING_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
 
   // One work order per problem, each routed to its correct system + priority.
-  const createdWOs = [];
-  const _woItems = (!isFirstSubmit || (typeof isHouseDown === 'function' && isHouseDown(_mwFarm, _mwHouse))) ? [] : woItems;
+  // v311: a LEDGER instead of a first-submit gate. The old gate meant (a) a typo
+  // flagged on the first submit ("1 PSI" → corrected to 40 PSI 16 s later, WO-1702)
+  // left an urgent WO open forever, and (b) a problem added on a later re-submit
+  // never got a WO at all. Now the record carries autoWOs[{key, docId, woId, text}]:
+  //   • current problem not in the ledger → create its WO (any submit)
+  //   • ledger entry whose problem is gone → auto-close that WO as "corrected"
+  // Keys ignore the number in parentheses, so "1 PSI" → "15 PSI" (still low) keeps
+  // the same WO instead of closing it and opening another.
+  const _mwKey = (item) => String(item.system || '') + '|' + String(item.text || '').replace(/\s*\([^)]*\)\s*/g, ' ').trim().toLowerCase();
+  const createdWOs = [], retractedWOs = [];
+  const _houseDown = (typeof isHouseDown === 'function' && isHouseDown(_mwFarm, _mwHouse));
+  const ledger = (_mwPrev && Array.isArray(_mwPrev.autoWOs)) ? _mwPrev.autoWOs.slice() : [];
+  const nowKeys = new Set(woItems.map(_mwKey));
+  // (a) retract: ledger entries whose problem is no longer flagged
+  for (const led of ledger) {
+    if (!led || !led.docId || nowKeys.has(led.key)) continue;
+    try {
+      const snap = await db.collection('workOrders').doc(led.docId).get();
+      const cur = snap.exists ? (snap.data() || {}) : null;
+      if (cur && cur.status !== 'completed') {
+        await db.collection('workOrders').doc(led.docId).update({
+          status: 'completed', completedBy: employee,
+          completedDate: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+          completedTs: firebase.firestore.FieldValue.serverTimestamp(),
+          completedNotes: 'Auto-closed — corrected on re-submit of the morning walk (was: ' + (led.text || '') + ')',
+          autoRetracted: true, updatedTs: Date.now()
+        });
+        retractedWOs.push(led.woId || led.docId);
+      }
+    } catch (e) { console.warn('morning walk WO retract failed:', e); }
+    // drop it from the ledger whether we closed it or someone else already did
+    const i = ledger.indexOf(led); if (i !== -1) ledger.splice(i, 1);
+  }
+  // (b) create: current problems not already in the ledger
+  const ledgerKeys = new Set(ledger.map(l => l && l.key));
+  const _woItems = _houseDown ? [] : woItems.filter(item => !ledgerKeys.has(_mwKey(item)));
   for (const item of _woItems) {
     try {
       const woId = await mintWoId();
-      await db.collection('workOrders').add({
+      const ref = await db.collection('workOrders').add({
         id: woId, farm: _mwFarm, house: String(_mwHouse), system: item.system,
         problem: item.text,
         desc: 'Morning Walk — ' + item.text, priority: item.priority, status: 'open',
@@ -3221,7 +3256,19 @@ async function submitMorningWalk() {
         ts: Date.now(), date: LDATE()
       });
       createdWOs.push(woId);
+      ledger.push({ key: _mwKey(item), docId: ref.id, woId: woId, text: item.text, ts: Date.now() });
     } catch(e) { console.error('morning walk WO create failed:', e); }
+  }
+  // persist the ledger on the day's record (best effort — never blocks the crew)
+  try {
+    if (createdWOs.length || retractedWOs.length || (_mwPrev && Array.isArray(_mwPrev.autoWOs) && _mwPrev.autoWOs.length !== ledger.length)) {
+      await db.collection('morningWalks').doc(_mwFarm + '-' + _mwHouse + '-' + _mwDate).set({ autoWOs: ledger }, { merge: true });
+    }
+  } catch (e) { console.warn('autoWOs ledger write failed:', e); }
+  if (retractedWOs.length && typeof toast === 'function') {
+    const _isEs3 = (typeof _lang !== 'undefined' && _lang === 'es');
+    toast(_isEs3 ? '↩ ' + retractedWOs.length + ' orden(es) cerrada(s) — problema corregido: ' + retractedWOs.join(', ')
+                 : '↩ ' + retractedWOs.length + ' work order(s) closed — problem corrected: ' + retractedWOs.join(', '));
   }
 
   try { localStorage.removeItem(_mwDraftKey()); } catch(e) {}
@@ -3235,12 +3282,16 @@ async function submitMorningWalk() {
       ? '⚠ ' + n + ' problema' + (n!==1?'s':'') + ' marcado — orden' + (n!==1?'es':'') + ' de trabajo ' + createdWOs.join(', ') + ' enviada a Mantenimiento.'
       : '⚠ ' + n + ' issue' + (n!==1?'s':'') + ' flagged — work order' + (n!==1?'s':'') + ' ' + createdWOs.join(', ') + ' sent to Maintenance.';
     if (typeof toast === 'function') toast(msg); else alert(msg);
-  } else if (woItems.length > 0) {
-    // Flagged, but the WO write failed (e.g. offline) — make sure they know.
+  } else if (_woItems.length > 0 && createdWOs.length < _woItems.length) {
+    // We TRIED to create one and it failed (e.g. offline) — make sure they know.
+    // v311: was `woItems.length > 0`, which also fired on every re-submit whose
+    // flags already had work orders — a false "could not be created" every time.
     const m = _isEs2
       ? '⚠ Problemas marcados, pero no se pudo crear la orden (¿sin conexión?). Avisa a Mantenimiento.'
       : '⚠ Issues flagged, but the work order could not be created (offline?). Please tell Maintenance.';
     if (typeof toast === 'function') toast(m); else alert(m);
+  } else if (woItems.length > 0 && typeof toast === 'function') {
+    toast(_isEs2 ? '✅ Recorrido actualizado — las órdenes existentes siguen abiertas.' : '✅ Morning walk updated — existing work orders still open.');
   } else if (typeof toast === 'function') {
     toast(_isEs2 ? '✅ Recorrido matutino enviado — todo bien.' : '✅ Morning walk submitted — all clear.');
   }

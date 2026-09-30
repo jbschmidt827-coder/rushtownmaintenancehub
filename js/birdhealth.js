@@ -254,6 +254,67 @@
     }).filter(function (r) { return r.split > 0; });
     return { days: days, rows: rows, entries: entries, total: total };
   }
+  // ── v310: per-collector HISTORY (Joe: "make sure the dead for each collector
+  // has a history"). Every mortality entry that carried a split, day by day,
+  // per house, newest first, for the board's whole window (HIST_DAYS). The
+  // grids above answer "which row is hot"; this answers "since when".
+  function _collHistory(site) {
+    var byHouse = {};
+    (_B.logs || []).forEach(function (l) {
+      if (!l || l.farm !== site || l.type !== 'mortality') return;
+      var s = l.mortByCollector;
+      if (!s || typeof s !== 'object') return;
+      var c = {}, split = 0;
+      Object.keys(s).forEach(function (k) { var n = Number(s[k]) || 0; if (n > 0) { c[k] = n; split += n; } });
+      if (!split) return;
+      var h = _hnum(l.house);
+      (byHouse[h] || (byHouse[h] = [])).push({ date: String(l.date || ''), c: c, split: split, total: Number(l.mortCount) || split, by: l.employee || '' });
+    });
+    Object.keys(byHouse).forEach(function (h) { byHouse[h].sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; }); });
+    return byHouse;
+  }
+  function _collHistoryHtml(site) {
+    var H = _collHistory(site);
+    var houses = Object.keys(H).sort(function (a, b) { return Number(a) - Number(b); });
+    if (!houses.length) return '';
+    var out = '<div style="' + MONO + 'font-size:10.5px;color:#c99a5a;font-weight:700;letter-spacing:1px;margin:14px 0 4px;">' +
+      bhL('History by day · last ' + HIST_DAYS + ' days', 'Historial por día · últimos ' + HIST_DAYS + ' días') + '</div>';
+    houses.forEach(function (h) {
+      var rows = H[h];
+      // column totals for the house over the window
+      var tot = {}, tsplit = 0;
+      rows.forEach(function (r) { for (var k in r.c) { tot[k] = (tot[k] || 0) + r.c[k]; } tsplit += r.split; });
+      var hot = null, hotN = 0;
+      for (var c = 1; c <= COLLECTORS; c++) { var n = tot[String(c)] || 0; if (n > hotN) { hotN = n; hot = c; } }
+      out += '<div style="margin:6px 0 10px;">' +
+        '<div style="' + MONO + 'font-size:12px;font-weight:700;color:#f5ecdc;margin-bottom:4px;">H' + _bhEsc(h) +
+          ' <span style="font-weight:400;color:#8a6a45;">· ' + rows.length + ' ' + bhL('days with a split', 'días con conteo') +
+          (hot && tsplit >= HOT_MIN ? ' · ' + bhL('most so far: C', 'más hasta ahora: C') + hot + ' (' + hotN + ')' : '') + '</span></div>' +
+        '<div style="display:grid;grid-template-columns:58px repeat(' + COLLECTORS + ',1fr) 50px 70px;gap:3px;align-items:center;">' +
+        '<div style="' + MONO + 'font-size:9.5px;color:#6a5335;">' + bhL('date', 'fecha') + '</div>';
+      for (var c2 = 1; c2 <= COLLECTORS; c2++) out += '<div style="' + MONO + 'font-size:9.5px;color:#6a5335;text-align:center;">C' + c2 + '</div>';
+      out += '<div style="' + MONO + 'font-size:9.5px;color:#6a5335;text-align:center;">' + bhL('total', 'total') + '</div>' +
+             '<div style="' + MONO + 'font-size:9.5px;color:#6a5335;">' + bhL('by', 'por') + '</div>';
+      rows.forEach(function (r) {
+        out += '<div style="' + MONO + 'font-size:10.5px;color:#c9a97a;">' + _bhEsc(r.date.slice(5)) + '</div>';
+        var rowHot = null, rn = 0;
+        for (var k in r.c) { if (r.c[k] > rn) { rn = r.c[k]; rowHot = Number(k); } }
+        for (var c3 = 1; c3 <= COLLECTORS; c3++) {
+          var n = r.c[String(c3)] || 0;
+          var isHot = n >= HOT_MIN && r.split && n / r.split > HOT_SHARE;
+          out += '<div style="text-align:center;' + MONO + 'font-size:11px;padding:4px 0;border-radius:4px;background:' + (isHot ? '#5a1c14' : n ? '#22301a' : '#161009') + ';color:' + (isHot ? '#fca5a5' : n ? '#e8c98a' : '#3a2f22') + ';">' + (n || '·') + '</div>';
+        }
+        out += '<div style="text-align:center;' + MONO + 'font-size:11px;color:#c9a97a;">' + r.split + (r.total > r.split ? '<span style="color:#6a5335;">/' + r.total + '</span>' : '') + '</div>' +
+               '<div style="' + MONO + 'font-size:9.5px;color:#8a6a45;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">' + _bhEsc(String(r.by).split(' ')[0]) + '</div>';
+      });
+      // house totals row
+      out += '<div style="' + MONO + 'font-size:10px;font-weight:700;color:#e8c98a;border-top:1px solid #3a2a18;padding-top:4px;">' + bhL('total', 'total') + '</div>';
+      for (var c4 = 1; c4 <= COLLECTORS; c4++) out += '<div style="text-align:center;' + MONO + 'font-size:11px;font-weight:700;color:#e8c98a;border-top:1px solid #3a2a18;padding-top:4px;">' + (tot[String(c4)] || '·') + '</div>';
+      out += '<div style="text-align:center;' + MONO + 'font-size:11px;font-weight:700;color:#f5ecdc;border-top:1px solid #3a2a18;padding-top:4px;">' + tsplit + '</div><div style="border-top:1px solid #3a2a18;"></div>';
+      out += '</div></div>';
+    });
+    return out;
+  }
   function _collGridHtml(G, title) {
     if (!G.rows.length) return '<div style="' + MONO + 'font-size:11px;color:#8a6a45;margin:4px 0 8px;">' + _bhEsc(title) + ' — ' + bhL('no splits', 'sin conteos') + '</div>';
     var out = '<div style="' + MONO + 'font-size:10.5px;color:#c99a5a;font-weight:700;letter-spacing:1px;margin:6px 0 4px;">' + _bhEsc(title) + '</div>';
@@ -461,6 +522,7 @@
                 'Aún no hay conteos por colector. En el Chequeo Diario, con mortalidad SÍ, el equipo puede escribir el conteo por colector (C1–C6).') + '</div>');
         } else {
           html += _box(_collGridHtml(CG, bhL('Last 7 days', 'Últimos 7 días')) + _collGridHtml(CG28, bhL('Last 28 days', 'Últimos 28 días')) +
+            _collHistoryHtml(_site) +
             '<div style="' + MONO + 'font-size:10px;color:#c9a97a;margin-top:8px;padding-top:8px;border-top:1px dashed #3a2a18;line-height:1.6;">' +
               bhL('Fair share is 1 in 6 (17%) per collector. 🔥 = one collector carrying over a third of the house\'s deaths with 5+ birds — look at that row\'s water line, feeder run and fan before anything else. Coverage: ' +
                     CG28.entries + ' of ' + CG28.total + ' mortality entries in 28 days had a collector split — the rest are house totals only.',

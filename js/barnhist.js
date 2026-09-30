@@ -14,6 +14,11 @@
 //   barnWalks    — flags raised on the Daily EE Check
 //   morningWalks — flags raised on the Morning Walk
 //
+// ⚠ v310: globals are bhistSite/bhistToggle/bhistShare — this file used to
+// define window.bhSite, which CLOBBERED Bird Health's bhSite (loaded earlier),
+// so the DANVILLE chip on Bird Health silently opened Barn History instead.
+// Two modules sharing a "bh" prefix = the 7th reachability bug. Prefixes are
+// per-module now: bird health = bh*, barn history = bhist*.
 // ⚠ pmHistory is NOT here on purpose. PM completions carry farm + system but
 // NO HOUSE, so a manure PM cannot be traced to a barn. The screen says so
 // rather than quietly leaving a hole — fixing that needs a house field on PM
@@ -202,7 +207,7 @@
     return L.join('\n');
   }
 
-  window.bhShare = function () {
+  window.bhistShare = function () {
     var txt = _text(_site);
     var title = 'Maintenance history by barn — ' + _site;
     try {
@@ -243,8 +248,8 @@
     if (typeof toast === 'function') toast(bhL('Select all and copy', 'Selecciona todo y copia'));
   }
 
-  window.bhSite = function (s) { _site = s; _open = {}; window.openBarnHistory(); };
-  window.bhToggle = function (h) { _open[h] = !_open[h]; window.openBarnHistory(); };
+  window.bhistSite = function (s) { _site = s; _open = {}; window.openBarnHistory(); };
+  window.bhistToggle = function (h) { _open[h] = !_open[h]; window.openBarnHistory(); };
 
   function _ov() {
     var o = document.getElementById('bh2-overlay');
@@ -292,14 +297,14 @@
       if (sites.length > 1) {
         html += '<div style="display:flex;gap:8px;margin-bottom:12px;">' + sites.map(function (s) {
           var on = s === _site;
-          return '<button onclick="bhSite(\'' + _e(s) + '\')" style="flex:1;padding:10px;border-radius:50px;cursor:pointer;' + MONO +
+          return '<button onclick="bhistSite(\'' + _e(s) + '\')" style="flex:1;padding:10px;border-radius:50px;cursor:pointer;' + MONO +
             'font-size:12px;font-weight:700;background:' + (on ? '#3a2a12' : '#171208') + ';border:1.5px solid ' + (on ? '#e8c98a' : '#3a2a18') +
             ';color:' + (on ? '#f5ecdc' : '#8a6a45') + ';">' + (on ? '✓ ' : '') + _e(s).toUpperCase() + '</button>';
         }).join('') + '</div>';
       }
 
       // ── SHARE ──
-      html += '<button onclick="bhShare()" style="width:100%;padding:14px;margin-bottom:12px;background:#0d1f3a;border:2px solid #3b82f6;border-radius:11px;color:#9cc0f6;' + MONO + 'font-size:13.5px;font-weight:700;letter-spacing:1px;cursor:pointer;">📤 ' +
+      html += '<button onclick="bhistShare()" style="width:100%;padding:14px;margin-bottom:12px;background:#0d1f3a;border:2px solid #3b82f6;border-radius:11px;color:#9cc0f6;' + MONO + 'font-size:13.5px;font-weight:700;letter-spacing:1px;cursor:pointer;">📤 ' +
         bhL('SHARE THIS REPORT', 'COMPARTIR REPORTE') + '</button>' +
         '<div style="' + MONO + 'font-size:9.5px;color:#6a5335;margin:-6px 2px 10px;line-height:1.6;">' +
           bhL('Sends the whole ' + _site + ' report as text — email, message or Teams to the plant manager and team lead. On a computer it copies to the clipboard instead.',
@@ -330,7 +335,7 @@
         var sys = Object.keys(b.bySys).filter(function (s) { return b.bySys[s].length; })
           .sort(function (x, y) { return b.bySys[y].length - b.bySys[x].length; });
         html += '<div style="background:#1c150e;border:1.5px solid ' + (b.repeats.length ? '#7a4a1a' : '#3a2a18') + ';border-radius:12px;margin-bottom:9px;overflow:hidden;">' +
-          '<div onclick="bhToggle(\'' + b.house + '\')" style="padding:11px 13px;cursor:pointer;">' +
+          '<div onclick="bhistToggle(\'' + b.house + '\')" style="padding:11px 13px;cursor:pointer;">' +
             '<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;">' +
               '<b style="' + MONO + 'font-size:14px;color:#f5ecdc;">' + bhL('HOUSE ', 'CASA ') + b.house + '</b>' +
               (b.down ? '<span style="' + MONO + 'font-size:9.5px;color:#f0a35a;font-weight:700;">⛔ ' + bhL('DOWN', 'FUERA') + '</span>' : '') +

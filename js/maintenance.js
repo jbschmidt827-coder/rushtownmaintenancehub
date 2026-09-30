@@ -717,9 +717,28 @@ async function woSetStatus(fbId, newStatus) {
   }
   setSyncDot('saving');
   try {
-    await db.collection('workOrders').doc(fbId).update({ status: newStatus, updatedTs: Date.now() });
+    const patch = { status: newStatus, updatedTs: Date.now() };
+    // v311: ↩ Re-Open used to leave completedBy / completedTs / completedDate on
+    // the doc, so a re-opened order still counted as CLOSED in Job Time,
+    // Barn History and time-to-close (watchdog 9/28: WO-1671/1672). Move the
+    // old completion into priorCompletion (audit trail kept), clear the live
+    // fields, stamp who re-opened it.
+    const wasClosed = !!(wo.completedBy || wo.completedTs || wo.completedDate);
+    if (newStatus !== 'completed' && wasClosed) {
+      const FV = (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue : null;
+      patch.priorCompletion = {
+        by: wo.completedBy || '', date: wo.completedDate || '', notes: wo.completedNotes || '',
+        ts: (wo.completedTs && wo.completedTs.toMillis) ? wo.completedTs.toMillis() : (Number(wo.completedTs) || null)
+      };
+      patch.reopenedBy = (typeof getDeviceUser === 'function' && getDeviceUser()) || '';
+      patch.reopenedTs = Date.now();
+      if (FV) { patch.completedBy = FV.delete(); patch.completedTs = FV.delete(); patch.completedDate = FV.delete(); }
+      else { patch.completedBy = null; patch.completedTs = null; patch.completedDate = null; }
+    }
+    await db.collection('workOrders').doc(fbId).update(patch);
     // Optimistically update local copy for instant UI feedback
     wo.status = newStatus;
+    if (newStatus !== 'completed' && wasClosed) { delete wo.completedBy; delete wo.completedTs; delete wo.completedDate; wo.priorCompletion = patch.priorCompletion; wo.reopenedBy = patch.reopenedBy; wo.reopenedTs = patch.reopenedTs; }
     renderWO();
   } catch(e) {
     console.error('woSetStatus failed:', e);
