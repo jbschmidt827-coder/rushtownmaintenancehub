@@ -644,26 +644,45 @@ var BARN_PROGRESS = {};
 
 // ── Replay daily checks that couldn't reach Firestore (parked on device by
 // submitBarnWalk's catch). Runs shortly after boot; keeps whatever still fails.
+var _bwReplayBusy = false;
 function _bwReplayQueued() {
+  if (typeof db === 'undefined' || !db) return;
   try {
-    const q = JSON.parse(localStorage.getItem('bwQueuedSubmits') || '[]');
-    if (!q.length) return;
-    const still = [];
-    let chain = Promise.resolve();
-    q.forEach(rec => {
-      // Write to the SAME deterministic doc (farm-house-date) the live submit
-      // uses — NOT .add() — so a replayed check updates the day's record instead
-      // of creating a duplicate. (This was the source of duplicate barnWalks.)
-      const id = (rec && rec.farm && rec.house != null && rec.date) ? (rec.farm + '-' + rec.house + '-' + rec.date) : null;
-      chain = chain.then(() =>
-        (id ? db.collection('barnWalks').doc(id).set(rec, { merge: true })
-            : db.collection('barnWalks').add(rec)).catch(() => { still.push(rec); }));
-    });
-    chain.then(() => {
-      localStorage.setItem('bwQueuedSubmits', JSON.stringify(still));
-      if (q.length - still.length > 0) console.log('Replayed', q.length - still.length, 'queued daily check(s)');
-    });
-  } catch (e) { /* non-fatal */ }
+    const q = _bwReplayBusy ? [] : JSON.parse(localStorage.getItem('bwQueuedSubmits') || '[]');
+    if (q.length) {
+      _bwReplayBusy = true;
+      const sent = [];
+      let chain = Promise.resolve();
+      q.forEach(rec => {
+        // Write to the SAME deterministic doc (farm-house-date) the live submit
+        // uses — NOT .add() — so a replayed check updates the day's record instead
+        // of creating a duplicate. (This was the source of duplicate barnWalks.)
+        const id = _bwRecId(rec);
+        chain = chain.then(() => {
+          if (!id) return db.collection('barnWalks').add(rec).then(() => { sent.push(rec); }).catch(() => {});
+          const ref = db.collection('barnWalks').doc(id);
+          // v312: only ever move a house's record FORWARD. If the server already
+          // holds this version or a newer one (the live save landed, or another
+          // device saved later), drop the parked copy instead of writing an older
+          // one over it. Either way make sure its mortality entry exists.
+          return ref.get({ source: 'server' }).then(d => {
+            const cur = (d && d.exists) ? d.data() : null;
+            if (cur && (Number(cur.ts) || 0) >= (Number(rec.ts) || 0)) return;
+            return ref.set(rec, { merge: true });
+          }).then(() => { sent.push(rec); _bwLogFromRecord(rec); }).catch(() => {});
+        });
+      });
+      const _done = () => {
+        // Remove only what was delivered — a check parked while this ran stays.
+        sent.forEach(r => _bwUnparkRecord(r));
+        if (sent.length) console.log('Replayed', sent.length, 'queued daily check(s)');
+        _bwReplayBusy = false;
+      };
+      chain.then(_done, _done);
+    }
+  } catch (e) { _bwReplayBusy = false; /* non-fatal */ }
+  // v312: mortality / loose-bird entries parked on this device.
+  try { _bwReplayLogs(); } catch (e) {}
   // v238: morning walks queue too (same deterministic farm-house-date doc).
   try {
     const mq = JSON.parse(localStorage.getItem('mwQueuedSubmits') || '[]');
@@ -881,28 +900,280 @@ function bwUpdateTimeBadge() {
   }
 }
 
-// ── v308: one mortalityLog entry per house per day, updated on every submit ──
-// Reuses today's existing entry for this farm/house/type if one exists (whatever
-// its id — the old code used random ids), otherwise writes a deterministic id so
-// two devices submitting the same house can never make two entries. Never
-// throws, never awaited by Submit.
-function _bwUpsertLog(type, entry) {
-  try {
-    if (typeof db === 'undefined' || !db) return;
-    const detId = type + '__' + String(entry.farm) + '__H' + String(entry.house) + '__' + String(entry.date);
-    const coll = db.collection('mortalityLog');
-    coll.where('farm', '==', entry.farm).where('house', '==', String(entry.house))
-        .where('date', '==', entry.date).where('type', '==', type).limit(1).get()
-      .then(function (snap) {
-        const id = (snap && !snap.empty) ? snap.docs[0].id : detId;
-        return coll.doc(id).set(entry, { merge: true });
-      })
-      .catch(function () {
-        // Query needs an index it may not have → fall back to the deterministic id.
-        return coll.doc(detId).set(entry, { merge: true }).catch(function (e) { console.warn('mortalityLog upsert failed:', e); });
-      });
-  } catch (e) { console.warn('mortalityLog upsert failed:', e); }
+// ═══ v312: SAVE-AS-YOU-GO + NEVER-LOSE HELPERS ══════════════════════════════
+// Joe 10/1: "i want this data to save by each house plus total dead for that
+// barn. we need to make sure we keep a history of what collector the dead came
+// from." What was actually broken (field evidence 10/1):
+//  1. After a house's FIRST submit, every later change (DONE — NEXT, a fixed dead
+//     count, the collector boxes, the end-of-day block) went only into the shared
+//     draft, which is thrown away at midnight. Danville H2 10/1: saved loose 1 /
+//     85%, draft had loose 10 / 100%; H3 and Hegins H5 the same. → a house that
+//     has been turned in now re-saves itself on every change (_bwResaveSoon).
+//  2. The mortality log was written only AFTER the barnWalks write returned, so
+//     an offline / closed tablet delivered the check days later but its dead
+//     birds never reached the history (Danville H3 9/28, H5 9/28–9/30). → every
+//     write is PARKED on the device first and leaves the queue only when
+//     Firestore confirms it; replays derive the log from the record too.
+//  3. Mortality waited for the whole check. → the house's entry (barn total +
+//     C1–C6) is saved the moment the Mortality block is answered (_bwMortSaveSoon).
+function _bwWithTimeout(p, ms) {
+  return new Promise(function (res, rej) {
+    var done = false;
+    var t = setTimeout(function () { if (!done) { done = true; rej(new Error('timeout')); } }, ms);
+    Promise.resolve(p).then(function (v) { if (!done) { done = true; clearTimeout(t); res(v); } },
+                            function (e) { if (!done) { done = true; clearTimeout(t); rej(e); } });
+  });
 }
+
+// ── On-device queue for daily-check records ─────────────────────────────────
+// A record is PARKED before it is written and UNPARKED only when Firestore
+// acknowledges that exact version (by ts). A newer version of the same
+// house/day replaces an older parked one.
+function _bwRecId(r) { return (r && r.farm && r.house != null && r.date) ? (r.farm + '-' + r.house + '-' + r.date) : null; }
+function _bwParkRecord(rec) {
+  try {
+    const id = _bwRecId(rec);
+    let q = JSON.parse(localStorage.getItem('bwQueuedSubmits') || '[]');
+    if (id) q = q.filter(function (r) { return !(_bwRecId(r) === id && (Number(r.ts) || 0) <= (Number(rec.ts) || 0)); });
+    q.push(rec);
+    localStorage.setItem('bwQueuedSubmits', JSON.stringify(q));
+  } catch (e) { console.warn('could not park the check on this device:', e); }
+}
+function _bwUnparkRecord(rec) {
+  try {
+    const id = _bwRecId(rec);
+    const js = JSON.stringify(rec);
+    const q = JSON.parse(localStorage.getItem('bwQueuedSubmits') || '[]');
+    const left = q.filter(function (r) {
+      if (id) return !(_bwRecId(r) === id && (Number(r.ts) || 0) <= (Number(rec.ts) || 0));
+      return JSON.stringify(r) !== js;
+    });
+    if (left.length !== q.length) localStorage.setItem('bwQueuedSubmits', JSON.stringify(left));
+  } catch (e) {}
+}
+
+// ── "Did anything change?" fingerprint of a daily-check record ──────────────
+// A quiet re-save is skipped when the form still matches what was last saved
+// (or loaded), so opening a house or tapping around never rewrites it.
+var _bwSavedFp = null;        // fingerprint of the open house's record as last loaded/saved
+var _bwResaveOk = false;      // the open form holds the REAL record (loaded, or saved from this form)
+var _bwMortLogged = {};       // 'farm-house-date' → this device logged mortality for that house today
+var _bwMortCounted = {};      // 'farm-house-date' → count already added to _todayMortTotal
+const _BW_FP_KEYS = ['employee','notes','mortCount','mortByCollector','looseCount','rodentCount','flyCount',
+  'weeklyRodentCount','feedBinReading','eggsCollected','waterMeter','waterMeters','binA','binB','naFields',
+  'weeklyAck','mort','feather','air','feed','rodent','loose','dryers','eggbelt','stand','fly','mortrem','doors',
+  'inletVents','waste','checklist','checklistNotes','cageClean','cageCleanEmployee','cageCleanTime','pct'];
+function _bwFpNorm(v) {
+  if (v === undefined || v === null || v === '' || v === false) return null;
+  if (Array.isArray(v)) return v.map(_bwFpNorm);
+  if (typeof v === 'object') {
+    const o = {};
+    Object.keys(v).sort().forEach(function (k) { const x = _bwFpNorm(v[k]); if (x !== null) o[k] = x; });
+    return Object.keys(o).length ? o : null;
+  }
+  return String(v);
+}
+function _bwRecFp(r) {
+  try { const o = {}; _BW_FP_KEYS.forEach(function (k) { o[k] = _bwFpNorm(r ? r[k] : null); }); return JSON.stringify(o); }
+  catch (e) { return 'x' + Date.now(); }
+}
+
+// ── The per-house, per-day MORTALITY entry (barn total + C1–C6) ─────────────
+function _bwMortEntry(o) {
+  const split = (o.mortByCollector && typeof o.mortByCollector === 'object' && Object.keys(o.mortByCollector).length) ? o.mortByCollector : null;
+  const n = Number(o.mortCount) || 0;
+  const sum = split ? Object.keys(split).reduce(function (a, k) { return a + (Number(split[k]) || 0); }, 0) : 0;
+  return {
+    farm: o.farm, house: String(o.house), employee: o.employee || '',
+    date: o.date, time: o.time || '', type: 'mortality',
+    mortCount: n,                               // TOTAL dead for the barn that day
+    mortByCollector: split,                     // v304: {'1':n,…,'6':n} or null
+    mortUnassigned: (split && n) ? Math.max(0, n - sum) : null,
+    mortrem: o.mortrem || 'yes', notes: o.notes || '',
+    cleared: !!o.cleared,                       // v312: answer changed back to NO that day
+    ts: o.ts || Date.now()
+  };
+}
+
+// ── mortalityLog: ONE entry per farm/house/day/type, upserted, never lost ────
+// Since v308 went live (9/25) every entry uses the deterministic id
+// mortality__Danville__H2__2026-10-01; older days may hold a random-id entry,
+// which is reused so a day never gets two.
+var _BW_DET_SINCE = '2026-09-25';
+function _bwLogDetId(type, e) { return type + '__' + String(e.farm) + '__H' + String(e.house) + '__' + String(e.date); }
+function _bwParkLog(detId, type, entry) {
+  try {
+    const m = JSON.parse(localStorage.getItem('bwQueuedLogs') || '{}');
+    const cur = m[detId];
+    if (!cur || (Number(cur.entry && cur.entry.ts) || 0) <= (Number(entry.ts) || 0)) m[detId] = { type: type, entry: entry };
+    localStorage.setItem('bwQueuedLogs', JSON.stringify(m));
+  } catch (e) {}
+}
+function _bwUnparkLog(detId, ts) {
+  try {
+    const m = JSON.parse(localStorage.getItem('bwQueuedLogs') || '{}');
+    if (m[detId] && (Number(m[detId].entry && m[detId].entry.ts) || 0) <= (Number(ts) || 0)) {
+      delete m[detId];
+      localStorage.setItem('bwQueuedLogs', JSON.stringify(m));
+    }
+  } catch (e) {}
+}
+function _bwLogTarget(type, entry, detId) {
+  const coll = db.collection('mortalityLog');
+  if (String(entry.date) >= _BW_DET_SINCE) return Promise.resolve(coll.doc(detId));
+  return coll.where('farm', '==', entry.farm).where('house', '==', String(entry.house))
+    .where('date', '==', entry.date).where('type', '==', type).limit(1).get()
+    .then(function (snap) { return (snap && !snap.empty) ? snap.docs[0].ref : coll.doc(detId); })
+    .catch(function () { return coll.doc(detId); });
+}
+// Returns a promise → true once Firestore confirms the write. guard = true (used
+// by replays): never write over an entry that is NEWER than this one.
+function _bwUpsertLog(type, entry, guard) {
+  try {
+    if (!entry || !entry.farm || entry.house == null || !entry.date) return Promise.resolve(false);
+    const detId = _bwLogDetId(type, entry);
+    _bwParkLog(detId, type, entry);
+    if (typeof db === 'undefined' || !db) return Promise.resolve(false);
+    return _bwLogTarget(type, entry, detId).then(function (ref) {
+      if (!guard) return ref.set(entry, { merge: true });
+      return ref.get({ source: 'server' }).then(function (d) {
+        const cur = (d && d.exists) ? d.data() : null;
+        if (cur && (Number(cur.ts) || 0) > (Number(entry.ts) || 0)) return;   // a newer entry is already saved
+        return ref.set(entry, { merge: true });
+      });
+    }).then(function () { _bwUnparkLog(detId, entry.ts); return true; })
+      .catch(function (e) { console.warn('mortalityLog write not confirmed yet — kept on this device:', e); return false; });
+  } catch (e) { console.warn('mortalityLog upsert failed:', e); return Promise.resolve(false); }
+}
+function _bwReplayLogs() {
+  try {
+    const m = JSON.parse(localStorage.getItem('bwQueuedLogs') || '{}');
+    Object.keys(m).forEach(function (id) {
+      const it = m[id];
+      if (it && it.entry) _bwUpsertLog(it.type, it.entry, true);
+    });
+  } catch (e) {}
+}
+// A replayed (or late-synced) check also delivers its mortality / loose-bird
+// entries — the hole that lost Danville H3 9/28 and H5 9/28–9/30.
+function _bwLogFromRecord(rec) {
+  try {
+    if (!rec || !rec.farm || rec.house == null || !rec.date) return;
+    if (rec.mort === 'yes') {
+      _bwUpsertLog('mortality', _bwMortEntry({
+        farm: rec.farm, house: rec.house, employee: rec.employee, date: rec.date, time: rec.time,
+        mortCount: rec.mortCount, mortByCollector: rec.mortByCollector, mortrem: rec.mortrem, notes: rec.notes, ts: rec.ts
+      }), true);
+    }
+    if (rec.loose === 'yes') {
+      _bwUpsertLog('loose', {
+        farm: rec.farm, house: String(rec.house), employee: rec.employee || '', date: rec.date, time: rec.time || '',
+        type: 'loose', looseCount: Number(rec.looseCount) || 0, notes: rec.notes || '', ts: rec.ts || Date.now()
+      }, true);
+    }
+  } catch (e) {}
+}
+
+// ── Save-as-you-go: a house already turned in today re-saves on every change ──
+var _bwResaveTimer = null, _bwResaveFor = null;
+function _bwIsSubmittedToday() {
+  try {
+    const k = _bwFarm + '-' + _bwHouse;
+    return !!_bwDocId || (typeof BARN_STATUS !== 'undefined' && (BARN_STATUS[k] === 'done' || BARN_STATUS[k] === 'issue'));
+  } catch (e) { return false; }
+}
+function _bwResaveSoon() {
+  if (!_bwFarm || !_bwHouse || !_bwResaveOk || !_bwIsSubmittedToday()) return;
+  const k = _bwFarm + '-' + _bwHouse;
+  if (_bwResaveTimer && _bwResaveFor && _bwResaveFor !== k) _bwResaveNow();
+  _bwResaveFor = k;
+  if (_bwResaveTimer) clearTimeout(_bwResaveTimer);
+  _bwResaveTimer = setTimeout(_bwResaveNow, 2500);
+}
+function _bwResaveNow() {
+  if (_bwResaveTimer) { clearTimeout(_bwResaveTimer); _bwResaveTimer = null; }
+  const k = _bwResaveFor; _bwResaveFor = null;
+  if (!k || k !== (_bwFarm + '-' + _bwHouse)) return;      // the form moved on
+  try { const r = submitBarnWalk({ quiet: true }); if (r && r.catch) r.catch(function (e) { console.warn('auto re-save:', e); }); } catch (e) { console.warn('auto re-save:', e); }
+}
+
+// ── Mortality saves the moment the Mortality block is answered ──────────────
+// Doesn't wait for the whole check to be turned in; every later change updates
+// the same per-house entry. A NO only touches an entry this device already
+// logged today (zeroes it).
+var _bwMortTimer = null, _bwMortFor = null, _bwMortLastFp = null, _bwMortLastEntry = null;
+function _bwMortFp() {
+  const c = document.getElementById('bw-mort-count');
+  return JSON.stringify([_bwFarm + '-' + _bwHouse, _bwData.mort || null, _bwData.mortrem || null,
+    c ? c.value : '', (_bwFarm === 'Danville' && _bwData.mort === 'yes') ? _bwMortColl() : null]);
+}
+function _bwMortSaveSoon() {
+  if (!_bwFarm || !_bwHouse || typeof LDATE !== 'function') return;
+  const k = _bwFarm + '-' + _bwHouse;
+  if (_bwMortFp() === _bwMortLastFp) return;
+  const ok = bwBlockComplete('mortality') && (_bwData.mort === 'yes' || !!_bwMortLogged[k + '-' + LDATE()]);
+  if (!ok) return;
+  if (_bwMortTimer && _bwMortFor && _bwMortFor !== k) _bwMortSaveNow();
+  _bwMortFor = k;
+  if (_bwMortTimer) clearTimeout(_bwMortTimer);
+  _bwMortTimer = setTimeout(_bwMortSaveNow, 1500);
+  _bwMortStatus('pending');
+}
+function _bwMortSaveNow() {
+  if (_bwMortTimer) { clearTimeout(_bwMortTimer); _bwMortTimer = null; }
+  const k = _bwMortFor; _bwMortFor = null;
+  if (!k || k !== (_bwFarm + '-' + _bwHouse)) return;
+  if (window._bwOpenDate && window._bwOpenDate !== LDATE()) return;   // yesterday's form — never
+  if (_bwMortFp() === _bwMortLastFp) { _bwMortStatus(_bwMortLastEntry ? 'saved' : null, _bwMortLastEntry); return; }   // changed back
+  const F = _bwFarm, H = _bwHouse, date = LDATE();
+  const yes = _bwData.mort === 'yes';
+  const c = document.getElementById('bw-mort-count');
+  const entry = _bwMortEntry({
+    farm: F, house: H, employee: _bwCurrentUser(), date: date,
+    time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    mortCount: (yes && c && c.value !== '') ? Number(c.value) : 0,
+    mortByCollector: (yes && F === 'Danville') ? _bwMortColl() : null,
+    mortrem: _bwData.mortrem || 'yes',
+    notes: ((document.getElementById('bw-notes') || {}).value || '').trim(),
+    ts: Date.now(), cleared: !yes
+  });
+  _bwMortLastFp = _bwMortFp();
+  _bwMortLastEntry = entry;
+  if (yes) _bwMortLogged[k + '-' + date] = true;
+  let settled = false;
+  _bwUpsertLog('mortality', entry).then(function (ok) {
+    settled = true;
+    if (_bwMortLastEntry !== entry) return;            // a newer save is on its way
+    if (_bwFarm + '-' + _bwHouse === k) _bwMortStatus(ok ? 'saved' : 'device', entry);
+  });
+  setTimeout(function () { if (!settled && _bwMortLastEntry === entry && _bwFarm + '-' + _bwHouse === k) _bwMortStatus('device', entry); }, 6000);
+}
+function _bwMortStatus(state, e) {
+  const el = document.getElementById('bw-mort-saved');
+  if (!el) return;
+  const es = (typeof _lang !== 'undefined' && _lang === 'es');
+  if (!state || (e && e.cleared)) { el.textContent = ''; el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  if (state === 'pending') { el.style.color = '#8fae8f'; el.textContent = es ? '💾 Guardando…' : '💾 Saving…'; return; }
+  const sp = (e && e.mortByCollector) ? Object.keys(e.mortByCollector).sort().map(function (c) { return 'C' + c + ' ' + e.mortByCollector[c]; }).join(' · ') : '';
+  const what = e ? (e.mortCount + (es ? ' muertas' : ' dead') + (sp ? ' · ' + sp : '')) : '';
+  if (state === 'saved') {
+    el.style.color = '#7ad07a';
+    el.textContent = '✅ ' + (es ? 'Guardado en Casa ' : 'Saved to House ') + (e ? e.house : _bwHouse) + ' · ' + what + (e && e.time ? ' · ' + e.time : '');
+  } else {
+    el.style.color = '#f0c674';
+    el.textContent = '📴 ' + (es ? 'Guardado en esta tablet — se sube solo al volver la conexión' : 'Saved on this tablet — uploads by itself when the connection is back');
+  }
+}
+// Run anything still waiting (closing the form, switching houses, app hidden).
+// Both savers read the form synchronously before their first await, so this is
+// safe to call right before the form is reset.
+function _bwFlushPending() {
+  try { if (_bwMortTimer) _bwMortSaveNow(); } catch (e) {}
+  try { if (_bwResaveTimer) _bwResaveNow(); } catch (e) {}
+}
+try { document.addEventListener('visibilitychange', function () { if (document.hidden) _bwFlushPending(); }); } catch (e) {}
+try { window.addEventListener('pagehide', function () { _bwFlushPending(); }); } catch (e) {}
 
 // ── Barn Walk Draft Persistence ──
 function bwSaveDraft() {
@@ -930,6 +1201,12 @@ function bwSaveDraft() {
     localStorage.setItem('bwDraft-' + _bwFarm + '-' + _bwHouse + '-' + today, JSON.stringify(payload));
     _bwPushProgress(pct, payload);
   } catch(e) {}
+  // v312: save as you go — the house's mortality entry the moment it is
+  // answered, and (once the house has been turned in today) the whole record.
+  if (!_bwRestoring) {
+    try { _bwMortSaveSoon(); } catch (e) {}
+    try { _bwResaveSoon(); } catch (e) {}
+  }
 }
 
 // ── Cross-device LIVE in-progress % (v166) ──────────────────────────────────
@@ -1623,8 +1900,12 @@ function openBarnWalk(farm, house) {
   // never-reloaded PWA still holds yesterday's answers — the day-rollover
   // watchdog in core.js uses this stamp to close it before anyone submits
   // yesterday's data under today's date.
+  // v312: anything still waiting to save for the house that was open goes now —
+  // before its form is wiped for this one.
+  _bwFlushPending();
   window._bwOpenDate = LDATE();
   _bwFarm = farm; _bwHouse = house; _bwData = {}; _bwDocId = null; _bwBlockBy = {};
+  _bwSavedFp = null; _bwResaveOk = false; _bwMortLastFp = null; _bwMortLastEntry = null;
   _bwProgressLoaded = false;   // block progress writes until the shared draft loads
   try { if (typeof _bwArrangeCards === 'function') _bwArrangeCards(); } catch (e) {}
   const _t = (typeof t === 'function') ? t : (k => k);
@@ -1644,6 +1925,8 @@ function openBarnWalk(farm, house) {
   });
   document.getElementById('bw-mort-count-row').style.display    = 'none';
   { const r = document.getElementById('bw-mort-coll-row'); if (r) r.style.display = 'none'; const h = document.getElementById('bw-mort-coll-hint'); if (h) h.textContent = ''; _bwMortAutoTotal = null; }
+  _bwMortStatus(null);
+  try { _bwMortHistShow(farm, house); } catch (e) {}
   document.getElementById('bw-loose-count-row').style.display   = 'none';
   document.getElementById('bw-rodent-count-row').style.display  = 'none';
   document.getElementById('bw-fly-count-row').style.display     = 'none';
@@ -1700,6 +1983,8 @@ function openBarnWalk(farm, house) {
     try { const s = localStorage.getItem(draftKey); if (s) localDraft = JSON.parse(s); } catch(e) {}
     if (localDraft) { bwRestoreFromData(localDraft); _bwBlockBy = localDraft.blockBy || {}; bwInitFlow(); }
     db.collection('bwProgress').doc(bsKey + '-' + today).get().then(function(doc) {
+      // v312: today's record turned up (below) and the form already holds it.
+      if (_bwResaveOk || _bwFarm !== farm || String(_bwHouse) !== String(house)) { _bwProgressLoaded = true; return; }
       if (doc.exists) {
         const d = doc.data() || {};
         // NEVER LOSE PROGRESS: keep whichever draft is MORE complete. A device that
@@ -1723,21 +2008,53 @@ function openBarnWalk(farm, house) {
       }
       _bwProgressLoaded = true;   // shared draft loaded — safe to push progress now
     }).catch(function(){ _bwProgressLoaded = true; if (!localDraft) _bwPrefillEmployeeFromLast(farm, house); });
+    // v312: BARN_STATUS can lag — a slow boot, or a house turned in on another
+    // tablet a minute ago. If today's record already exists, open THAT, never a
+    // blank form: a Submit from a blank form merges its empty answers over the
+    // morning's record and wipes them, dead count included.
+    db.collection('barnWalks').doc(farm + '-' + house + '-' + today).get().then(function (d) {
+      if (!d || !d.exists) return;
+      if (_bwFarm !== farm || String(_bwHouse) !== String(house) || _bwResaveOk) return;
+      const x = d.data() || {};
+      if (typeof BARN_STATUS !== 'undefined') BARN_STATUS[bsKey] = (x.flags && x.flags.length) ? 'issue' : 'done';
+      const sh = document.getElementById('bw-shared-banner'); if (sh) sh.remove();
+      // Start from a clean form so nothing from a stale local draft lingers.
+      _bwData = {}; _bwChecklist = {}; _bwBlockBy = {};
+      try { document.querySelectorAll('#barn-walk-modal .bw-yn-btn').forEach(b => b.className = 'bw-yn-btn'); bwInitChecklist(); } catch (e) {}
+      _bwOpenSubmitted(farm, house, today, d);
+    }).catch(function () {});
     return;
   }
 
   // Editing an already-submitted check — no shared-draft gate needed.
   _bwProgressLoaded = true;
+  _bwOpenSubmitted(farm, house, today, null);
+}
 
-  // ── Already submitted today → load the real record to edit ────────────────
-  db.collection('barnWalks')
-    .where('farm','==',farm).where('house','==',String(house)).where('date','==',today)
-    .limit(1).get()
-    .then(snap => {
+// ── Already submitted today → load the real record to edit ────────────────
+// v312: its own function so the not-submitted path can switch to it when
+// BARN_STATUS lagged (preDoc = today's record, already fetched by id).
+function _bwOpenSubmitted(farm, house, today, preDoc) {
+  const _isEs = (typeof _lang !== 'undefined' && _lang === 'es');
+  _bwProgressLoaded = true;
+  const _q = preDoc ? Promise.resolve({ empty: false, docs: [preDoc] })
+    : db.collection('barnWalks').where('farm','==',farm).where('house','==',String(house)).where('date','==',today).limit(1).get();
+  _q.then(snap => {
+      // v312: the crew may have moved to another house before this arrived.
+      if (_bwFarm !== farm || String(_bwHouse) !== String(house)) return;
       if (!snap.empty) {
         _bwDocId = snap.docs[0].id;
         const _rec = snap.docs[0].data();
         bwRestoreFromData(bwRecordToDraft(_rec));
+        // v312: the form now holds the REAL record → later changes save by
+        // themselves; baseline so merely opening it never rewrites anything.
+        _bwSavedFp = _bwRecFp(_rec); _bwResaveOk = true; _bwMortLastFp = _bwMortFp();
+        if (_rec.mort === 'yes') {
+          _bwMortLogged[farm + '-' + house + '-' + today] = true;
+          _bwMortLastEntry = _bwMortEntry({ farm: farm, house: house, employee: _rec.employee, date: today, time: _rec.time,
+            mortCount: _rec.mortCount, mortByCollector: _rec.mortByCollector, mortrem: _rec.mortrem, ts: _rec.ts });
+          _bwMortStatus('saved', _bwMortLastEntry);
+        }
         let banner = document.getElementById('bw-submitted-banner');
         if (!banner) {
           banner = document.createElement('div');
@@ -1747,8 +2064,8 @@ function openBarnWalk(farm, house) {
           if (sb) sb.parentNode.insertBefore(banner, sb);
         }
         var _head = _isEs
-          ? '✏️ Editando la entrega de hoy — los cambios actualizarán el registro existente'
-          : '✏️ Editing today\'s submission — changes will update the existing record';
+          ? '✏️ Editando la entrega de hoy — cada cambio se guarda solo en el registro'
+          : '✏️ Editing today\'s submission — every change saves by itself';
         var _flags = (_rec.flags && _rec.flags.length) ? _rec.flags : [];
         if (_flags.length) {
           var _esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
@@ -1809,6 +2126,7 @@ function _bwShowSharedBanner(byName) {
 }
 
 function closeBarnWalk() {
+  _bwFlushPending();   // v312: a change made right before closing still saves
   document.getElementById('barn-walk-modal').style.display = 'none';
   // Refresh the barn grid so this house's card shows the live progress % it
   // reached, even when backing out before submitting.
@@ -1889,6 +2207,102 @@ function bwMortCollShow() {
     ? 'Por colector — C1 a C6 (opcional, suma el total)'
     : 'By collector — C1 to C6 (optional, adds up the total)';
   if (on) bwMortCollSum(true);
+}
+// ── v312: 📜 this house's mortality history, right in the Mortality card ────
+// Last 7 days: the barn total and (Danville) the C1–C6 split for each day, so
+// the crew sees the history they are building and "what collector the dead
+// came from" is visible without opening Bird Health. Reads the day's record
+// (barnWalks) and the day's mortality entry by id — no index, works offline
+// from cache — and shows whichever was saved last.
+var _bwMortHistCache = {};
+function _bwMortHistShow(farm, house) {
+  const box = document.getElementById('bw-mort-hist');
+  if (!box) return;
+  box.innerHTML = '';
+  if (typeof db === 'undefined' || !db || !farm || !house || typeof LDATE !== 'function') return;
+  const k = farm + '-' + house;
+  const c = _bwMortHistCache[k];
+  if (c && c.day === LDATE() && Date.now() - c.t < 10 * 60 * 1000) { _bwMortHistRender(farm, house, c.rows); return; }
+  const today = LDATE();
+  const dates = [];
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(today + 'T12:00:00'); d.setDate(d.getDate() - i);
+    dates.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
+  }
+  const gets = [];
+  dates.forEach(function (dt) {
+    gets.push(db.collection('barnWalks').doc(farm + '-' + house + '-' + dt).get().catch(function () { return null; }));
+    gets.push(db.collection('mortalityLog').doc('mortality__' + farm + '__H' + house + '__' + dt).get().catch(function () { return null; }));
+  });
+  Promise.all(gets).then(function (snaps) {
+    const rows = dates.map(function (dt, i) {
+      const ws = snaps[i * 2], ls = snaps[i * 2 + 1];
+      const w = (ws && ws.exists) ? ws.data() : null;
+      const l = (ls && ls.exists) ? ls.data() : null;
+      let src = null;
+      if (w && w.mort === 'yes') src = { n: w.mortCount, s: w.mortByCollector, by: w.employee, ts: w.ts };
+      if (l && l.type === 'mortality' && (!src || (Number(l.ts) || 0) > (Number(src.ts) || 0))) src = { n: l.mortCount, s: l.mortByCollector, by: l.employee, ts: l.ts };
+      if (!src && w && w.mort === 'no') src = { n: 0, s: null, by: w.employee, ts: w.ts };
+      return { date: dt, entry: src };
+    });
+    _bwMortHistCache[k] = { t: Date.now(), day: today, rows: rows };
+    if (_bwFarm === farm && String(_bwHouse) === String(house)) _bwMortHistRender(farm, house, rows);
+  }).catch(function () {});
+}
+function _bwMortHistRender(farm, house, rows) {
+  const box = document.getElementById('bw-mort-hist');
+  if (!box) return;
+  const es = (typeof _lang !== 'undefined' && _lang === 'es');
+  const coll = farm === 'Danville';
+  const have = rows.filter(function (r) { return r.entry; });
+  if (!have.length) { box.innerHTML = ''; return; }
+  const esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+  let tot = 0, splitDays = 0; const ct = {};
+  have.forEach(function (r) {
+    tot += Number(r.entry.n) || 0;
+    const s = r.entry.s;
+    if (s && typeof s === 'object' && Object.keys(s).length) {
+      splitDays++;
+      Object.keys(s).forEach(function (c) { ct[c] = (ct[c] || 0) + (Number(s[c]) || 0); });
+    }
+  });
+  const M = "font-family:'IBM Plex Mono',monospace;";
+  const cell = function (t, st) { return '<div style="' + M + 'font-size:11px;text-align:center;padding:3px 0;' + (st || '') + '">' + t + '</div>'; };
+  const span6 = function (t, col) { return '<div style="grid-column:span 6;' + M + 'font-size:10px;color:' + col + ';padding:3px 0;">' + t + '</div>'; };
+  let h = '<details style="margin-top:12px;border-top:1px dashed #2f4a2f;padding-top:8px;">' +
+    '<summary style="cursor:pointer;' + M + 'font-size:11.5px;color:#8fae8f;">📜 ' +
+    (es ? 'Casa ' + esc(house) + ' · últimos 7 días — ' + tot + ' muertas' : 'House ' + esc(house) + ' · last 7 days — ' + tot + ' dead') +
+    (coll ? (es ? ' · por colector ' + splitDays + ' de ' + have.length + ' días' : ' · split by collector on ' + splitDays + ' of ' + have.length + ' days') : '') +
+    '</summary>';
+  h += '<div style="display:grid;grid-template-columns:' + (coll ? '46px 42px repeat(6,1fr)' : '60px 60px 1fr') + ';gap:3px;margin-top:6px;align-items:center;">';
+  h += cell(es ? 'fecha' : 'date', 'color:#5a8a5a;text-align:left;') + cell('total', 'color:#5a8a5a;');
+  if (coll) { for (let i = 1; i <= 6; i++) h += cell('C' + i, 'color:#5a8a5a;'); }
+  else h += cell(es ? 'por' : 'by', 'color:#5a8a5a;text-align:left;');
+  rows.forEach(function (r) {
+    const e = r.entry;
+    h += cell(esc(r.date.slice(5)), 'color:#8fae8f;text-align:left;');
+    if (!e) {
+      h += cell('—', 'color:#3f5a3f;');
+      h += coll ? span6(es ? 'nada registrado' : 'nothing logged', '#3f5a3f') : cell('', '');
+      return;
+    }
+    h += cell(String(Number(e.n) || 0), 'color:#e8f0e0;font-weight:700;');
+    if (!coll) { h += cell(esc(String(e.by || '').split(' ')[0]), 'color:#5a8a5a;text-align:left;'); return; }
+    const s = (e.s && typeof e.s === 'object' && Object.keys(e.s).length) ? e.s : null;
+    if (!s) { h += span6((Number(e.n) || 0) ? (es ? 'solo total — sin colector' : 'total only — no collector split') : '', '#5a7a5a'); return; }
+    let sum = 0; for (let i = 1; i <= 6; i++) sum += Number(s[String(i)]) || 0;
+    for (let i = 1; i <= 6; i++) {
+      const n = Number(s[String(i)]) || 0;
+      const hot = n >= 5 && sum && n / sum > 1 / 3;     // over a third of the house's split = 2x fair share
+      h += cell(n ? String(n) : '·', hot ? 'background:#4a1a14;color:#fca5a5;border-radius:4px;font-weight:700;' : (n ? 'color:#e8c98a;' : 'color:#3f5a3f;'));
+    }
+  });
+  if (coll && splitDays) {
+    h += cell(es ? 'suma' : 'sum', 'color:#8fae8f;text-align:left;border-top:1px solid #2f4a2f;font-weight:700;') + cell('', 'border-top:1px solid #2f4a2f;');
+    for (let i = 1; i <= 6; i++) h += cell(ct[String(i)] ? String(ct[String(i)]) : '·', 'color:#e8c98a;font-weight:700;border-top:1px solid #2f4a2f;');
+  }
+  h += '</div></details>';
+  box.innerHTML = h;
 }
 function _bwMortColl() {
   const out = {}; let any = false;
@@ -2133,7 +2547,11 @@ if (typeof window !== 'undefined') window._bwArrangeCards = _bwArrangeCards;
       '<div style="font-size:16px;font-weight:700;color:#86efac;margin-bottom:4px;">✅ ' + _esc(farm) + ' House ' + _esc(house) + ' — checked today</div>' +
       '<div style="font-size:12px;color:#9ab09a;margin-bottom:12px;">by ' + _esc(r.employee || r.by || '—') + (r.time ? (' · ' + _esc(r.time)) : '') + '</div>' +
       '<div style="font-size:13px;line-height:1.9;color:#d8e8d8;border-top:1px solid #1e3a1e;border-bottom:1px solid #1e3a1e;padding:10px 0;margin-bottom:14px;">' +
-        '💀 Mortality: <b>' + _esc(r.mortCount != null ? r.mortCount : '—') + '</b><br>' +
+        '💀 Mortality: <b>' + _esc(r.mortCount != null ? r.mortCount : '—') + '</b>' +
+          // v312: which collector the dead came from (Danville split)
+          ((r.mortByCollector && typeof r.mortByCollector === 'object' && Object.keys(r.mortByCollector).length)
+            ? ' <span style="color:#e8c98a;font-size:12px;">(' + Object.keys(r.mortByCollector).sort().map(function (c) { return 'C' + _esc(c) + ' ' + _esc(r.mortByCollector[c]); }).join(' · ') + ')</span>' : '') +
+          '<br>' +
         '🐔 Loose birds: <b>' + _esc(r.looseCount != null ? r.looseCount : '—') + '</b><br>' +
         '✅ Tasks reviewed: <b>' + pass + '/' + total + '</b>' + (flags ? ('<br>⚠ Flags: <b style="color:#f2705a;">' + flags + '</b>') : '') +
         (r.notes ? ('<br>📝 ' + _esc(r.notes)) : '') +
@@ -2202,7 +2620,24 @@ function checkBWReady() {
   }
 }
 
-async function submitBarnWalk() {
+async function submitBarnWalk(opts) {
+  // v312: opts.quiet = an AUTOMATIC re-save of a house already turned in today
+  // (see _bwResaveSoon). Same record, same writes — but no activity-log entry,
+  // no big toast, and no re-layout of the form the crew is still working in.
+  // Before v312 anything changed AFTER the first submit (DONE — NEXT, a fixed
+  // dead count, the collector boxes, the end-of-day block) lived only in the
+  // shared draft and was thrown away at midnight unless someone tapped Update.
+  opts = (opts && typeof opts === 'object' && !opts.target) ? opts : {};
+  const _quiet = !!opts.quiet;
+  // Capture WHICH house this save is for. Everything after the first await uses
+  // these copies, so opening another house mid-save can never cross the wires.
+  const _F = _bwFarm, _H = _bwHouse;
+  let _D = {};
+  try { _D = JSON.parse(JSON.stringify(_bwData || {})); } catch (e) { _D = Object.assign({}, _bwData || {}); }
+  if (!_F || !_H) return;
+  // A quiet save never runs for a form that was opened on an earlier day.
+  if (_quiet && window._bwOpenDate && typeof LDATE === 'function' && window._bwOpenDate !== LDATE()) return;
+  const _wasSubmitted = _bwIsSubmittedToday();
   // NON-BLOCKING incomplete-section nudge — NO window.confirm()!
   // confirm() silently returns false in the installed PWA on phones (same
   // bug fixed in v161 for Processing PM + Manure). Here it made this
@@ -2223,22 +2658,24 @@ async function submitBarnWalk() {
   // is filled are recorded; they can reopen to finish) — a partial save beats a
   // lost check. `_left` is used below only to word the confirmation.
   window._bwForceSubmitUntil = 0;
-  if (_hint) _hint.style.display = 'none';
-  if (_sbtn && _sbtn._origLabel) _sbtn.textContent = _sbtn._origLabel;
+  if (!_quiet) {
+    if (_hint) _hint.style.display = 'none';
+    if (_sbtn && _sbtn._origLabel) _sbtn.textContent = _sbtn._origLabel;
+  }
   const employee   = document.getElementById('bw-employee').value.trim();
   const notes      = document.getElementById('bw-notes').value.trim();
   const waterPSI   = null; // field removed from Daily Employee Check
   const temp       = null; // field removed from Daily Employee Check
   const mortCount  = document.getElementById('bw-mort-count').value ? Number(document.getElementById('bw-mort-count').value) : null;
   // v304: per-collector split (Danville). null when the boxes are blank.
-  const mortByCollector = (_bwFarm === 'Danville' && _bwData.mort === 'yes') ? _bwMortColl() : null;
+  const mortByCollector = (_F === 'Danville' && _D.mort === 'yes') ? _bwMortColl() : null;
   const looseCount  = document.getElementById('bw-loose-count').value  ? Number(document.getElementById('bw-loose-count').value)  : null;
   const rodentCount = document.getElementById('bw-rodent-count').value ? Number(document.getElementById('bw-rodent-count').value) : null;
   const flyCount    = document.getElementById('bw-fly-count').value    ? Number(document.getElementById('bw-fly-count').value)    : null;
   const weeklyRodentCount = document.getElementById('bw-weekly-rodent-count')?.value ? Number(document.getElementById('bw-weekly-rodent-count').value) : null;
   const feedBinReading    = document.getElementById('bw-feed-bin-reading')?.value ? Number(document.getElementById('bw-feed-bin-reading').value) : null;
   // 💧 water meter + 🌾 bins from the crew walk (v272)
-  const _wmR = _wmRead('bw', _bwFarm, _bwHouse);
+  const _wmR = _wmRead('bw', _F, _H);
   const waterMeters = _wmR.meters;                        // {1:val,…} at Hegins
   const waterMeter  = _wmR.total;                          // house total (sum)
   const _wmU = _wmUsage(_wmR, _bwWaterHist);
@@ -2253,14 +2690,14 @@ async function submitBarnWalk() {
   const flags = [];
   if (_flatMeter) flags.push('Water meter did not move' + (waterFlatMeters && waterFlatMeters.length ? (' (meter ' + waterFlatMeters.join(', ') + ')') : ''));
   // NOTE: Mortality and Loose Birds are logged to mortalityLog only — never create a WO
-  if (_bwData.dryers === 'off')         flags.push('Manure dryers off');
-  if (_bwData.feather === 'poor')       flags.push('Poor feathering');
-  if (_bwData.air === 'poor')           flags.push('Air quality anomaly');
-  if (_bwData.feed === 'empty')         flags.push('Feeders empty');
-  if (_bwData.eggbelt === 'down')       flags.push('Egg belt not working');
+  if (_D.dryers === 'off')         flags.push('Manure dryers off');
+  if (_D.feather === 'poor')       flags.push('Poor feathering');
+  if (_D.air === 'poor')           flags.push('Air quality anomaly');
+  if (_D.feed === 'empty')         flags.push('Feeders empty');
+  if (_D.eggbelt === 'down')       flags.push('Egg belt not working');
 
   // Pest observations are saved to pestLog — not added to flags/WO queue
-  if (_bwData.doors === 'open')         flags.push('House doors open');
+  if (_D.doors === 'open')         flags.push('House doors open');
 
   const checklistTotal  = document.querySelectorAll('#bw-checklist-items .bw-cl-row').length;
   const checklistFails  = Object.entries(_bwChecklist).filter(([,v]) => v === 'fail').map(([k]) => k);
@@ -2274,25 +2711,25 @@ async function submitBarnWalk() {
   if (checklistFails.length) flags.push('Checklist failures: ' + checklistFails.join(', '));
 
   const record = {
-    farm: _bwFarm, house: String(_bwHouse), employee, notes, flags,
+    farm: _F, house: String(_H), employee, notes, flags,
     waterPSI, temp, mortCount, mortByCollector, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading, eggsCollected,
     waterMeter, waterMeters, waterUsedGal, waterFlatMeters, binA, binB,
-    naFields: _bwData._na || {},
-    weeklyAck: !!_bwData._weeklyAck,
-    mort: _bwData.mort, feather: _bwData.feather, air: _bwData.air,
-    feed: _bwData.feed, rodent: _bwData.rodent, loose: _bwData.loose,
-    dryers: _bwData.dryers, eggbelt: _bwData.eggbelt,
-    stand: _bwData.stand, fly: _bwData.fly, mortrem: _bwData.mortrem,
-    doors: _bwData.doors, inletVents: _bwData.inletVents,
+    naFields: _D._na || {},
+    weeklyAck: !!_D._weeklyAck,
+    mort: _D.mort, feather: _D.feather, air: _D.air,
+    feed: _D.feed, rodent: _D.rodent, loose: _D.loose,
+    dryers: _D.dryers, eggbelt: _D.eggbelt,
+    stand: _D.stand, fly: _D.fly, mortrem: _D.mortrem,
+    doors: _D.doors, inletVents: _D.inletVents,
     // Waste was previously collected via the YES/NO buttons but silently
     // dropped on save — fall through to the history viewer (which already
     // expects rec.waste) without ever being persisted.
-    waste: _bwData.waste || null,
+    waste: _D.waste || null,
     checklist: _bwChecklist, checklistNotes,
     checklistFails: checklistFails.length, checklistTotal,
-    cageClean: _bwData.cageclean || null,
-    cageCleanEmployee: _bwData._cageCleanEmployee || null,
-    cageCleanTime: _bwData._cageCleanTime || null,
+    cageClean: _D.cageclean || null,
+    cageCleanEmployee: _D._cageCleanEmployee || null,
+    cageCleanTime: _D._cageCleanTime || null,
     // % of the walk actually completed at submit time (per house, per entry) —
     // shows in the daily log / history so partial "submit anyway" walks are visible.
     pct: (function () { try { return (typeof _bwComputePct === 'function') ? _bwComputePct() : null; } catch (e) { return null; } })(),
@@ -2318,53 +2755,112 @@ async function submitBarnWalk() {
   // ignoreUndefinedProperties — this is belt-and-suspenders.)
   Object.keys(record).forEach(function (k) { if (record[k] === undefined) record[k] = null; });
 
-  const _bwId = _bwFarm + '-' + _bwHouse + '-' + record.date;
-  let isFirstSubmit = true;
-  let _bwSaveQueued = false;   // true → record parked locally, NOT yet in Firestore
-  try {
-    const _ref = db.collection('barnWalks').doc(_bwId);
-    let _prev = null;
-    try { const _ex = await _ref.get(); if (_ex.exists) { isFirstSubmit = false; _prev = _ex.data(); } } catch (e) {}
-    const _contrib = (_prev && Array.isArray(_prev.contributors)) ? _prev.contributors.slice() : [];
-    if (employee && _contrib.indexOf(employee) === -1) _contrib.push(employee);
-    record.contributors = _contrib;
-    record.firstBy = (_prev && _prev.firstBy) || employee;
-    record.firstTs = (_prev && _prev.firstTs) || record.ts;
-    await _ref.set(record, { merge: true });
-    _bwDocId = _bwId;
-  } catch(e) {
-    // NEVER lose a walk: park it on the device and replay (on reconnect, on a
-    // timer, and at next app load — see _bwReplayQueued wiring).
-    console.error('barnWalk save failed — queued locally:', e);
-    _bwSaveQueued = true;
-    try {
-      const q = JSON.parse(localStorage.getItem('bwQueuedSubmits') || '[]');
-      q.push(record);
-      localStorage.setItem('bwQueuedSubmits', JSON.stringify(q));
-    } catch(e2) { console.error('local queue failed too:', e2); }
-    // Honest feedback: amber "saved on device" instead of the green success.
-    try { if (typeof toast === 'function') toast((typeof _lang !== 'undefined' && _lang === 'es') ? '📴 Guardado en la tablet — se enviará al reconectar' : '📴 Saved on this tablet — will upload when connection returns'); } catch (e3) {}
+  // v312: nothing changed since the last save → a quiet re-save does nothing.
+  const _fp = _bwRecFp(record);
+  if (_quiet && _fp === _bwSavedFp) return;
+  const _sameHouse = function () { return _bwFarm === _F && _bwHouse === _H; };
+
+  // ── Mortality + loose-bird log ── v312: written FIRST, before waiting on the
+  // barnWalks write, and parked on the device until Firestore confirms it. It
+  // used to run only AFTER the barnWalks write came back, so a tablet that was
+  // offline or got closed mid-save delivered the check days later but its dead
+  // birds never reached the mortality history (Danville H3 9/28, H5 9/28–9/30).
+  // ONE entry per house per day, upserted on every save. Never creates a WO.
+  const _mlKey = _F + '-' + _H + '-' + record.date;
+  if (_D.mort === 'yes') {
+    _bwUpsertLog('mortality', _bwMortEntry({
+      farm: _F, house: _H, employee, date: record.date, time: record.time,
+      mortCount: mortCount || 0, mortByCollector: mortByCollector,
+      mortrem: _D.mortrem || 'yes', notes: notes, ts: Date.now()
+    }));
+    _bwMortLogged[_mlKey] = true;
+  } else if (_D.mort === 'no' && _bwMortLogged[_mlKey]) {
+    // Changed from YES to NO today → zero the day's entry, don't leave a stale count.
+    _bwUpsertLog('mortality', _bwMortEntry({
+      farm: _F, house: _H, employee, date: record.date, time: record.time,
+      mortCount: 0, mortByCollector: null, mortrem: _D.mortrem || 'yes', notes: notes, ts: Date.now(), cleared: true
+    }));
+  }
+  if (_D.loose === 'yes') {
+    _bwUpsertLog('loose', {
+      farm: _F, house: String(_H), employee, date: record.date, time: record.time,
+      type: 'loose', looseCount: looseCount || 0, notes: notes || '', ts: Date.now()
+    });
   }
 
-  // ── Activity Log ──
+  const _bwId = _F + '-' + _H + '-' + record.date;
+  // A house already turned in today is never a "first submit" — even when its
+  // record can't be read right now — so auto work orders never fire twice.
+  let isFirstSubmit = !_wasSubmitted;
+  let _bwSaveQueued = false;   // true → record parked locally, NOT yet confirmed by Firestore
+  let _prev = null;
+  // v312: PARK FIRST. The record sits in the on-device queue from this moment
+  // and leaves it only when Firestore acknowledges the write — so the check
+  // survives the app being closed, the tablet sleeping, or a write that hangs
+  // offline. _bwReplayQueued re-sends anything still parked.
+  _bwParkRecord(record);
   try {
+    const _ref = db.collection('barnWalks').doc(_bwId);
+    try {
+      const _ex = await _bwWithTimeout(_ref.get(), 8000);
+      if (_ex && _ex.exists) { isFirstSubmit = false; _prev = _ex.data(); }
+    } catch (e) {
+      // Slow / offline → use whatever this device already has cached.
+      try { const _c = await _bwWithTimeout(_ref.get({ source: 'cache' }), 1500); if (_c && _c.exists) { isFirstSubmit = false; _prev = _c.data(); } } catch (e2) {}
+    }
+    if (_prev) {
+      const _contrib = Array.isArray(_prev.contributors) ? _prev.contributors.slice() : [];
+      if (employee && _contrib.indexOf(employee) === -1) _contrib.push(employee);
+      record.contributors = _contrib;
+      record.firstBy = _prev.firstBy || employee;
+      record.firstTs = _prev.firstTs || record.ts;
+      if (_prev.mort === 'yes' && _D.mort === 'no' && !_bwMortLogged[_mlKey]) {
+        _bwUpsertLog('mortality', _bwMortEntry({
+          farm: _F, house: _H, employee, date: record.date, time: record.time,
+          mortCount: 0, mortByCollector: null, mortrem: _D.mortrem || 'yes', notes: notes, ts: Date.now(), cleared: true
+        }));
+      }
+    } else if (_wasSubmitted) {
+      // Couldn't read today's record → don't overwrite who-worked-it history.
+      delete record.contributors; delete record.firstBy; delete record.firstTs;
+    } else {
+      record.contributors = employee ? [employee] : [];
+      record.firstBy = employee;
+      record.firstTs = record.ts;
+    }
+    _bwParkRecord(record);
+    const _w = _ref.set(record, { merge: true });
+    _w.then(function () { _bwUnparkRecord(record); }, function () {});
+    await _bwWithTimeout(_w, 12000);
+    if (_sameHouse()) { _bwDocId = _bwId; _bwSavedFp = _fp; }
+  } catch(e) {
+    // NEVER lose a walk: it is already parked on the device and replays on
+    // reconnect, on a timer, and at next app load (see _bwReplayQueued).
+    console.warn('barnWalk save not confirmed yet — kept on this device:', e);
+    _bwSaveQueued = true;
+    // Honest feedback: amber "saved on device" instead of the green success.
+    if (!_quiet) { try { if (typeof toast === 'function') toast((typeof _lang !== 'undefined' && _lang === 'es') ? '📴 Guardado en la tablet — se enviará al reconectar' : '📴 Saved on this tablet — will upload when connection returns'); } catch (e3) {} }
+  }
+
+  // ── Activity Log ── (one line per turn-in; v312 quiet auto re-saves skip it)
+  if (!_quiet || isFirstSubmit) try {
     const statusDesc = flags.length > 0
       ? flags.length + ' flag' + (flags.length !== 1 ? 's' : '')
       : 'All Clear';
     db.collection('activityLog').add({
       type: 'barnwalk',
-      id: 'BW-' + _bwFarm + '-H' + _bwHouse,
-      desc: 'Daily barn check: ' + _bwFarm + ' Barn ' + _bwHouse + ' — ' + statusDesc
-        + (_bwData.feed === 'empty' ? ' ⚠ Feed Empty' : '')
-        + (_bwData.mort === 'yes' ? ' ⚠ Mortality' + (mortCount ? ' (' + mortCount + ')' : '') : '')
+      id: 'BW-' + _F + '-H' + _H,
+      desc: 'Daily barn check: ' + _F + ' Barn ' + _H + ' — ' + statusDesc
+        + (_D.feed === 'empty' ? ' ⚠ Feed Empty' : '')
+        + (_D.mort === 'yes' ? ' ⚠ Mortality' + (mortCount ? ' (' + mortCount + ')' : '') : '')
         + (flags.length > 0 ? ' · Flags: ' + flags.slice(0, 2).join(', ') + (flags.length > 2 ? '…' : '') : ''),
       tech: employee,
-      farm: _bwFarm,
-      house: String(_bwHouse),
-      feed: _bwData.feed,
-      water: _bwData.stand,
-      fans: _bwData.air,
-      mort: _bwData.mort,
+      farm: _F,
+      house: String(_H),
+      feed: _D.feed,
+      water: _D.stand,
+      fans: _D.air,
+      mort: _D.mort,
       mortCount: mortCount || 0,
       flagCount: flags.length,
       date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}),
@@ -2372,54 +2868,19 @@ async function submitBarnWalk() {
     }).catch(function (e) { console.warn('activityLog write failed:', e); });   // fire-and-forget — don't block the crew's Submit on this
   } catch(e) { console.warn('activityLog write failed:', e); }
 
-  // ── Mortality Log ──
-  // Always log mortality — never creates a WO.
-  // v308: was gated on isFirstSubmit to avoid duplicates, which meant mortality
-  // (or a collector split) entered AFTER an earlier partial submit of the same
-  // house NEVER reached the log — and the Bird Health board reads the log. Now
-  // ONE log entry per house per day is UPSERTED on every submit: reuse today's
-  // existing entry if there is one (any id), else a deterministic id. Fire-and-
-  // forget so the crew's Submit never waits on it.
-  if (_bwData.mort === 'yes') {
-    const mortEntry = {
-      farm: _bwFarm, house: String(_bwHouse), employee,
-      date: LDATE(),
-      time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
-      type: 'mortality',
-      mortCount: mortCount || 0,
-      mortByCollector: mortByCollector,          // v304: {'1':n,…,'6':n} or null
-      mortUnassigned: (mortByCollector && mortCount) ? Math.max(0, mortCount - Object.values(mortByCollector).reduce((a, b) => a + (Number(b) || 0), 0)) : null,
-      mortrem: _bwData.mortrem || 'yes',
-      notes: notes || '',
-      ts: Date.now()
-    };
-    _bwUpsertLog('mortality', mortEntry);
-  }
-
-  // Log loose birds — never creates a WO. v308: same upsert as mortality.
-  if (_bwData.loose === 'yes') {
-    const looseEntry = {
-      farm: _bwFarm, house: String(_bwHouse), employee,
-      date: LDATE(),
-      time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
-      type: 'loose',
-      looseCount: looseCount || 0,
-      notes: notes || '',
-      ts: Date.now()
-    };
-    _bwUpsertLog('loose', looseEntry);
-  }
+  // (Mortality + loose-bird log entries are written ABOVE, before the barnWalks
+  // write — v312.)
 
   // ── Pest Log ──
   // Always log pest observations — never creates a WO. Gated on isFirstSubmit.
-  const hasPest = _bwData.rodent === 'yes' || _bwData.fly === 'yes';
+  const hasPest = _D.rodent === 'yes' || _D.fly === 'yes';
   if (isFirstSubmit && hasPest) {
     const pestEntry = {
-      farm: _bwFarm, house: String(_bwHouse), employee,
+      farm: _F, house: String(_H), employee,
       date: LDATE(),
       time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
-      rodent: _bwData.rodent || 'no', rodentCount: rodentCount || 0,
-      fly: _bwData.fly || 'no', flyCount: flyCount || 0,
+      rodent: _D.rodent || 'no', rodentCount: rodentCount || 0,
+      fly: _D.fly || 'no', flyCount: flyCount || 0,
       notes: notes || '',
       ts: Date.now()
     };
@@ -2437,7 +2898,7 @@ async function submitBarnWalk() {
   // Auto-WOs run in the BACKGROUND (not awaited) so the crew's Submit confirms
   // instantly instead of waiting on a WO write per checklist failure.
   (async function () {
-  if (isFirstSubmit && !(typeof isHouseDown === 'function' && isHouseDown(_bwFarm, _bwHouse))) {
+  if (isFirstSubmit && !(typeof isHouseDown === 'function' && isHouseDown(_F, _H))) {
     for (const key of checklistFails) {
       if (!_BW_WO_ITEMS[key]) continue;
       try {
@@ -2445,11 +2906,11 @@ async function submitBarnWalk() {
         const woId = await mintWoId();
         const extraNote = checklistNotes[key] ? ' — ' + checklistNotes[key] : '';
         await db.collection('workOrders').add({
-          id: woId, farm: _bwFarm, house: String(_bwHouse),
+          id: woId, farm: _F, house: String(_H),
           problem, priority, status: 'open',
           desc: desc + extraNote,
           tech: employee,
-          notes: 'Auto-created from daily checklist — ' + _bwFarm + ' Barn ' + _bwHouse,
+          notes: 'Auto-created from daily checklist — ' + _F + ' Barn ' + _H,
           submitted, date: woDate, ts: Date.now()
         });
       } catch(e) { console.error(e); }
@@ -2457,10 +2918,12 @@ async function submitBarnWalk() {
   }
   })();
 
-  const key = _bwFarm + '-' + _bwHouse;
+  const key = _F + '-' + _H;
+  const _statusBefore = BARN_STATUS[key];
   BARN_STATUS[key] = flags.length > 0 ? 'issue' : 'done';
   delete BARN_PROGRESS[key];   // submitted now — BARN_STATUS drives the grid
-  if (mortCount) _todayMortTotal += mortCount;
+  // v312: count each house ONCE — re-saves (Update / auto) add only the change.
+  { const _was = _bwMortCounted[key + '-' + record.date] || 0; _todayMortTotal += (mortCount || 0) - _was; _bwMortCounted[key + '-' + record.date] = mortCount || 0; }
 
   // Map each flag to a problem category and priority.
   // Mortality, loose birds, and pest are logged to their own collections — never WOs.
@@ -2477,7 +2940,7 @@ async function submitBarnWalk() {
     'Water meter did not move':   {problem:'Watering System',     priority:'urgent'},
   };
   (async function () {
-  if (isFirstSubmit && !(typeof isHouseDown === 'function' && isHouseDown(_bwFarm, _bwHouse))) {
+  if (isFirstSubmit && !(typeof isHouseDown === 'function' && isHouseDown(_F, _H))) {
     for (const flag of flags) {
       // Checklist failures already handled above — skip to avoid duplicate WOs
       if (flag.startsWith('Checklist failures')) continue;
@@ -2490,11 +2953,11 @@ async function submitBarnWalk() {
         const {problem, priority} = flagProblemMap[mapKey];
         const woId = await mintWoId();
         await db.collection('workOrders').add({
-          id: woId, farm: _bwFarm, house: String(_bwHouse),
+          id: woId, farm: _F, house: String(_H),
           problem, priority, status: 'open',
           desc: flag,
           tech: employee,
-          notes: 'Auto-created from employee daily check — ' + _bwFarm + ' Barn ' + _bwHouse,
+          notes: 'Auto-created from employee daily check — ' + _F + ' Barn ' + _H,
           submitted, date: woDate, ts: Date.now()
         });
       } catch(e) { console.error(e); }
@@ -2503,17 +2966,26 @@ async function submitBarnWalk() {
   })();
 
   // Clear localStorage draft — data is now in Firestore
-  const draftKey = 'bwDraft-' + _bwFarm + '-' + _bwHouse + '-' + record.date;
+  const draftKey = 'bwDraft-' + _F + '-' + _H + '-' + record.date;
   try { localStorage.removeItem(draftKey); } catch(e) {}
   // Captured → clear the SHARED in-progress draft so the house resets for the day.
   try {
-    const _pk = _bwFarm + '-' + _bwHouse;
+    const _pk = _F + '-' + _H;
     _bwLastPushedPct[_pk] = null;
-    if (_bwPushTimer) { clearTimeout(_bwPushTimer); _bwPushTimer = null; }
-    _bwPushPending = null;
-    _bwBlockBy = {};
+    if (_sameHouse()) {
+      if (_bwPushTimer) { clearTimeout(_bwPushTimer); _bwPushTimer = null; }
+      _bwPushPending = null;
+      if (!_quiet) _bwBlockBy = {};
+    }
     if (typeof db !== 'undefined' && db) db.collection('bwProgress').doc(_pk + '-' + record.date).delete().catch(function(){});
   } catch(e) {}
+
+  // The rest is the open form's UI — only touch it if this house is still open.
+  if (!_sameHouse()) {
+    try { renderProdPanel(); renderECContent(); } catch (e) {}
+    return;
+  }
+  _bwResaveOk = true;    // v312: from here on, every change to this house saves by itself
 
   // Keep form open for editing; show success banner and update button label
   const sBtn = document.getElementById('bw-submit-btn');
@@ -2530,16 +3002,36 @@ async function submitBarnWalk() {
     if (sBtn) sBtn.parentNode.insertBefore(banner, sBtn);
   }
   banner.style.cssText = 'background:#0f3a1a;border:1px solid #4caf50;border-radius:8px;padding:10px 14px;margin:0 0 12px;color:#7ad07a;font-size:12px;font-family:"IBM Plex Mono",monospace;text-align:center;';
-  banner.textContent = (typeof _lang !== 'undefined' && _lang === 'es')
-    ? ('✅ Guardado a las ' + record.time + ' — edita cualquier campo arriba y toca Actualizar para volver a guardar')
-    : ('✅ Saved at ' + record.time + ' — edit any field above and tap Update to re-save');
+  if (_bwSaveQueued) {
+    banner.style.background = '#3a2a0a'; banner.style.borderColor = '#d69e2e'; banner.style.color = '#f0c674';
+    banner.textContent = (typeof _lang !== 'undefined' && _lang === 'es')
+      ? ('📴 Guardado en esta tablet a las ' + record.time + ' — se sube solo cuando vuelva la conexión')
+      : ('📴 Saved on this tablet at ' + record.time + ' — uploads by itself when the connection is back');
+  } else {
+    // v312: changes after this point save by themselves (no Update tap needed).
+    banner.textContent = (typeof _lang !== 'undefined' && _lang === 'es')
+      ? ('✅ Guardado a las ' + record.time + ' — cualquier cambio que hagas ahora se guarda solo')
+      : ('✅ Saved at ' + record.time + ' — any change you make now saves by itself');
+  }
+
+  // v312 quiet re-save: the banner is the confirmation. One toast only when the
+  // check just reached 100% (so the crew knows the house is fully turned in).
+  if (_quiet) {
+    try {
+      if (record.pct === 100 && _prev && (Number(_prev.pct) || 0) < 100 && typeof toast === 'function') {
+        toast((_es ? '✅ Chequeo completo y guardado — ' : '✅ Check complete and saved — ') + _F + ' ' + (_es ? 'Casa ' : 'House ') + _H);
+      }
+    } catch (e) {}
+    if (_statusBefore !== BARN_STATUS[key]) { try { renderProdPanel(); renderECContent(); } catch (e) {} }
+    return;
+  }
 
   // Unmissable confirmation the check SAVED (a modal banner alone got missed —
   // crews thought they'd submitted when they hadn't). Toast is global + visible.
-  try {
+  if (!_bwSaveQueued) try {
     if (typeof toast === 'function') {
       var _incLeft = (typeof _left !== 'undefined' && _left.length) ? _left.length : 0;
-      var _hn = _bwFarm + ' ' + ((_es) ? 'Casa ' : 'House ') + _bwHouse;
+      var _hn = _F + ' ' + ((_es) ? 'Casa ' : 'House ') + _H;
       toast((_es ? '✅ Chequeo guardado — ' : '✅ Daily check saved — ') + _hn +
         (_incLeft ? (_es ? ' · ' + _incLeft + ' sección(es) en blanco' : ' · ' + _incLeft + ' section(s) still blank') : ''));
     }
@@ -4107,7 +4599,9 @@ async function openPestLog() {
     _pestLogData = [];
     _mortLogData = [];
     pestSnap.forEach(d => _pestLogData.push({...d.data(), _type:'pest', _fbId: d.id}));
-    mortSnap.forEach(d => _mortLogData.push({...d.data(), _type:'mort', _fbId: d.id}));
+    // v312: entries marked 'mortality-dup' (same house + day logged twice before
+    // v308) are kept in the database for the record but never shown or counted.
+    mortSnap.forEach(d => { const x = d.data() || {}; if (x.type === 'mortality-dup' || (x.type === 'mortality' && x.cleared && !x.mortCount)) return; _mortLogData.push({...x, _type:'mort', _fbId: d.id}); });
   } catch(e) {
     console.error('pest/mortality log load error:', e);
   }
@@ -4201,6 +4695,13 @@ function renderPestLog() {
           (r.mortCount ? '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;color:#f87171;font-weight:700;">'+r.mortCount+' bird'+(r.mortCount!==1?'s':'')+'</span>' : '') +
           (notRemoved ? '<span style="background:#4a0a0a;color:#fca5a5;border:1px solid #e53e3e;border-radius:8px;padding:1px 8px;font-size:11px;">⚠ Not Removed</span>' : '') +
         '</div>' +
+        // v312: which collector the dead came from (Danville splits)
+        ((r.mortByCollector && typeof r.mortByCollector === 'object' && Object.keys(r.mortByCollector).length)
+          ? '<div style="margin-top:6px;font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;color:#e8c98a;">'
+            + ((typeof _lang !== 'undefined' && _lang === 'es') ? 'Por colector: ' : 'By collector: ')
+            + Object.keys(r.mortByCollector).sort().map(c => 'C' + c + ' ' + r.mortByCollector[c]).join(' · ')
+            + (r.mortUnassigned ? ' · ' + r.mortUnassigned + ((typeof _lang !== 'undefined' && _lang === 'es') ? ' sin colector' : ' not assigned') : '')
+            + '</div>' : '') +
         (r.notes ? '<div style="margin-top:8px;font-size:12px;color:#8a6a6a;font-style:italic;">'+r.notes+'</div>' : '') +
       '</div>';
     }
