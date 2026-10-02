@@ -1165,7 +1165,9 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 
 <header class="site-header" id="main-header" style="display:none;">
   <div class="header-inner">
-    <div class="logo" onclick="goHome()" style="cursor:pointer;" title="Go to Home Screen">
+    <!-- v313: one Back that goes to the screen you were just on (navback.js) -->
+    <button class="hdr-back-btn" onclick="appGoBack()" data-i18n="landing.back" title="Back">← Back</button>
+    <div class="logo" onclick="goSiteHome()" style="cursor:pointer;" title="Go to Home Screen">
       <span class="logo-icon" onclick="chickenClick(event)" style="cursor:pointer;user-select:none;" title="🐔">🐔</span>
       <div>
         <div class="logo-text">Rushtown Poultry <span class="sync-dot" id="sync-dot"></span></div>
@@ -1191,7 +1193,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
       <button class="nav-tab" id="tab-brief" onclick="go('brief')" style="display:none;">🚨 Brief</button>
       <button class="nav-tab" id="tab-oncall" onclick="go('oncall')" style="display:none;">📞 On Call</button>
     </nav>
-    <button onclick="goHome()" class="header-home-btn" style="padding:10px 20px;background:#163016;border:2px solid #4caf50;border-radius:10px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">⌂ HOME</button>
+    <button onclick="goSiteHome()" title="This site's home" class="header-home-btn" style="padding:10px 20px;background:#163016;border:2px solid #4caf50;border-radius:10px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">⌂<span class="hh-label"> HOME</span></button>
     <button id="admin-lock-btn" onclick="adminLock()" title="Lock Admin Mode" style="display:none;align-items:center;gap:6px;padding:7px 13px;background:#1a3a1a;border:1.5px solid #4caf50;border-radius:9px;color:#4caf50;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;">🔓 ADMIN &nbsp;<span style="font-size:10px;opacity:.7;">LOCK</span></button>
     <button id="lang-toggle-btn" onclick="toggleLang()" title="Switch Language / Cambiar Idioma" style="padding:7px 13px;background:#0a1a2a;border:1.5px solid #3b82f6;border-radius:9px;color:#7ab0f6;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;white-space:nowrap;flex-shrink:0;">🌐 ES</button>
 
@@ -5441,7 +5443,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20261001-v312"></script>
+<script defer src="js/core.js?v=20261001-v313"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260803-v261"></script>
 <script defer src="js/maintenance.js?v=20260928-v311"></script>
@@ -5481,7 +5483,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/prodhistory.js?v=20260714-v207"></script>
 <script defer src="js/staff-roster.js?v=20260626-procstaff"></script>
 <script defer src="js/enhancements.js?v=20260925-v309"></script>
-<script defer src="js/navback.js?v=20260706-v190"></script>
+<script defer src="js/navback.js?v=20261001-v313"></script>
 <script defer src="js/contractor.js?v=20260715-v211"></script>
 <script defer src="js/cost-dashboard.js?v=20260424"></script>
 <script defer src="js/weekly-agenda.js?v=20260424"></script>
