@@ -915,7 +915,8 @@ function bwUpdateTimeBadge() {
 //     write is PARKED on the device first and leaves the queue only when
 //     Firestore confirms it; replays derive the log from the record too.
 //  3. Mortality waited for the whole check. → the house's entry (barn total +
-//     C1–C6) is saved the moment the Mortality block is answered (_bwMortSaveSoon).
+//     the split — C1–C6 until v315, R1–R7 since) is saved the moment a count is
+//     typed (_bwMortSaveSoon).
 function _bwWithTimeout(p, ms) {
   return new Promise(function (res, rej) {
     var done = false;
@@ -959,7 +960,7 @@ var _bwSavedFp = null;        // fingerprint of the open house's record as last 
 var _bwResaveOk = false;      // the open form holds the REAL record (loaded, or saved from this form)
 var _bwMortLogged = {};       // 'farm-house-date' → this device logged mortality for that house today
 var _bwMortCounted = {};      // 'farm-house-date' → count already added to _todayMortTotal
-const _BW_FP_KEYS = ['employee','notes','mortCount','mortByCollector','looseCount','rodentCount','flyCount',
+const _BW_FP_KEYS = ['employee','notes','mortCount','mortByRow','looseCount','rodentCount','flyCount',
   'weeklyRodentCount','feedBinReading','eggsCollected','waterMeter','waterMeters','binA','binB','naFields',
   'weeklyAck','mort','feather','air','feed','rodent','loose','dryers','eggbelt','stand','fly','mortrem','doors',
   'inletVents','waste','checklist','checklistNotes','cageClean','cageCleanEmployee','cageCleanTime','pct'];
@@ -978,21 +979,41 @@ function _bwRecFp(r) {
   catch (e) { return 'x' + Date.now(); }
 }
 
-// ── The per-house, per-day MORTALITY entry (barn total + C1–C6) ─────────────
+// ── The per-house, per-day MORTALITY entry (barn total + R1–R7) ─────────────
+// v315 (Joe 10/2: "change this to by row … make sure the data is saving total
+// dead by house and total dead by row. there are 7 rows in each house"):
+//   mortCount          TOTAL dead for the barn that day
+//   mortByRow          {'1':n,…,'7':n} — only rows with birds; null = no split
+//   mortRowUnassigned  dead not put in any row (total − rows), null = no split
+// The old v304 collector split (mortByCollector, C1–C6) is NOT written any more
+// and is never nulled by a normal save — set(…, {merge:true}) leaves the field
+// alone, so every day the crew already split by collector keeps its history.
+// Only a parked record from an older tablet still carries one, and it passes
+// through. A day changed back to NO (cleared) wipes both splits.
+function _bwSplitOf(s) {
+  if (!s || typeof s !== 'object') return null;
+  const out = {}; let any = false;
+  Object.keys(s).forEach(function (k) { const n = Number(s[k]) || 0; if (n > 0) { out[String(k)] = n; any = true; } });
+  return any ? out : null;
+}
+function _bwSplitSum(s) { return s ? Object.keys(s).reduce(function (a, k) { return a + (Number(s[k]) || 0); }, 0) : 0; }
 function _bwMortEntry(o) {
-  const split = (o.mortByCollector && typeof o.mortByCollector === 'object' && Object.keys(o.mortByCollector).length) ? o.mortByCollector : null;
   const n = Number(o.mortCount) || 0;
-  const sum = split ? Object.keys(split).reduce(function (a, k) { return a + (Number(split[k]) || 0); }, 0) : 0;
-  return {
+  const rows = o.cleared ? null : _bwSplitOf(o.mortByRow);
+  const e = {
     farm: o.farm, house: String(o.house), employee: o.employee || '',
     date: o.date, time: o.time || '', type: 'mortality',
     mortCount: n,                               // TOTAL dead for the barn that day
-    mortByCollector: split,                     // v304: {'1':n,…,'6':n} or null
-    mortUnassigned: (split && n) ? Math.max(0, n - sum) : null,
-    mortrem: o.mortrem || 'yes', notes: o.notes || '',
+    mortByRow: rows,                            // v315: {'1':n,…,'7':n} or null
+    mortRowUnassigned: (rows && n) ? Math.max(0, n - _bwSplitSum(rows)) : null,
+    mortrem: (o.mortrem != null) ? o.mortrem : 'yes', notes: o.notes || '',   // v314: '' = not answered yet
     cleared: !!o.cleared,                       // v312: answer changed back to NO that day
     ts: o.ts || Date.now()
   };
+  const coll = o.cleared ? null : _bwSplitOf(o.mortByCollector);
+  if (o.cleared) { e.mortByCollector = null; e.mortUnassigned = null; }
+  else if (coll) { e.mortByCollector = coll; e.mortUnassigned = n ? Math.max(0, n - _bwSplitSum(coll)) : null; }
+  return e;
 }
 
 // ── mortalityLog: ONE entry per farm/house/day/type, upserted, never lost ────
@@ -1062,7 +1083,8 @@ function _bwLogFromRecord(rec) {
     if (rec.mort === 'yes') {
       _bwUpsertLog('mortality', _bwMortEntry({
         farm: rec.farm, house: rec.house, employee: rec.employee, date: rec.date, time: rec.time,
-        mortCount: rec.mortCount, mortByCollector: rec.mortByCollector, mortrem: rec.mortrem, notes: rec.notes, ts: rec.ts
+        mortCount: rec.mortCount, mortByRow: rec.mortByRow, mortByCollector: rec.mortByCollector,
+        mortrem: (rec.mortrem != null) ? rec.mortrem : '', notes: rec.notes, ts: rec.ts
       }), true);
     }
     if (rec.loose === 'yes') {
@@ -1105,13 +1127,19 @@ var _bwMortTimer = null, _bwMortFor = null, _bwMortLastFp = null, _bwMortLastEnt
 function _bwMortFp() {
   const c = document.getElementById('bw-mort-count');
   return JSON.stringify([_bwFarm + '-' + _bwHouse, _bwData.mort || null, _bwData.mortrem || null,
-    c ? c.value : '', (_bwFarm === 'Danville' && _bwData.mort === 'yes') ? _bwMortColl() : null]);
+    c ? c.value : '', (_bwMortRowsOn(_bwFarm) && _bwData.mort === 'yes') ? _bwMortRows() : null]);
 }
 function _bwMortSaveSoon() {
   if (!_bwFarm || !_bwHouse || typeof LDATE !== 'function') return;
   const k = _bwFarm + '-' + _bwHouse;
   if (_bwMortFp() === _bwMortLastFp) return;
-  const ok = bwBlockComplete('mortality') && (_bwData.mort === 'yes' || !!_bwMortLogged[k + '-' + LDATE()]);
+  // v314 (Joe 10/2, "need to save this data"): 6 dead in C1 sat UNSAVED because
+  // "All mortality removed?" hadn't been tapped yet — the save waited for the
+  // whole block. The dead count + collector split now save the moment a count
+  // is in; the removed answer is added to the same entry when it's tapped.
+  // A NO only zeroes an entry this device already logged today.
+  const ok = (_bwData.mort === 'yes') ? _bwHasVal('bw-mort-count')
+    : (_bwData.mort === 'no' && !!_bwMortLogged[k + '-' + LDATE()]);
   if (!ok) return;
   if (_bwMortTimer && _bwMortFor && _bwMortFor !== k) _bwMortSaveNow();
   _bwMortFor = k;
@@ -1132,8 +1160,8 @@ function _bwMortSaveNow() {
     farm: F, house: H, employee: _bwCurrentUser(), date: date,
     time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
     mortCount: (yes && c && c.value !== '') ? Number(c.value) : 0,
-    mortByCollector: (yes && F === 'Danville') ? _bwMortColl() : null,
-    mortrem: _bwData.mortrem || 'yes',
+    mortByRow: (yes && _bwMortRowsOn(F)) ? _bwMortRows() : null,   // v315: R1–R7
+    mortrem: _bwData.mortrem || '',              // v314: '' = not answered yet
     notes: ((document.getElementById('bw-notes') || {}).value || '').trim(),
     ts: Date.now(), cleared: !yes
   });
@@ -1155,14 +1183,20 @@ function _bwMortStatus(state, e) {
   if (!state || (e && e.cleared)) { el.textContent = ''; el.style.display = 'none'; return; }
   el.style.display = 'block';
   if (state === 'pending') { el.style.color = '#8fae8f'; el.textContent = es ? '💾 Guardando…' : '💾 Saving…'; return; }
-  const sp = (e && e.mortByCollector) ? Object.keys(e.mortByCollector).sort().map(function (c) { return 'C' + c + ' ' + e.mortByCollector[c]; }).join(' · ') : '';
-  const what = e ? (e.mortCount + (es ? ' muertas' : ' dead') + (sp ? ' · ' + sp : '')) : '';
+  // v315: "Saved to House 2 · 6 dead · by row R1 3 · R4 2 · 1 not in a row"
+  const sp = (e && e.mortByRow) ? _bwRowText(e.mortByRow) : '';
+  const un = (e && e.mortByRow && e.mortRowUnassigned) ? ' · ' + e.mortRowUnassigned + (es ? ' sin fila' : ' not in a row') : '';
+  const what = e ? (e.mortCount + (es ? ' muertas' : ' dead') + (sp ? (es ? ' · por fila ' : ' · by row ') + sp + un : '')) : '';
+  // v314: saved before "All mortality removed?" is answered → say what's left
+  const left = (e && e.mortrem === '' && _bwData.mortrem === undefined)
+    ? '\n' + (es ? '👉 Falta: toque SÍ o NO en “¿Toda la mortalidad retirada?”' : '👉 Still to do: tap YES or NO on “All mortality removed?”') : '';
+  el.style.whiteSpace = 'pre-line';
   if (state === 'saved') {
     el.style.color = '#7ad07a';
-    el.textContent = '✅ ' + (es ? 'Guardado en Casa ' : 'Saved to House ') + (e ? e.house : _bwHouse) + ' · ' + what + (e && e.time ? ' · ' + e.time : '');
+    el.textContent = '✅ ' + (es ? 'Guardado en Casa ' : 'Saved to House ') + (e ? e.house : _bwHouse) + ' · ' + what + (e && e.time ? ' · ' + e.time : '') + left;
   } else {
     el.style.color = '#f0c674';
-    el.textContent = '📴 ' + (es ? 'Guardado en esta tablet — se sube solo al volver la conexión' : 'Saved on this tablet — uploads by itself when the connection is back');
+    el.textContent = '📴 ' + (es ? 'Guardado en esta tablet — se sube solo al volver la conexión' : 'Saved on this tablet — uploads by itself when the connection is back') + left;
   }
 }
 // Run anything still waiting (closing the form, switching houses, app hidden).
@@ -1188,8 +1222,8 @@ function bwSaveDraft() {
   });
   // per-meter boxes (Hegins) — drafted so a half-read house isn't lost
   document.querySelectorAll('[id^="bw-wm-"]').forEach(el => { fields[el.id] = el.value; });
-  // v304: per-collector mortality boxes (Danville)
-  document.querySelectorAll('[id^="bw-mc-"]').forEach(el => { fields[el.id] = el.value; });
+  // v315: per-row mortality boxes R1–R7 (Danville; replaced v304's bw-mc-* collector boxes)
+  document.querySelectorAll('[id^="bw-mr-"]').forEach(el => { fields[el.id] = el.value; });
   const clNotes = {};
   document.querySelectorAll('#bw-checklist-items input[id^="bw-cl-note-"]').forEach(el => {
     clNotes[el.id.replace('bw-cl-note-', '')] = el.value;
@@ -1353,8 +1387,8 @@ function bwRecordToDraft(rec) {
       'bw-bin-a':               rec.binA              != null ? String(rec.binA)              : '',
       'bw-bin-b':               rec.binB              != null ? String(rec.binB)              : '',
       'bw-eggs-collected':      rec.eggsCollected     != null ? String(rec.eggsCollected)     : '',
-      // v304: collector split restores into the six boxes
-      ...(function () { const o = {}; const s = rec.mortByCollector || {}; for (let i = 1; i <= 6; i++) o['bw-mc-' + i] = s[String(i)] != null ? String(s[String(i)]) : ''; return o; })(),
+      // v315: the row split restores into the seven boxes (R1–R7)
+      ...(function () { const o = {}; const s = rec.mortByRow || {}; for (let i = 1; i <= BW_MORT_ROWS; i++) o['bw-mr-' + i] = s[String(i)] != null ? String(s[String(i)]) : ''; return o; })(),
     },
     bwData: {
       mort: rec.mort, feather: rec.feather, air: rec.air, feed: rec.feed,
@@ -1920,11 +1954,11 @@ function openBarnWalk(farm, house) {
     if (_du && e && !e.value) { e.value = _du; if (typeof bwFlowRefresh === 'function') bwFlowRefresh(false); else if (typeof checkBWReady === 'function') checkBWReady(); }
   }, 50);
   ['bw-employee','bw-notes','bw-temp','bw-water-psi','bw-mort-count','bw-loose-count','bw-rodent-count','bw-fly-count','bw-eggs-collected',
-   'bw-mc-1','bw-mc-2','bw-mc-3','bw-mc-4','bw-mc-5','bw-mc-6'].forEach(id => {
+   'bw-mr-1','bw-mr-2','bw-mr-3','bw-mr-4','bw-mr-5','bw-mr-6','bw-mr-7'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('bw-mort-count-row').style.display    = 'none';
-  { const r = document.getElementById('bw-mort-coll-row'); if (r) r.style.display = 'none'; const h = document.getElementById('bw-mort-coll-hint'); if (h) h.textContent = ''; _bwMortAutoTotal = null; }
+  { const r = document.getElementById('bw-mort-row-row'); if (r) r.style.display = 'none'; const h = document.getElementById('bw-mort-row-hint'); if (h) h.textContent = ''; _bwMortAutoTotal = null; }
   _bwMortStatus(null);
   try { _bwMortHistShow(farm, house); } catch (e) {}
   document.getElementById('bw-loose-count-row').style.display   = 'none';
@@ -2052,7 +2086,7 @@ function _bwOpenSubmitted(farm, house, today, preDoc) {
         if (_rec.mort === 'yes') {
           _bwMortLogged[farm + '-' + house + '-' + today] = true;
           _bwMortLastEntry = _bwMortEntry({ farm: farm, house: house, employee: _rec.employee, date: today, time: _rec.time,
-            mortCount: _rec.mortCount, mortByCollector: _rec.mortByCollector, mortrem: _rec.mortrem, ts: _rec.ts });
+            mortCount: _rec.mortCount, mortByRow: _rec.mortByRow, mortrem: _rec.mortrem, ts: _rec.ts });
           _bwMortStatus('saved', _bwMortLastEntry);
         }
         let banner = document.getElementById('bw-submitted-banner');
@@ -2190,30 +2224,64 @@ async function clOpenTaskWI(taskId, taskLabel) {
   }, 100);
 }
 
-// ── v304: MORTALITY BY COLLECTOR (Danville — 6 collectors per house) ────────
-// Joe: "can we add mortality by collector. there are 6 collectors in each house
-// for danville". A dead bird's ROW says where the problem is (a water line, a
-// feed run, a fan) in a way a house total never can. Danville only — every
-// Danville house is the same 6-collector layout. Optional, never blocks Submit:
-// filling the six boxes auto-totals the count; leaving them blank works as before.
-const BW_MORT_COLLECTORS = 6;
-function bwMortCollShow() {
-  const row = document.getElementById('bw-mort-coll-row');
+// ── v315: MORTALITY BY ROW (Danville — 7 rows per house) ─────────────────────
+// Joe 10/2 (screenshot of the C1–C6 boxes): "change this to by row and please
+// make sure the data is saving total dead by house and total dead by row. there
+// are 7 rows in each house". Replaces v304's six collector boxes. A dead bird's
+// ROW says where the problem is (a water line, a feed run, a fan) in a way a
+// house total never can. Danville only — the farm the split was built for;
+// Hegins still logs the house total (add it to BW_MORT_ROWS_FARMS to turn the
+// boxes on there). Optional, never blocks Submit: filling the seven boxes
+// auto-totals the count; leaving them blank works as before. Every save writes
+// the barn total (mortCount) AND the row split (mortByRow) to the day's check
+// record and to the house's mortality entry. Days the crew split by collector
+// before 10/2 (mortByCollector) stay in the history, labelled "by collector".
+var BW_MORT_ROWS = 7;
+var BW_MORT_ROWS_FARMS = ['Danville'];
+function _bwMortRowsOn(farm) { return BW_MORT_ROWS_FARMS.indexOf(String(farm || '')) !== -1; }
+function _bwRowP() { return (typeof _lang !== 'undefined' && _lang === 'es') ? 'F' : 'R'; }   // Fila / Row
+function _bwSplitKeys(s) {
+  if (!s || typeof s !== 'object') return [];
+  return Object.keys(s).filter(function (k) { return (Number(s[k]) || 0) > 0; })
+    .sort(function (a, b) { return Number(a) - Number(b); });
+}
+function _bwRowText(s) { const p = _bwRowP(); return _bwSplitKeys(s).map(function (k) { return p + k + ' ' + s[k]; }).join(' · '); }
+function _bwCollText(s) { return _bwSplitKeys(s).map(function (k) { return 'C' + k + ' ' + s[k]; }).join(' · '); }
+// "by row R1 3 · R4 2 · 1 not in a row" for a check record or mortality entry;
+// a day saved before rows → "by collector C1 3 · C2 1"; no split → ''.
+function _bwSplitLabel(r) {
+  if (!r) return '';
+  const es = (typeof _lang !== 'undefined' && _lang === 'es');
+  if (_bwSplitKeys(r.mortByRow).length) {
+    const sum = _bwSplitSum(_bwSplitOf(r.mortByRow));
+    const un = (r.mortRowUnassigned != null) ? Number(r.mortRowUnassigned) || 0 : Math.max(0, (Number(r.mortCount) || 0) - sum);
+    return (es ? 'por fila ' : 'by row ') + _bwRowText(r.mortByRow) + (un ? ' · ' + un + (es ? ' sin fila' : ' not in a row') : '');
+  }
+  if (_bwSplitKeys(r.mortByCollector).length) {
+    return (es ? 'por colector ' : 'by collector ') + _bwCollText(r.mortByCollector) + (r.mortUnassigned ? ' · ' + r.mortUnassigned + (es ? ' sin colector' : ' not assigned') : '');
+  }
+  return '';
+}
+function bwMortRowShow() {
+  const row = document.getElementById('bw-mort-row-row');
   if (!row) return;
-  const on = (_bwFarm === 'Danville') && (_bwData.mort === 'yes');
+  const on = _bwMortRowsOn(_bwFarm) && (_bwData.mort === 'yes');
   row.style.display = on ? 'block' : 'none';
-  const lbl = document.getElementById('bw-mort-coll-label');
-  if (lbl) lbl.textContent = (typeof _lang !== 'undefined' && _lang === 'es')
-    ? 'Por colector — C1 a C6 (opcional, suma el total)'
-    : 'By collector — C1 to C6 (optional, adds up the total)';
-  if (on) bwMortCollSum(true);
+  const es = (typeof _lang !== 'undefined' && _lang === 'es');
+  const lbl = document.getElementById('bw-mort-row-label');
+  if (lbl) lbl.textContent = es
+    ? 'Por fila — F1 a F' + BW_MORT_ROWS + ' (opcional, suma el total)'
+    : 'By row — R1 to R' + BW_MORT_ROWS + ' (optional, adds up the total)';
+  const p = _bwRowP();
+  for (let i = 1; i <= BW_MORT_ROWS; i++) { const el = document.getElementById('bw-mr-' + i); if (el) el.placeholder = p + i; }
+  if (on) bwMortRowSum(true);
 }
 // ── v312: 📜 this house's mortality history, right in the Mortality card ────
-// Last 7 days: the barn total and (Danville) the C1–C6 split for each day, so
-// the crew sees the history they are building and "what collector the dead
-// came from" is visible without opening Bird Health. Reads the day's record
-// (barnWalks) and the day's mortality entry by id — no index, works offline
-// from cache — and shows whichever was saved last.
+// Last 7 days: the barn total and (Danville) the R1–R7 split for each day plus
+// a totals line (dead per row over the week, dead for the house over the week),
+// so the crew sees the history they are building without opening Bird Health.
+// Reads the day's record (barnWalks) and the day's mortality entry by id — no
+// index, works offline from cache — and shows whichever was saved last.
 var _bwMortHistCache = {};
 function _bwMortHistShow(farm, house) {
   const box = document.getElementById('bw-mort-hist');
@@ -2240,9 +2308,11 @@ function _bwMortHistShow(farm, house) {
       const w = (ws && ws.exists) ? ws.data() : null;
       const l = (ls && ls.exists) ? ls.data() : null;
       let src = null;
-      if (w && w.mort === 'yes') src = { n: w.mortCount, s: w.mortByCollector, by: w.employee, ts: w.ts };
-      if (l && l.type === 'mortality' && (!src || (Number(l.ts) || 0) > (Number(src.ts) || 0))) src = { n: l.mortCount, s: l.mortByCollector, by: l.employee, ts: l.ts };
-      if (!src && w && w.mort === 'no') src = { n: 0, s: null, by: w.employee, ts: w.ts };
+      if (w && w.mort === 'yes') src = { n: w.mortCount, r: w.mortByRow, s: w.mortByCollector, by: w.employee, ts: w.ts };
+      if (l && l.type === 'mortality' && !(l.cleared && !(Number(l.mortCount) || 0)) && (!src || (Number(l.ts) || 0) > (Number(src.ts) || 0))) {
+        src = { n: l.mortCount, r: l.mortByRow, s: l.mortByCollector, by: l.employee, ts: l.ts };
+      }
+      if (!src && w && w.mort === 'no') src = { n: 0, r: null, s: null, by: w.employee, ts: w.ts };
       return { date: dt, entry: src };
     });
     _bwMortHistCache[k] = { t: Date.now(), day: today, rows: rows };
@@ -2253,61 +2323,76 @@ function _bwMortHistRender(farm, house, rows) {
   const box = document.getElementById('bw-mort-hist');
   if (!box) return;
   const es = (typeof _lang !== 'undefined' && _lang === 'es');
-  const coll = farm === 'Danville';
+  const split = _bwMortRowsOn(farm);
+  const R = BW_MORT_ROWS, P = _bwRowP();
   const have = rows.filter(function (r) { return r.entry; });
   if (!have.length) { box.innerHTML = ''; return; }
   const esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
-  let tot = 0, splitDays = 0; const ct = {};
+  const rowsOf = function (e) { const s = e && e.r; return (s && typeof s === 'object' && _bwSplitKeys(s).length) ? s : null; };
+  const collOf = function (e) { const s = e && e.s; return (s && typeof s === 'object' && _bwSplitKeys(s).length) ? s : null; };
+  let tot = 0, splitDays = 0, partial = 0; const rt = {};
   have.forEach(function (r) {
-    tot += Number(r.entry.n) || 0;
-    const s = r.entry.s;
-    if (s && typeof s === 'object' && Object.keys(s).length) {
+    const n = Number(r.entry.n) || 0;
+    tot += n;
+    const s = rowsOf(r.entry);
+    if (s) {
       splitDays++;
-      Object.keys(s).forEach(function (c) { ct[c] = (ct[c] || 0) + (Number(s[c]) || 0); });
+      Object.keys(s).forEach(function (c) { rt[c] = (rt[c] || 0) + (Number(s[c]) || 0); });
+      if (n > _bwSplitSum(s)) partial++;
     }
   });
   const M = "font-family:'IBM Plex Mono',monospace;";
   const cell = function (t, st) { return '<div style="' + M + 'font-size:11px;text-align:center;padding:3px 0;' + (st || '') + '">' + t + '</div>'; };
-  const span6 = function (t, col) { return '<div style="grid-column:span 6;' + M + 'font-size:10px;color:' + col + ';padding:3px 0;">' + t + '</div>'; };
+  const spanR = function (t, col) { return '<div style="grid-column:span ' + R + ';' + M + 'font-size:10px;color:' + col + ';padding:3px 0;min-width:0;overflow-wrap:anywhere;line-height:1.35;">' + t + '</div>'; };
   let h = '<details style="margin-top:12px;border-top:1px dashed #2f4a2f;padding-top:8px;">' +
     '<summary style="cursor:pointer;' + M + 'font-size:11.5px;color:#8fae8f;">📜 ' +
     (es ? 'Casa ' + esc(house) + ' · últimos 7 días — ' + tot + ' muertas' : 'House ' + esc(house) + ' · last 7 days — ' + tot + ' dead') +
-    (coll ? (es ? ' · por colector ' + splitDays + ' de ' + have.length + ' días' : ' · split by collector on ' + splitDays + ' of ' + have.length + ' days') : '') +
+    (split ? (es ? ' · por fila ' + splitDays + ' de ' + have.length + ' días' : ' · split by row on ' + splitDays + ' of ' + have.length + ' days') : '') +
     '</summary>';
-  h += '<div style="display:grid;grid-template-columns:' + (coll ? '46px 42px repeat(6,1fr)' : '60px 60px 1fr') + ';gap:3px;margin-top:6px;align-items:center;">';
+  h += '<div style="display:grid;grid-template-columns:' + (split ? '44px 40px repeat(' + R + ',minmax(0,1fr))' : '60px 60px 1fr') + ';gap:3px;margin-top:6px;align-items:center;">';
   h += cell(es ? 'fecha' : 'date', 'color:#5a8a5a;text-align:left;') + cell('total', 'color:#5a8a5a;');
-  if (coll) { for (let i = 1; i <= 6; i++) h += cell('C' + i, 'color:#5a8a5a;'); }
+  if (split) { for (let i = 1; i <= R; i++) h += cell(P + i, 'color:#5a8a5a;'); }
   else h += cell(es ? 'por' : 'by', 'color:#5a8a5a;text-align:left;');
   rows.forEach(function (r) {
     const e = r.entry;
     h += cell(esc(r.date.slice(5)), 'color:#8fae8f;text-align:left;');
     if (!e) {
       h += cell('—', 'color:#3f5a3f;');
-      h += coll ? span6(es ? 'nada registrado' : 'nothing logged', '#3f5a3f') : cell('', '');
+      h += split ? spanR(es ? 'nada registrado' : 'nothing logged', '#3f5a3f') : cell('', '');
       return;
     }
-    h += cell(String(Number(e.n) || 0), 'color:#e8f0e0;font-weight:700;');
-    if (!coll) { h += cell(esc(String(e.by || '').split(' ')[0]), 'color:#5a8a5a;text-align:left;'); return; }
-    const s = (e.s && typeof e.s === 'object' && Object.keys(e.s).length) ? e.s : null;
-    if (!s) { h += span6((Number(e.n) || 0) ? (es ? 'solo total — sin colector' : 'total only — no collector split') : '', '#5a7a5a'); return; }
-    let sum = 0; for (let i = 1; i <= 6; i++) sum += Number(s[String(i)]) || 0;
-    for (let i = 1; i <= 6; i++) {
-      const n = Number(s[String(i)]) || 0;
-      const hot = n >= 5 && sum && n / sum > 1 / 3;     // over a third of the house's split = 2x fair share
-      h += cell(n ? String(n) : '·', hot ? 'background:#4a1a14;color:#fca5a5;border-radius:4px;font-weight:700;' : (n ? 'color:#e8c98a;' : 'color:#3f5a3f;'));
+    const n = Number(e.n) || 0;
+    const s = split ? rowsOf(e) : null;
+    const sum = s ? _bwSplitSum(s) : 0;
+    h += cell(String(n) + (s && n > sum ? '<span style="color:#c99a5a;">*</span>' : ''), 'color:#e8f0e0;font-weight:700;');
+    if (!split) { h += cell(esc(String(e.by || '').split(' ')[0]), 'color:#5a8a5a;text-align:left;'); return; }
+    if (!s) {
+      const old = collOf(e);
+      if (old) { h += spanR((es ? 'por colector (antes): ' : 'by collector (before rows): ') + esc(_bwCollText(old)), '#a08a5a'); return; }
+      h += spanR(n ? (es ? 'solo total — sin fila' : 'total only — no row split') : '', '#5a7a5a');
+      return;
+    }
+    for (let i = 1; i <= R; i++) {
+      const v = Number(s[String(i)]) || 0;
+      const hot = v >= 5 && sum && v / sum > 2 / R;      // over twice a row's fair share
+      h += cell(v ? String(v) : '·', hot ? 'background:#4a1a14;color:#fca5a5;border-radius:4px;font-weight:700;' : (v ? 'color:#e8c98a;' : 'color:#3f5a3f;'));
     }
   });
-  if (coll && splitDays) {
-    h += cell(es ? 'suma' : 'sum', 'color:#8fae8f;text-align:left;border-top:1px solid #2f4a2f;font-weight:700;') + cell('', 'border-top:1px solid #2f4a2f;');
-    for (let i = 1; i <= 6; i++) h += cell(ct[String(i)] ? String(ct[String(i)]) : '·', 'color:#e8c98a;font-weight:700;border-top:1px solid #2f4a2f;');
+  if (split) {
+    // totals line: dead for the house over the week + dead per row over the split days
+    const bt = 'border-top:1px solid #2f4a2f;font-weight:700;';
+    h += cell(es ? 'total' : 'total', 'color:#8fae8f;text-align:left;' + bt) + cell(String(tot), 'color:#e8f0e0;' + bt);
+    for (let i = 1; i <= R; i++) h += cell(rt[String(i)] ? String(rt[String(i)]) : '·', 'color:#e8c98a;' + bt);
   }
-  h += '</div></details>';
+  h += '</div>';
+  if (split && partial) h += '<div style="' + M + 'font-size:9.5px;color:#5a7a5a;margin-top:3px;">* ' + (es ? 'parte del total de ese día no se puso en una fila' : 'part of that day\'s total was not put in a row') + '</div>';
+  h += '</details>';
   box.innerHTML = h;
 }
-function _bwMortColl() {
+function _bwMortRows() {
   const out = {}; let any = false;
-  for (let i = 1; i <= BW_MORT_COLLECTORS; i++) {
-    const el = document.getElementById('bw-mc-' + i);
+  for (let i = 1; i <= BW_MORT_ROWS; i++) {
+    const el = document.getElementById('bw-mr-' + i);
     const n = el && el.value !== '' ? Number(el.value) : 0;
     if (n > 0) { out[String(i)] = n; any = true; }
   }
@@ -2316,13 +2401,13 @@ function _bwMortColl() {
 // v308 — THE BUG JOE HIT ("the mortality does not stay saved"): v304 made the
 // boxes THE count, so a crew member who typed the house total (60) and then noted
 // "9 of them were in collector 3" watched the total collapse to 9. A partial
-// split is normal on a farm. Rule now: a total the crew typed by hand can only
-// ever go UP from the boxes, never down. The boxes drive the total only while
-// the total is blank or is the number the boxes themselves last produced.
+// split is normal on a farm. Rule (kept for rows): a total the crew typed by hand
+// can only ever go UP from the boxes, never down. The boxes drive the total only
+// while the total is blank or is the number the boxes themselves last produced.
 let _bwMortAutoTotal = null;   // the last total we set FROM the boxes
-function bwMortCollSum(quiet) {
-  const split = _bwMortColl();
-  const hint = document.getElementById('bw-mort-coll-hint');
+function bwMortRowSum(quiet) {
+  const split = _bwMortRows();
+  const hint = document.getElementById('bw-mort-row-hint');
   const tot = document.getElementById('bw-mort-count');
   const es = (typeof _lang !== 'undefined' && _lang === 'es');
   if (!split) { if (hint) hint.textContent = ''; _bwMortAutoTotal = null; return; }
@@ -2338,13 +2423,14 @@ function bwMortCollSum(quiet) {
   }
   if (boxesOwnTotal || (newTotal != null && sum >= newTotal)) _bwMortAutoTotal = sum; else _bwMortAutoTotal = null;
   if (hint) {
-    const parts = Object.entries(split).map(([c, n]) => 'C' + c + ' ' + n).join(' + ');
+    const P = _bwRowP();
+    const parts = _bwSplitKeys(split).map(function (k) { return P + k + ' ' + split[k]; }).join(' + ');
     const left = (newTotal != null) ? newTotal - sum : 0;
     if (left > 0) {
-      hint.textContent = parts + ' = ' + sum + (es ? ' · ' + left + ' sin colector (total ' + newTotal + ')'
-                                                    : ' · ' + left + ' not assigned to a collector (total ' + newTotal + ')');
+      hint.textContent = parts + ' = ' + sum + (es ? ' · ' + left + ' sin fila (total ' + newTotal + ')'
+                                                    : ' · ' + left + ' not in a row (total ' + newTotal + ')');
     } else {
-      hint.textContent = (es ? 'Total ' : 'Total ') + sum + ' = ' + parts;
+      hint.textContent = 'Total ' + sum + ' = ' + parts;
     }
   }
   if (!quiet && typeof bwSaveDraft === 'function') { try { bwSaveDraft(); } catch (e) {} }
@@ -2374,7 +2460,7 @@ function bwSet(key, val) {
   document.querySelectorAll(`#barn-walk-modal .bw-yn-btn[id^="bw-${key}-"]`).forEach(b => b.className = 'bw-yn-btn');
   const sel = document.getElementById(`bw-${key}-${val}`);
   if (sel) sel.className = 'bw-yn-btn ' + (badge[key]?.[val] || 'bw-sel');
-  if (key === 'mort')  { document.getElementById('bw-mort-count-row').style.display  = val==='yes' ? 'block' : 'none'; bwMortCollShow(); }
+  if (key === 'mort')  { document.getElementById('bw-mort-count-row').style.display  = val==='yes' ? 'block' : 'none'; bwMortRowShow(); }
   if (key === 'loose')   document.getElementById('bw-loose-count-row').style.display   = val==='yes'  ? 'block' : 'none';
   if (key === 'rodent')  document.getElementById('bw-rodent-count-row').style.display  = val==='yes'  ? 'block' : 'none';
   if (key === 'fly')     document.getElementById('bw-fly-count-row').style.display     = val==='yes'  ? 'block' : 'none';
@@ -2548,9 +2634,8 @@ if (typeof window !== 'undefined') window._bwArrangeCards = _bwArrangeCards;
       '<div style="font-size:12px;color:#9ab09a;margin-bottom:12px;">by ' + _esc(r.employee || r.by || '—') + (r.time ? (' · ' + _esc(r.time)) : '') + '</div>' +
       '<div style="font-size:13px;line-height:1.9;color:#d8e8d8;border-top:1px solid #1e3a1e;border-bottom:1px solid #1e3a1e;padding:10px 0;margin-bottom:14px;">' +
         '💀 Mortality: <b>' + _esc(r.mortCount != null ? r.mortCount : '—') + '</b>' +
-          // v312: which collector the dead came from (Danville split)
-          ((r.mortByCollector && typeof r.mortByCollector === 'object' && Object.keys(r.mortByCollector).length)
-            ? ' <span style="color:#e8c98a;font-size:12px;">(' + Object.keys(r.mortByCollector).sort().map(function (c) { return 'C' + _esc(c) + ' ' + _esc(r.mortByCollector[c]); }).join(' · ') + ')</span>' : '') +
+          // v315: which row the dead came from (Danville split; older days: collector)
+          (_bwSplitLabel(r) ? ' <span style="color:#e8c98a;font-size:12px;">(' + _esc(_bwSplitLabel(r)) + ')</span>' : '') +
           '<br>' +
         '🐔 Loose birds: <b>' + _esc(r.looseCount != null ? r.looseCount : '—') + '</b><br>' +
         '✅ Tasks reviewed: <b>' + pass + '/' + total + '</b>' + (flags ? ('<br>⚠ Flags: <b style="color:#f2705a;">' + flags + '</b>') : '') +
@@ -2667,8 +2752,10 @@ async function submitBarnWalk(opts) {
   const waterPSI   = null; // field removed from Daily Employee Check
   const temp       = null; // field removed from Daily Employee Check
   const mortCount  = document.getElementById('bw-mort-count').value ? Number(document.getElementById('bw-mort-count').value) : null;
-  // v304: per-collector split (Danville). null when the boxes are blank.
-  const mortByCollector = (_F === 'Danville' && _D.mort === 'yes') ? _bwMortColl() : null;
+  // v315: per-row split R1–R7 (Danville). null when the boxes are blank. The old
+  // collector field (mortByCollector) is deliberately NOT in the record any more
+  // — the merge write leaves a day's earlier C1–C6 split untouched.
+  const mortByRow = (_bwMortRowsOn(_F) && _D.mort === 'yes') ? _bwMortRows() : null;
   const looseCount  = document.getElementById('bw-loose-count').value  ? Number(document.getElementById('bw-loose-count').value)  : null;
   const rodentCount = document.getElementById('bw-rodent-count').value ? Number(document.getElementById('bw-rodent-count').value) : null;
   const flyCount    = document.getElementById('bw-fly-count').value    ? Number(document.getElementById('bw-fly-count').value)    : null;
@@ -2712,7 +2799,7 @@ async function submitBarnWalk(opts) {
 
   const record = {
     farm: _F, house: String(_H), employee, notes, flags,
-    waterPSI, temp, mortCount, mortByCollector, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading, eggsCollected,
+    waterPSI, temp, mortCount, mortByRow, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading, eggsCollected,
     waterMeter, waterMeters, waterUsedGal, waterFlatMeters, binA, binB,
     naFields: _D._na || {},
     weeklyAck: !!_D._weeklyAck,
@@ -2770,15 +2857,15 @@ async function submitBarnWalk(opts) {
   if (_D.mort === 'yes') {
     _bwUpsertLog('mortality', _bwMortEntry({
       farm: _F, house: _H, employee, date: record.date, time: record.time,
-      mortCount: mortCount || 0, mortByCollector: mortByCollector,
-      mortrem: _D.mortrem || 'yes', notes: notes, ts: Date.now()
+      mortCount: mortCount || 0, mortByRow: mortByRow,      // v315: barn total + R1–R7
+      mortrem: _D.mortrem || '', notes: notes, ts: Date.now()   // v314/v315: '' = not answered yet, never a made-up YES
     }));
     _bwMortLogged[_mlKey] = true;
   } else if (_D.mort === 'no' && _bwMortLogged[_mlKey]) {
     // Changed from YES to NO today → zero the day's entry, don't leave a stale count.
     _bwUpsertLog('mortality', _bwMortEntry({
       farm: _F, house: _H, employee, date: record.date, time: record.time,
-      mortCount: 0, mortByCollector: null, mortrem: _D.mortrem || 'yes', notes: notes, ts: Date.now(), cleared: true
+      mortCount: 0, mortByRow: null, mortrem: _D.mortrem || '', notes: notes, ts: Date.now(), cleared: true
     }));
   }
   if (_D.loose === 'yes') {
@@ -2817,7 +2904,7 @@ async function submitBarnWalk(opts) {
       if (_prev.mort === 'yes' && _D.mort === 'no' && !_bwMortLogged[_mlKey]) {
         _bwUpsertLog('mortality', _bwMortEntry({
           farm: _F, house: _H, employee, date: record.date, time: record.time,
-          mortCount: 0, mortByCollector: null, mortrem: _D.mortrem || 'yes', notes: notes, ts: Date.now(), cleared: true
+          mortCount: 0, mortByRow: null, mortrem: _D.mortrem || '', notes: notes, ts: Date.now(), cleared: true
         }));
       }
     } else if (_wasSubmitted) {
@@ -4042,8 +4129,8 @@ function _bwHistDetailHtml(w) {
   const es = (typeof _lang !== 'undefined' && _lang === 'es');
   const V = v => (v == null || v === '') ? '—' : String(v);
   const rows = [
-    [es?'Mortalidad':'Mortality',      (w.mort==='yes' ? (w.mortCount!=null?w.mortCount:'yes') : 'no') + (w.mort==='yes' ? (w.mortrem==='yes' ? (es?' · retiradas ✓':' · removed ✓') : (es?' · NO retiradas ⚠':' · NOT removed ⚠')) : '')
-      + ((w.mort==='yes' && w.mortByCollector && Object.keys(w.mortByCollector).length) ? ((es?' · por colector: ':' · by collector: ') + Object.entries(w.mortByCollector).map(([c,n]) => 'C'+c+' '+n).join(', ')) : '')],
+    [es?'Mortalidad':'Mortality',      (w.mort==='yes' ? (w.mortCount!=null?w.mortCount:'yes') : 'no') + (w.mort==='yes' ? (w.mortrem==='yes' ? (es?' · retiradas ✓':' · removed ✓') : w.mortrem==='no' ? (es?' · NO retiradas ⚠':' · NOT removed ⚠') : (es?' · ¿retiradas? sin responder':' · removed? not answered')) : '')
+      + ((w.mort==='yes' && _bwSplitLabel(w)) ? ' · ' + _bwSplitLabel(w) : '')],   // v315: by row (older days: by collector)
     [es?'Aves sueltas':'Loose birds',  w.loose==='yes' ? V(w.looseCount) : 'no'],
     [es?'Secadores':'Manure dryers',   V(w.dryers)],
     [es?'Plumaje':'Feathering',        V(w.feather)],
@@ -4695,12 +4782,10 @@ function renderPestLog() {
           (r.mortCount ? '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;color:#f87171;font-weight:700;">'+r.mortCount+' bird'+(r.mortCount!==1?'s':'')+'</span>' : '') +
           (notRemoved ? '<span style="background:#4a0a0a;color:#fca5a5;border:1px solid #e53e3e;border-radius:8px;padding:1px 8px;font-size:11px;">⚠ Not Removed</span>' : '') +
         '</div>' +
-        // v312: which collector the dead came from (Danville splits)
-        ((r.mortByCollector && typeof r.mortByCollector === 'object' && Object.keys(r.mortByCollector).length)
+        // v315: which row the dead came from (Danville splits; older days: collector)
+        (_bwSplitLabel(r)
           ? '<div style="margin-top:6px;font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;color:#e8c98a;">'
-            + ((typeof _lang !== 'undefined' && _lang === 'es') ? 'Por colector: ' : 'By collector: ')
-            + Object.keys(r.mortByCollector).sort().map(c => 'C' + c + ' ' + r.mortByCollector[c]).join(' · ')
-            + (r.mortUnassigned ? ' · ' + r.mortUnassigned + ((typeof _lang !== 'undefined' && _lang === 'es') ? ' sin colector' : ' not assigned') : '')
+            + _esc(_bwSplitLabel(r).replace(/^./, function (m) { return m.toUpperCase(); }))
             + '</div>' : '') +
         (r.notes ? '<div style="margin-top:8px;font-size:12px;color:#8a6a6a;font-style:italic;">'+r.notes+'</div>' : '') +
       '</div>';
