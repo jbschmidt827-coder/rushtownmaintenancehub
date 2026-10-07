@@ -303,10 +303,10 @@ function woCardHtml(wo) {
       <span class="wo-meta-txt">${wo.submitted||''}</span>
     </div>
     ${wo._pending ? `
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:#a8975a;font-family:'IBM Plex Mono',monospace;">
+    <div style="grid-column:1/-1;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:#a8975a;font-family:'IBM Plex Mono',monospace;">
       ⏳ Waiting for signal — this order will send automatically and get its WO number once you're back online.
     </div>` : `
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
+    <div style="grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
       ${actionBtns}
       ${timerBtn}
       <button onclick="event.stopPropagation();openWOUpdate('${wo._fbId}')" style="padding:9px 12px;background:#1a2a1a;border:1px solid #2a4a2a;border-radius:8px;color:#7ab07a;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">💬 Update</button>

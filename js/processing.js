@@ -31,7 +31,11 @@ function procStartListener() {
     db.collection('processingLog').orderBy('ts', 'desc').limit(300).onSnapshot(function (snap) {
       _procLog = snap.docs.map(function (d) { return Object.assign({}, d.data(), { _id: d.id }); });
       var panel = document.getElementById('panel-pkg');
-      if (panel && panel.classList.contains('active')) { if (window._procView === 'packing') procOpenPacking(); else renderProcessing(); }
+      // v317: redraw only the screen that's showing. It used to redraw the plant
+      // hub whenever this listener fired — so when the first server answer came
+      // in AFTER the Processing card had switched to the Daily Run (fresh tablet,
+      // slow signal), the crew got bounced off the egg run onto the hub.
+      if (panel && panel.classList.contains('active')) { if (window._procView === 'packing') procOpenPacking(); else if (window._procView === 'home') renderProcessing(); }
     }, function (err) { console.error('processingLog listener:', err); });
   } catch (e) { console.error('procStartListener:', e); _procListening = false; }
 }

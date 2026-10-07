@@ -792,7 +792,7 @@ function setMsg(m) { document.getElementById('loading-msg').textContent = m; }
 
 // ── Global toast utility ───────────────────────────────────────────────────
 // ── App version (bump on every deploy — shown on the landing screen) ─────
-var APP_VERSION = 'v315 · Oct 2 2026';
+var APP_VERSION = 'v317 · Oct 5 2026';
 
 // LOCAL calendar day "YYYY-MM-DD". Everything that means "today" must use this,
 // NOT new Date().toISOString().slice(0,10) — toISOString is UTC, so on Eastern
@@ -2937,6 +2937,19 @@ function go(tab) {
       if (woSubmitBtn) { woSubmitBtn.disabled = false; woSubmitBtn.textContent = '✓ SUBMIT WORK ORDER'; }
       // Repopulate name dropdowns from current staff list before showing form.
       if (typeof updateStaffDropdowns === 'function') updateStaffDropdowns();
+      // v317: start on the site you're working in (the landing card promises
+      // "uses your last location"; the form came up blank, so every WO needed
+      // Location picked before the name list even filled). Your Name stays a
+      // manual pick — WOs are often filed for someone else (Joe's rule).
+      try {
+        const _wf = document.getElementById('wo-farm');
+        const _pf = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+        if (_wf && !_wf.value && _pf) {
+          _wf.value = _pf;
+          if (typeof loadHouses === 'function') loadHouses();
+          if (typeof woFillNames === 'function') woFillNames(_pf);
+        }
+      } catch (e) { console.warn('wo location prefill:', e); }
     }, 50);
     return;
   }

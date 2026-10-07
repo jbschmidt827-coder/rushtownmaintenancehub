@@ -1180,6 +1180,7 @@ function _bwMortStatus(state, e) {
   const el = document.getElementById('bw-mort-saved');
   if (!el) return;
   const es = (typeof _lang !== 'undefined' && _lang === 'es');
+  if (state === 'removed') { _bwMortRemovedLine(el, e); return; }
   if (!state || (e && e.cleared)) { el.textContent = ''; el.style.display = 'none'; return; }
   el.style.display = 'block';
   if (state === 'pending') { el.style.color = '#8fae8f'; el.textContent = es ? '💾 Guardando…' : '💾 Saving…'; return; }
@@ -1191,13 +1192,106 @@ function _bwMortStatus(state, e) {
   const left = (e && e.mortrem === '' && _bwData.mortrem === undefined)
     ? '\n' + (es ? '👉 Falta: toque SÍ o NO en “¿Toda la mortalidad retirada?”' : '👉 Still to do: tap YES or NO on “All mortality removed?”') : '';
   el.style.whiteSpace = 'pre-line';
+  let txt;
   if (state === 'saved') {
     el.style.color = '#7ad07a';
-    el.textContent = '✅ ' + (es ? 'Guardado en Casa ' : 'Saved to House ') + (e ? e.house : _bwHouse) + ' · ' + what + (e && e.time ? ' · ' + e.time : '') + left;
+    txt = '✅ ' + (es ? 'Guardado en Casa ' : 'Saved to House ') + (e ? e.house : _bwHouse) + ' · ' + what + (e && e.time ? ' · ' + e.time : '') + left;
   } else {
     el.style.color = '#f0c674';
-    el.textContent = '📴 ' + (es ? 'Guardado en esta tablet — se sube solo al volver la conexión' : 'Saved on this tablet — uploads by itself when the connection is back') + left;
+    txt = '📴 ' + (es ? 'Guardado en esta tablet — se sube solo al volver la conexión' : 'Saved on this tablet — uploads by itself when the connection is back') + left;
   }
+  // v316: the way back out when the count went into the wrong house
+  el.innerHTML = _bwMortEsc(txt) + '\n' + _bwMortBtn('bwMortWrongHouse()', es ? '↩ ¿Casa equivocada? Quitar' : '↩ Wrong house? Remove', '#8a6a2a', '#f0c674');
+}
+function _bwMortEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function _bwMortBtn(onclick, label, border, color) {
+  return '<button type="button" onclick="' + onclick + '" style="margin-top:6px;padding:6px 12px;border-radius:14px;border:1px solid ' + border +
+    ';background:transparent;color:' + color + ';font-family:inherit;font-size:11.5px;cursor:pointer;">' + _bwMortEsc(label) + '</button>';
+}
+
+// ── v316: "↩ Wrong house? Remove" ────────────────────────────────────────────
+// Field evidence 10/3: a tablet saved 16 dead + "removed YES" to Danville H1 at
+// 3:40:21 PM; 17 s later the same 16 went to H3 and H3 was turned in. Since v314
+// the count saves the moment it is typed — the right call (v314: nothing typed is
+// ever lost) — but a count typed into the WRONG house then stayed there when the
+// crew moved to the right one, and there was no way to take it back: the birds
+// counted twice (Bird Health, Tier 1/2). One tap now takes this house's entry
+// for today back out and resets the Mortality block; "Put back" undoes it.
+// The entry is kept (cleared + removedWrongHouse {by, ts, was}) so the
+// history shows what happened — every reader already skips cleared-zero entries.
+// No confirm() (it no-ops in the installed app) — the undo is the safety net.
+var _bwMortUndo = null;    // { key:'farm-house-date', count, rows:{}, mortrem }
+function _bwMortClearBlock() {
+  _bwData.mort = undefined; _bwData.mortrem = undefined;
+  ['mort', 'mortrem'].forEach(function (key) {
+    document.querySelectorAll('#barn-walk-modal .bw-yn-btn[id^="bw-' + key + '-"]').forEach(function (b) { b.className = 'bw-yn-btn'; });
+  });
+  const c = document.getElementById('bw-mort-count'); if (c) c.value = '';
+  for (let i = 1; i <= BW_MORT_ROWS; i++) { const el = document.getElementById('bw-mr-' + i); if (el) el.value = ''; }
+  const cr = document.getElementById('bw-mort-count-row'); if (cr) cr.style.display = 'none';
+  const rr = document.getElementById('bw-mort-row-row'); if (rr) rr.style.display = 'none';
+  const h = document.getElementById('bw-mort-row-hint'); if (h) h.textContent = '';
+  _bwMortAutoTotal = null;
+}
+function bwMortWrongHouse() {
+  if (!_bwFarm || !_bwHouse || typeof LDATE !== 'function') return;
+  if (window._bwOpenDate && window._bwOpenDate !== LDATE()) return;   // yesterday's form — never
+  const F = _bwFarm, H = _bwHouse, date = LDATE(), key = F + '-' + H + '-' + date;
+  const c = document.getElementById('bw-mort-count');
+  const was = (c && c.value !== '') ? Number(c.value) || 0 : (_bwMortLastEntry ? Number(_bwMortLastEntry.mortCount) || 0 : 0);
+  const rows = {};
+  for (let i = 1; i <= BW_MORT_ROWS; i++) { const el = document.getElementById('bw-mr-' + i); if (el && el.value !== '') rows[String(i)] = el.value; }
+  _bwMortUndo = { key: key, count: c ? c.value : '', rows: rows, mortrem: _bwData.mortrem };
+  // a save still waiting for this house must not put the count back
+  if (_bwMortTimer) { clearTimeout(_bwMortTimer); _bwMortTimer = null; }
+  _bwMortFor = null;
+  const who = _bwCurrentUser();
+  const entry = _bwMortEntry({
+    farm: F, house: H, employee: who, date: date,
+    time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    mortCount: 0, mortByRow: null, mortrem: '',
+    notes: ((document.getElementById('bw-notes') || {}).value || '').trim(),
+    ts: Date.now(), cleared: true
+  });
+  entry.removedWrongHouse = { by: who, ts: entry.ts, was: was };
+  _bwUpsertLog('mortality', entry);
+  delete _bwMortLogged[key];
+  _bwMortLastEntry = null;
+  try { _todayMortTotal = Math.max(0, (Number(_todayMortTotal) || 0) - (_bwMortCounted[key] || 0)); delete _bwMortCounted[key]; } catch (e) {}
+  _bwMortClearBlock();
+  _bwMortLastFp = _bwMortFp();
+  // the draft (and, for a house already turned in, the check record) follow by themselves
+  try { checkBWReady(); } catch (e) {}
+  try { bwSaveDraft(); } catch (e) {}
+  try { bwFlowRefresh(false); } catch (e) {}
+  _bwMortStatus('removed', { house: H, was: was });
+  try { _bwMortHistCache = {}; } catch (e) {}
+}
+function bwMortPutBack() {
+  const u = _bwMortUndo;
+  if (!u || typeof LDATE !== 'function' || u.key !== (_bwFarm + '-' + _bwHouse + '-' + LDATE())) return;
+  _bwMortUndo = null;
+  _bwRestoring = true;          // one save at the end, not one per field
+  try {
+    bwSet('mort', 'yes');
+    const c = document.getElementById('bw-mort-count'); if (c) c.value = u.count;
+    for (let i = 1; i <= BW_MORT_ROWS; i++) { const el = document.getElementById('bw-mr-' + i); if (el) el.value = (u.rows[String(i)] != null ? u.rows[String(i)] : ''); }
+    if (u.mortrem) bwSet('mortrem', u.mortrem);
+    bwMortRowShow();
+  } finally { _bwRestoring = false; }
+  _bwMortLastFp = null;
+  try { checkBWReady(); } catch (e) {}
+  try { bwSaveDraft(); } catch (e) {}        // → _bwMortSaveSoon saves the entry again
+  try { bwFlowRefresh(false); } catch (e) {}
+}
+function _bwMortRemovedLine(el, e) {
+  const es = (typeof _lang !== 'undefined' && _lang === 'es');
+  el.style.display = 'block'; el.style.whiteSpace = 'pre-line'; el.style.color = '#f0c674';
+  const n = e ? (Number(e.was) || 0) : 0, h = e ? e.house : _bwHouse;
+  const txt = es
+    ? '🗑 Se quitaron ' + n + ' muertas de la Casa ' + h + '. Abra la casa correcta y escríbalas allí.'
+    : '🗑 Removed ' + n + ' dead from House ' + h + '. Open the right house and type them there.';
+  el.innerHTML = _bwMortEsc(txt) + '\n' + _bwMortBtn('bwMortPutBack()', es ? '↩ Devolver' : '↩ Put back', '#3a6a3a', '#9ad09a');
 }
 // Run anything still waiting (closing the form, switching houses, app hidden).
 // Both savers read the form synchronously before their first await, so this is

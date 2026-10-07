@@ -14,6 +14,11 @@ function openQuickWO() {
   document.getElementById('qwo-farm').value = '';
   document.getElementById('qwo-problem').value = '';
   document.getElementById('qwo-house').innerHTML = '<option value="">— House —</option>';
+  // v317: start on the site you're working in (houses list follows)
+  try {
+    const _pf = (typeof getPreferredFarm === 'function') ? getPreferredFarm() : null;
+    if (_pf) { document.getElementById('qwo-farm').value = _pf; qwoLoadHouses(); }
+  } catch (e) {}
   document.querySelectorAll('.qwo-pri-btn').forEach(b => b.style.opacity = '0.5');
   const btn = document.getElementById('qwo-submit-btn');
   if (btn) { btn.disabled = false; btn.textContent = '⚡ SUBMIT WORK ORDER'; }
@@ -193,6 +198,8 @@ function goMaintSection(section) {
 window._pkgSection = 'packing';
 function goPkgSection(section) {
   window._pkgSection = section;
+  window._procView = 'pkg:' + section;   // v317: a processingLog update must not redraw the hub over this
+
   document.querySelectorAll('.pkg-section').forEach(s => s.style.display = 'none');
   document.querySelectorAll('#panel-pkg .sub-btn').forEach(b => b.classList.remove('active'));
   const el = document.getElementById('pkg-' + section);
