@@ -76,8 +76,8 @@
     const ydayRate = flock ? (ydayMort / flock * 100) : 0;
 
     // per-house yesterday (outlier detection across houses)
-    const houseY = {};
-    walks.filter(w => w.date === yday).forEach(w => { const k = w.farm + ' · ' + w.house; houseY[k] = (houseY[k] || 0) + (Number(w.mortCount) || 0); });
+    const houseY = {}, houseW = {};   // v318: houseW keeps the check so its rows can show
+    walks.filter(w => w.date === yday).forEach(w => { const k = w.farm + ' · ' + w.house; houseY[k] = (houseY[k] || 0) + (Number(w.mortCount) || 0); houseW[k] = w; });
     const hVals = Object.values(houseY);
     const hUcl  = mean(hVals) + 2 * stdev(hVals);
     const houseRows = Object.entries(houseY).sort((a, b) => b[1] - a[1]);
@@ -247,7 +247,7 @@
             return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #14241410;">
               <span style="font-family:${MONO};font-size:12px;color:${out ? '#f87171' : '#c8e6c9'};">${out ? '⚠ ' : ''}${k}</span>
               <span style="font-family:${MONO};font-size:12px;font-weight:700;color:${out ? '#f87171' : '#7ab07a'};">${num(v)}</span>
-            </div>`;
+            </div>${(v && houseW[k] && typeof bwMortSplitHtml === 'function') ? bwMortSplitHtml(houseW[k], 10) : ''}`;
           }).join('')
         : `<div style="font-family:${MONO};font-size:11px;color:#5a8a5a;margin-top:10px;">${L('No barn-walk mortality logged yesterday.', 'No se registró mortalidad en el recorrido de ayer.')}</div>`)
     );

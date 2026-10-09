@@ -2774,7 +2774,9 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
       <!-- v315 (Joe 10/2: "change this to by row … there are 7 rows in each house"):
            Danville — split the count by ROW, R1–R7 (replaces v304's C1–C6
            collector boxes; old collector history is kept and still shown).
-           Filling these auto-totals the count above. Optional; never blocks Submit. -->
+           Filling these auto-totals the count above. v318: REQUIRED at Danville — the
+           Mortality block isn't done until R1–R7 add up to the house total (counts
+           still save as they're typed; Submit itself stays non-blocking). -->
       <div id="bw-mort-row-row" style="display:none;margin-top:9px;">
         <div class="bw-row-label" id="bw-mort-row-label">By row — R1 to R7</div>
         <div class="bw-mr-grid" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;">
@@ -5452,7 +5454,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
   </div>
 </div>
 
-<script defer src="js/core.js?v=20261005-v317"></script>
+<script defer src="js/core.js?v=20261009-v318"></script>
 <script defer src="js/dashboard.js?v=20260424"></script>
 <script defer src="js/barn-status-panel.js?v=20260803-v261"></script>
 <script defer src="js/maintenance.js?v=20261005-v317"></script>
@@ -5477,8 +5479,8 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/livemonitor.js?v=20260803-v266"></script>
 <script defer src="js/shipping.js?v=20260524-danville"></script>
 <script defer src="js/danville-loadout.js?v=20260715-v211"></script>
-<script defer src="js/production.js?v=20261005-v316"></script>
-<script defer src="js/scorecard.js?v=20260803-v266"></script>
+<script defer src="js/production.js?v=20261009-v318"></script>
+<script defer src="js/scorecard.js?v=20261009-v318"></script>
 <script defer src="js/help.js?v=20260716-v217"></script>
 <script defer src="js/time-blocks.js?v=20260727-v250"></script>
 <script defer src="js/feed-mill.js?v=20260722-v238"></script>
@@ -5489,7 +5491,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/staff.js?v=20260724-v248"></script>
 <script defer src="js/login.js?v=20260811-v284"></script>
 <script defer src="js/access.js?v=20260803-v267"></script>
-<script defer src="js/prodhistory.js?v=20260714-v207"></script>
+<script defer src="js/prodhistory.js?v=20261009-v318"></script>
 <script defer src="js/staff-roster.js?v=20260626-procstaff"></script>
 <script defer src="js/enhancements.js?v=20260925-v309"></script>
 <script defer src="js/navback.js?v=20261001-v313"></script>
@@ -5498,7 +5500,7 @@ input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px
 <script defer src="js/weekly-agenda.js?v=20260424"></script>
 <script defer src="js/shift-signoff.js?v=20260612g-v71"></script>
 <script defer src="js/red-tags.js?v=20260715-v211"></script>
-<script defer src="js/director-brief.js?v=20260424"></script>
+<script defer src="js/director-brief.js?v=20261009-v318"></script>
 <script defer src="js/barn-entry.js?v=20260424"></script>
 <script defer src="js/notifications.js?v=20260515-resilience"></script>
 <script defer src="js/oncall.js?v=20260424"></script>

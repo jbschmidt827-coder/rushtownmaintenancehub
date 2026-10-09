@@ -117,10 +117,12 @@ function dbBuildAlerts() {
       // Dead birds
       if (bw) {
         const dead = Number(bw.mortCount || 0);
+        // v318: which row (Danville) — "most in R4 (22)" / "rows not filled"
+        const _sp = (typeof bwMortSplitShort === 'function') ? bwMortSplitShort(bw) : '';
         if (dead >= DB_THRESH.deadPerHouse) {
-          alerts.critical.push({ icon:'💀', farm, house:h, msg:`H${h} — ${dead} dead birds today`, action:`go('prod')` });
+          alerts.critical.push({ icon:'💀', farm, house:h, msg:`H${h} — ${dead} dead birds today${_sp ? ' · ' + _sp : ''}`, action:`go('prod')` });
         } else if (dead > 5) {
-          alerts.warning.push({ icon:'💀', farm, house:h, msg:`H${h} — ${dead} dead birds (monitor)`, action:`go('prod')` });
+          alerts.warning.push({ icon:'💀', farm, house:h, msg:`H${h} — ${dead} dead birds (monitor)${_sp ? ' · ' + _sp : ''}`, action:`go('prod')` });
         }
 
         // Feed bin levels

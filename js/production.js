@@ -1006,6 +1006,8 @@ function _bwMortEntry(o) {
     mortCount: n,                               // TOTAL dead for the barn that day
     mortByRow: rows,                            // v315: {'1':n,…,'7':n} or null
     mortRowUnassigned: (rows && n) ? Math.max(0, n - _bwSplitSum(rows)) : null,
+    // v318: true = R1–R7 add up to the house total; null = farm without rows / cleared
+    mortRowsMatch: (!o.cleared && _bwMortRowsOn(o.farm)) ? (_bwSplitSum(rows) === n) : null,
     mortrem: (o.mortrem != null) ? o.mortrem : 'yes', notes: o.notes || '',   // v314: '' = not answered yet
     cleared: !!o.cleared,                       // v312: answer changed back to NO that day
     ts: o.ts || Date.now()
@@ -1191,14 +1193,24 @@ function _bwMortStatus(state, e) {
   // v314: saved before "All mortality removed?" is answered → say what's left
   const left = (e && e.mortrem === '' && _bwData.mortrem === undefined)
     ? '\n' + (es ? '👉 Falta: toque SÍ o NO en “¿Toda la mortalidad retirada?”' : '👉 Still to do: tap YES or NO on “All mortality removed?”') : '';
+  // v318: Danville — rows still short of (or over) the house total
+  let rowsLeft = '';
+  try {
+    if (e && !e.cleared && _bwMortRowsOn(e.farm) && (Number(e.mortCount) || 0) > 0) {
+      const rs = _bwSplitSum(_bwSplitOf(e.mortByRow)), rn = Number(e.mortCount) || 0;
+      if (rs < rn) rowsLeft = '\n' + (es ? '👉 Falta: poner ' + (rn - rs) + ' muertas en su fila (F1–F' + BW_MORT_ROWS + ')'
+                                           : '👉 Still to do: put ' + (rn - rs) + ' dead in their rows (R1–R' + BW_MORT_ROWS + ')');
+      else if (rs > rn) rowsLeft = '\n' + (es ? '⚠ Las filas suman ' + rs + ' pero el total es ' + rn : '⚠ Rows add up to ' + rs + ' but the total is ' + rn);
+    }
+  } catch (x) {}
   el.style.whiteSpace = 'pre-line';
   let txt;
   if (state === 'saved') {
     el.style.color = '#7ad07a';
-    txt = '✅ ' + (es ? 'Guardado en Casa ' : 'Saved to House ') + (e ? e.house : _bwHouse) + ' · ' + what + (e && e.time ? ' · ' + e.time : '') + left;
+    txt = '✅ ' + (es ? 'Guardado en Casa ' : 'Saved to House ') + (e ? e.house : _bwHouse) + ' · ' + what + (e && e.time ? ' · ' + e.time : '') + left + rowsLeft;
   } else {
     el.style.color = '#f0c674';
-    txt = '📴 ' + (es ? 'Guardado en esta tablet — se sube solo al volver la conexión' : 'Saved on this tablet — uploads by itself when the connection is back') + left;
+    txt = '📴 ' + (es ? 'Guardado en esta tablet — se sube solo al volver la conexión' : 'Saved on this tablet — uploads by itself when the connection is back') + left + rowsLeft;
   }
   // v316: the way back out when the count went into the wrong house
   el.innerHTML = _bwMortEsc(txt) + '\n' + _bwMortBtn('bwMortWrongHouse()', es ? '↩ ¿Casa equivocada? Quitar' : '↩ Wrong house? Remove', '#8a6a2a', '#f0c674');
@@ -1525,7 +1537,9 @@ function bwBlockComplete(name) {
       return !!(document.getElementById('bw-employee')?.value || '').trim();
     case 'mortality':
       if (_bwData.mort === undefined || _bwData.mortrem === undefined) return false;
-      return _bwData.mort !== 'yes' || _bwHasVal('bw-mort-count');
+      if (_bwData.mort !== 'yes') return true;
+      // v318: at Danville the rows must add up to the house total
+      return _bwHasVal('bw-mort-count') && _bwMortRowsOk();
     case 'equipment':
       if (['feather','loose'].some(k => _bwData[k] === undefined)) return false;
       return _bwData.loose !== 'yes' || _bwHasVal('bw-loose-count');
@@ -2091,6 +2105,7 @@ function openBarnWalk(farm, house) {
       const naBtn = document.getElementById(id + '-na');
       if (naBtn) naBtn.classList.remove('active');
     }
+    if (id === 'bw-mort-count') { try { _bwMortRowHint(); } catch (x) {} }   // v318
     bwSaveDraft();
     bwFlowRefresh(false);
   };
@@ -2333,6 +2348,106 @@ async function clOpenTaskWI(taskId, taskLabel) {
 var BW_MORT_ROWS = 7;
 var BW_MORT_ROWS_FARMS = ['Danville'];
 function _bwMortRowsOn(farm) { return BW_MORT_ROWS_FARMS.indexOf(String(farm || '')) !== -1; }
+// ── v318: ROWS MUST ADD UP TO THE HOUSE TOTAL + every log shows them ─────────
+// Joe 10/6: "i need it to save total dead by house and also total dead by each
+// row that = the total dead in each house". Joe 10/9 (screenshot of the
+// "checked today" card, Mortality: 40 and nothing else): "on all the logs we need
+// to make sure that we show dead by collector or row and this is not the only log
+// that need it". Field evidence 10/2–10/9: 2 of 26 Danville house-days had rows
+// (Tiffany, H2) — the boxes were "optional", so everyone typed only the total.
+// Now: (1) at Danville the Mortality block is not DONE until R1–R7 add up to the
+// house total (counts still save the moment they're typed — v314); (2) every
+// screen that shows one house's dead for a day shows the rows next to it, or the
+// old C1–C6 split, or "⚠ Rows not filled in" so a missing split is visible.
+var BW_MORT_ROWS_SINCE = '2026-10-02';   // v315 went live: Danville days from here on should have rows
+function bwMortSplitInfo(r) {
+  if (!r) return null;
+  const es = (typeof _lang !== 'undefined' && _lang === 'es');
+  const n = Number(r.mortCount) || 0;
+  const rows = _bwSplitOf(r.mortByRow);
+  if (rows) {
+    const P = _bwRowP(), parts = [];
+    for (let i = 1; i <= BW_MORT_ROWS; i++) parts.push(P + i + '\u00a0' + (rows[String(i)] || 0));   // nbsp: "R7 0" never splits
+    const sum = _bwSplitSum(rows), un = Math.max(0, n - sum);
+    const extra = un ? '⚠ ' + un + (es ? ' sin fila' : ' not in a row')
+      : (sum > n ? '⚠ ' + (es ? 'las filas suman ' + sum : 'rows add up to ' + sum) : '');
+    return { kind: 'row', ok: sum === n, split: rows, n: BW_MORT_ROWS, p: P, extra: extra,
+      label: es ? 'Por fila' : 'By row',
+      text: (es ? 'Por fila: ' : 'By row: ') + parts.join(' · ') + (extra ? ' · ' + extra : '') };
+  }
+  const coll = _bwSplitOf(r.mortByCollector);
+  if (coll) {
+    const un = Math.max(0, n - _bwSplitSum(coll));
+    const extra = un ? un + (es ? ' sin colector' : ' not assigned') : '';
+    return { kind: 'coll', ok: true, split: coll, n: 6, p: 'C', extra: extra,
+      label: es ? 'Por colector (antes de filas)' : 'By collector (before rows)',
+      text: (es ? 'Por colector: ' : 'By collector: ') + _bwCollText(coll).replace(/C(\d+) /g, 'C$1\u00a0') + (extra ? ' · ' + extra : '') };
+  }
+  if (n > 0 && r.type !== 'loose' && _bwMortRowsOn(r.farm) && String(r.date || '') >= BW_MORT_ROWS_SINCE)
+    return { kind: 'missing', ok: false, text: es ? '⚠ Filas sin llenar — solo el total de la casa' : '⚠ Rows not filled in — house total only' };
+  return null;
+}
+// Any log card: a small R1–R7 grid (dead in each row, zeros dimmed), or the old
+// C1–C6 grid, or the amber "⚠ Rows not filled in" line. fs = base font size (px).
+function bwMortSplitHtml(r, fs) {
+  const i = bwMortSplitInfo(r);
+  if (!i) return '';
+  const f = fs || 11, M = "font-family:'IBM Plex Mono',monospace;";
+  if (i.kind === 'missing')
+    return '<div class="bw-mort-split" style="' + M + 'font-size:' + f + 'px;line-height:1.5;margin-top:3px;color:#f0a050;">' + _bwMortEsc(i.text) + '</div>';
+  let h = '<div class="bw-mort-split" style="margin-top:4px;max-width:440px;">' +
+    '<div style="' + M + 'font-size:' + Math.max(8.5, f - 2) + 'px;letter-spacing:.5px;color:#9a8a5a;margin-bottom:2px;">' + _bwMortEsc(i.label) +
+    (i.extra ? ' <span style="color:#f0a050;">' + _bwMortEsc(i.extra) + '</span>' : '') + '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(' + i.n + ',minmax(0,1fr));gap:3px;">';
+  for (let k = 1; k <= i.n; k++) {
+    const v = Number(i.split[String(k)]) || 0;
+    h += '<div style="text-align:center;border-radius:5px;padding:1px 0 2px;min-width:0;background:' + (v ? '#2a2412' : '#121810') +
+      ';border:1px solid ' + (v ? '#5a4a22' : '#1f2a1a') + ';">' +
+      '<div style="' + M + 'font-size:' + Math.max(8, f - 2.5) + 'px;color:#8a8a6a;line-height:1.25;">' + i.p + k + '</div>' +
+      '<div style="' + M + 'font-size:' + (f + 1) + 'px;font-weight:700;line-height:1.25;color:' + (v ? '#f0d08a' : '#3f4a35') + ';">' + v + '</div></div>';
+  }
+  return h + '</div></div>';
+}
+// Short form for one-line alerts: "most in R4 (22)" / "rows not filled".
+function bwMortSplitShort(r) {
+  const i = bwMortSplitInfo(r);
+  if (!i) return '';
+  const es = (typeof _lang !== 'undefined' && _lang === 'es');
+  if (i.kind === 'missing') return es ? 'filas sin llenar' : 'rows not filled';
+  const s = _bwSplitOf(i.kind === 'row' ? r.mortByRow : r.mortByCollector) || {};
+  let best = null, bn = 0;
+  Object.keys(s).forEach(function (k) { if (s[k] > bn) { bn = s[k]; best = k; } });
+  return best ? ((es ? 'más en ' : 'most in ') + (i.kind === 'row' ? _bwRowP() : 'C') + best + ' (' + bn + ')') : '';
+}
+// The form's gate: Danville + Mortality YES → the rows must equal the total.
+function _bwMortRowsOk() {
+  if (!_bwMortRowsOn(_bwFarm) || _bwData.mort !== 'yes') return true;
+  const c = document.getElementById('bw-mort-count');
+  if (!c || c.value === '') return false;
+  return _bwSplitSum(_bwMortRows()) === (Number(c.value) || 0);
+}
+// Live counter under the row boxes — never changes a number, only says where it stands.
+function _bwMortRowHint() {
+  const hint = document.getElementById('bw-mort-row-hint');
+  if (!hint) return;
+  if (!_bwMortRowsOn(_bwFarm) || _bwData.mort !== 'yes') { hint.textContent = ''; return; }
+  const es = (typeof _lang !== 'undefined' && _lang === 'es'), P = _bwRowP();
+  const c = document.getElementById('bw-mort-count');
+  const n = (c && c.value !== '') ? (Number(c.value) || 0) : null;
+  const split = _bwMortRows(), sum = _bwSplitSum(split);
+  const parts = split ? _bwSplitKeys(split).map(function (k) { return P + k + ' ' + split[k]; }).join(' + ') : '';
+  let txt, col;
+  if (n == null) {
+    txt = es ? '👉 Escriba las muertas de cada fila — suman el total de la casa' : '👉 Type the dead in each row — they add up to the house total'; col = '#8fae8f';
+  } else if (sum === n) {
+    txt = '✓ ' + (es ? 'Filas = total de la casa: ' : 'Rows = house total: ') + n + (parts ? ' (' + parts + ')' : ''); col = '#7ad07a';
+  } else if (sum < n) {
+    txt = (parts ? parts + ' = ' + sum + ' · ' : '') + '👉 ' + (n - sum) + (es ? ' por poner en su fila (total ' + n + ')' : ' still to put in a row (total ' + n + ')'); col = '#f0c674';
+  } else {
+    txt = '⚠ ' + (es ? 'Las filas suman ' + sum + ' pero el total dice ' + n + ' — corrija uno' : 'Rows add up to ' + sum + ' but the total says ' + n + ' — fix one'); col = '#f87171';
+  }
+  hint.textContent = txt; hint.style.color = col;
+}
 function _bwRowP() { return (typeof _lang !== 'undefined' && _lang === 'es') ? 'F' : 'R'; }   // Fila / Row
 function _bwSplitKeys(s) {
   if (!s || typeof s !== 'object') return [];
@@ -2364,11 +2479,11 @@ function bwMortRowShow() {
   const es = (typeof _lang !== 'undefined' && _lang === 'es');
   const lbl = document.getElementById('bw-mort-row-label');
   if (lbl) lbl.textContent = es
-    ? 'Por fila — F1 a F' + BW_MORT_ROWS + ' (opcional, suma el total)'
-    : 'By row — R1 to R' + BW_MORT_ROWS + ' (optional, adds up the total)';
+    ? 'Por fila — F1 a F' + BW_MORT_ROWS + ' (deben sumar el total de la casa)'
+    : 'By row — R1 to R' + BW_MORT_ROWS + ' (must add up to the house total)';   // v318: required
   const p = _bwRowP();
   for (let i = 1; i <= BW_MORT_ROWS; i++) { const el = document.getElementById('bw-mr-' + i); if (el) el.placeholder = p + i; }
-  if (on) bwMortRowSum(true);
+  if (on) bwMortRowSum(true); else _bwMortRowHint();
 }
 // ── v312: 📜 this house's mortality history, right in the Mortality card ────
 // Last 7 days: the barn total and (Danville) the R1–R7 split for each day plus
@@ -2504,7 +2619,7 @@ function bwMortRowSum(quiet) {
   const hint = document.getElementById('bw-mort-row-hint');
   const tot = document.getElementById('bw-mort-count');
   const es = (typeof _lang !== 'undefined' && _lang === 'es');
-  if (!split) { if (hint) hint.textContent = ''; _bwMortAutoTotal = null; return; }
+  if (!split) { _bwMortAutoTotal = null; _bwMortRowHint(); return; }
   const sum = Object.values(split).reduce((a, b) => a + b, 0);
   const cur = (tot && tot.value !== '') ? Number(tot.value) : null;
   const boxesOwnTotal = (cur == null) || (_bwMortAutoTotal != null && cur === _bwMortAutoTotal);
@@ -2516,17 +2631,7 @@ function bwMortRowSum(quiet) {
     if (!quiet) { try { tot.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {} }
   }
   if (boxesOwnTotal || (newTotal != null && sum >= newTotal)) _bwMortAutoTotal = sum; else _bwMortAutoTotal = null;
-  if (hint) {
-    const P = _bwRowP();
-    const parts = _bwSplitKeys(split).map(function (k) { return P + k + ' ' + split[k]; }).join(' + ');
-    const left = (newTotal != null) ? newTotal - sum : 0;
-    if (left > 0) {
-      hint.textContent = parts + ' = ' + sum + (es ? ' · ' + left + ' sin fila (total ' + newTotal + ')'
-                                                    : ' · ' + left + ' not in a row (total ' + newTotal + ')');
-    } else {
-      hint.textContent = 'Total ' + sum + ' = ' + parts;
-    }
-  }
+  _bwMortRowHint();   // v318: live counter (rows vs house total)
   if (!quiet && typeof bwSaveDraft === 'function') { try { bwSaveDraft(); } catch (e) {} }
   if (!quiet && typeof bwFlowRefresh === 'function') { try { bwFlowRefresh(false); } catch (e) {} }
 }
@@ -2728,9 +2833,8 @@ if (typeof window !== 'undefined') window._bwArrangeCards = _bwArrangeCards;
       '<div style="font-size:12px;color:#9ab09a;margin-bottom:12px;">by ' + _esc(r.employee || r.by || '—') + (r.time ? (' · ' + _esc(r.time)) : '') + '</div>' +
       '<div style="font-size:13px;line-height:1.9;color:#d8e8d8;border-top:1px solid #1e3a1e;border-bottom:1px solid #1e3a1e;padding:10px 0;margin-bottom:14px;">' +
         '💀 Mortality: <b>' + _esc(r.mortCount != null ? r.mortCount : '—') + '</b>' +
-          // v315: which row the dead came from (Danville split; older days: collector)
-          (_bwSplitLabel(r) ? ' <span style="color:#e8c98a;font-size:12px;">(' + _esc(_bwSplitLabel(r)) + ')</span>' : '') +
-          '<br>' +
+          // v318: dead by row on its own line (older days: collector; none → "⚠ Rows not filled in")
+          (bwMortSplitInfo(r) ? bwMortSplitHtml(r, 12) : '<br>') +
         '🐔 Loose birds: <b>' + _esc(r.looseCount != null ? r.looseCount : '—') + '</b><br>' +
         '✅ Tasks reviewed: <b>' + pass + '/' + total + '</b>' + (flags ? ('<br>⚠ Flags: <b style="color:#f2705a;">' + flags + '</b>') : '') +
         (r.notes ? ('<br>📝 ' + _esc(r.notes)) : '') +
@@ -2893,7 +2997,8 @@ async function submitBarnWalk(opts) {
 
   const record = {
     farm: _F, house: String(_H), employee, notes, flags,
-    waterPSI, temp, mortCount, mortByRow, looseCount, rodentCount, flyCount, weeklyRodentCount, feedBinReading, eggsCollected,
+    waterPSI, temp, mortCount, mortByRow, looseCount,
+    mortRowsMatch: (_bwMortRowsOn(_F) && _D.mort === 'yes') ? (_bwSplitSum(mortByRow) === (mortCount || 0)) : null,   // v318 rodentCount, flyCount, weeklyRodentCount, feedBinReading, eggsCollected,
     waterMeter, waterMeters, waterUsedGal, waterFlatMeters, binA, binB,
     naFields: _D._na || {},
     weeklyAck: !!_D._weeklyAck,
@@ -3033,7 +3138,7 @@ async function submitBarnWalk(opts) {
       id: 'BW-' + _F + '-H' + _H,
       desc: 'Daily barn check: ' + _F + ' Barn ' + _H + ' — ' + statusDesc
         + (_D.feed === 'empty' ? ' ⚠ Feed Empty' : '')
-        + (_D.mort === 'yes' ? ' ⚠ Mortality' + (mortCount ? ' (' + mortCount + ')' : '') : '')
+        + (_D.mort === 'yes' ? ' ⚠ Mortality' + (mortCount ? ' (' + mortCount + (mortByRow ? ' · ' + _bwRowText(mortByRow) : '') + ')' : '') : '')   // v318: + rows
         + (flags.length > 0 ? ' · Flags: ' + flags.slice(0, 2).join(', ') + (flags.length > 2 ? '…' : '') : ''),
       tech: employee,
       farm: _F,
@@ -4035,7 +4140,7 @@ function renderProdSummary(walks, mWalks, prefFarm) {
           <div style="font-size:11px;color:${flagged?'#e53e3e':w?'#4caf50':'#3a4a2a'};">${flagged?'⚠ Flagged':w?'✓ Clear':'— Pending'}</div>
         </div>
         ${w ? `<div style="font-size:11px;color:#7a9a5a;margin-top:4px;">👤 ${w.employee} · ${w.time||''}</div>
-          ${w.mortCount?`<div style="font-size:11px;color:#e53e3e;margin-top:3px;">💀 Mortality: ${w.mortCount}</div>`:''}
+          ${w.mortCount?`<div style="font-size:11px;color:#e53e3e;margin-top:3px;">💀 Mortality: ${w.mortCount}</div>${bwMortSplitHtml(w,10.5)}`:''}
           ${w.looseCount?`<div style="font-size:11px;color:#d69e2e;margin-top:3px;">🐓 Loose birds: ${w.looseCount}</div>`:''}
           ${flagged?`<div style="font-size:10px;color:#e07070;margin-top:5px;line-height:1.6;">${w.flags.map(f=>'• '+f).join('<br>')}</div>`:''}` : ''}
         ${mw ? `<div style="font-size:10px;color:#6a90d9;margin-top:6px;padding-top:6px;border-top:1px solid #1a2a2a;">☀️ ${mw.employee} · ${mw.waterPSI} PSI · ${mw.temp}°F${mw.eeCount!=null?' · '+mw.eeCount+' EE':''}</div>` : ''}
@@ -4224,7 +4329,7 @@ function _bwHistDetailHtml(w) {
   const V = v => (v == null || v === '') ? '—' : String(v);
   const rows = [
     [es?'Mortalidad':'Mortality',      (w.mort==='yes' ? (w.mortCount!=null?w.mortCount:'yes') : 'no') + (w.mort==='yes' ? (w.mortrem==='yes' ? (es?' · retiradas ✓':' · removed ✓') : w.mortrem==='no' ? (es?' · NO retiradas ⚠':' · NOT removed ⚠') : (es?' · ¿retiradas? sin responder':' · removed? not answered')) : '')
-      + ((w.mort==='yes' && _bwSplitLabel(w)) ? ' · ' + _bwSplitLabel(w) : '')],   // v315: by row (older days: by collector)
+      + ((w.mort==='yes' && bwMortSplitInfo(w)) ? ' · ' + bwMortSplitInfo(w).text : '')],   // v318: by row (older: by collector; none: ⚠ not filled)
     [es?'Aves sueltas':'Loose birds',  w.loose==='yes' ? V(w.looseCount) : 'no'],
     [es?'Secadores':'Manure dryers',   V(w.dryers)],
     [es?'Plumaje':'Feathering',        V(w.feather)],
@@ -4292,7 +4397,7 @@ function renderBarnWalkHistory(walks) {
         </div>
         <div style="font-size:11px;color:#5a8a5a;">👤 ${w.employee||'—'}${w.time?' · '+w.time:''}</div>
         ${w.waterPSI!=null?`<div style="font-size:10px;color:#3a6a6a;margin-top:3px;">💧 ${w.waterPSI} PSI${w.temp!=null?' · 🌡 '+w.temp+'°F':''}</div>`:''}
-        ${w.mortCount?`<div style="font-size:10px;color:#e53e3e;margin-top:3px;">💀 Mortality: ${w.mortCount}</div>`:''}
+        ${w.mortCount?`<div style="font-size:10px;color:#e53e3e;margin-top:3px;">💀 Mortality: ${w.mortCount}</div>${bwMortSplitHtml(w,10)}`:''}
         ${hasFlagsArr?`<div style="font-size:10px;color:#e07070;margin-top:6px;line-height:1.6;">${w.flags.map(f=>'• '+f).join('<br>')}</div>`:''}
         ${clFails>0?`<div style="font-size:10px;color:#d69e2e;margin-top:3px;">📋 Checklist: ${clFails} fail${clFails!==1?'s':''}</div>`:''}
         ${w.notes?`<div style="font-size:10px;color:#4a7a4a;margin-top:4px;font-style:italic;">"${w.notes}"</div>`:''}
@@ -4531,6 +4636,7 @@ function openWalkDetail(id) {
       ${field('Bin A', r.binA != null && r.binA !== '' ? r.binA + ' tons' : null)}
       ${field('Bin B', r.binB != null && r.binB !== '' ? r.binB + ' tons' : null)}
       ${field('Mortality Count', r.mortCount || null)}
+      ${field((typeof _lang !== 'undefined' && _lang === 'es') ? 'Muertas por fila' : 'Dead by Row', (r.mortCount && bwMortSplitInfo(r)) ? bwMortSplitInfo(r).text : null)}
       ${field('Loose Birds', r.looseCount || null)}
       ${field('Rodents Found', r.rodentCount || null)}
       ${field('Fly Count', r.flyCount || null)}
@@ -4876,11 +4982,8 @@ function renderPestLog() {
           (r.mortCount ? '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;color:#f87171;font-weight:700;">'+r.mortCount+' bird'+(r.mortCount!==1?'s':'')+'</span>' : '') +
           (notRemoved ? '<span style="background:#4a0a0a;color:#fca5a5;border:1px solid #e53e3e;border-radius:8px;padding:1px 8px;font-size:11px;">⚠ Not Removed</span>' : '') +
         '</div>' +
-        // v315: which row the dead came from (Danville splits; older days: collector)
-        (_bwSplitLabel(r)
-          ? '<div style="margin-top:6px;font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;color:#e8c98a;">'
-            + _esc(_bwSplitLabel(r).replace(/^./, function (m) { return m.toUpperCase(); }))
-            + '</div>' : '') +
+        // v318: dead by row (older days: collector; none → "⚠ Rows not filled in")
+        bwMortSplitHtml(r, 11.5) +
         (r.notes ? '<div style="margin-top:8px;font-size:12px;color:#8a6a6a;font-style:italic;">'+r.notes+'</div>' : '') +
       '</div>';
     }

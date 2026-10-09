@@ -47,16 +47,65 @@
     var patch = { editedBy: ((typeof getDeviceUser === 'function' ? getDeviceUser() : '') || ''), editedTs: Date.now() };
     var emp = g('emp'); if (emp !== undefined) patch.employee = emp.trim();
     var mc = g('mc'); if (mc !== undefined) patch.mortCount = (mc === '' ? null : Math.max(0, Number(mc) || 0));
+    // v318: Danville — the dead by row (R1–R7) must add up to the house total
+    var rec0 = _phDocs.find(function (x) { return x._id === id; });
+    if (rec0 && _rowsOn(rec0.farm) && g('r1') !== undefined) {
+      var rows = {}, any = false, sum = 0;
+      for (var i = 1; i <= _nRows(); i++) { var v = g('r' + i); var n = (v === '' || v == null) ? 0 : Math.max(0, Number(v) || 0); if (n > 0) { rows[String(i)] = n; any = true; sum += n; } }
+      if (any && (patch.mortCount == null || patch.mortCount === '')) patch.mortCount = sum;
+      var tot = Number(patch.mortCount) || 0;
+      if (any && sum !== tot) {
+        if (typeof toast === 'function') toast(L('Rows add up to ' + sum + ' but the total is ' + tot + ' — fix one', 'Las filas suman ' + sum + ' pero el total es ' + tot + ' — corrija uno'));
+        return;
+      }
+      patch.mortByRow = any ? rows : null;
+      patch.mortRowUnassigned = any ? 0 : null;
+      patch.mortRowsMatch = tot > 0 ? any : null;
+    }
     var lc = g('lc'); if (lc !== undefined) patch.looseCount = (lc === '' ? null : Math.max(0, Number(lc) || 0));
     var nt = g('nt'); if (nt !== undefined) patch.notes = nt.trim();
     try {
       await db.collection('barnWalks').doc(id).set(patch, { merge: true });
       var r = _phDocs.find(function (x) { return x._id === id; }); if (r) Object.assign(r, patch);
+      if (r) await _mirrorLog(r, patch);
       _phEdit = null;
       if (typeof toast === 'function') toast(L('✅ Record updated', '✅ Registro actualizado'));
       _render();
     } catch (e) { console.error('phSaveRow:', e); if (typeof toast === 'function') toast(L('Could not save — try again', 'No se pudo guardar')); }
   };
+  // v318 — Danville dead by row (same switch as the daily check)
+  function _rowsOn(farm) { try { return typeof _bwMortRowsOn === 'function' && _bwMortRowsOn(farm); } catch (e) { return false; } }
+  function _nRows() { return (typeof BW_MORT_ROWS !== 'undefined') ? BW_MORT_ROWS : 7; }
+  function _rowsF(r) {
+    if (!_rowsOn(r.farm)) return '';
+    var MONO = "font-family:'IBM Plex Mono',monospace;", s = r.mortByRow || {}, P = L('R', 'F'), h = '';
+    for (var i = 1; i <= _nRows(); i++) {
+      var v = s[String(i)] != null ? s[String(i)] : '';
+      h += '<input id="ph-r' + i + '-' + r._id + '" type="number" min="0" inputmode="numeric" placeholder="' + P + i + '" value="' + String(v).replace(/"/g, '&quot;') +
+        '" style="min-width:0;width:100%;text-align:center;background:#0a1408;border:1.5px solid #2a5a2a;border-radius:7px;color:#f0ead8;' + MONO + 'font-size:13px;padding:8px 2px;">';
+    }
+    return '<div style="' + MONO + 'font-size:11px;color:#9ab09a;">' + L('Dead by row — must add up to the total', 'Muertas por fila — deben sumar el total') +
+      '<div style="display:grid;grid-template-columns:repeat(' + _nRows() + ',minmax(0,1fr));gap:4px;margin-top:3px;">' + h + '</div></div>';
+  }
+  // A corrected total/rows also goes into the house's mortality entry, which is
+  // what Bird Health and the Tier boards read (deterministic id since 9/25).
+  async function _mirrorLog(r, patch) {
+    try {
+      if (!('mortCount' in patch) && !('mortByRow' in patch)) return;
+      if (!r || !r.farm || r.house == null || !r.date || String(r.date) < '2026-09-25') return;
+      var ref = db.collection('mortalityLog').doc('mortality__' + r.farm + '__H' + r.house + '__' + r.date);
+      var d = await ref.get();
+      var upd = { mortCount: Number(r.mortCount) || 0, editedBy: patch.editedBy, editedTs: patch.editedTs };
+      if ('mortByRow' in patch) { upd.mortByRow = patch.mortByRow; upd.mortRowUnassigned = patch.mortRowUnassigned; upd.mortRowsMatch = patch.mortRowsMatch; }
+      if (d.exists) await ref.set(upd, { merge: true });
+      else if (upd.mortCount > 0 && typeof _bwMortEntry === 'function') {
+        var e = _bwMortEntry({ farm: r.farm, house: r.house, employee: r.employee, date: r.date, time: r.time,
+          mortCount: upd.mortCount, mortByRow: r.mortByRow, mortrem: r.mortrem != null ? r.mortrem : '', ts: Date.now() });
+        e.editedBy = patch.editedBy; e.editedTs = patch.editedTs;
+        await ref.set(e, { merge: true });
+      }
+    } catch (e) { console.warn('prodhist mortality entry:', e); }
+  }
   function _f(k, id, label, val, type) {
     var MONO = "font-family:'IBM Plex Mono',monospace;";
     return '<label style="' + MONO + 'font-size:11px;color:#9ab09a;">' + label +
@@ -73,12 +122,14 @@
         var head = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
           '<span style="' + MONO + 'font-size:13px;font-weight:700;color:#f0ead8;">' + (r.date || '?') + ' · ' + (r.farm || '?') + ' ' + L('H', 'C') + (r.house || '?') + '</span>' +
           '<span style="' + MONO + 'font-size:12px;color:' + (flags ? '#f2705a' : '#4ade80') + ';">' + (flags ? ('⚠ ' + flags) : '✓') + '</span></div>' +
-          '<div style="' + MONO + 'font-size:11px;color:#7ab07a;margin-top:3px;">👤 ' + (r.employee || '—') + ' · 💀 ' + (r.mortCount != null ? r.mortCount : '—') + (r.editedBy ? (' · ✎ ' + r.editedBy) : '') + '</div>';
+          '<div style="' + MONO + 'font-size:11px;color:#7ab07a;margin-top:3px;">👤 ' + (r.employee || '—') + ' · 💀 ' + (r.mortCount != null ? r.mortCount : '—') + (r.editedBy ? (' · ✎ ' + r.editedBy) : '') + '</div>' +
+          ((r.mortCount && typeof bwMortSplitHtml === 'function') ? bwMortSplitHtml(r, 10.5) : '');   // v318: dead by row
         var edit = '';
         if (canEdit && _phEdit === r._id) {
           edit = '<div style="margin-top:10px;border-top:1px solid #2a5a2a;padding-top:10px;display:grid;gap:8px;">' +
             _f('emp', r._id, L('Name', 'Nombre'), r.employee || '', 'text') +
             _f('mc', r._id, L('Mortality count', 'Conteo mortalidad'), r.mortCount != null ? r.mortCount : '', 'number') +
+            _rowsF(r) +
             _f('lc', r._id, L('Loose birds', 'Aves sueltas'), r.looseCount != null ? r.looseCount : '', 'number') +
             _f('nt', r._id, L('Notes', 'Notas'), r.notes || '', 'text') +
             '<div style="display:flex;gap:8px;"><button onclick="phSaveRow(\'' + r._id + '\')" style="flex:1;padding:10px;border-radius:8px;background:#14532d;border:1.5px solid #2a7a3a;color:#86efac;' + MONO + 'font-weight:700;cursor:pointer;">💾 ' + L('Save', 'Guardar') + '</button>' +
